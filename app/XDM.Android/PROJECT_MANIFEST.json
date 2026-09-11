@@ -1732,11 +1732,11 @@
     "revision": 2
   },
   "current_experience_polish_authority": "list_quick_actions_final_seal_act01_act02",
-  "current_overlay": "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip",
-  "current_release_authority": "post_ux13_roadmap_completion_hotfix",
-  "current_runtime_quality_authority": "media_parity02_logical_media_capture_browser_convergence",
+  "current_overlay": "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip",
+  "current_release_authority": "media_parity03_native_hls_execution_admission_integrity",
+  "current_runtime_quality_authority": "media_parity03_native_hls_execution_admission_integrity",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
-  "current_validation_truth_authority": "media_parity02_logical_media_capture_browser_convergence",
+  "current_validation_truth_authority": "media_parity03_native_hls_execution_admission_integrity",
   "database": {
     "backup_restore_metadata": true,
     "clipboard_inbox": true,
@@ -1763,10 +1763,11 @@
       "19_to_20",
       "20_to_21",
       "21_to_22",
-      "22_to_23"
+      "22_to_23",
+      "23_to_24"
     ],
     "organization_power_tools": true,
-    "version": 23
+    "version": 24
   },
   "debug_workbench_phase_d1_compile_hygiene": {
     "fixes": [
@@ -2954,8 +2955,8 @@
     "real_device_smoke_passed_by_default": false,
     "release_candidate": true,
     "release_docs_complete": true,
-    "room_schema_locked": 23,
-    "schema_version_unchanged": 23,
+    "room_schema_locked": 24,
+    "schema_version_unchanged": 24,
     "signed_release_verification_documented": true,
     "static_validation_passed_by_default": false,
     "static_validators_complete": true,
@@ -3374,6 +3375,26 @@
     "validation_policy": "intermediate-overlay-no-validate",
     "webview_capture_surface": "logical media graph; segments/thumbnails/API noise suppressed from normal rows"
   },
+  "media_parity03_native_hls_execution_admission_integrity": {
+    "acceptance_fixture": "118 internal parts -> one aggregate Download row with pause/resume/process-death recovery, low-storage handling, finalization, publish, verify, and no tiny partial completion",
+    "admission_idempotency": "logical media id + destination + selected track fingerprint reuses the existing job; explicit Add again creates a new attempt generation",
+    "aes128": "AES-128 explicit IV, implicit media-sequence IV, key URI, and key rotation are modeled as native encrypted media, not DRM",
+    "completion_verification": "manifest text, HTML/error pages, too-small artifacts, unsupported plans, and hash mismatch cannot become Completed",
+    "depends_on": "media_parity02_logical_media_capture_browser_convergence",
+    "durable_part_ledger": "native_hls_jobs + native_hls_parts persist stage, finalization, part state, byte ranges, maps, AES keys/IVs, retries, recovery, and artifact hashes",
+    "fallback_detection": "live/LL-HLS/I-frame-only/invalid/missing-segment playlists route to fallback; SAMPLE-AES/DRM/unknown encrypted media is protected unsupported",
+    "migration": "23_to_24",
+    "native_hls_strategy": "supported VOD HLS plans before yt-dlp fallback as one native segmented job",
+    "next_overlay": "media_parity04_browser_ux_userscripts_feedback_final_release_seal",
+    "overlay": "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip",
+    "progress_truth": "parts, bytes, finalization, publishing, and verification are staged; 100% is emitted only after completion verification succeeds",
+    "report": "XDM_MEDIA_PARITY03_NATIVE_HLS_EXECUTION_ADMISSION_INTEGRITY_REPORT.md",
+    "room_schema_current": 24,
+    "status": "implemented",
+    "storage_recovery": "segment and finalization preflight accounts for mux/publish overhead; low space fails before corrupt output and preserves resumable evidence",
+    "track_selection": "video/audio/subtitle selections are bound into the admission fingerprint and native plan",
+    "validation_policy": "intermediate-overlay-no-validate"
+  },
   "media_player_diagnostics": {
     "clean_room_feature_map": "super-video-downloader-inspired-player-diagnostics-without-code-copy",
     "drm_bypass": false,
@@ -3574,7 +3595,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": "complete",
+  "next_phase": "media_parity04_browser_ux_userscripts_feedback_final_release_seal",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation.",
     "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate.",

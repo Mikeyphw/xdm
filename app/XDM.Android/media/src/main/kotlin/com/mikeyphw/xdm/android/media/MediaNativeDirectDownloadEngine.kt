@@ -117,7 +117,7 @@ class MediaNativeDirectDownloadPlanner {
         val secretSafe = request.secretSafe && !containsKnownSecret(diagnostics) && !containsKnownSecret(redactedUrl) && !headerPolicy.persistHeaderValues
         val state = when {
             !secretSafe -> NativeDirectRequestState.BlockedSecretLeak
-            request.lane == MediaExecutionLane.YtDlpAdaptive || request.lane == MediaExecutionLane.LiveRecording || request.lane == MediaExecutionLane.ProtectedBlocked -> NativeDirectRequestState.UnsupportedAdaptive
+            request.lane == MediaExecutionLane.NativeHlsSegmented || request.lane == MediaExecutionLane.YtDlpAdaptive || request.lane == MediaExecutionLane.LiveRecording || request.lane == MediaExecutionLane.ProtectedBlocked -> NativeDirectRequestState.UnsupportedAdaptive
             !hasDestinationPermission -> NativeDirectRequestState.NeedsDestinationPermission
             resume.enabled -> NativeDirectRequestState.ResumeCandidate
             else -> NativeDirectRequestState.Ready
@@ -174,7 +174,7 @@ class MediaNativeDirectDownloadPlanner {
 
     private fun resumePlan(existingBytes: Long, request: MediaWorkerBridgeRequest): NativeDirectResumePlan {
         val support = when {
-            request.lane == MediaExecutionLane.YtDlpAdaptive || request.lane == MediaExecutionLane.LiveRecording || request.lane == MediaExecutionLane.ProtectedBlocked -> NativeDirectRangeSupport.NotSupported
+            request.lane == MediaExecutionLane.NativeHlsSegmented || request.lane == MediaExecutionLane.YtDlpAdaptive || request.lane == MediaExecutionLane.LiveRecording || request.lane == MediaExecutionLane.ProtectedBlocked -> NativeDirectRangeSupport.NotSupported
             existingBytes > 0L -> NativeDirectRangeSupport.Supported
             else -> NativeDirectRangeSupport.Unknown
         }

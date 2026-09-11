@@ -11,6 +11,7 @@ OVERLAY = "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
 POST_UX13_HOTFIX = "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip"
 PARITY01_OVERLAY = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip"
 PARITY02_OVERLAY = "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"
+PARITY03_OVERLAY = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 
 
 def text(relative: str) -> str:
@@ -44,8 +45,8 @@ design = text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt")
 shell = text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt")
 ux12_contract = text("app/src/test/kotlin/com/mikeyphw/xdm/android/Ux12AccessibilityTerminologyVisualSealContractTest.kt")
 
-require(manifest.get("current_overlay") in {OVERLAY, POST_UX13_HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY}, "PROJECT_MANIFEST current_overlay must point to UX13 or its accepted post-release hotfix")
-require(manifest.get("next_phase") == "complete", "UX13 must close the roadmap with next_phase=complete")
+require(manifest.get("current_overlay") in {OVERLAY, POST_UX13_HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY, PARITY03_OVERLAY}, "PROJECT_MANIFEST current_overlay must point to UX13 or its accepted post-release hotfix")
+require(manifest.get("next_phase") in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal"}, "UX13 must close the historical UX roadmap or point to the accepted Parity04 successor")
 require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the UX13 Room 21 baseline")
 phase = manifest.get("ux13_end_to_end_ui_ux_release_seal", {})
 require(phase.get("status") == "implemented_final_seal", "UX13 manifest block must be final-seal status")

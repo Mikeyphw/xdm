@@ -10,6 +10,7 @@ ERRORS: list[str] = []
 HOTFIX = "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip"
 PARITY01_OVERLAY = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip"
 PARITY02_OVERLAY = "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"
+PARITY03_OVERLAY = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 UX13 = "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
 
 
@@ -47,9 +48,9 @@ ux13_validator = text("tools/validate-ux13-end-to-end-ui-ux-release-seal.py")
 strings_xml = text("app/src/main/res/values/strings.xml")
 
 # Final-authority truth.
-require(manifest.get("current_overlay") in {HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY}, "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix")
-require(manifest.get("next_phase") == "complete", "roadmap must remain complete")
-require(manifest.get("current_release_authority") == "post_ux13_roadmap_completion_hotfix", "legacy current_release_authority must point to the final hotfix")
+require(manifest.get("current_overlay") in {HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY, PARITY03_OVERLAY}, "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix")
+require(manifest.get("next_phase") in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal"}, "roadmap must remain complete")
+require(manifest.get("current_release_authority") in {"post_ux13_roadmap_completion_hotfix", "media_parity01_runtime_truth_diagnostics_backend_reliability", "media_parity02_logical_media_capture_browser_convergence", "media_parity03_native_hls_execution_admission_integrity"}, "legacy current_release_authority must point to the final hotfix")
 require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the Room 21 hotfix baseline")
 phase = manifest.get("post_ux13_roadmap_completion_hotfix", {})
 require(phase.get("status") == "implemented_final_hotfix", "post-UX13 hotfix manifest block must be final")

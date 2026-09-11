@@ -188,6 +188,7 @@ class MediaExecutionDispatcher {
         }
         when (enginePlan.lane) {
             MediaExecutionLane.DirectNative,
+            MediaExecutionLane.NativeHlsSegmented,
             MediaExecutionLane.Aria2Segmented -> steps += MediaDispatchStep(
                 kind = MediaDispatchStepKind.QueueBackgroundWork,
                 title = "Queue visible transfer",
@@ -233,6 +234,7 @@ class MediaExecutionDispatcher {
     private fun primaryActionLabel(readiness: MediaDispatchReadiness, lane: MediaExecutionLane): String = when (readiness) {
         MediaDispatchReadiness.Ready -> when (lane) {
             MediaExecutionLane.DirectNative -> "Queue direct media"
+            MediaExecutionLane.NativeHlsSegmented -> "Queue native HLS"
             MediaExecutionLane.Aria2Segmented -> "Queue aria2 media"
             MediaExecutionLane.YtDlpAdaptive -> "Launch yt-dlp media"
             MediaExecutionLane.LiveRecording -> "Start live recording"
@@ -256,6 +258,7 @@ class MediaExecutionDispatcher {
         }
         return when (lane) {
             MediaExecutionLane.DirectNative -> MediaRetryPolicy(3, listOf(5, 20, 60), listOf("network", "server timeout", "resume token valid"), listOf("protected media", "invalid destination"))
+            MediaExecutionLane.NativeHlsSegmented -> MediaRetryPolicy(5, listOf(5, 15, 45, 120, 300), listOf("segment timeout", "manifest refresh", "expired signed URL", "recoverable finalization"), listOf("DRM protected", "LL-HLS native unsupported", "invalid destination"))
             MediaExecutionLane.Aria2Segmented -> MediaRetryPolicy(4, listOf(5, 15, 45, 120), listOf("segment timeout", "temporary 5xx", "network switch"), listOf("expired cookie", "tokenized URL expired"))
             MediaExecutionLane.YtDlpAdaptive -> MediaRetryPolicy(2, listOf(10, 60), listOf("extractor transient failure", "metadata refresh available"), listOf("unsupported extractor", "DRM protected"))
             MediaExecutionLane.LiveRecording -> MediaRetryPolicy(1, listOf(30), listOf("live connection dropped"), listOf("live ended", "protected media"))
@@ -268,6 +271,11 @@ class MediaExecutionDispatcher {
             MediaProgressSignal("bytes downloaded", "native worker", true),
             MediaProgressSignal("notification progress", "foreground policy", true),
             MediaProgressSignal("sidecar finalization", "library writer", false),
+        )
+        MediaExecutionLane.NativeHlsSegmented -> listOf(
+            MediaProgressSignal("parts downloaded", "native HLS ledger", true),
+            MediaProgressSignal("finalizing/publishing", "native HLS journal", true),
+            MediaProgressSignal("completion verification", "native HLS verifier", true),
         )
         MediaExecutionLane.Aria2Segmented -> listOf(
             MediaProgressSignal("segment progress", "aria2 status", true),
@@ -345,7 +353,7 @@ data class MediaDispatchDashboard(
     val summary: String
         get() {
             val lanes = laneCounts.entries.joinToString { (lane, count) -> "$lane=$count" }.ifBlank { "no lanes" }
-            val directFamilyCount = laneCounts.getValueOrZero(MediaExecutionLane.DirectNative.label) + laneCounts.getValueOrZero(MediaExecutionLane.Aria2Segmented.label)
+            val directFamilyCount = laneCounts.getValueOrZero(MediaExecutionLane.DirectNative.label) + laneCounts.getValueOrZero(MediaExecutionLane.NativeHlsSegmented.label) + laneCounts.getValueOrZero(MediaExecutionLane.Aria2Segmented.label)
             val directFamily = directFamilyCount.takeIf { it > 0 }?.let { "Direct native compatible=$it" }
             val safety = if (secretSafe) "secret-safe" else "redaction review required"
             return listOfNotNull(

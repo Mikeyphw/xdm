@@ -65,7 +65,7 @@ require("staticValidationPassed: Boolean = false" in gate, "media static evidenc
 require("fullValidationPassed: Boolean = false" in gate, "media full evidence must default false")
 require("val releaseReady: Boolean" in gate and "releaseReady = ready" in gate, "media gate must expose release readiness only after evidence")
 require('FinalOverlayArtifact: String = "xdm_android_privacy_quality_final_gate_overlay_v2.zip"' in gate, "final overlay identity is stale")
-require("CurrentRoomSchema: Int = 23" in gate, "final media gate does not use Room schema 23")
+require("CurrentRoomSchema: Int = 24" in gate, "final media gate does not use Room schema 24")
 
 # M-046: inspect bounded real filesystem surfaces and report measurable coverage.
 for marker in (
@@ -165,12 +165,12 @@ for forbidden in (':browser-extension:packageFirefoxExtensionDark', ':browser-ex
     require(forbidden not in devtool, f"ordinary Devtool validation unexpectedly requires release-package task {forbidden}")
     require(forbidden not in common_validation_script, f"common validation unexpectedly requires release-package task {forbidden}")
 
-require(manifest.get("current_overlay") in {"xdm_android_privacy_quality_final_gate_overlay_v2.zip", "xdm_android_ux01_ux09_product_foundation_v3.zip", "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip", "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip", "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip", "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip", "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"}, "PROJECT_MANIFEST current_overlay is not Overlay 13 or an accepted later overlay")
+require(manifest.get("current_overlay") in {"xdm_android_privacy_quality_final_gate_overlay_v2.zip", "xdm_android_ux01_ux09_product_foundation_v3.zip", "xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip", "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip", "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip", "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip", "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip", "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"}, "PROJECT_MANIFEST current_overlay is not Overlay 13 or an accepted later overlay")
 database = manifest.get("database", {})
-require(database.get("version") == 23, "PROJECT_MANIFEST authoritative database version is not 23")
-require("18_to_19" in database.get("migrations", []) and "19_to_20" in database.get("migrations", []) and "20_to_21" in database.get("migrations", []) and "21_to_22" in database.get("migrations", []) and "22_to_23" in database.get("migrations", []), "PROJECT_MANIFEST migration chain does not reach schema 23")
+require(database.get("version") == 24, "PROJECT_MANIFEST authoritative database version is not 24")
+require("18_to_19" in database.get("migrations", []) and "19_to_20" in database.get("migrations", []) and "20_to_21" in database.get("migrations", []) and "21_to_22" in database.get("migrations", []) and "22_to_23" in database.get("migrations", []) and "23_to_24" in database.get("migrations", []), "PROJECT_MANIFEST migration chain does not reach schema 24")
 public_gate = manifest.get("final_public_release_gate", {})
-require(public_gate.get("room_schema_locked") == 23, "PROJECT_MANIFEST final public gate must report current Room schema 23")
+require(public_gate.get("room_schema_locked") == 24, "PROJECT_MANIFEST final public gate must report current Room schema 24")
 require(public_gate.get("version_code") == 22 and public_gate.get("version_name") == "0.21.0", "PROJECT_MANIFEST final public gate version metadata is stale")
 require(public_gate.get("readiness_evidence_fail_closed") is True, "PROJECT_MANIFEST final public gate does not record fail-closed evidence")
 require(public_gate.get("install_update_ready") is False, "PROJECT_MANIFEST must not pre-certify install/update readiness")

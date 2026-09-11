@@ -773,4 +773,82 @@ object Migrations {
         }
     }
 
+
+    /** Media Parity03: native HLS segmented job ledger, admission idempotency and finalization truth. */
+    val Migration23To24 = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS native_hls_jobs (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    captureId TEXT NOT NULL,
+                    downloadId TEXT NOT NULL,
+                    logicalMediaId TEXT NOT NULL,
+                    admissionKey TEXT NOT NULL,
+                    attemptGeneration INTEGER NOT NULL,
+                    manifestUrl TEXT NOT NULL,
+                    canonicalManifestUrl TEXT NOT NULL,
+                    selectedVideoVariantId TEXT,
+                    selectedAudioVariantId TEXT,
+                    selectedSubtitleVariantId TEXT,
+                    supportStatus TEXT NOT NULL,
+                    unsupportedReasons TEXT NOT NULL,
+                    stage TEXT NOT NULL,
+                    finalizationState TEXT NOT NULL,
+                    partCount INTEGER NOT NULL,
+                    completedPartCount INTEGER NOT NULL,
+                    bytesReceived INTEGER NOT NULL,
+                    totalBytes INTEGER,
+                    progressPercent INTEGER NOT NULL,
+                    tempDirectoryKey TEXT NOT NULL,
+                    destinationUri TEXT NOT NULL,
+                    fileName TEXT NOT NULL,
+                    completedArtifactUri TEXT,
+                    completedArtifactBytes INTEGER,
+                    completedArtifactSha256 TEXT,
+                    recoverable INTEGER NOT NULL,
+                    cleanupPolicy TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    createdAtEpochMs INTEGER NOT NULL,
+                    updatedAtEpochMs INTEGER NOT NULL,
+                    FOREIGN KEY(captureId) REFERENCES media_captures(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(downloadId) REFERENCES downloads(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_native_hls_jobs_captureId ON native_hls_jobs(captureId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_native_hls_jobs_downloadId ON native_hls_jobs(downloadId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_native_hls_jobs_stage ON native_hls_jobs(stage)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_native_hls_jobs_admissionKey_attemptGeneration ON native_hls_jobs(admissionKey, attemptGeneration)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_native_hls_jobs_updatedAtEpochMs ON native_hls_jobs(updatedAtEpochMs)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS native_hls_parts (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    jobId TEXT NOT NULL,
+                    partIndex INTEGER NOT NULL,
+                    url TEXT NOT NULL,
+                    mediaSequence INTEGER NOT NULL,
+                    durationMs INTEGER NOT NULL,
+                    byteRangeOffset INTEGER,
+                    byteRangeLength INTEGER,
+                    initMapUrl TEXT,
+                    keyUri TEXT,
+                    keyMethod TEXT,
+                    keyIvHex TEXT,
+                    discontinuitySequence INTEGER NOT NULL,
+                    state TEXT NOT NULL,
+                    bytesReceived INTEGER NOT NULL,
+                    expectedBytes INTEGER,
+                    sha256Hex TEXT,
+                    retryCount INTEGER NOT NULL,
+                    lastError TEXT,
+                    updatedAtEpochMs INTEGER NOT NULL,
+                    FOREIGN KEY(jobId) REFERENCES native_hls_jobs(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_native_hls_parts_jobId ON native_hls_parts(jobId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_native_hls_parts_jobId_partIndex ON native_hls_parts(jobId, partIndex)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_native_hls_parts_state ON native_hls_parts(state)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_native_hls_parts_mediaSequence ON native_hls_parts(mediaSequence)")
+        }
+    }
+
 }

@@ -224,7 +224,7 @@ class MediaFinalValidationGatePlanner {
 
     companion object {
         const val FinalOverlayArtifact: String = "xdm_android_privacy_quality_final_gate_overlay_v2.zip"
-        const val CurrentRoomSchema: Int = 23
+        const val CurrentRoomSchema: Int = 24
         const val RequiredFilesystemRoots: Int = 4
         const val DefaultGradleCommand: String = "./gradlew -Pxdm.requireAria2Runtime=true --stacktrace :app:compileDebugKotlin :core-model:test :core-utils:test :transfer-api:test :browser-integration:testDebugUnitTest :storage:testDebugUnitTest :transfer-native:testDebugUnitTest :transfer-aria2:test :scheduler:testDebugUnitTest :media:test :persistence:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :browser-extension:test :browser-extension:jsTest :browser-extension:validateFirefoxExtension :app:checkBrowserIntegration assembleDebug :app:assembleDebugAndroidTest"
         val REQUIRED_FULL_VALIDATION_TASKS: List<String> = listOf(

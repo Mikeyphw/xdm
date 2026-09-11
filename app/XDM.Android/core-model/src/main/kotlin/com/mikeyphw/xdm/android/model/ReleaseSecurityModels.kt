@@ -55,13 +55,13 @@ object ReleaseSecurityGate {
                     ),
                 )
             }
-            if (schemaVersion != 23) {
+            if (schemaVersion != 24) {
                 add(
                     ReleaseSecurityFinding(
                         id = "database.schema",
                         severity = ReleaseSecuritySeverity.Blocking,
                         title = "Unexpected schema version",
-                        detail = "Release hardening must report reviewed Room schema v23 after the reviewed manifest-hardening migration chain.",
+                        detail = "Release hardening must report reviewed Room schema v24 after the reviewed manifest-hardening migration chain.",
                     ),
                 )
             }

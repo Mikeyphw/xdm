@@ -69,7 +69,7 @@ def validate(root: Path) -> list[str]:
         "android.permission.WRITE_EXTERNAL_STORAGE", "com.termux.permission.RUN_COMMAND",
         '.termux.TermuxResultService', 'android:exported="false"',
     ), "manifest", errors)
-    contains_all(app_db, ("PostProcessingJobEntity::class", "PostProcessingClaimEntity::class", "version = 23", "postProcessingDao"), "database", errors)
+    contains_all(app_db, ("PostProcessingJobEntity::class", "PostProcessingClaimEntity::class", "version = 24", "postProcessingDao"), "database", errors)
     contains_all(migrations, ("Migration14To15", "Migration15To16", "Migration16To17", "post_processing_jobs", "post_processing_claims", "ON DELETE CASCADE", "publicationState", "committedOutputUri"), "migrations", errors)
     contains_all(entities, ("attemptGeneration", "immutableSpecJson", "processToken", "controlGeneration", "progressBridgeUri", "timeoutAtEpochMs", "claimKey"), "entities", errors)
     contains_all(dao, ("claimAndInsert", "insertJob(job)", "insertClaimIgnore(claim)", "controlGeneration = controlGeneration + 1", "findJobByRunId", "maxAttemptGeneration", "claimKey IS NULL"), "DAO", errors)
@@ -161,7 +161,7 @@ def main() -> int:
         return 1
     print("Phase 7 validation PASSED")
     print(f"Android root: {root}")
-    print("Durable automation, retained Room schema 17 plus current schema 23, exact process ownership, transient-session bridging, canonical root authorization, transactional publication, preflight, retry, recovery, UI, and regression contracts are present.")
+    print("Durable automation, retained Room schema 17 plus current schema 24, exact process ownership, transient-session bridging, canonical root authorization, transactional publication, preflight, retry, recovery, UI, and regression contracts are present.")
     return 0
 
 

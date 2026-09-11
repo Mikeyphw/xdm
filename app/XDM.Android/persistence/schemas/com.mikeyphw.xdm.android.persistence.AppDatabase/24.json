@@ -1,0 +1,4210 @@
+{
+  "database": {
+    "entities": [
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `fileName` TEXT NOT NULL, `sourceUrl` TEXT NOT NULL, `destinationUri` TEXT NOT NULL, `state` TEXT NOT NULL, `backend` TEXT NOT NULL, `requestedBackend` TEXT NOT NULL DEFAULT 'Automatic', `backendSelectionReason` TEXT NOT NULL DEFAULT 'DefaultNative', `backendSelectionExplanation` TEXT NOT NULL DEFAULT '', `allowBackendFallback` INTEGER NOT NULL DEFAULT 1, `bytesReceived` INTEGER NOT NULL, `totalBytes` INTEGER, `speedBytesPerSecond` INTEGER NOT NULL, `queueId` TEXT, `priority` INTEGER NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `errorMessage` TEXT, `userLabel` TEXT, `conflictPolicy` TEXT NOT NULL DEFAULT 'Rename', `mimeType` TEXT, `archived` INTEGER NOT NULL DEFAULT 0, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, `completedArtifactUri` TEXT, `completedArtifactGeneration` INTEGER, `completedArtifactBytes` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "fileName",
+            "fieldPath": "fileName",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourceUrl",
+            "fieldPath": "sourceUrl",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationUri",
+            "fieldPath": "destinationUri",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "state",
+            "fieldPath": "state",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backend",
+            "fieldPath": "backend",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "requestedBackend",
+            "defaultValue": "'Automatic'",
+            "fieldPath": "requestedBackend",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendSelectionReason",
+            "defaultValue": "'DefaultNative'",
+            "fieldPath": "backendSelectionReason",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendSelectionExplanation",
+            "defaultValue": "''",
+            "fieldPath": "backendSelectionExplanation",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "allowBackendFallback",
+            "defaultValue": "1",
+            "fieldPath": "allowBackendFallback",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesReceived",
+            "fieldPath": "bytesReceived",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "totalBytes",
+            "fieldPath": "totalBytes"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "speedBytesPerSecond",
+            "fieldPath": "speedBytesPerSecond",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "queueId",
+            "fieldPath": "queueId"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "priority",
+            "fieldPath": "priority",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "errorMessage",
+            "fieldPath": "errorMessage"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "userLabel",
+            "fieldPath": "userLabel"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "conflictPolicy",
+            "defaultValue": "'Rename'",
+            "fieldPath": "conflictPolicy",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mimeType",
+            "fieldPath": "mimeType"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "archived",
+            "defaultValue": "0",
+            "fieldPath": "archived",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "completedArtifactUri",
+            "fieldPath": "completedArtifactUri",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "completedArtifactGeneration",
+            "fieldPath": "completedArtifactGeneration",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "completedArtifactBytes",
+            "fieldPath": "completedArtifactBytes",
+            "notNull": false
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "state"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloads_state` ON `${TABLE_NAME}` (`state`)",
+            "name": "index_downloads_state",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "queueId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloads_queueId` ON `${TABLE_NAME}` (`queueId`)",
+            "name": "index_downloads_queueId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloads_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_downloads_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "archived"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloads_archived` ON `${TABLE_NAME}` (`archived`)",
+            "name": "index_downloads_archived",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "downloads"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `url` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "url",
+            "fieldPath": "url",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "position",
+            "fieldPath": "position",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_download_sources_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_download_sources_downloadId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "download_sources"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `url` TEXT NOT NULL, `priority` INTEGER NOT NULL, `lastFailure` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "url",
+            "fieldPath": "url",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "priority",
+            "fieldPath": "priority",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "lastFailure",
+            "fieldPath": "lastFailure"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mirrors_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_mirrors_downloadId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "mirrors"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `startByte` INTEGER NOT NULL, `endByteInclusive` INTEGER NOT NULL, `bytesReceived` INTEGER NOT NULL, `state` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "startByte",
+            "fieldPath": "startByte",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "endByteInclusive",
+            "fieldPath": "endByteInclusive",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesReceived",
+            "fieldPath": "bytesReceived",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "state",
+            "fieldPath": "state",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_transfer_segments_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_transfer_segments_downloadId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "transfer_segments"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `checkpointJson` TEXT NOT NULL, `persistedAtEpochMs` INTEGER NOT NULL, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "checkpointJson",
+            "fieldPath": "checkpointJson",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "persistedAtEpochMs",
+            "fieldPath": "persistedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_checkpoints_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_checkpoints_downloadId",
+            "orders": [],
+            "unique": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "checkpoints"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `algorithm` TEXT NOT NULL, `expectedHex` TEXT NOT NULL, `source` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL DEFAULT 0, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "algorithm",
+            "fieldPath": "algorithm",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "expectedHex",
+            "fieldPath": "expectedHex",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "source",
+            "fieldPath": "source",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "defaultValue": "0",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_checksum_expectations_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_checksum_expectations_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "downloadId",
+              "algorithm"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_checksum_expectations_downloadId_algorithm` ON `${TABLE_NAME}` (`downloadId`, `algorithm`)",
+            "name": "index_checksum_expectations_downloadId_algorithm",
+            "orders": [],
+            "unique": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "checksum_expectations"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `algorithm` TEXT NOT NULL, `calculatedHex` TEXT NOT NULL, `matchesExpectation` INTEGER, `verifiedAtEpochMs` INTEGER NOT NULL, `bytesVerified` INTEGER NOT NULL DEFAULT 0, `expectedHex` TEXT, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "algorithm",
+            "fieldPath": "algorithm",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "calculatedHex",
+            "fieldPath": "calculatedHex",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "matchesExpectation",
+            "fieldPath": "matchesExpectation"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "verifiedAtEpochMs",
+            "fieldPath": "verifiedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesVerified",
+            "defaultValue": "0",
+            "fieldPath": "bytesVerified",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "expectedHex",
+            "fieldPath": "expectedHex"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_checksum_results_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_checksum_results_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "downloadId",
+              "algorithm"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_checksum_results_downloadId_algorithm` ON `${TABLE_NAME}` (`downloadId`, `algorithm`)",
+            "name": "index_checksum_results_downloadId_algorithm",
+            "orders": [],
+            "unique": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "checksum_results"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `status` TEXT NOT NULL, `algorithm` TEXT, `bytesVerified` INTEGER NOT NULL, `totalBytes` INTEGER, `message` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "algorithm",
+            "fieldPath": "algorithm"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesVerified",
+            "fieldPath": "bytesVerified",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "totalBytes",
+            "fieldPath": "totalBytes"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "message",
+            "fieldPath": "message",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_verification_records_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_verification_records_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "status"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_verification_records_status` ON `${TABLE_NAME}` (`status`)",
+            "name": "index_verification_records_status",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_verification_records_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_verification_records_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "verification_records"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `fileLength` INTEGER NOT NULL, `blockSize` INTEGER NOT NULL, `algorithm` TEXT NOT NULL, `blocksJson` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "fileLength",
+            "fieldPath": "fileLength",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "blockSize",
+            "fieldPath": "blockSize",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "algorithm",
+            "fieldPath": "algorithm",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "blocksJson",
+            "fieldPath": "blocksJson",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_trusted_block_manifests_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_trusted_block_manifests_downloadId",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "createdAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_trusted_block_manifests_createdAtEpochMs` ON `${TABLE_NAME}` (`createdAtEpochMs`)",
+            "name": "index_trusted_block_manifests_createdAtEpochMs",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "trusted_block_manifests"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `isEnabled` INTEGER NOT NULL, `maxConcurrent` INTEGER NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "name",
+            "fieldPath": "name",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "isEnabled",
+            "fieldPath": "isEnabled",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "maxConcurrent",
+            "fieldPath": "maxConcurrent",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "queues"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `queueId` TEXT, `name` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `constraintsJson` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`queueId`) REFERENCES `queues`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "queueId",
+            "fieldPath": "queueId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "name",
+            "fieldPath": "name",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "enabled",
+            "fieldPath": "enabled",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "constraintsJson",
+            "fieldPath": "constraintsJson",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "queueId"
+            ],
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "queues"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "queueId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_schedule_rules_queueId` ON `${TABLE_NAME}` (`queueId`)",
+            "name": "index_schedule_rules_queueId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "schedule_rules"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `backend` TEXT NOT NULL, `backendTaskId` TEXT NOT NULL, `destinationKey` TEXT NOT NULL DEFAULT '', `partialIdentity` TEXT NOT NULL DEFAULT '', `artifactFormat` TEXT NOT NULL DEFAULT 'legacy-partial-v1', `companionArtifactIdentities` TEXT NOT NULL DEFAULT '', `backendInstanceId` TEXT NOT NULL DEFAULT '', `backendSessionId` TEXT NOT NULL DEFAULT '', `ownershipGeneration` INTEGER NOT NULL, `ownershipStatus` TEXT NOT NULL DEFAULT 'Active', `reconciliation` TEXT NOT NULL DEFAULT 'Pending', `reconciliationMessage` TEXT, `reconciledAtEpochMs` INTEGER, `lastSynchronizedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backend",
+            "fieldPath": "backend",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendTaskId",
+            "fieldPath": "backendTaskId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationKey",
+            "defaultValue": "''",
+            "fieldPath": "destinationKey",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "partialIdentity",
+            "defaultValue": "''",
+            "fieldPath": "partialIdentity",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "artifactFormat",
+            "defaultValue": "'legacy-partial-v1'",
+            "fieldPath": "artifactFormat",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "companionArtifactIdentities",
+            "defaultValue": "''",
+            "fieldPath": "companionArtifactIdentities",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendInstanceId",
+            "defaultValue": "''",
+            "fieldPath": "backendInstanceId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendSessionId",
+            "defaultValue": "''",
+            "fieldPath": "backendSessionId",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "ownershipGeneration",
+            "fieldPath": "ownershipGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "ownershipStatus",
+            "defaultValue": "'Active'",
+            "fieldPath": "ownershipStatus",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "reconciliation",
+            "defaultValue": "'Pending'",
+            "fieldPath": "reconciliation",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "reconciliationMessage",
+            "fieldPath": "reconciliationMessage"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "reconciledAtEpochMs",
+            "fieldPath": "reconciledAtEpochMs"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "lastSynchronizedAtEpochMs",
+            "fieldPath": "lastSynchronizedAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_backend_tasks_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_backend_tasks_downloadId",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "backendTaskId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_backend_tasks_backendTaskId` ON `${TABLE_NAME}` (`backendTaskId`)",
+            "name": "index_backend_tasks_backendTaskId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "backend_tasks"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT, `artifactPath` TEXT NOT NULL, `classification` TEXT NOT NULL, `reason` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `recommendedAction` TEXT NOT NULL DEFAULT 'Validate', `safeToResume` INTEGER NOT NULL DEFAULT 0, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "artifactPath",
+            "fieldPath": "artifactPath",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "classification",
+            "fieldPath": "classification",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "reason",
+            "fieldPath": "reason",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "recommendedAction",
+            "defaultValue": "'Validate'",
+            "fieldPath": "recommendedAction",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "safeToResume",
+            "defaultValue": "0",
+            "fieldPath": "safeToResume",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_recovery_records_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_recovery_records_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "classification"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_recovery_records_classification` ON `${TABLE_NAME}` (`classification`)",
+            "name": "index_recovery_records_classification",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "recommendedAction"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_recovery_records_recommendedAction` ON `${TABLE_NAME}` (`recommendedAction`)",
+            "name": "index_recovery_records_recommendedAction",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "recovery_records"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `stage` TEXT NOT NULL, `sourcePath` TEXT NOT NULL, `destinationUri` TEXT NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `stagingPath` TEXT NOT NULL DEFAULT '', `bytesExpected` INTEGER, `bytesPromoted` INTEGER NOT NULL DEFAULT 0, `checksumAlgorithm` TEXT, `checksumHex` TEXT, `message` TEXT NOT NULL DEFAULT '', `createdAtEpochMs` INTEGER NOT NULL DEFAULT 0, `attemptGeneration` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "stage",
+            "fieldPath": "stage",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourcePath",
+            "fieldPath": "sourcePath",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationUri",
+            "fieldPath": "destinationUri",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "stagingPath",
+            "defaultValue": "''",
+            "fieldPath": "stagingPath",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesExpected",
+            "fieldPath": "bytesExpected"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesPromoted",
+            "defaultValue": "0",
+            "fieldPath": "bytesPromoted",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "checksumAlgorithm",
+            "fieldPath": "checksumAlgorithm"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "checksumHex",
+            "fieldPath": "checksumHex"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "message",
+            "defaultValue": "''",
+            "fieldPath": "message",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "defaultValue": "0",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "defaultValue": "1",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_finalization_journals_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_finalization_journals_downloadId",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "stage"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_finalization_journals_stage` ON `${TABLE_NAME}` (`stage`)",
+            "name": "index_finalization_journals_stage",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_finalization_journals_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_finalization_journals_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "finalization_journals"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sourceUrl` TEXT NOT NULL, `pageUrl` TEXT, `title` TEXT NOT NULL, `status` TEXT NOT NULL, `kind` TEXT NOT NULL, `mimeType` TEXT, `container` TEXT, `codecs` TEXT, `durationMs` INTEGER, `thumbnailUrl` TEXT, `thumbnailProvenance` TEXT NOT NULL DEFAULT 'Unknown', `fileName` TEXT NOT NULL, `variantCount` INTEGER NOT NULL, `downloadId` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `selectedVariantId` TEXT DEFAULT NULL, `selectedVariantUrl` TEXT DEFAULT NULL, `manifestExpiresAtEpochMs` INTEGER DEFAULT NULL, `lastResolvedAtEpochMs` INTEGER DEFAULT NULL, `resolutionStatus` TEXT NOT NULL DEFAULT 'Unresolved', `manifestRole` TEXT NOT NULL DEFAULT 'Unknown', `manifestIsLive` INTEGER DEFAULT NULL, `manifestProtected` INTEGER NOT NULL DEFAULT 0, `manifestProtectionScheme` TEXT DEFAULT NULL, `logicalMediaId` TEXT DEFAULT NULL, `canonicalMediaUrl` TEXT DEFAULT NULL, `observationCount` INTEGER NOT NULL DEFAULT 1, `segmentCount` INTEGER NOT NULL DEFAULT 0, `protectionKind` TEXT NOT NULL DEFAULT 'None', `nativeCapability` TEXT NOT NULL DEFAULT 'Unknown', `logicalConfidence` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourceUrl",
+            "fieldPath": "sourceUrl",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "pageUrl",
+            "fieldPath": "pageUrl"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "title",
+            "fieldPath": "title",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "kind",
+            "fieldPath": "kind",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mimeType",
+            "fieldPath": "mimeType"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "container",
+            "fieldPath": "container"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "codecs",
+            "fieldPath": "codecs"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "durationMs",
+            "fieldPath": "durationMs"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "thumbnailUrl",
+            "fieldPath": "thumbnailUrl"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "thumbnailProvenance",
+            "defaultValue": "'Unknown'",
+            "fieldPath": "thumbnailProvenance",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "fileName",
+            "fieldPath": "fileName",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "variantCount",
+            "fieldPath": "variantCount",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "selectedVariantId",
+            "defaultValue": "NULL",
+            "fieldPath": "selectedVariantId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "selectedVariantUrl",
+            "defaultValue": "NULL",
+            "fieldPath": "selectedVariantUrl"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "manifestExpiresAtEpochMs",
+            "defaultValue": "NULL",
+            "fieldPath": "manifestExpiresAtEpochMs"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "lastResolvedAtEpochMs",
+            "defaultValue": "NULL",
+            "fieldPath": "lastResolvedAtEpochMs"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "resolutionStatus",
+            "defaultValue": "'Unresolved'",
+            "fieldPath": "resolutionStatus",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "manifestRole",
+            "defaultValue": "'Unknown'",
+            "fieldPath": "manifestRole",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "manifestIsLive",
+            "defaultValue": "NULL",
+            "fieldPath": "manifestIsLive",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "manifestProtected",
+            "defaultValue": "0",
+            "fieldPath": "manifestProtected",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "manifestProtectionScheme",
+            "defaultValue": "NULL",
+            "fieldPath": "manifestProtectionScheme",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "logicalMediaId",
+            "defaultValue": "NULL",
+            "fieldPath": "logicalMediaId",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "canonicalMediaUrl",
+            "defaultValue": "NULL",
+            "fieldPath": "canonicalMediaUrl",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "observationCount",
+            "defaultValue": "1",
+            "fieldPath": "observationCount",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "segmentCount",
+            "defaultValue": "0",
+            "fieldPath": "segmentCount",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "protectionKind",
+            "defaultValue": "'None'",
+            "fieldPath": "protectionKind",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "nativeCapability",
+            "defaultValue": "'Unknown'",
+            "fieldPath": "nativeCapability",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "logicalConfidence",
+            "defaultValue": "0",
+            "fieldPath": "logicalConfidence",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_captures_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_media_captures_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "status"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_captures_status` ON `${TABLE_NAME}` (`status`)",
+            "name": "index_media_captures_status",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "kind"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_captures_kind` ON `${TABLE_NAME}` (`kind`)",
+            "name": "index_media_captures_kind",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_captures_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_media_captures_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "logicalMediaId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_captures_logicalMediaId` ON `${TABLE_NAME}` (`logicalMediaId`)",
+            "name": "index_media_captures_logicalMediaId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "media_captures"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `captureId` TEXT NOT NULL, `url` TEXT NOT NULL, `kind` TEXT NOT NULL, `mimeType` TEXT, `width` INTEGER, `height` INTEGER, `bitrateBitsPerSecond` INTEGER, `codecs` TEXT, `language` TEXT, `position` INTEGER NOT NULL, `displayLabel` TEXT NOT NULL DEFAULT '', `expiresAtEpochMs` INTEGER, `groupId` TEXT DEFAULT NULL, `audioGroupId` TEXT DEFAULT NULL, `subtitleGroupId` TEXT DEFAULT NULL, `isDefault` INTEGER NOT NULL DEFAULT 0, `isAutoselect` INTEGER NOT NULL DEFAULT 0, `isForced` INTEGER NOT NULL DEFAULT 0, `channels` TEXT DEFAULT NULL, `inStreamId` TEXT DEFAULT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`captureId`) REFERENCES `media_captures`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "captureId",
+            "fieldPath": "captureId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "url",
+            "fieldPath": "url",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "kind",
+            "fieldPath": "kind",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mimeType",
+            "fieldPath": "mimeType"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "width",
+            "fieldPath": "width"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "height",
+            "fieldPath": "height"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bitrateBitsPerSecond",
+            "fieldPath": "bitrateBitsPerSecond"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "codecs",
+            "fieldPath": "codecs"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "language",
+            "fieldPath": "language"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "position",
+            "fieldPath": "position",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "displayLabel",
+            "defaultValue": "''",
+            "fieldPath": "displayLabel",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "expiresAtEpochMs",
+            "fieldPath": "expiresAtEpochMs"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "groupId",
+            "defaultValue": "NULL",
+            "fieldPath": "groupId",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "audioGroupId",
+            "defaultValue": "NULL",
+            "fieldPath": "audioGroupId",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "subtitleGroupId",
+            "defaultValue": "NULL",
+            "fieldPath": "subtitleGroupId",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "isDefault",
+            "defaultValue": "0",
+            "fieldPath": "isDefault",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "isAutoselect",
+            "defaultValue": "0",
+            "fieldPath": "isAutoselect",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "isForced",
+            "defaultValue": "0",
+            "fieldPath": "isForced",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "channels",
+            "defaultValue": "NULL",
+            "fieldPath": "channels",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "inStreamId",
+            "defaultValue": "NULL",
+            "fieldPath": "inStreamId",
+            "notNull": false
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "captureId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "media_captures"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "captureId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_variants_captureId` ON `${TABLE_NAME}` (`captureId`)",
+            "name": "index_media_variants_captureId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "kind"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_variants_kind` ON `${TABLE_NAME}` (`kind`)",
+            "name": "index_media_variants_kind",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "position"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_variants_position` ON `${TABLE_NAME}` (`position`)",
+            "name": "index_media_variants_position",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "media_variants"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `captureId` TEXT NOT NULL, `ownerKind` TEXT NOT NULL, `ownerId` TEXT NOT NULL, `downloadId` TEXT, `attemptGeneration` INTEGER NOT NULL, `destinationUri` TEXT NOT NULL, `fileName` TEXT NOT NULL, `mimeType` TEXT, `selectedTrackIds` TEXT NOT NULL DEFAULT '', `state` TEXT NOT NULL, `completedArtifactUri` TEXT, `completedArtifactGeneration` INTEGER, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`captureId`) REFERENCES `media_captures`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "captureId",
+            "fieldPath": "captureId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "ownerKind",
+            "fieldPath": "ownerKind",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "ownerId",
+            "fieldPath": "ownerId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationUri",
+            "fieldPath": "destinationUri",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "fileName",
+            "fieldPath": "fileName",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mimeType",
+            "fieldPath": "mimeType",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "selectedTrackIds",
+            "defaultValue": "''",
+            "fieldPath": "selectedTrackIds",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "state",
+            "fieldPath": "state",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "completedArtifactUri",
+            "fieldPath": "completedArtifactUri",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "completedArtifactGeneration",
+            "fieldPath": "completedArtifactGeneration",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "captureId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "media_captures"
+          },
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "captureId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_outputs_captureId` ON `${TABLE_NAME}` (`captureId`)",
+            "name": "index_media_outputs_captureId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_outputs_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_media_outputs_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "ownerKind",
+              "ownerId",
+              "attemptGeneration"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_media_outputs_ownerKind_ownerId_attemptGeneration` ON `${TABLE_NAME}` (`ownerKind`, `ownerId`, `attemptGeneration`)",
+            "name": "index_media_outputs_ownerKind_ownerId_attemptGeneration",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "state"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_outputs_state` ON `${TABLE_NAME}` (`state`)",
+            "name": "index_media_outputs_state",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_outputs_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_media_outputs_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "media_outputs"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `idempotencyKey` TEXT NOT NULL, `source` TEXT NOT NULL, `action` TEXT NOT NULL, `url` TEXT, `fileName` TEXT, `pageTitle` TEXT, `pageUrl` TEXT, `mediaCaptureId` TEXT, `downloadId` TEXT, `status` TEXT NOT NULL, `resultMessage` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `originPackage` TEXT DEFAULT NULL, `claimedOriginPackage` TEXT DEFAULT NULL, `verifiedIntegrationId` TEXT DEFAULT NULL, `authorization` TEXT NOT NULL DEFAULT 'Untrusted', `privateNetworkApproved` INTEGER NOT NULL DEFAULT 0, `cleartextCredentialsApproved` INTEGER NOT NULL DEFAULT 0, `originHost` TEXT DEFAULT NULL, `sanitizedHeaders` TEXT DEFAULT NULL, `rejectionReason` TEXT NOT NULL DEFAULT 'None', `metadataJson` TEXT DEFAULT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`mediaCaptureId`) REFERENCES `media_captures`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "idempotencyKey",
+            "fieldPath": "idempotencyKey",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "source",
+            "fieldPath": "source",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "action",
+            "fieldPath": "action",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "url",
+            "fieldPath": "url"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "fileName",
+            "fieldPath": "fileName"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "pageTitle",
+            "fieldPath": "pageTitle"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "pageUrl",
+            "fieldPath": "pageUrl"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mediaCaptureId",
+            "fieldPath": "mediaCaptureId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "resultMessage",
+            "fieldPath": "resultMessage",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "originPackage",
+            "defaultValue": "NULL",
+            "fieldPath": "originPackage"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "claimedOriginPackage",
+            "defaultValue": "NULL",
+            "fieldPath": "claimedOriginPackage"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "verifiedIntegrationId",
+            "defaultValue": "NULL",
+            "fieldPath": "verifiedIntegrationId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "authorization",
+            "defaultValue": "'Untrusted'",
+            "fieldPath": "authorization",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "privateNetworkApproved",
+            "defaultValue": "0",
+            "fieldPath": "privateNetworkApproved",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "cleartextCredentialsApproved",
+            "defaultValue": "0",
+            "fieldPath": "cleartextCredentialsApproved",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "originHost",
+            "defaultValue": "NULL",
+            "fieldPath": "originHost"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sanitizedHeaders",
+            "defaultValue": "NULL",
+            "fieldPath": "sanitizedHeaders"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "rejectionReason",
+            "defaultValue": "'None'",
+            "fieldPath": "rejectionReason",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "metadataJson",
+            "defaultValue": "NULL",
+            "fieldPath": "metadataJson"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          },
+          {
+            "columns": [
+              "mediaCaptureId"
+            ],
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "media_captures"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "idempotencyKey"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_automation_commands_idempotencyKey` ON `${TABLE_NAME}` (`idempotencyKey`)",
+            "name": "index_automation_commands_idempotencyKey",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "source"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_automation_commands_source` ON `${TABLE_NAME}` (`source`)",
+            "name": "index_automation_commands_source",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "action"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_automation_commands_action` ON `${TABLE_NAME}` (`action`)",
+            "name": "index_automation_commands_action",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "status"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_automation_commands_status` ON `${TABLE_NAME}` (`status`)",
+            "name": "index_automation_commands_status",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_automation_commands_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_automation_commands_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_automation_commands_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_automation_commands_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "mediaCaptureId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_automation_commands_mediaCaptureId` ON `${TABLE_NAME}` (`mediaCaptureId`)",
+            "name": "index_automation_commands_mediaCaptureId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "automation_commands"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT, `title` TEXT NOT NULL, `message` TEXT NOT NULL, `severity` TEXT NOT NULL, `dismissed` INTEGER NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "title",
+            "fieldPath": "title",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "message",
+            "fieldPath": "message",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "severity",
+            "fieldPath": "severity",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "dismissed",
+            "fieldPath": "dismissed",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_notification_records_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_notification_records_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "createdAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_notification_records_createdAtEpochMs` ON `${TABLE_NAME}` (`createdAtEpochMs`)",
+            "name": "index_notification_records_createdAtEpochMs",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "notification_records"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `colorArgb` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "name",
+            "fieldPath": "name",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "colorArgb",
+            "fieldPath": "colorArgb",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "tags"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`downloadId` TEXT NOT NULL, `tagId` TEXT NOT NULL, PRIMARY KEY(`downloadId`, `tagId`), FOREIGN KEY(`downloadId`) REFERENCES `downloads`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`tagId`) REFERENCES `tags`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "tagId",
+            "fieldPath": "tagId",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "downloadId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "downloads"
+          },
+          {
+            "columns": [
+              "tagId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "tags"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "tagId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_download_tags_tagId` ON `${TABLE_NAME}` (`tagId`)",
+            "name": "index_download_tags_tagId",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "downloadId",
+            "tagId"
+          ]
+        },
+        "tableName": "download_tags"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `query` TEXT NOT NULL, `state` TEXT, `includeArchived` INTEGER NOT NULL DEFAULT 0, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "name",
+            "fieldPath": "name",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "query",
+            "fieldPath": "query",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "state",
+            "fieldPath": "state"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "includeArchived",
+            "defaultValue": "0",
+            "fieldPath": "includeArchived",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "name"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_saved_searches_name` ON `${TABLE_NAME}` (`name`)",
+            "name": "index_saved_searches_name",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "saved_searches"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `hostPattern` TEXT NOT NULL, `action` TEXT NOT NULL, `enabled` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "hostPattern",
+            "fieldPath": "hostPattern",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "action",
+            "fieldPath": "action",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "enabled",
+            "defaultValue": "1",
+            "fieldPath": "enabled",
+            "notNull": true
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "hostPattern"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_duplicate_url_rules_hostPattern` ON `${TABLE_NAME}` (`hostPattern`)",
+            "name": "index_duplicate_url_rules_hostPattern",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "enabled"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_duplicate_url_rules_enabled` ON `${TABLE_NAME}` (`enabled`)",
+            "name": "index_duplicate_url_rules_enabled",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "duplicate_url_rules"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `match` TEXT NOT NULL, `pattern` TEXT NOT NULL, `destinationUri` TEXT NOT NULL, `enabled` INTEGER NOT NULL DEFAULT 1, `priority` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "name",
+            "fieldPath": "name",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "match",
+            "fieldPath": "match",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "pattern",
+            "fieldPath": "pattern",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationUri",
+            "fieldPath": "destinationUri",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "enabled",
+            "defaultValue": "1",
+            "fieldPath": "enabled",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "priority",
+            "defaultValue": "0",
+            "fieldPath": "priority",
+            "notNull": true
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "enabled"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_destination_rules_enabled` ON `${TABLE_NAME}` (`enabled`)",
+            "name": "index_destination_rules_enabled",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "priority"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_destination_rules_priority` ON `${TABLE_NAME}` (`priority`)",
+            "name": "index_destination_rules_priority",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "destination_rules"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `url` TEXT NOT NULL, `title` TEXT, `sourceTextHash` TEXT NOT NULL, `status` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "url",
+            "fieldPath": "url",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "title",
+            "fieldPath": "title"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourceTextHash",
+            "fieldPath": "sourceTextHash",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "url"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_clipboard_inbox_url` ON `${TABLE_NAME}` (`url`)",
+            "name": "index_clipboard_inbox_url",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "status"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_clipboard_inbox_status` ON `${TABLE_NAME}` (`status`)",
+            "name": "index_clipboard_inbox_status",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_clipboard_inbox_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_clipboard_inbox_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "clipboard_inbox"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uri` TEXT NOT NULL, `displayName` TEXT NOT NULL, `providerType` TEXT NOT NULL, `persistedRead` INTEGER NOT NULL, `persistedWrite` INTEGER NOT NULL, `status` TEXT NOT NULL DEFAULT 'Unknown', `lastValidatedAtEpochMs` INTEGER NOT NULL, `lastError` TEXT, PRIMARY KEY(`uri`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "uri",
+            "fieldPath": "uri",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "displayName",
+            "fieldPath": "displayName",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "providerType",
+            "fieldPath": "providerType",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "persistedRead",
+            "fieldPath": "persistedRead",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "persistedWrite",
+            "fieldPath": "persistedWrite",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "defaultValue": "'Unknown'",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "lastValidatedAtEpochMs",
+            "fieldPath": "lastValidatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "lastError",
+            "fieldPath": "lastError"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "providerType"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_destination_permissions_providerType` ON `${TABLE_NAME}` (`providerType`)",
+            "name": "index_destination_permissions_providerType",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "status"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_destination_permissions_status` ON `${TABLE_NAME}` (`status`)",
+            "name": "index_destination_permissions_status",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uri"
+          ]
+        },
+        "tableName": "destination_permissions"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `gid` TEXT NOT NULL, `sourceUrl` TEXT NOT NULL, `mirrorUrls` TEXT NOT NULL DEFAULT '', `destinationUri` TEXT NOT NULL, `destinationKey` TEXT NOT NULL, `fileName` TEXT NOT NULL, `conflictPolicy` TEXT NOT NULL, `mimeType` TEXT, `outputPath` TEXT NOT NULL, `controlPath` TEXT NOT NULL, `ownershipMetadataPath` TEXT NOT NULL, `sessionFilePath` TEXT NOT NULL, `expectedLength` INTEGER, `ownershipGeneration` INTEGER NOT NULL, `backendInstanceId` TEXT NOT NULL, `backendSessionId` TEXT NOT NULL, `status` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `lastSynchronizedAtEpochMs` INTEGER NOT NULL, `lastErrorCode` TEXT, `lastErrorMessage` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "gid",
+            "fieldPath": "gid",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourceUrl",
+            "fieldPath": "sourceUrl",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mirrorUrls",
+            "defaultValue": "''",
+            "fieldPath": "mirrorUrls",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationUri",
+            "fieldPath": "destinationUri",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationKey",
+            "fieldPath": "destinationKey",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "fileName",
+            "fieldPath": "fileName",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "conflictPolicy",
+            "fieldPath": "conflictPolicy",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mimeType",
+            "fieldPath": "mimeType"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "outputPath",
+            "fieldPath": "outputPath",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "controlPath",
+            "fieldPath": "controlPath",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "ownershipMetadataPath",
+            "fieldPath": "ownershipMetadataPath",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sessionFilePath",
+            "fieldPath": "sessionFilePath",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "expectedLength",
+            "fieldPath": "expectedLength"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "ownershipGeneration",
+            "fieldPath": "ownershipGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendInstanceId",
+            "fieldPath": "backendInstanceId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendSessionId",
+            "fieldPath": "backendSessionId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "lastSynchronizedAtEpochMs",
+            "fieldPath": "lastSynchronizedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "lastErrorCode",
+            "fieldPath": "lastErrorCode"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "lastErrorMessage",
+            "fieldPath": "lastErrorMessage"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_aria2_session_mappings_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_aria2_session_mappings_downloadId",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "gid"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_aria2_session_mappings_gid` ON `${TABLE_NAME}` (`gid`)",
+            "name": "index_aria2_session_mappings_gid",
+            "orders": [],
+            "unique": true
+          },
+          {
+            "columnNames": [
+              "status"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_aria2_session_mappings_status` ON `${TABLE_NAME}` (`status`)",
+            "name": "index_aria2_session_mappings_status",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "aria2_session_mappings"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `sourceBackend` TEXT NOT NULL, `targetBackend` TEXT NOT NULL, `sourceGeneration` INTEGER NOT NULL, `targetGeneration` INTEGER, `sourceTaskId` TEXT, `targetTaskId` TEXT, `stage` TEXT NOT NULL, `sourceArtifactIdentity` TEXT NOT NULL, `targetArtifactIdentity` TEXT, `restartFromZero` INTEGER NOT NULL, `message` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `activeClaim` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourceBackend",
+            "fieldPath": "sourceBackend",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "targetBackend",
+            "fieldPath": "targetBackend",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "sourceGeneration",
+            "fieldPath": "sourceGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "targetGeneration",
+            "fieldPath": "targetGeneration"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourceTaskId",
+            "fieldPath": "sourceTaskId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "targetTaskId",
+            "fieldPath": "targetTaskId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "stage",
+            "fieldPath": "stage",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sourceArtifactIdentity",
+            "fieldPath": "sourceArtifactIdentity",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "targetArtifactIdentity",
+            "fieldPath": "targetArtifactIdentity"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "restartFromZero",
+            "fieldPath": "restartFromZero",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "message",
+            "fieldPath": "message",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "activeClaim",
+            "fieldPath": "activeClaim",
+            "notNull": false
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_backend_migrations_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_backend_migrations_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "stage"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_backend_migrations_stage` ON `${TABLE_NAME}` (`stage`)",
+            "name": "index_backend_migrations_stage",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_backend_migrations_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_backend_migrations_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "downloadId",
+              "activeClaim"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_backend_migrations_downloadId_activeClaim` ON `${TABLE_NAME}` (`downloadId`, `activeClaim`)",
+            "name": "index_backend_migrations_downloadId_activeClaim",
+            "orders": [],
+            "unique": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "backend_migrations"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`destinationKey` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `backend` TEXT NOT NULL, `partialIdentity` TEXT NOT NULL, `artifactFormat` TEXT NOT NULL DEFAULT 'legacy-partial-v1', `companionArtifactIdentities` TEXT NOT NULL DEFAULT '', `backendInstanceId` TEXT NOT NULL DEFAULT '', `backendSessionId` TEXT NOT NULL DEFAULT '', `generation` INTEGER NOT NULL, `status` TEXT NOT NULL, `reconciliation` TEXT NOT NULL DEFAULT 'Pending', `reconciliationMessage` TEXT, `reconciledAtEpochMs` INTEGER, `claimedAtEpochMs` INTEGER NOT NULL, `synchronizedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`destinationKey`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationKey",
+            "fieldPath": "destinationKey",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backend",
+            "fieldPath": "backend",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "partialIdentity",
+            "fieldPath": "partialIdentity",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "artifactFormat",
+            "defaultValue": "'legacy-partial-v1'",
+            "fieldPath": "artifactFormat",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "companionArtifactIdentities",
+            "defaultValue": "''",
+            "fieldPath": "companionArtifactIdentities",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendInstanceId",
+            "defaultValue": "''",
+            "fieldPath": "backendInstanceId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "backendSessionId",
+            "defaultValue": "''",
+            "fieldPath": "backendSessionId",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "generation",
+            "fieldPath": "generation",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "reconciliation",
+            "defaultValue": "'Pending'",
+            "fieldPath": "reconciliation",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "reconciliationMessage",
+            "fieldPath": "reconciliationMessage"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "reconciledAtEpochMs",
+            "fieldPath": "reconciledAtEpochMs"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "claimedAtEpochMs",
+            "fieldPath": "claimedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "synchronizedAtEpochMs",
+            "fieldPath": "synchronizedAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_destination_claims_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_destination_claims_downloadId",
+            "orders": [],
+            "unique": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "destinationKey"
+          ]
+        },
+        "tableName": "destination_claims"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`name` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`name`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "name",
+            "fieldPath": "name",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "value",
+            "fieldPath": "value",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "name"
+          ]
+        },
+        "tableName": "ownership_counters"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `rootJobId` TEXT NOT NULL, `parentJobId` TEXT, `attemptGeneration` INTEGER NOT NULL, `claimKey` TEXT, `subjectId` TEXT NOT NULL, `subjectType` TEXT NOT NULL, `subjectGeneration` INTEGER NOT NULL, `downloadId` TEXT, `captureId` TEXT, `ruleId` TEXT, `actionId` TEXT NOT NULL, `trigger` TEXT NOT NULL, `kind` TEXT NOT NULL, `status` TEXT NOT NULL, `title` TEXT NOT NULL, `inputUri` TEXT NOT NULL, `stagedInputPath` TEXT, `inputBridgeUri` TEXT, `outputDisplayName` TEXT NOT NULL, `outputMimeType` TEXT NOT NULL, `outputDestinationUri` TEXT, `stagedOutputPath` TEXT, `outputBridgeUri` TEXT, `ownerBridgeUri` TEXT, `progressBridgeUri` TEXT, `metadataBridgeUri` TEXT, `payloadBridgeUri` TEXT, `finalOutputUri` TEXT, `publicationState` TEXT NOT NULL, `publicationDisplayName` TEXT, `publicationExpectedBytes` INTEGER, `publicationExpectedSha256` TEXT, `committedOutputUri` TEXT, `committedBytes` INTEGER, `committedSha256` TEXT, `sideEffectOutcome` TEXT, `immutableSpecJson` TEXT NOT NULL, `expectedSha256` TEXT, `actualSha256` TEXT, `requiredTools` TEXT NOT NULL, `toolVersionsJson` TEXT NOT NULL, `runId` TEXT, `executionId` INTEGER, `processToken` TEXT, `processId` INTEGER, `controlGeneration` INTEGER NOT NULL, `requestedControl` TEXT, `progressPercent` INTEGER NOT NULL, `progressBytes` INTEGER NOT NULL, `progressTotalBytes` INTEGER, `timeoutAtEpochMs` INTEGER, `resultStdoutLength` INTEGER NOT NULL, `resultStderrLength` INTEGER NOT NULL, `metadataJson` TEXT, `message` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER, `finishedAtEpochMs` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "rootJobId",
+            "fieldPath": "rootJobId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "parentJobId",
+            "fieldPath": "parentJobId"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "claimKey",
+            "fieldPath": "claimKey"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "subjectId",
+            "fieldPath": "subjectId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "subjectType",
+            "fieldPath": "subjectType",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "subjectGeneration",
+            "fieldPath": "subjectGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "captureId",
+            "fieldPath": "captureId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "ruleId",
+            "fieldPath": "ruleId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "actionId",
+            "fieldPath": "actionId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "trigger",
+            "fieldPath": "trigger",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "kind",
+            "fieldPath": "kind",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "status",
+            "fieldPath": "status",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "title",
+            "fieldPath": "title",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "inputUri",
+            "fieldPath": "inputUri",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "stagedInputPath",
+            "fieldPath": "stagedInputPath"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "inputBridgeUri",
+            "fieldPath": "inputBridgeUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "outputDisplayName",
+            "fieldPath": "outputDisplayName",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "outputMimeType",
+            "fieldPath": "outputMimeType",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "outputDestinationUri",
+            "fieldPath": "outputDestinationUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "stagedOutputPath",
+            "fieldPath": "stagedOutputPath"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "outputBridgeUri",
+            "fieldPath": "outputBridgeUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "ownerBridgeUri",
+            "fieldPath": "ownerBridgeUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "progressBridgeUri",
+            "fieldPath": "progressBridgeUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "metadataBridgeUri",
+            "fieldPath": "metadataBridgeUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "payloadBridgeUri",
+            "fieldPath": "payloadBridgeUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "finalOutputUri",
+            "fieldPath": "finalOutputUri"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "publicationState",
+            "fieldPath": "publicationState",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "publicationDisplayName",
+            "fieldPath": "publicationDisplayName"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "publicationExpectedBytes",
+            "fieldPath": "publicationExpectedBytes"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "publicationExpectedSha256",
+            "fieldPath": "publicationExpectedSha256"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "committedOutputUri",
+            "fieldPath": "committedOutputUri"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "committedBytes",
+            "fieldPath": "committedBytes"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "committedSha256",
+            "fieldPath": "committedSha256"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sideEffectOutcome",
+            "fieldPath": "sideEffectOutcome"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "immutableSpecJson",
+            "fieldPath": "immutableSpecJson",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "expectedSha256",
+            "fieldPath": "expectedSha256"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "actualSha256",
+            "fieldPath": "actualSha256"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "requiredTools",
+            "fieldPath": "requiredTools",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "toolVersionsJson",
+            "fieldPath": "toolVersionsJson",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "runId",
+            "fieldPath": "runId"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "executionId",
+            "fieldPath": "executionId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "processToken",
+            "fieldPath": "processToken"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "processId",
+            "fieldPath": "processId"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "controlGeneration",
+            "fieldPath": "controlGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "requestedControl",
+            "fieldPath": "requestedControl"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "progressPercent",
+            "fieldPath": "progressPercent",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "progressBytes",
+            "fieldPath": "progressBytes",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "progressTotalBytes",
+            "fieldPath": "progressTotalBytes"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "timeoutAtEpochMs",
+            "fieldPath": "timeoutAtEpochMs"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "resultStdoutLength",
+            "fieldPath": "resultStdoutLength",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "resultStderrLength",
+            "fieldPath": "resultStderrLength",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "metadataJson",
+            "fieldPath": "metadataJson"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "message",
+            "fieldPath": "message",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "startedAtEpochMs",
+            "fieldPath": "startedAtEpochMs"
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "finishedAtEpochMs",
+            "fieldPath": "finishedAtEpochMs"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "rootJobId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_jobs_rootJobId` ON `${TABLE_NAME}` (`rootJobId`)",
+            "name": "index_post_processing_jobs_rootJobId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "subjectId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_jobs_subjectId` ON `${TABLE_NAME}` (`subjectId`)",
+            "name": "index_post_processing_jobs_subjectId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "downloadId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_jobs_downloadId` ON `${TABLE_NAME}` (`downloadId`)",
+            "name": "index_post_processing_jobs_downloadId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "captureId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_jobs_captureId` ON `${TABLE_NAME}` (`captureId`)",
+            "name": "index_post_processing_jobs_captureId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "status"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_jobs_status` ON `${TABLE_NAME}` (`status`)",
+            "name": "index_post_processing_jobs_status",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_jobs_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)",
+            "name": "index_post_processing_jobs_updatedAtEpochMs",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "runId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_post_processing_jobs_runId` ON `${TABLE_NAME}` (`runId`)",
+            "name": "index_post_processing_jobs_runId",
+            "orders": [],
+            "unique": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "post_processing_jobs"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`claimKey` TEXT NOT NULL, `subjectId` TEXT NOT NULL, `subjectType` TEXT NOT NULL, `subjectGeneration` INTEGER NOT NULL, `trigger` TEXT NOT NULL, `ruleId` TEXT NOT NULL, `actionId` TEXT NOT NULL, `jobId` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`claimKey`), FOREIGN KEY(`jobId`) REFERENCES `post_processing_jobs`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "claimKey",
+            "fieldPath": "claimKey",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "subjectId",
+            "fieldPath": "subjectId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "subjectType",
+            "fieldPath": "subjectType",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "subjectGeneration",
+            "fieldPath": "subjectGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "trigger",
+            "fieldPath": "trigger",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "ruleId",
+            "fieldPath": "ruleId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "actionId",
+            "fieldPath": "actionId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "jobId",
+            "fieldPath": "jobId",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "jobId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "post_processing_jobs"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "jobId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_claims_jobId` ON `${TABLE_NAME}` (`jobId`)",
+            "name": "index_post_processing_claims_jobId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "subjectId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_post_processing_claims_subjectId` ON `${TABLE_NAME}` (`subjectId`)",
+            "name": "index_post_processing_claims_subjectId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "subjectId",
+              "subjectGeneration",
+              "trigger",
+              "ruleId",
+              "actionId"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_post_processing_claims_subjectId_subjectGeneration_trigger_ruleId_actionId` ON `${TABLE_NAME}` (`subjectId`, `subjectGeneration`, `trigger`, `ruleId`, `actionId`)",
+            "name": "index_post_processing_claims_subjectId_subjectGeneration_trigger_ruleId_actionId",
+            "orders": [],
+            "unique": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "claimKey"
+          ]
+        },
+        "tableName": "post_processing_claims"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `logicalMediaId` TEXT, `captureId` TEXT, `url` TEXT NOT NULL, `pageUrl` TEXT, `mimeType` TEXT, `source` TEXT NOT NULL, `initiator` TEXT, `semanticKind` TEXT NOT NULL, `observationCount` INTEGER NOT NULL DEFAULT 1, `firstObservedAtEpochMs` INTEGER NOT NULL, `lastObservedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`captureId`) REFERENCES `media_captures`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "logicalMediaId",
+            "fieldPath": "logicalMediaId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "captureId",
+            "fieldPath": "captureId"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "url",
+            "fieldPath": "url",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "pageUrl",
+            "fieldPath": "pageUrl"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "mimeType",
+            "fieldPath": "mimeType"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "source",
+            "fieldPath": "source",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "initiator",
+            "fieldPath": "initiator"
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "semanticKind",
+            "fieldPath": "semanticKind",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "observationCount",
+            "defaultValue": "1",
+            "fieldPath": "observationCount",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "firstObservedAtEpochMs",
+            "fieldPath": "firstObservedAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "lastObservedAtEpochMs",
+            "fieldPath": "lastObservedAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "captureId"
+            ],
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "referencedColumns": [
+              "id"
+            ],
+            "table": "media_captures"
+          }
+        ],
+        "indices": [
+          {
+            "columnNames": [
+              "logicalMediaId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_observations_logicalMediaId` ON `${TABLE_NAME}` (`logicalMediaId`)",
+            "name": "index_media_observations_logicalMediaId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "captureId"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_observations_captureId` ON `${TABLE_NAME}` (`captureId`)",
+            "name": "index_media_observations_captureId",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "source"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_observations_source` ON `${TABLE_NAME}` (`source`)",
+            "name": "index_media_observations_source",
+            "orders": [],
+            "unique": false
+          },
+          {
+            "columnNames": [
+              "lastObservedAtEpochMs"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_media_observations_lastObservedAtEpochMs` ON `${TABLE_NAME}` (`lastObservedAtEpochMs`)",
+            "name": "index_media_observations_lastObservedAtEpochMs",
+            "orders": [],
+            "unique": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "media_observations"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `captureId` TEXT NOT NULL, `downloadId` TEXT NOT NULL, `logicalMediaId` TEXT NOT NULL, `admissionKey` TEXT NOT NULL, `attemptGeneration` TEXT NOT NULL, `manifestUrl` TEXT NOT NULL, `canonicalManifestUrl` TEXT NOT NULL, `selectedVideoVariantId` TEXT NOT NULL, `selectedAudioVariantId` TEXT NOT NULL, `selectedSubtitleVariantId` TEXT NOT NULL, `supportStatus` TEXT NOT NULL, `unsupportedReasons` TEXT NOT NULL, `stage` TEXT NOT NULL, `finalizationState` TEXT NOT NULL, `partCount` TEXT NOT NULL, `completedPartCount` TEXT NOT NULL, `bytesReceived` TEXT NOT NULL, `totalBytes` TEXT NOT NULL, `progressPercent` TEXT NOT NULL, `tempDirectoryKey` TEXT NOT NULL, `destinationUri` TEXT NOT NULL, `fileName` TEXT NOT NULL, `completedArtifactUri` TEXT NOT NULL, `completedArtifactBytes` TEXT NOT NULL, `completedArtifactSha256` TEXT NOT NULL, `recoverable` TEXT NOT NULL, `cleanupPolicy` TEXT NOT NULL, `message` TEXT NOT NULL, `createdAtEpochMs` TEXT NOT NULL, `updatedAtEpochMs` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "captureId",
+            "fieldPath": "captureId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "downloadId",
+            "fieldPath": "downloadId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "logicalMediaId",
+            "fieldPath": "logicalMediaId",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "admissionKey",
+            "fieldPath": "admissionKey",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "attemptGeneration",
+            "fieldPath": "attemptGeneration",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "manifestUrl",
+            "fieldPath": "manifestUrl",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "canonicalManifestUrl",
+            "fieldPath": "canonicalManifestUrl",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "selectedVideoVariantId",
+            "fieldPath": "selectedVideoVariantId",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "selectedAudioVariantId",
+            "fieldPath": "selectedAudioVariantId",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "selectedSubtitleVariantId",
+            "fieldPath": "selectedSubtitleVariantId",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "supportStatus",
+            "fieldPath": "supportStatus",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "unsupportedReasons",
+            "fieldPath": "unsupportedReasons",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "stage",
+            "fieldPath": "stage",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "finalizationState",
+            "fieldPath": "finalizationState",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "partCount",
+            "fieldPath": "partCount",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "completedPartCount",
+            "fieldPath": "completedPartCount",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesReceived",
+            "fieldPath": "bytesReceived",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "totalBytes",
+            "fieldPath": "totalBytes",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "progressPercent",
+            "fieldPath": "progressPercent",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "tempDirectoryKey",
+            "fieldPath": "tempDirectoryKey",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "destinationUri",
+            "fieldPath": "destinationUri",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "fileName",
+            "fieldPath": "fileName",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "completedArtifactUri",
+            "fieldPath": "completedArtifactUri",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "completedArtifactBytes",
+            "fieldPath": "completedArtifactBytes",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "completedArtifactSha256",
+            "fieldPath": "completedArtifactSha256",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "recoverable",
+            "fieldPath": "recoverable",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "cleanupPolicy",
+            "fieldPath": "cleanupPolicy",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "message",
+            "fieldPath": "message",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "createdAtEpochMs",
+            "fieldPath": "createdAtEpochMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "indices": [],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "native_hls_jobs"
+      },
+      {
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `jobId` TEXT NOT NULL, `partIndex` TEXT NOT NULL, `url` TEXT NOT NULL, `mediaSequence` TEXT NOT NULL, `durationMs` TEXT NOT NULL, `byteRangeOffset` TEXT NOT NULL, `byteRangeLength` TEXT NOT NULL, `initMapUrl` TEXT NOT NULL, `keyUri` TEXT NOT NULL, `keyMethod` TEXT NOT NULL, `keyIvHex` TEXT NOT NULL, `discontinuitySequence` TEXT NOT NULL, `state` TEXT NOT NULL, `bytesReceived` TEXT NOT NULL, `expectedBytes` TEXT NOT NULL, `sha256Hex` TEXT NOT NULL, `retryCount` TEXT NOT NULL, `lastError` TEXT NOT NULL, `updatedAtEpochMs` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "affinity": "TEXT",
+            "columnName": "id",
+            "fieldPath": "id",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "jobId",
+            "fieldPath": "jobId",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "partIndex",
+            "fieldPath": "partIndex",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "url",
+            "fieldPath": "url",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "mediaSequence",
+            "fieldPath": "mediaSequence",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "durationMs",
+            "fieldPath": "durationMs",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "byteRangeOffset",
+            "fieldPath": "byteRangeOffset",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "byteRangeLength",
+            "fieldPath": "byteRangeLength",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "initMapUrl",
+            "fieldPath": "initMapUrl",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "keyUri",
+            "fieldPath": "keyUri",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "keyMethod",
+            "fieldPath": "keyMethod",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "keyIvHex",
+            "fieldPath": "keyIvHex",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "discontinuitySequence",
+            "fieldPath": "discontinuitySequence",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "state",
+            "fieldPath": "state",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "bytesReceived",
+            "fieldPath": "bytesReceived",
+            "notNull": true
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "expectedBytes",
+            "fieldPath": "expectedBytes",
+            "notNull": false
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "sha256Hex",
+            "fieldPath": "sha256Hex",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "retryCount",
+            "fieldPath": "retryCount",
+            "notNull": true
+          },
+          {
+            "affinity": "TEXT",
+            "columnName": "lastError",
+            "fieldPath": "lastError",
+            "notNull": false
+          },
+          {
+            "affinity": "INTEGER",
+            "columnName": "updatedAtEpochMs",
+            "fieldPath": "updatedAtEpochMs",
+            "notNull": true
+          }
+        ],
+        "indices": [],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "tableName": "native_hls_parts"
+      }
+    ],
+    "identityHash": "native_hls_schema_24_cd9ddc40939be075",
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f37c0626ad7b44012c2144447cd23bf4')"
+    ],
+    "version": 24
+  },
+  "formatVersion": 1
+}

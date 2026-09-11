@@ -39,6 +39,7 @@ enum class MediaExecutionFailureKind(val label: String) {
     AppDownloadFailed("App download failed"),
     Aria2DownloadFailed("aria2 download failed"),
     YtDlpRequired("yt-dlp resolver required"),
+    NativeHlsFailed("Native HLS failed"),
 }
 
 data class MediaExecutionFailure(
@@ -50,6 +51,7 @@ data class MediaExecutionFailure(
 enum class MediaExecutionLane(val label: String) {
     DirectNative("Direct native"),
     Aria2Segmented("aria2 segmented"),
+    NativeHlsSegmented("Native HLS segmented"),
     YtDlpAdaptive("yt-dlp adaptive"),
     LiveRecording("yt-dlp/FFmpeg live recording"),
     ProtectedBlocked("Protected diagnostic only"),
@@ -270,7 +272,8 @@ class MediaExecutionLibraryPlanner(
             variantSessionHeaders = variantSessionHeaders,
         )
         val backend = when (plan.strategy) {
-            MediaDownloadStrategy.Native -> BackendType.Native
+            MediaDownloadStrategy.Native,
+            MediaDownloadStrategy.NativeHls -> BackendType.Native
             MediaDownloadStrategy.Aria2 -> BackendType.Aria2
             MediaDownloadStrategy.YtDlp,
             MediaDownloadStrategy.FfmpegLive,
@@ -331,6 +334,7 @@ class MediaExecutionLibraryPlanner(
             backgroundPolicy = policy,
             typedExecutor = when (lane) {
                 MediaExecutionLane.DirectNative -> "native-request"
+                MediaExecutionLane.NativeHlsSegmented -> "native-hls"
                 MediaExecutionLane.Aria2Segmented -> "aria2c"
                 MediaExecutionLane.YtDlpAdaptive, MediaExecutionLane.LiveRecording -> "yt-dlp"
                 MediaExecutionLane.ProtectedBlocked -> "diagnostics-only"
@@ -615,7 +619,8 @@ class MediaExecutionLibraryPlanner(
     }
 
     private fun laneFor(spec: MediaQueuedDownloadSpec): MediaExecutionLane = when {
-        spec.strategy == MediaDownloadStrategy.UnsupportedProtected || !spec.canUseAppQueue && !spec.requiresTermuxYtDlp -> MediaExecutionLane.ProtectedBlocked
+        spec.strategy == MediaDownloadStrategy.UnsupportedProtected || !spec.canUseAppQueue && !spec.requiresTermuxYtDlp && spec.strategy != MediaDownloadStrategy.NativeHls -> MediaExecutionLane.ProtectedBlocked
+        spec.strategy == MediaDownloadStrategy.NativeHls -> MediaExecutionLane.NativeHlsSegmented
         spec.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionLane.LiveRecording
         spec.requiresTermuxYtDlp -> MediaExecutionLane.YtDlpAdaptive
         spec.requestedBackend == BackendType.Aria2 -> MediaExecutionLane.Aria2Segmented
@@ -627,6 +632,7 @@ class MediaExecutionLibraryPlanner(
         MediaExecutionLane.YtDlpAdaptive,
         MediaExecutionLane.LiveRecording -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.TermuxExternalJob, null, "yt-dlp/FFmpeg execution stays in the typed Termux media pipeline.")
         MediaExecutionLane.DirectNative,
+        MediaExecutionLane.NativeHlsSegmented,
         MediaExecutionLane.Aria2Segmented -> when {
             sdkInt >= 34 && userInitiated -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.UserInitiatedDataTransfer, "dataSync", "Large visible download is UIDT-ready on Android 14+.")
             sdkInt >= 23 -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.WorkManagerForeground, "dataSync", "Foreground WorkManager remains the fallback for visible transfer progress.")
@@ -687,6 +693,11 @@ class MediaExecutionLibraryPlanner(
             MediaExecutionLane.DirectNative -> {
                 args += listOf("--url", spec.sidecar.redactedSourceUrl, "--output", spec.fileName)
             }
+            MediaExecutionLane.NativeHlsSegmented -> {
+                args += listOf("--manifest", spec.sidecar.redactedSourceUrl, "--output", spec.fileName)
+                args += listOf("--tracks", spec.selectedTrackIds.sorted().joinToString(",").ifBlank { "auto" })
+                args += listOf("--stage-model", "download-finalize-publish-verify")
+            }
             MediaExecutionLane.Aria2Segmented -> {
                 args += listOf("--input-file", aria2?.inputFileName ?: "<transient-aria2-input>")
                 args += listOf("--save-session", aria2?.sessionFileName ?: "<transient-aria2-session>")
@@ -731,6 +742,11 @@ class MediaExecutionLibraryPlanner(
             MediaExecutionFailureKind.Protected,
             "Unsupported DRM/protected media. Diagnostics only; no bypass or queue action.",
             retryable = false,
+        )
+        plan.strategy == MediaDownloadStrategy.NativeHls && download?.state == DownloadState.Failed -> MediaExecutionFailure(
+            MediaExecutionFailureKind.NativeHlsFailed,
+            download.errorMessage?.take(180).orEmpty().ifBlank { "Native HLS failed; retry keeps verified parts and rechecks manifest/session state." },
+            retryable = true,
         )
         plan.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionFailure(
             MediaExecutionFailureKind.LiveRequiresExternalJob,

@@ -70,8 +70,9 @@ aria2_backend = read("transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/tr
 
 expected_overlay = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip"
 successor_overlay = "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"
+parity03_overlay = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 phase = manifest.get("media_parity01_runtime_truth_diagnostics_backend_reliability", {})
-require(manifest.get("current_overlay") in {expected_overlay, successor_overlay}, "PROJECT_MANIFEST current_overlay must point to Media Parity01 or an accepted successor")
+require(manifest.get("current_overlay") in {expected_overlay, successor_overlay, parity03_overlay}, "PROJECT_MANIFEST current_overlay must point to Media Parity01 or an accepted successor")
 require(phase.get("status") == "implemented", "Media Parity01 manifest phase must be implemented")
 require(phase.get("room_schema") == 22, "Media Parity01 must report Room schema 22")
 require(phase.get("final_zip_privacy_scan_required") is True, "final ZIP privacy scan must be required")
@@ -101,7 +102,7 @@ require_all(release_security, ['"md5"', '"sess"'], "privacy diagnostics redactor
 require_all(debug_store, [
     '"xdm-debug-${safeFileName(run.id)}.zip"',
     "DiagnosticExportIntegrity.writeVerifiedZip",
-    "Room schema: 23",
+    "Room schema: 24",
     "Live Locator WebView",
     "Diagnostics version: v5 / Media Parity01",
     "DiagnosticBundleMetadata",
@@ -160,7 +161,7 @@ require("releaseDocsComplete = staticValidationPassed" not in main_vm, "release 
 require("noNewTopLevelRoutes = staticValidationPassed" not in main_vm, "route topology must not proxy static validation")
 require("diagnosticsRedacted = staticValidationPassed" not in main_vm, "diagnostics privacy must not proxy static validation")
 
-require("currentRoomSchemaVersion = 23" in developer, "Developer Center final media validation must use current Room schema 23")
+require("currentRoomSchemaVersion = 24" in developer, "Developer Center final media validation must use current Room schema 24")
 require("currentRoomSchemaVersion = 21" not in developer, "stale Room schema 21 remains in Developer Center")
 require_all(developer, [
     "XDM_ROUTE_TOPOLOGY_VALIDATED",
@@ -169,7 +170,7 @@ require_all(developer, [
 ], "Developer media final validation")
 require_all(developer_workspace, [
     "Validation truth",
-    "Room schema: 23",
+    "Room schema: 24",
     "XDM_DIAGNOSTIC_EXPORT_VALIDATED",
     "XDM_REAL_DEVICE_SMOKE_PASSED",
     "XDM_ARIA2_PAYLOAD_VERIFIED",
@@ -236,7 +237,7 @@ for prop in [
 ]:
     require(prop in release_gate, f"signed release gate must attest earned independent evidence: {prop}")
 
-# Current source truth: successor source diagnostics say schema 23 while Parity01 historical metadata remains schema 22.
+# Current source truth: successor source diagnostics say schema 24 while Parity01 historical metadata remains schema 22.
 for relative in [
     "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt",
     "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt",
@@ -272,7 +273,7 @@ for relative in [
     require(expected_overlay in source, f"active carry-forward validator must accept Media Parity01: {relative}")
     require(successor_overlay in source, f"active carry-forward validator must accept Media Parity02 successor: {relative}")
 
-require(manifest.get("final_public_release_gate", {}).get("room_schema_locked") == 23, "final public release gate must report current Room schema 23")
+require(manifest.get("final_public_release_gate", {}).get("room_schema_locked") == 24, "final public release gate must report current Room schema 24")
 require(manifest.get("final_public_release_gate", {}).get("schema_version_unchanged") == 23, "final public release gate schema truth must be 23")
 
 print("Media Parity01 runtime-truth validation passed: final diagnostics artifacts are fail-closed, topology/schema truth is current, legacy Firefox crypto blockers are retired, and aria2 health is lifecycle-backed")

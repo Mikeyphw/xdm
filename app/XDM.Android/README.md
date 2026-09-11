@@ -1,6 +1,10 @@
 ## XDM Android 0.21.0
 
 Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. Media Parity01 is the current runtime-truth/diagnostics/backend-reliability authority; Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority. The post-UX13 roadmap-completion hotfix remains the UI release authority; UX13 is the end-to-end UI/UX baseline and ACT01/ACT02 remains the experience-polish authority. Media Parity01 remains the runtime-truth/diagnostics/backend-reliability baseline; Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority. The post-UX13 roadmap-completion hotfix remains the UI release baseline.
+
+### Media Parity03 native HLS execution authority
+
+Media Parity03 is the current native adaptive execution/admission/progress/completion-integrity authority. Supported VOD HLS is admitted as one native segmented job, not as separate visible parts and not as a default yt-dlp handoff. The native HLS lane keeps a durable `native_hls_jobs` + `native_hls_parts` ledger, reuses an existing logical-media admission unless the user explicitly chooses Add again, tracks downloading/finalizing/publishing/verifying separately, reserves space for segment and finalization overhead, and rejects playlist text, HTML errors, tiny partial files, unsupported plans, or hash mismatches before anything may become Completed. LL-HLS/live/I-frame-only/invalid playlists deliberately route to fallback, while SAMPLE-AES/DRM/unknown encrypted streams remain protected unsupported. Parity04 remains responsible for the browser-shell/userscript/notification/text final product seal.
 Room is schema v23. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
 
 Implementation evidence: `XDM_MEDIA_PARITY01_RUNTIME_TRUTH_DIAGNOSTICS_BACKEND_RELIABILITY_REPORT.md` and `XDM_MEDIA_PARITY02_LOGICAL_MEDIA_CAPTURE_BROWSER_CONVERGENCE_REPORT.md`.

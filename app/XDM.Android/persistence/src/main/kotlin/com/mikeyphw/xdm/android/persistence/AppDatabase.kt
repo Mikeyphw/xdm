@@ -23,6 +23,8 @@ import androidx.room.RoomDatabase
         MediaObservationEntity::class,
         MediaVariantEntity::class,
         MediaOutputEntity::class,
+        NativeHlsJobEntity::class,
+        NativeHlsPartEntity::class,
         AutomationCommandEntity::class,
         NotificationRecordEntity::class,
         TagEntity::class,
@@ -39,7 +41,7 @@ import androidx.room.RoomDatabase
         PostProcessingJobEntity::class,
         PostProcessingClaimEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -55,6 +57,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun checksumDao(): ChecksumDao
     abstract fun finalizationDao(): FinalizationDao
     abstract fun mediaCaptureDao(): MediaCaptureDao
+    abstract fun nativeHlsDao(): NativeHlsDao
     abstract fun automationCommandDao(): AutomationCommandDao
     abstract fun organizationDao(): OrganizationDao
     abstract fun downloadGraphTransactionDao(): DownloadGraphTransactionDao

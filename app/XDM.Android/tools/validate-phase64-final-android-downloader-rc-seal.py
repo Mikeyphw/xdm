@@ -22,7 +22,7 @@ def find_root() -> Path:
 ROOT = find_root()
 REPO = ROOT.parent.parent
 OVERLAY = 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip'
-ACCEPTED_CURRENT_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip', 'xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip'}
+ACCEPTED_CURRENT_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip', 'xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip', 'xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip'}
 ERRORS: list[str] = []
 
 
@@ -59,7 +59,7 @@ changelog = repo_text('CHANGELOG.md')
 
 require(manifest.get('current_overlay') in ACCEPTED_CURRENT_OVERLAYS, 'current overlay must point to Phase64 or a later accepted field fix')
 require(64 in manifest.get('project', {}).get('implemented_phases', []), 'implemented phases must include 64')
-require(manifest.get('next_phase') in {'complete', 'phase11_validation_matrix'}, 'Phase64 must mark next_phase complete or hand off to Phase11 validation matrix')
+require(manifest.get('next_phase') in {'complete', 'phase11_validation_matrix', 'media_parity04_browser_ux_userscripts_feedback_final_release_seal'}, 'Phase64 must mark next_phase complete or hand off to Phase11 validation matrix')
 require(phase.get('status') == 'implemented', 'Phase64 must be implemented')
 require(phase.get('final_android_downloader_rc_sealed') is True, 'Phase64 must seal Android downloader RC')
 require(phase.get('room_schema_unchanged') == 14, 'Phase64 must keep Room schema 14')

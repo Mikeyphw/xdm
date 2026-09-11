@@ -96,7 +96,7 @@ class DebugTestStore(
 
     private fun buildEnvironmentText(run: DebugTestRun): String = buildString {
         appendLine("Diagnostics version: v5 / Media Parity01")
-        appendLine("Room schema: 23")
+        appendLine("Room schema: 24")
         appendLine("Product topology: download manager + Live Locator WebView + external browser extension handoff")
         appendLine("Run ID: ${run.id}")
         appendLine("Started: ${run.startedAtEpochMs}")

@@ -179,12 +179,13 @@ class MediaWorkerBridgePlanner {
         MediaExecutionLane.ProtectedBlocked -> MediaWorkerBridgeKind.BlockedDiagnostic
         MediaExecutionLane.YtDlpAdaptive,
         MediaExecutionLane.LiveRecording -> MediaWorkerBridgeKind.TermuxYtDlp
+        MediaExecutionLane.NativeHlsSegmented,
         MediaExecutionLane.Aria2Segmented,
         MediaExecutionLane.DirectNative -> when (enginePlan.backgroundPolicy.workKind) {
             AndroidMediaWorkKind.UserInitiatedDataTransfer -> MediaWorkerBridgeKind.AndroidUidt
             AndroidMediaWorkKind.WorkManagerForeground -> MediaWorkerBridgeKind.WorkManagerForeground
             AndroidMediaWorkKind.ForegroundServiceFallback -> MediaWorkerBridgeKind.ForegroundServiceDataSync
-            AndroidMediaWorkKind.TermuxExternalJob -> if (enginePlan.lane == MediaExecutionLane.Aria2Segmented) MediaWorkerBridgeKind.Aria2Adapter else MediaWorkerBridgeKind.TermuxYtDlp
+            AndroidMediaWorkKind.TermuxExternalJob -> if (enginePlan.lane == MediaExecutionLane.Aria2Segmented) MediaWorkerBridgeKind.Aria2Adapter else MediaWorkerBridgeKind.NativeDirect
             AndroidMediaWorkKind.BlockedDiagnostic -> MediaWorkerBridgeKind.BlockedDiagnostic
         }
     }

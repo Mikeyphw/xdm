@@ -365,7 +365,7 @@ private fun ReleaseReadinessSection(state: MainUiState) {
             XdmMetadataText("${check.severity.name}: ${check.title}", maxLines = 2)
         }
         XdmSectionHeader("Validation truth")
-        XdmMetadataText("Room schema: 23 • topology: Live Locator WebView + external browser handoff", maxLines = 3)
+        XdmMetadataText("Room schema: 24 • topology: Live Locator WebView + external browser handoff", maxLines = 3)
         XdmMetadataText("Static chain: ${if (BuildConfig.XDM_STATIC_VALIDATION_PASSED) "passed" else "not attested"} • full validation: ${if (BuildConfig.XDM_FULL_VALIDATION_PASSED) "passed" else "pending"}", maxLines = 3)
         XdmMetadataText("Diagnostics final-ZIP gate: ${if (BuildConfig.XDM_DIAGNOSTIC_EXPORT_VALIDATED) "passed" else "not attested"} • route topology: ${if (BuildConfig.XDM_ROUTE_TOPOLOGY_VALIDATED) "passed" else "not attested"}", maxLines = 3)
         XdmMetadataText("Lint/warnings: ${if (BuildConfig.XDM_LINT_VALIDATION_PASSED) "passed" else "not attested"} • native symbols: ${if (BuildConfig.XDM_NATIVE_SYMBOLS_VALIDATED) "passed" else "not attested"}", maxLines = 3)
