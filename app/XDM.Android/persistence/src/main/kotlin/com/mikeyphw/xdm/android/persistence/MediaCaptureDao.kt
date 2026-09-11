@@ -13,6 +13,12 @@ interface MediaCaptureDao {
     @Query("SELECT * FROM media_variants ORDER BY captureId, position")
     fun observeVariants(): Flow<List<MediaVariantEntity>>
 
+    @Query("SELECT * FROM media_observations ORDER BY lastObservedAtEpochMs DESC LIMIT :limit")
+    fun observeObservationEvidence(limit: Int = 384): Flow<List<MediaObservationEntity>>
+
+    @Query("SELECT * FROM media_observations ORDER BY lastObservedAtEpochMs DESC LIMIT :limit")
+    suspend fun listObservationEvidence(limit: Int = 384): List<MediaObservationEntity>
+
     @Query("SELECT * FROM media_outputs ORDER BY updatedAtEpochMs DESC, createdAtEpochMs DESC")
     fun observeOutputs(): Flow<List<MediaOutputEntity>>
 
@@ -39,6 +45,12 @@ interface MediaCaptureDao {
 
     @Upsert
     suspend fun upsertVariants(entities: List<MediaVariantEntity>)
+
+    @Upsert
+    suspend fun upsertObservationEvidence(entities: List<MediaObservationEntity>)
+
+    @Query("DELETE FROM media_observations WHERE id NOT IN (SELECT id FROM media_observations ORDER BY lastObservedAtEpochMs DESC LIMIT :limit)")
+    suspend fun pruneObservationEvidence(limit: Int = 384): Int
 
     @Upsert
     suspend fun upsertOutput(entity: MediaOutputEntity)

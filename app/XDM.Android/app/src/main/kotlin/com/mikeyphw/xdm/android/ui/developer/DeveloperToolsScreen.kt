@@ -812,6 +812,27 @@ fun DiagnosticsScreen(
         item { DiagnosticLine("Recovery records", state.recovery.size.toString()) }
         item { DiagnosticLine("Finalization journals", state.finalizationJournals.count { it.needsRecovery }.toString()) }
         item { DiagnosticLine("Media captures", state.mediaCaptures.size.toString()) }
+        item { DiagnosticLine("Raw media observations", state.mediaObservations.size.toString()) }
+        if (state.mediaObservations.isNotEmpty()) {
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        XdmCardTitle("Media evidence")
+                        XdmSupportingText("Developer-only bounded capture evidence. URLs are redacted before persistence; request headers, cookies, authorization values, and exact signed credentials are never stored here.", maxLines = 4)
+                        state.mediaObservations.take(12).forEach { observation ->
+                            XdmMetadataText(buildString {
+                                append(observation.semanticKind.ifBlank { "observation" })
+                                append(" • ").append(observation.source.ifBlank { "unknown source" })
+                                observation.mimeType?.takeIf(String::isNotBlank)?.let { append(" • ").append(it) }
+                                observation.initiator?.takeIf(String::isNotBlank)?.let { append(" • ").append(it) }
+                                append("
+").append(observation.url)
+                            })
+                        }
+                    }
+                }
+            }
+        }
         item { DiagnosticLine("Media variants", state.mediaVariants.size.toString()) }
         item { DiagnosticLine("Automation commands", state.automationCommands.size.toString()) }
         item { DiagnosticLine("Post-processing events", state.postProcessingAutomation.events.size.toString()) }
@@ -1401,7 +1422,7 @@ internal fun MediaDeveloperToolsSection(
     val finalValidation = remember(mobilePolish, privacyAudit, captureQuality, playerDiagnostics, libraryV2, termuxRuntime, nativeDirect) {
         MediaFinalValidationGatePlanner().dashboard(
             currentOverlay = MediaFinalValidationGatePlanner.FinalOverlayArtifact,
-            currentRoomSchemaVersion = 22,
+            currentRoomSchemaVersion = 23,
             mediaMobilePolish = mobilePolish,
             privacyAudit = privacyAudit,
             captureQuality = captureQuality,

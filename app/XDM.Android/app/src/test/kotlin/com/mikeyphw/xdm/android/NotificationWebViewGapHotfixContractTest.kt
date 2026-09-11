@@ -80,7 +80,7 @@ class NotificationWebViewGapHotfixContractTest {
         assertTrue(completed.contains("QueueControlCommand.OpenOne -> addAction"))
         assertTrue(naming.contains("hasExplicitTitle = titleIsPageDerived"))
         assertTrue(ux01.contains("File(requireNotNull(System.getProperty(\"user.dir\")))"))
-        assertTrue(manifest.contains("\"room_schema_current\": 22"))
+        assertTrue(manifest.contains("\"room_schema_current\": 23"))
         assertTrue(manifest.contains("\"current_runtime_quality_authority\": \"notification_webview_gap_hotfix_2026_09_10\""))
     }
 

@@ -22,7 +22,7 @@ def find_root() -> Path:
 ROOT = find_root()
 REPO = ROOT.parent.parent
 OVERLAY = 'xdm_android_phase63_release_readiness_support_bundle_seal_r2_overlay.zip'
-LATER_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip'}
+LATER_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip', 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip', 'xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip'}
 ERRORS: list[str] = []
 
 

@@ -144,6 +144,66 @@ class GenerationIntegrityMigrationTest {
     }
 
     @Test
+    fun migrate22To23AddsLogicalMediaGraphAndBoundedEvidenceStorage() {
+        val name = "generation-integrity-22-23-${System.nanoTime()}"
+        val legacy = helper.createDatabase(name, 22)
+        legacy.execSQL("""INSERT INTO media_captures
+                (id,sourceUrl,pageUrl,title,status,kind,mimeType,container,codecs,durationMs,thumbnailUrl,thumbnailProvenance,fileName,variantCount,downloadId,createdAtEpochMs,updatedAtEpochMs,selectedVariantId,selectedVariantUrl,manifestExpiresAtEpochMs,lastResolvedAtEpochMs,resolutionStatus,manifestRole,manifestIsLive,manifestProtected,manifestProtectionScheme)
+                VALUES ('capture-23','https://cdn.example/master.m3u8?sig=REDACTED','https://example.com/watch','Movie','MetadataReady','HlsPlaylist','application/vnd.apple.mpegurl','hls',NULL,1000,NULL,'Unknown','master.m3u8',1,NULL,1,1,NULL,NULL,NULL,NULL,'Resolved','HlsMaster',0,0,NULL)""")
+        legacy.close()
+
+        val db = helper.runMigrationsAndValidate(name, 23, true, Migrations.Migration22To23)
+        assertEquals(23L, db.longValue("PRAGMA user_version"))
+        assertTrue(db.columnNames("media_captures").containsAll(setOf(
+            "logicalMediaId", "canonicalMediaUrl", "observationCount", "segmentCount",
+            "protectionKind", "nativeCapability", "logicalConfidence",
+        )))
+        assertTrue(db.columnNames("media_observations").containsAll(setOf(
+            "logicalMediaId", "captureId", "url", "semanticKind", "lastObservedAtEpochMs",
+        )))
+        assertTrue(db.hasForeignKey("media_observations", "captureId", "media_captures", "CASCADE"))
+        assertEquals("legacy:capture-23", db.stringValue("SELECT logicalMediaId FROM media_captures WHERE id='capture-23'"))
+        assertEquals("https://cdn.example/master.m3u8?sig=REDACTED", db.stringValue("SELECT canonicalMediaUrl FROM media_captures WHERE id='capture-23'"))
+        assertEquals(1L, db.longValue("SELECT observationCount FROM media_captures WHERE id='capture-23'"))
+        assertEquals(0L, db.longValue("SELECT segmentCount FROM media_captures WHERE id='capture-23'"))
+        db.close()
+    }
+
+    @Test
+    fun migrate4To23ValidatesFullProductionChainIncludingLogicalMedia() {
+        val name = "generation-integrity-4-23-${System.nanoTime()}"
+        helper.createDatabase(name, 4).close()
+        val db = helper.runMigrationsAndValidate(
+            name,
+            23,
+            true,
+            Migrations.Migration4To5,
+            Migrations.Migration5To6,
+            Migrations.Migration6To7,
+            Migrations.Migration7To8,
+            Migrations.Migration8To9,
+            Migrations.Migration9To10,
+            Migrations.Migration10To11,
+            Migrations.Migration11To12,
+            Migrations.Migration12To13,
+            Migrations.Migration13To14,
+            Migrations.Migration14To15,
+            Migrations.Migration15To16,
+            Migrations.Migration16To17,
+            Migrations.Migration17To18,
+            Migrations.Migration18To19,
+            Migrations.Migration19To20,
+            Migrations.Migration20To21,
+            Migrations.Migration21To22,
+            Migrations.Migration22To23,
+        )
+        assertEquals(23L, db.longValue("PRAGMA user_version"))
+        assertTrue(db.columnNames("media_captures").contains("logicalMediaId"))
+        assertTrue(db.columnNames("media_observations").contains("semanticKind"))
+        db.close()
+    }
+
+    @Test
     fun migrate4To22ValidatesOldestExportedProductionChain() {
         val name = "generation-integrity-4-22-${System.nanoTime()}"
         helper.createDatabase(name, 4).close()

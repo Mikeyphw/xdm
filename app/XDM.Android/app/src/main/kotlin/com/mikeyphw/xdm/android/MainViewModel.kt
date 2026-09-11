@@ -60,9 +60,12 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaManifestRole
+import com.mikeyphw.xdm.android.model.MediaNativeCapability
+import com.mikeyphw.xdm.android.model.MediaProtectionKind
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
 import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaObservationRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaTransferShape
@@ -70,6 +73,7 @@ import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.MediaCaptureIntakePlanner
 import com.mikeyphw.xdm.android.media.MediaBatchIntakePlanner
 import com.mikeyphw.xdm.android.media.MediaSniffingEngine
+import com.mikeyphw.xdm.android.media.LogicalMediaGraphEngine
 import com.mikeyphw.xdm.android.media.MediaPageProbe
 import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
 import com.mikeyphw.xdm.android.media.BrowserCaptureSessionRegistry
@@ -212,7 +216,7 @@ data class Aria2DiagnosticsUi(
     val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
-private const val CurrentRoomSchemaVersion = 22
+private const val CurrentRoomSchemaVersion = 23
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
 private fun releaseSigningAttestationConfigured(): Boolean =
@@ -283,6 +287,7 @@ data class MainUiState(
     val verificationRecords: List<VerificationRecord> = emptyList(),
     val finalizationJournals: List<FinalizationJournal> = emptyList(),
     val mediaCaptures: List<MediaCaptureRecord> = emptyList(),
+    val mediaObservations: List<MediaObservationRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
     val mediaOutputs: List<MediaOutputRecord> = emptyList(),
     val mediaIntakeFeedback: MediaIntakeFeedbackUi = MediaIntakeFeedbackUi(),
@@ -466,6 +471,7 @@ class MainViewModel(
         val verificationRecords: List<VerificationRecord>,
         val finalizationJournals: List<FinalizationJournal>,
         val mediaCaptures: List<MediaCaptureRecord>,
+        val mediaObservations: List<MediaObservationRecord>,
         val mediaVariants: List<MediaVariant>,
         val mediaOutputs: List<MediaOutputRecord>,
         val automationCommands: List<AutomationCommandRecord>,
@@ -526,6 +532,7 @@ class MainViewModel(
 
     private data class MediaRepositorySnapshot(
         val captures: List<MediaCaptureRecord>,
+        val observations: List<MediaObservationRecord>,
         val variants: List<MediaVariant>,
         val outputs: List<MediaOutputRecord>,
     )
@@ -535,8 +542,8 @@ class MainViewModel(
         val automation: List<AutomationCommandRecord>,
     )
 
-    private val mediaSnapshot = combine(repository.mediaCaptures, repository.mediaVariants, repository.mediaOutputs) { captures, variants, outputs ->
-        MediaRepositorySnapshot(captures, variants, outputs)
+    private val mediaSnapshot = combine(repository.mediaCaptures, repository.mediaObservationEvidence, repository.mediaVariants, repository.mediaOutputs) { captures, observations, variants, outputs ->
+        MediaRepositorySnapshot(captures, observations, variants, outputs)
     }
 
     private val mediaAutomationSnapshot = combine(mediaSnapshot, repository.automationCommands) { media, automation ->
@@ -610,6 +617,7 @@ class MainViewModel(
             verification.second,
             finalization,
             media.captures,
+            media.observations,
             media.variants,
             media.outputs,
             automation,
@@ -889,6 +897,7 @@ class MainViewModel(
             verificationRecords = snapshot.verificationRecords,
             finalizationJournals = snapshot.finalizationJournals,
             mediaCaptures = snapshot.mediaCaptures,
+            mediaObservations = snapshot.mediaObservations,
             mediaVariants = snapshot.mediaVariants,
             mediaOutputs = snapshot.mediaOutputs,
             mediaIntakeFeedback = review.mediaIntakeFeedback,
@@ -3478,13 +3487,61 @@ class MainViewModel(
                     privateNetworkApprovalScopes = privateNetworkApprovalScopes,
                     cleartextCredentialApprovalScopes = cleartextCredentialApprovalScopes,
                 )
-                val captureId = MediaCaptureService.browserCaptureIdFor(
+                val logicalMediaId = candidate.logicalMediaId ?: candidate.stableMediaId
+                val captureId = MediaCaptureService.browserLogicalCaptureIdFor(
+                    logicalMediaId,
                     factualRawRecord.sourceUrl,
-                    decoded.sessionId,
-                    candidate.requestFingerprint,
                 )
-                val sourceVariants = (plan.variants.filter { it.captureId == rawRecord.id } + resolvedManifestVariants)
-                    .distinctBy(MediaVariant::id)
+                val hintedVariants = buildList {
+                    candidate.variantHints.forEachIndexed { index, hint ->
+                        add(
+                            MediaVariant(
+                                id = "${rawRecord.id}:browser-variant:$index",
+                                captureId = rawRecord.id,
+                                url = hint.url,
+                                kind = MediaVariantKind.Video,
+                                mimeType = "application/vnd.apple.mpegurl",
+                                width = hint.width,
+                                height = hint.height,
+                                bitrateBitsPerSecond = hint.bandwidthBitsPerSecond,
+                                codecs = hint.codecs,
+                                position = index,
+                                displayLabel = listOfNotNull(hint.height?.let { "${it}p" }, hint.bandwidthBitsPerSecond?.let { "${it / 1000} kbps" }, hint.codecs).joinToString(" • ").ifBlank { "Video variant ${index + 1}" },
+                                expiresAtEpochMs = decoded.expiresAtEpochMs,
+                                audioGroupId = hint.audioGroup,
+                                subtitleGroupId = hint.subtitleGroup,
+                            ),
+                        )
+                    }
+                    candidate.trackHints.forEachIndexed { index, hint ->
+                        val kind = when (hint.type.lowercase()) {
+                            "audio" -> MediaVariantKind.Audio
+                            "subtitles", "subtitle", "closed-captions", "captions" -> MediaVariantKind.Subtitle
+                            else -> MediaVariantKind.Primary
+                        }
+                        add(
+                            MediaVariant(
+                                id = "${rawRecord.id}:browser-track:$index",
+                                captureId = rawRecord.id,
+                                url = hint.url,
+                                kind = kind,
+                                mimeType = when (kind) {
+                                    MediaVariantKind.Audio -> "application/vnd.apple.mpegurl"
+                                    MediaVariantKind.Subtitle -> "text/vtt"
+                                    else -> "application/vnd.apple.mpegurl"
+                                },
+                                language = hint.language,
+                                position = candidate.variantHints.size + index,
+                                displayLabel = hint.name ?: hint.language ?: kind.name,
+                                expiresAtEpochMs = decoded.expiresAtEpochMs,
+                                groupId = hint.groupId,
+                                isDefault = hint.isDefault,
+                            ),
+                        )
+                    }
+                }
+                val sourceVariants = (plan.variants.filter { it.captureId == rawRecord.id } + resolvedManifestVariants + hintedVariants)
+                    .distinctBy { variant -> listOf(variant.kind.name, LogicalMediaGraphEngine.identityUrl(variant.url), variant.language.orEmpty(), variant.groupId.orEmpty()).joinToString("|") }
                 val rekeyedVariants = sourceVariants.map { it.rekeyForCapture(captureId) }
                 val selectedVariantId = factualRawRecord.selectedVariantId?.let { selected ->
                     sourceVariants.zip(rekeyedVariants).firstOrNull { (old, _) -> old.id == selected }?.second?.id
@@ -3514,12 +3571,39 @@ class MainViewModel(
                     requestFingerprint = candidate.requestFingerprint,
                 )
                 val existing = repository.findMediaCapture(captureId)
+                val canonicalLogicalUrl = LogicalMediaGraphEngine.identityUrl(candidate.canonicalUrl ?: factualRawRecord.sourceUrl)
+                val hintedManifestRole = when (candidate.manifestRole?.lowercase()) {
+                    "master" -> MediaManifestRole.HlsMaster
+                    "media" -> MediaManifestRole.HlsMedia
+                    else -> factualRawRecord.manifestRole
+                }
+                val hintedProtection = when {
+                    candidate.protectedMedia -> MediaProtectionKind.Drm
+                    candidate.encryptedAes128 -> MediaProtectionKind.Aes128
+                    else -> factualRawRecord.protectionKind
+                }
+                val hintedCapability = when {
+                    candidate.protectedMedia -> MediaNativeCapability.ProtectedUnsupported
+                    candidate.lowLatency -> MediaNativeCapability.FallbackRequired
+                    factualRawRecord.kind == MediaSourceKind.HlsPlaylist || candidate.manifest -> MediaNativeCapability.NativeCandidate
+                    else -> factualRawRecord.nativeCapability
+                }
                 val sanitizedRawRecord = factualRawRecord.copy(
                     id = captureId,
-                    sourceUrl = persistableBrowserCaptureUrl(factualRawRecord.sourceUrl),
+                    sourceUrl = canonicalLogicalUrl,
                     pageUrl = persistableBrowserCaptureUrlOrNull(factualRawRecord.pageUrl),
                     selectedVariantId = selectedVariantId,
-                    selectedVariantUrl = factualRawRecord.selectedVariantUrl?.let(::persistableBrowserCaptureUrl),
+                    selectedVariantUrl = factualRawRecord.selectedVariantUrl?.let(LogicalMediaGraphEngine::identityUrl),
+                    logicalMediaId = logicalMediaId ?: factualRawRecord.logicalMediaId,
+                    canonicalMediaUrl = canonicalLogicalUrl,
+                    observationCount = maxOf(factualRawRecord.observationCount, candidate.observationCount),
+                    segmentCount = maxOf(factualRawRecord.segmentCount, candidate.segmentCount),
+                    logicalConfidence = maxOf(factualRawRecord.logicalConfidence, candidate.confidence.coerceIn(0, 200)),
+                    manifestRole = hintedManifestRole,
+                    manifestProtected = candidate.protectedMedia || factualRawRecord.manifestProtected,
+                    protectionKind = hintedProtection,
+                    nativeCapability = hintedCapability,
+                    variantCount = maxOf(factualRawRecord.variantCount, sourceVariants.size.coerceAtLeast(1)),
                 )
                 val preserveLinked = existing?.downloadId != null
                 val record = if (preserveLinked) {
@@ -3545,7 +3629,7 @@ class MainViewModel(
                 )
                 summaries += BrowserCaptureCandidateSummary(
                     captureId = captureId,
-                    stableMediaId = browserSession.stableMediaId,
+                    stableMediaId = logicalMediaId ?: browserSession.stableMediaId,
                     quality = candidate.quality,
                     reason = candidate.reason,
                     mediaKind = candidate.mediaKind,
@@ -3636,7 +3720,7 @@ class MainViewModel(
         publishMediaIntakeFeedback(
             MediaIntakeFeedbackUi(
                 MediaIntakeFeedbackKind.Found,
-                "Browser media ready",
+                "Received ${mediaItemCountLabel(distinctRecords.size)} from Firefox",
                 "${mediaItemCountLabel(distinctRecords.size)} added to Media${if (decoded.truncated) "; additional browser results were not included" else ""}.",
                 diagnostics = listOf(
                     "session=${decoded.sessionId.take(48)}",
@@ -3664,9 +3748,9 @@ class MainViewModel(
         val exactHeaders = finalHeaders ?: proposedHeaders
         val sensitiveDirectHandoff = exactHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(facts.url)
         if (sensitiveDirectHandoff) {
-            // This compatibility API has no durable encrypted outer journal. Never let credentials or
-            // signed URLs escape into auxiliary stores through a non-recoverable import. Secure browser
-            // runtime traffic must use the encrypted v2 deep-link + BrowserCaptureImportJournal path.
+            // This legacy single-item compatibility API has no bounded v3 session batch. Never let
+            // credentials or signed URLs escape through that old path. Current Firefox traffic uses the
+            // direct/keyless v3 session importer, which keeps exact request context process-private.
             publishMediaIntakeFeedback(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.Failed,

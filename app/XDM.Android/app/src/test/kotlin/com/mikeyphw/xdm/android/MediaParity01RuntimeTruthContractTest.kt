@@ -30,7 +30,7 @@ class MediaParity01RuntimeTruthContractTest {
     }
 
     @Test
-    fun validationFactsAreIndependentAndSchemaTruthIs22() {
+    fun validationFactsAreIndependentAndSchemaTruthIs23() {
         val build = text("app/build.gradle.kts")
         val main = text("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
         val developer = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt")
@@ -52,7 +52,7 @@ class MediaParity01RuntimeTruthContractTest {
         assertTrue(main.contains("noNewTopLevelRoutes = routeTopologyValidated"))
         assertFalse(main.contains("releaseDocsComplete = staticValidationPassed"))
         assertFalse(main.contains("noNewTopLevelRoutes = staticValidationPassed"))
-        assertTrue(developer.contains("currentRoomSchemaVersion = 22"))
+        assertTrue(developer.contains("currentRoomSchemaVersion = 23"))
         assertFalse(developer.contains("currentRoomSchemaVersion = 21"))
         assertTrue(workspace.contains("Validation truth"))
         assertTrue(workspace.contains("XDM_DIAGNOSTIC_EXPORT_VALIDATED"))
@@ -82,7 +82,7 @@ class MediaParity01RuntimeTruthContractTest {
         assertTrue(store.contains("DiagnosticExportIntegrity.writeVerifiedZip"))
         assertTrue(store.contains("xdm-debug-${'$'}{safeFileName(run.id)}.zip"))
         assertTrue(store.contains("Diagnostics version: v5 / Media Parity01"))
-        assertTrue(store.contains("Room schema: 22"))
+        assertTrue(store.contains("Room schema: 23"))
         assertTrue(store.contains("Live Locator WebView"))
         assertTrue(screen.contains("Diagnostics export blocked: final ZIP privacy/integrity verification failed."))
         assertTrue(screen.contains("Diagnostics ZIP verified and ready to share."))

@@ -65,3 +65,18 @@ button:disabled { opacity: .5; }
 .health-grid b.ok { color: var(--xdm-success); }
 .health-grid b.error { color: var(--xdm-error); }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+.card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.count-pill { min-width: 24px; padding: 2px 8px; border-radius: 999px; text-align: center; background: var(--xdm-raised); color: var(--xdm-text); font-weight: 800; }
+.candidate-list { display: grid; gap: 8px; margin-top: 10px; max-height: 245px; overflow-y: auto; }
+.candidate-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; padding: 9px; border-radius: 11px; background: var(--xdm-raised); }
+.candidate-row input { margin-top: 3px; }
+.candidate-copy { min-width: 0; }
+.candidate-title { display: block; font-weight: 800; overflow-wrap: anywhere; }
+.candidate-meta, .candidate-url { display: block; margin-top: 2px; color: var(--xdm-muted); font-size: 11px; overflow-wrap: anywhere; }
+.candidate-url { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hint { color: var(--xdm-muted); font-size: 11px; }
+
+.candidate-details { margin-top: 5px; }
+.candidate-details summary { cursor: pointer; color: var(--xdm-text); font-weight: 700; }
+.candidate-details-body { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--xdm-outline-variant); }
+.candidate-provenance { margin-top: 3px; color: var(--xdm-muted); font-size: 11px; overflow-wrap: anywhere; }

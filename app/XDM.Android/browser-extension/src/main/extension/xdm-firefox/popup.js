@@ -14,6 +14,142 @@ const NETWORK_DIAGNOSTICS_KEY = "xdmNetworkDiagnosticsV1";
 const BRIDGE_FILES = ["bridge-selftest.js", "generated-config.js", "handoff.js", "fab.js", "frame-bridge.js"];
 let diagnosticTimer = null;
 
+let logicalCandidates = [];
+
+function selectedLogicalIds() {
+  return [...document.querySelectorAll('#logicalMediaCandidates input[type="checkbox"]:checked')].map(node => node.value);
+}
+
+function updateSendSelectedButton() {
+  const button = document.getElementById("sendSelectedMedia");
+  if (!button) return;
+  const count = selectedLogicalIds().length;
+  button.textContent = `Send ${count} to XDM`;
+  button.disabled = !activeTab || count === 0;
+}
+
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "";
+  const units = ["B", "KiB", "MiB", "GiB"];
+  let size = bytes;
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
+  return `${size >= 100 || unit === 0 ? Math.round(size) : size.toFixed(1)} ${units[unit]}`;
+}
+
+function formatDuration(value) {
+  const ms = Number(value || 0);
+  if (!Number.isFinite(ms) || ms <= 0) return "";
+  const total = Math.round(ms / 1000);
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return minutes ? `${minutes}m ${String(seconds).padStart(2, "0")}s` : `${seconds}s`;
+}
+
+function candidateMeta(candidate) {
+  const parts = [String(candidate.streamKind || "media").toUpperCase()];
+  if (candidate.manifestRole === "master") parts.push("master playlist");
+  if (Number(candidate.variantCount || 0) > 0) parts.push(`${candidate.variantCount} variant${candidate.variantCount === 1 ? "" : "s"}`);
+  if (Number(candidate.trackCount || 0) > 0) parts.push(`${candidate.trackCount} track${candidate.trackCount === 1 ? "" : "s"}`);
+  const duration = formatDuration(candidate.durationMs);
+  if (duration) parts.push(duration);
+  const size = formatBytes(candidate.contentLength);
+  if (size) parts.push(size);
+  if (Number(candidate.segmentCount || 0) > 0) parts.push(`${candidate.segmentCount} part${candidate.segmentCount === 1 ? "" : "s"}`);
+  if (Number(candidate.observationCount || 0) > 1) parts.push(`${candidate.observationCount} observations`);
+  if (candidate.encryptedAes128) parts.push("AES-128");
+  if (candidate.protectedMedia) parts.push("protected / unsupported");
+  if (candidate.lowLatency) parts.push("LL-HLS fallback");
+  return parts.join(" · ");
+}
+
+function renderLogicalCandidates(snapshot) {
+  logicalCandidates = Array.isArray(snapshot && snapshot.candidates) ? snapshot.candidates : [];
+  const list = document.getElementById("logicalMediaCandidates");
+  const summary = document.getElementById("logicalMediaSummary");
+  const count = document.getElementById("logicalMediaCount");
+  if (!list || !summary || !count) return;
+  count.textContent = String(logicalCandidates.length);
+  list.replaceChildren();
+  if (!logicalCandidates.length) {
+    summary.textContent = "No logical media detected on this tab yet. Start playback, then refresh or rescan.";
+  } else {
+    const raw = Number(snapshot.rawObservationCount || 0);
+    const suppressed = Number(snapshot.suppressedSegmentCount || 0);
+    summary.textContent = `${logicalCandidates.length} logical item${logicalCandidates.length === 1 ? "" : "s"} from ${raw} observation${raw === 1 ? "" : "s"}${suppressed ? ` · ${suppressed} segment observation${suppressed === 1 ? "" : "s"} kept internal` : ""}.`;
+    for (const [index, candidate] of logicalCandidates.entries()) {
+      const label = document.createElement("label");
+      label.className = "candidate-row";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = candidate.logicalMediaId || candidate.stableMediaId || "";
+      checkbox.checked = true;
+      checkbox.addEventListener("change", updateSendSelectedButton);
+      const copy = document.createElement("span");
+      copy.className = "candidate-copy";
+      const title = document.createElement("span");
+      title.className = "candidate-title";
+      title.textContent = candidate.title || `Detected media ${index + 1}`;
+      const meta = document.createElement("span");
+      meta.className = "candidate-meta";
+      meta.textContent = candidateMeta(candidate);
+      const details = document.createElement("details");
+      details.className = "candidate-details";
+      const detailsSummary = document.createElement("summary");
+      detailsSummary.textContent = "Details";
+      const detailsBody = document.createElement("div");
+      detailsBody.className = "candidate-details-body";
+      const canonical = document.createElement("div");
+      canonical.className = "candidate-url";
+      canonical.textContent = candidate.url || "";
+      const provenance = document.createElement("div");
+      provenance.className = "candidate-provenance";
+      provenance.textContent = [
+        candidate.reason ? `Evidence: ${candidate.reason}` : "",
+        Number(candidate.confidence || 0) > 0 ? `Confidence: ${candidate.confidence}` : "",
+        candidate.quality ? `Quality: ${candidate.quality}` : ""
+      ].filter(Boolean).join(" · ");
+      detailsBody.append(canonical, provenance);
+      details.append(detailsSummary, detailsBody);
+      copy.append(title, meta, details);
+      label.append(checkbox, copy);
+      list.append(label);
+    }
+  }
+  updateSendSelectedButton();
+}
+
+async function refreshLogicalCandidates() {
+  const refresh = document.getElementById("refreshCapturedMedia");
+  if (!activeTab || typeof activeTab.id !== "number") { renderLogicalCandidates({ candidates: [] }); return; }
+  if (refresh) refresh.disabled = true;
+  try {
+    const snapshot = await browser.runtime.sendMessage({ type: "xdmGetLogicalCandidatesV2", tabId: activeTab.id });
+    renderLogicalCandidates(snapshot || { candidates: [] });
+  } catch (error) {
+    renderLogicalCandidates({ candidates: [] });
+    setStatus(`Could not read captured media: ${error && error.message ? error.message : String(error)}`, "error");
+  } finally {
+    if (refresh) refresh.disabled = !activeTab;
+  }
+}
+
+async function sendSelectedLogicalCandidates() {
+  if (!activeTab || typeof activeTab.id !== "number") return;
+  const ids = selectedLogicalIds();
+  if (!ids.length) return;
+  const button = document.getElementById("sendSelectedMedia");
+  if (button) button.disabled = true;
+  try {
+    const result = await browser.runtime.sendMessage({ type: "xdmSendLogicalCandidatesV2", tabId: activeTab.id, logicalMediaIds: ids });
+    if (!result || result.ok !== true) throw new Error(result && result.error || "XDM handoff failed");
+    setStatus(`Sent ${result.sentCount} selected media item${result.sentCount === 1 ? "" : "s"} to XDM.`, "ok");
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error), "error");
+  } finally { updateSendSelectedButton(); }
+}
+
 function setStatus(message, kind = "") {
   const node = document.getElementById("status");
   node.textContent = message;
@@ -229,11 +365,13 @@ async function refreshDiagnostics() {
       document.getElementById("sendPage").disabled = false;
       document.getElementById("appTest").disabled = false;
       document.getElementById("rescan").disabled = false;
+      document.getElementById("refreshCapturedMedia").disabled = false;
     } else {
       document.getElementById("currentHost").textContent = "Open a normal webpage to use the bridge";
     }
     await refreshDiagnostics();
-    diagnosticTimer = setInterval(refreshDiagnostics, 1200);
+    await refreshLogicalCandidates();
+    diagnosticTimer = setInterval(async () => { await refreshDiagnostics(); await refreshLogicalCandidates(); }, 1200);
   } catch (error) {
     setStatus(error && error.message ? error.message : String(error), "error");
   }
@@ -270,3 +408,6 @@ document.getElementById("rescan").addEventListener("click", async () => {
     setStatus(error && error.message ? error.message : String(error), "error");
   }
 });
+
+document.getElementById("refreshCapturedMedia").addEventListener("click", refreshLogicalCandidates);
+document.getElementById("sendSelectedMedia").addEventListener("click", sendSelectedLogicalCandidates);

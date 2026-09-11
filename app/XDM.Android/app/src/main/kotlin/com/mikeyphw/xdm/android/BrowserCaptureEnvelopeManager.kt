@@ -26,6 +26,25 @@ import javax.crypto.spec.SecretKeySpec
  * The public key is exported into the generated extension; the private key never leaves AndroidKeyStore.
  */
 class BrowserCaptureEnvelopeManager {
+    data class VariantHint(
+        val url: String,
+        val bandwidthBitsPerSecond: Long? = null,
+        val width: Int? = null,
+        val height: Int? = null,
+        val codecs: String? = null,
+        val audioGroup: String? = null,
+        val subtitleGroup: String? = null,
+    )
+
+    data class TrackHint(
+        val url: String,
+        val type: String,
+        val groupId: String? = null,
+        val name: String? = null,
+        val language: String? = null,
+        val isDefault: Boolean = false,
+    )
+
     data class Candidate(
         val url: String,
         val pageUrl: String?,
@@ -47,6 +66,17 @@ class BrowserCaptureEnvelopeManager {
         val evidence: List<String>,
         val proposedHeaders: Map<String, String>,
         val finalHeaders: Map<String, String>,
+        val canonicalUrl: String? = null,
+        val logicalMediaId: String? = null,
+        val manifestRole: String? = null,
+        val confidence: Int = 0,
+        val observationCount: Int = 1,
+        val segmentCount: Int = 0,
+        val encryptedAes128: Boolean = false,
+        val protectedMedia: Boolean = false,
+        val lowLatency: Boolean = false,
+        val variantHints: List<VariantHint> = emptyList(),
+        val trackHints: List<TrackHint> = emptyList(),
     )
 
     data class DecodedSession(
@@ -150,7 +180,7 @@ class BrowserCaptureEnvelopeManager {
                 val url = ExternalUrlPolicy.normalizedUrl(item.optString("url")) ?: continue
                 val frameUrl = ExternalUrlPolicy.normalizedUrl(item.optString("frameUrl").takeIf(String::isNotBlank))
                 val candidatePage = ExternalUrlPolicy.normalizedUrl(item.optString("pageUrl").takeIf(String::isNotBlank)) ?: pageUrl
-                val stableId = item.optString("stableMediaId").safeToken(160)
+                val stableId = (item.optString("logicalMediaId").safeToken(160) ?: item.optString("stableMediaId").safeToken(160))
                 val candidateRevision = item.optLong("sessionRevision", revision).takeIf { it > 0L } ?: revision
                 val requestFingerprint = item.optString("requestFingerprint").safeToken(96)
                     ?: "direct-" + "$sessionId|$candidateRevision|$index|$url"
@@ -177,6 +207,17 @@ class BrowserCaptureEnvelopeManager {
                         evidence = item.optJSONArray("evidence").stringList(8, 48),
                         proposedHeaders = item.optJSONObject("proposedHeaders").headerMap(),
                         finalHeaders = item.optJSONObject("finalHeaders").headerMap(),
+                        canonicalUrl = ExternalUrlPolicy.normalizedUrl(item.optString("canonicalUrl").takeIf(String::isNotBlank)),
+                        logicalMediaId = item.optString("logicalMediaId").safeToken(160) ?: stableId,
+                        manifestRole = item.optString("manifestRole").sanitizeToken(24, "").takeIf(String::isNotBlank),
+                        confidence = item.optInt("confidence", 0).coerceIn(0, 2000),
+                        observationCount = item.optInt("observationCount", 1).coerceIn(1, 1_000_000),
+                        segmentCount = item.optInt("segmentCount", 0).coerceIn(0, 1_000_000),
+                        encryptedAes128 = item.optBoolean("encryptedAes128", false),
+                        protectedMedia = item.optBoolean("protectedMedia", false),
+                        lowLatency = item.optBoolean("lowLatency", false),
+                        variantHints = item.optJSONArray("variantInfo").variantHints(),
+                        trackHints = item.optJSONArray("trackInfo").trackHints(),
                     ),
                 )
             }
@@ -219,7 +260,7 @@ class BrowserCaptureEnvelopeManager {
                 val url = ExternalUrlPolicy.normalizedUrl(item.optString("url")) ?: continue
                 val frameUrl = ExternalUrlPolicy.normalizedUrl(item.optString("frameUrl").takeIf(String::isNotBlank))
                 val candidatePage = ExternalUrlPolicy.normalizedUrl(item.optString("pageUrl").takeIf(String::isNotBlank)) ?: pageUrl
-                val stableId = item.optString("stableMediaId").safeToken(160)
+                val stableId = (item.optString("logicalMediaId").safeToken(160) ?: item.optString("stableMediaId").safeToken(160))
                 val candidateRevision = item.optLong("sessionRevision", revision).takeIf { it > 0L } ?: revision
                 val requestFingerprint = item.optString("requestFingerprint").safeToken(96)
                     ?: "legacy-" + "$sessionId|$candidateRevision|$index|$url"
@@ -246,6 +287,17 @@ class BrowserCaptureEnvelopeManager {
                         evidence = item.optJSONArray("evidence").stringList(8, 48),
                         proposedHeaders = item.optJSONObject("proposedHeaders").headerMap(),
                         finalHeaders = item.optJSONObject("finalHeaders").headerMap(),
+                        canonicalUrl = ExternalUrlPolicy.normalizedUrl(item.optString("canonicalUrl").takeIf(String::isNotBlank)),
+                        logicalMediaId = item.optString("logicalMediaId").safeToken(160) ?: stableId,
+                        manifestRole = item.optString("manifestRole").sanitizeToken(24, "").takeIf(String::isNotBlank),
+                        confidence = item.optInt("confidence", 0).coerceIn(0, 2000),
+                        observationCount = item.optInt("observationCount", 1).coerceIn(1, 1_000_000),
+                        segmentCount = item.optInt("segmentCount", 0).coerceIn(0, 1_000_000),
+                        encryptedAes128 = item.optBoolean("encryptedAes128", false),
+                        protectedMedia = item.optBoolean("protectedMedia", false),
+                        lowLatency = item.optBoolean("lowLatency", false),
+                        variantHints = item.optJSONArray("variantInfo").variantHints(),
+                        trackHints = item.optJSONArray("trackInfo").trackHints(),
                     ),
                 )
             }
@@ -300,6 +352,39 @@ class BrowserCaptureEnvelopeManager {
             val value = optString(rawName).replace(Regex("[\\r\\n]+"), " ").trim().take(8192)
             if (value.isBlank()) null else name to value
         }.toMap()
+    }
+
+    private fun JSONArray?.variantHints(): List<VariantHint> {
+        if (this == null) return emptyList()
+        return (0 until minOf(length(), 32)).mapNotNull { index ->
+            val item = optJSONObject(index) ?: return@mapNotNull null
+            val url = ExternalUrlPolicy.normalizedUrl(item.optString("url")) ?: return@mapNotNull null
+            VariantHint(
+                url = url,
+                bandwidthBitsPerSecond = item.optLong("bandwidth", 0L).takeIf { it > 0L },
+                width = item.optInt("width", 0).takeIf { it > 0 },
+                height = item.optInt("height", 0).takeIf { it > 0 },
+                codecs = item.optString("codecs").sanitizeText(160).takeIf(String::isNotBlank),
+                audioGroup = item.optString("audioGroup").sanitizeText(80).takeIf(String::isNotBlank),
+                subtitleGroup = item.optString("subtitleGroup").sanitizeText(80).takeIf(String::isNotBlank),
+            )
+        }.distinctBy(VariantHint::url)
+    }
+
+    private fun JSONArray?.trackHints(): List<TrackHint> {
+        if (this == null) return emptyList()
+        return (0 until minOf(length(), 32)).mapNotNull { index ->
+            val item = optJSONObject(index) ?: return@mapNotNull null
+            val url = ExternalUrlPolicy.normalizedUrl(item.optString("url")) ?: return@mapNotNull null
+            TrackHint(
+                url = url,
+                type = item.optString("type", "track").sanitizeToken(24, "track"),
+                groupId = item.optString("groupId").sanitizeText(80).takeIf(String::isNotBlank),
+                name = item.optString("name").sanitizeText(120).takeIf(String::isNotBlank),
+                language = item.optString("language").sanitizeText(48).takeIf(String::isNotBlank),
+                isDefault = item.optBoolean("default", false),
+            )
+        }.distinctBy { "${it.type}|${it.groupId}|${it.url}" }
     }
 
     private fun JSONArray?.stringList(maxItems: Int, maxChars: Int): List<String> {

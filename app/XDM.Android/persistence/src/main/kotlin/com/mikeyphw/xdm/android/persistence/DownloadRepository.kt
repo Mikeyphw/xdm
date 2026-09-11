@@ -33,6 +33,9 @@ import com.mikeyphw.xdm.android.model.MediaArtworkMergePolicy
 import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import com.mikeyphw.xdm.android.model.MediaCaptureStatus
 import com.mikeyphw.xdm.android.model.MediaManifestRole
+import com.mikeyphw.xdm.android.model.MediaProtectionKind
+import com.mikeyphw.xdm.android.model.MediaNativeCapability
+import com.mikeyphw.xdm.android.model.MediaObservationRecord
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -85,6 +88,7 @@ class DownloadRepository(private val database: AppDatabase) {
     val finalizationJournals: Flow<List<FinalizationJournal>> = database.finalizationDao().observeAll().map { rows -> rows.map(FinalizationJournalEntity::toModel) }
     val mediaCaptures: Flow<List<MediaCaptureRecord>> = database.mediaCaptureDao().observeAll().map { rows -> rows.map(MediaCaptureEntity::toModel) }
     val mediaVariants: Flow<List<MediaVariant>> = database.mediaCaptureDao().observeVariants().map { rows -> rows.map(MediaVariantEntity::toModel) }
+    val mediaObservationEvidence: Flow<List<MediaObservationRecord>> = database.mediaCaptureDao().observeObservationEvidence().map { rows -> rows.map(MediaObservationEntity::toModel) }
     val mediaOutputs: Flow<List<MediaOutputRecord>> = database.mediaCaptureDao().observeOutputs().map { rows -> rows.map(MediaOutputEntity::toModel) }
     val automationCommands: Flow<List<AutomationCommandRecord>> = database.automationCommandDao().observeAll().map { rows -> rows.map(AutomationCommandEntity::toModel) }
     val tags: Flow<List<DownloadTag>> = database.organizationDao().observeTags().map { rows -> rows.map(TagEntity::toModel) }
@@ -179,6 +183,18 @@ class DownloadRepository(private val database: AppDatabase) {
         if (records.isNotEmpty()) database.mediaCaptureDao().upsertAll(uniqueMediaFileNames(records).map { it.redactedForPersistence().toEntity() })
     }
     suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.redactedForPersistence().toEntity() })
+
+    /** Persist only redacted capture evidence. Exact headers/cookies/request URLs stay in transient handoff stores. */
+    suspend fun saveMediaObservationEvidence(records: List<MediaObservationRecord>, limit: Int = 384) {
+        if (records.isEmpty()) return
+        database.withTransaction {
+            database.mediaCaptureDao().upsertObservationEvidence(records.map { it.redactedForPersistence().toEntity() })
+            database.mediaCaptureDao().pruneObservationEvidence(limit.coerceIn(64, 2048))
+        }
+    }
+
+    suspend fun listMediaObservationEvidence(limit: Int = 384): List<MediaObservationRecord> =
+        database.mediaCaptureDao().listObservationEvidence(limit.coerceIn(1, 2048)).map(MediaObservationEntity::toModel)
     suspend fun replaceMediaVariants(records: List<MediaVariant>) = database.downloadGraphTransactionDao()
         .replaceMediaVariantsForCaptures(records.map { it.redactedForPersistence().toEntity() }, System.currentTimeMillis())
     suspend fun replaceMediaVariants(captureId: String, records: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) =
@@ -637,6 +653,16 @@ private fun MediaCaptureRecord.redactedForPersistence(): MediaCaptureRecord = co
     pageUrl = ExternalUrlPolicy.persistableUrl(pageUrl),
     thumbnailUrl = ExternalUrlPolicy.persistableUrl(thumbnailUrl),
     selectedVariantUrl = ExternalUrlPolicy.persistableUrl(selectedVariantUrl),
+    canonicalMediaUrl = ExternalUrlPolicy.persistableUrl(canonicalMediaUrl),
+)
+
+private fun MediaObservationRecord.redactedForPersistence(): MediaObservationRecord = copy(
+    url = ExternalUrlPolicy.persistableUrl(url) ?: url.substringBefore('?'),
+    pageUrl = ExternalUrlPolicy.persistableUrl(pageUrl),
+    initiator = initiator?.take(64),
+    semanticKind = semanticKind.take(48),
+    source = source.take(48),
+    observationCount = observationCount.coerceAtLeast(1),
 )
 
 private fun MediaVariant.redactedForPersistence(): MediaVariant = copy(
@@ -837,6 +863,13 @@ private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     manifestIsLive = manifestIsLive,
     manifestProtected = manifestProtected,
     manifestProtectionScheme = manifestProtectionScheme,
+    logicalMediaId = logicalMediaId,
+    canonicalMediaUrl = canonicalMediaUrl,
+    observationCount = observationCount.coerceAtLeast(1),
+    segmentCount = segmentCount.coerceAtLeast(0),
+    protectionKind = safeEnum(protectionKind, MediaProtectionKind.None),
+    nativeCapability = safeEnum(nativeCapability, MediaNativeCapability.Unknown),
+    logicalConfidence = logicalConfidence.coerceIn(0, 200),
 )
 
 private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
@@ -866,6 +899,43 @@ private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
     manifestIsLive = manifestIsLive,
     manifestProtected = manifestProtected,
     manifestProtectionScheme = manifestProtectionScheme,
+    logicalMediaId = logicalMediaId,
+    canonicalMediaUrl = canonicalMediaUrl,
+    observationCount = observationCount.coerceAtLeast(1),
+    segmentCount = segmentCount.coerceAtLeast(0),
+    protectionKind = protectionKind.name,
+    nativeCapability = nativeCapability.name,
+    logicalConfidence = logicalConfidence.coerceIn(0, 200),
+)
+
+private fun MediaObservationEntity.toModel() = MediaObservationRecord(
+    id = id,
+    logicalMediaId = logicalMediaId,
+    captureId = captureId,
+    url = url,
+    pageUrl = pageUrl,
+    mimeType = mimeType,
+    source = source,
+    initiator = initiator,
+    semanticKind = semanticKind,
+    observationCount = observationCount.coerceAtLeast(1),
+    firstObservedAtEpochMs = firstObservedAtEpochMs,
+    lastObservedAtEpochMs = lastObservedAtEpochMs,
+)
+
+private fun MediaObservationRecord.toEntity() = MediaObservationEntity(
+    id = id,
+    logicalMediaId = logicalMediaId,
+    captureId = captureId,
+    url = url,
+    pageUrl = pageUrl,
+    mimeType = mimeType,
+    source = source,
+    initiator = initiator,
+    semanticKind = semanticKind,
+    observationCount = observationCount.coerceAtLeast(1),
+    firstObservedAtEpochMs = firstObservedAtEpochMs,
+    lastObservedAtEpochMs = lastObservedAtEpochMs,
 )
 
 private fun MediaVariantEntity.toModel() = MediaVariant(

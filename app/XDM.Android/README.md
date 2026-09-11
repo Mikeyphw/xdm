@@ -1,8 +1,9 @@
 ## XDM Android 0.21.0
 
-Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. Media Parity01 is the current runtime-truth/diagnostics/backend-reliability authority, layered on top of the 2026-09-10 notification/WebView gap hotfix. The post-UX13 roadmap-completion hotfix remains the UI release authority; UX13 is the end-to-end UI/UX baseline and ACT01/ACT02 remains the experience-polish authority. Room is schema v22. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
+Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. Media Parity01 is the current runtime-truth/diagnostics/backend-reliability authority; Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority. The post-UX13 roadmap-completion hotfix remains the UI release authority; UX13 is the end-to-end UI/UX baseline and ACT01/ACT02 remains the experience-polish authority. Media Parity01 remains the runtime-truth/diagnostics/backend-reliability baseline; Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority. The post-UX13 roadmap-completion hotfix remains the UI release baseline.
+Room is schema v23. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
 
-Implementation evidence: `XDM_MEDIA_PARITY01_RUNTIME_TRUTH_DIAGNOSTICS_BACKEND_RELIABILITY_REPORT.md`.
+Implementation evidence: `XDM_MEDIA_PARITY01_RUNTIME_TRUTH_DIAGNOSTICS_BACKEND_RELIABILITY_REPORT.md` and `XDM_MEDIA_PARITY02_LOGICAL_MEDIA_CAPTURE_BROWSER_CONVERGENCE_REPORT.md`.
 
 # XDM Android
 
@@ -25,7 +26,7 @@ The Media workspace treats direct progressive media as a normal one-tap download
 
 XDM Android is a focused download manager with six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. It integrates with external browsers through explicit sharing, typed download intents, file-extension handlers, and Android download-manager actions. It does not register as a general browser; Live Locator uses a constrained in-app WebView only for user-requested runtime media observation.
 
-The permanent product boundary is still documented in `docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md`: XDM does not claim ordinary web navigation, but it does ship the constrained Live Locator WebView for user-requested media observation. `tools/validate-browser-removal-phase-7.py` is retained as historical Phase-7 evidence and is not the current topology authority. Media Parity01 and the current final release seal own runtime topology truth.
+The permanent product boundary is still documented in `docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md`: XDM does not claim ordinary web navigation, but it does ship the constrained Live Locator WebView for user-requested media observation. `tools/validate-browser-removal-phase-7.py` is retained as historical Phase-7 evidence and is not the current topology authority. Media Parity01 owns runtime/diagnostic truth; Media Parity02 and the current final release seal own logical capture/topology truth.
 
 Phase 8A + 8B adds a review-first manual intake planner and a grouped Downloads control center. The contract is documented in `docs/downloader/PHASE-8AB-DOWNLOADER-INTAKE-DASHBOARD.md`, and its validator is `tools/validate-downloader-experience-phase-8ab.py`.
 
@@ -40,7 +41,7 @@ Standalone Android download manager implemented through Phase 7: modular Kotlin/
 
 ## Current final release gate
 
-Phase 17 established the original public-release boundary at Room schema v14; that phase is now historical. The current product is Room schema v22 and the canonical gate carries the later browser-removal, remediation, MC04/MC05, and DL02/DL03 contracts forward.
+Phase 17 established the original public-release boundary at Room schema v14; that phase is now historical. The current product is Room schema v23 and the canonical gate carries the later browser-removal, remediation, MC04/MC05, and DL02/DL03 contracts forward.
 
 From `app/XDM.Android`, run the static gate with:
 

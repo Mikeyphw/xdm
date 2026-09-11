@@ -7,6 +7,8 @@
   const DIAGNOSTICS_KEY = "xdmNetworkDiagnosticsV1";
   const MESSAGE_TYPE = "xdmPageObservationV1";
   const PLAYBACK_TYPE = "xdmFramePlaybackV1";
+  const GET_LOGICAL_CANDIDATES_TYPE = "xdmGetLogicalCandidatesV2";
+  const SEND_LOGICAL_CANDIDATES_TYPE = "xdmSendLogicalCandidatesV2";
   const HEADER_ALLOWLIST = new Set(["authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language", "range"]);
   const MAX_DIAGNOSTIC_TABS = 40;
   const MAX_CANDIDATES_PER_TAB = 160;
@@ -157,6 +159,7 @@
         webResponses: 0,
         pageResponses: 0,
         bodyCandidates: 0,
+        suppressedSegments: 0,
         frames: new Set(),
         lastSource: ""
       });
@@ -186,7 +189,9 @@
         pageResponses: counter.pageResponses,
         bodyCandidates: counter.bodyCandidates,
         frameCount: counter.frames.size,
-        candidateCount: visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB).length
+        candidateCount: visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB).length,
+        rawObservationCount: counter.webResponses + counter.pageResponses,
+        suppressedSegmentCount: counter.suppressedSegments + candidateStore.diagnostic(tabId).suppressedSegments
       };
       const entries = Object.entries(all).sort((a, b) => Number(b[1].at || 0) - Number(a[1].at || 0));
       await browser.storage.local.set({ [DIAGNOSTICS_KEY]: Object.fromEntries(entries.slice(0, MAX_DIAGNOSTIC_TABS)) });
@@ -277,16 +282,8 @@
   }
 
   function findPrivilegedEvidence(tabId, rawUrl, frameId = null, maxAgeMs = 45 * 1000) {
-    const url = CORE.resolveUrl(rawUrl, "");
-    if (!url) return null;
-    const now = Date.now();
-    const wantedFrame = frameId == null ? null : Number(frameId);
-    return candidateStore.snapshot(tabId, MAX_CANDIDATES_PER_TAB).find(candidate => {
-      if (!candidate || candidate.source !== "webRequest" || candidate.url !== url) return false;
-      if (now - Number(candidate.at || 0) > maxAgeMs) return false;
-      if (wantedFrame != null && Number.isFinite(wantedFrame) && Number(candidate.frameId || 0) !== wantedFrame) return false;
-      return Boolean(candidate.requestFingerprint);
-    }) || null;
+    const candidate = candidateStore.findEvidence(tabId, rawUrl, frameId, maxAgeMs);
+    return candidate && candidate.source === "webRequest" && candidate.requestFingerprint ? candidate : null;
   }
 
   function candidateStreamKind(candidate) {
@@ -386,6 +383,11 @@
   }
 
   function addClassifiedResponse(tabId, details, headers, source = "webRequest", handoffContext = null) {
+    const counter = counterFor(tabId);
+    counter.lastSource = source;
+    if (source === "webRequest") counter.webResponses += 1;
+    counter.frames.add(Number(details.frameId || 0));
+
     const contentType = CORE.normalizeMime(details.contentType || "");
     const classification = CORE.classifyResponse({
       url: details.url,
@@ -395,12 +397,10 @@
       contentDisposition: details.contentDisposition || "",
       contentRange: details.contentRange || ""
     });
-    if (!classification.accept) return false;
-
-    const counter = counterFor(tabId);
-    counter.lastSource = source;
-    if (source === "webRequest") counter.webResponses += 1;
-    counter.frames.add(Number(details.frameId || 0));
+    if (!classification.accept) {
+      if (classification.reason === "segment" || classification.reason === "media-segment") counter.suppressedSegments += 1;
+      return false;
+    }
 
     const added = mergeCandidate(tabId, {
       url: details.url,
@@ -432,7 +432,7 @@
       autoOffer: classification.autoOffer,
       at: Date.now()
     });
-    if (added) scheduleDispatch(tabId);
+    if (added) { updateBadge(tabId); scheduleDispatch(tabId); }
     return added;
   }
 
@@ -493,6 +493,7 @@
           browserHandoff: evidence.browserHandoff || null,
           requestFingerprint: evidence.requestFingerprint,
           stableMediaId: evidence.stableMediaId,
+          manifestText: bodyExcerpt,
           at: Date.now(),
         })) || added;
       }
@@ -510,12 +511,13 @@
           headers: correlated.headers || {},
           requestFingerprint: correlated.requestFingerprint,
           stableMediaId: correlated.stableMediaId,
+          parentManifestUrl: analysis.hlsBody ? responseUrl : "",
           at: Date.now(),
         })) || added;
       }
     }
 
-    if (added) scheduleDispatch(tabId, 420);
+    if (added) { updateBadge(tabId); scheduleDispatch(tabId, 420); }
     return added;
   }
 
@@ -548,8 +550,76 @@
       stableMediaId: evidence.stableMediaId,
       at: Date.now(),
     }));
-    if (added) scheduleDispatch(tabId, 120);
+    if (added) { updateBadge(tabId); scheduleDispatch(tabId, 120); }
     return added;
+  }
+
+  function chooserSummary(tabId) {
+    const diagnostic = candidateStore.diagnostic(tabId);
+    const counter = counterFor(tabId);
+    return {
+      candidates: visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB).map(candidate => ({
+        logicalMediaId: candidate.logicalMediaId || candidate.stableMediaId,
+        stableMediaId: candidate.logicalMediaId || candidate.stableMediaId,
+        title: candidate.title || "Detected media",
+        url: candidate.canonicalUrl || CORE.logicalMediaUrl(candidate.url),
+        streamKind: candidateStreamKind(candidate),
+        manifestRole: candidate.manifestRole || (candidate.manifest ? "media" : "resource"),
+        quality: candidate.quality || "possible",
+        confidence: Number(candidate.confidence || 0),
+        observationCount: Number(candidate.observationCount || 1),
+        segmentCount: Number(candidate.segmentCount || 0),
+        variantCount: Array.isArray(candidate.variantInfo) && candidate.variantInfo.length ? candidate.variantInfo.length : (Array.isArray(candidate.variantUrls) ? candidate.variantUrls.length : 0),
+        trackCount: Array.isArray(candidate.trackInfo) && candidate.trackInfo.length ? candidate.trackInfo.length : (Array.isArray(candidate.trackUrls) ? candidate.trackUrls.length : 0),
+        variantInfo: (candidate.variantInfo || []).map(item => Object.assign({}, item)),
+        trackInfo: (candidate.trackInfo || []).map(item => Object.assign({}, item)),
+        durationMs: Number(candidate.durationMs || 0),
+        protectedMedia: Boolean(candidate.protectedMedia),
+        encryptedAes128: Boolean(candidate.encryptedAes128),
+        lowLatency: Boolean(candidate.lowLatency),
+      })),
+      rawObservationCount: counter.webResponses + counter.pageResponses,
+      suppressedSegmentCount: counter.suppressedSegments + diagnostic.suppressedSegments,
+      logicalCandidateCount: diagnostic.logicalCandidates,
+    };
+  }
+
+  async function sendLogicalCandidates(tabId, requestedIds) {
+    const ids = new Set((Array.isArray(requestedIds) ? requestedIds : []).map(value => String(value || "")).filter(Boolean));
+    const all = visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB);
+    const selected = all.filter(candidate => ids.has(String(candidate.logicalMediaId || candidate.stableMediaId || "")));
+    if (!selected.length) throw new Error("Choose at least one detected media item before sending to XDM.");
+    let tab;
+    try { tab = await browser.tabs.get(Number(tabId)); } catch (_) { tab = null; }
+    if (!tab || !/^https?:/i.test(tab.url || "")) throw new Error("The source tab is no longer available.");
+    const session = captureSessionFor(tabId);
+    session.revision = Math.max(Number(session.revision || 0), ...selected.map(item => Number(item.sessionRevision || 0)), Date.now());
+    const handoff = globalThis.XdmHandoffV1;
+    if (!handoff || typeof handoff.buildCaptureSession !== "function") throw new Error("XDM handoff builder is unavailable.");
+    const candidates = selected.slice(0, MAX_HANDOFF_CANDIDATES).map(item => Object.assign({}, item, { streamKind: candidateStreamKind(item) }));
+    const link = await handoff.buildCaptureSession({
+      sessionId: session.id,
+      revision: session.revision,
+      pageUrl: tab.url,
+      title: tab.title || "Detected media",
+      candidates,
+      totalCandidateCount: selected.length,
+      truncated: selected.length > candidates.length,
+      scheme: globalThis.XdmExtensionConfig && globalThis.XdmExtensionConfig.xdmScheme,
+    });
+    if (!link) throw new Error("XDM could not build a handoff for the selected media.");
+    await browser.tabs.executeScript(Number(tabId), {
+      code: `(() => { location.href = ${JSON.stringify(link)}; return true; })();`,
+      frameId: 0,
+      runAt: "document_idle"
+    });
+    return { ok: true, sentCount: candidates.length, selectedCount: selected.length, sessionId: session.id, revision: session.revision };
+  }
+
+  function updateBadge(tabId) {
+    if (!browser.browserAction || typeof browser.browserAction.setBadgeText !== "function") return;
+    const count = visibleCandidateSnapshot(tabId, MAX_CANDIDATES_PER_TAB).length;
+    Promise.resolve(browser.browserAction.setBadgeText({ tabId: Number(tabId), text: count ? String(Math.min(99, count)) : "" })).catch(() => {});
   }
 
   // Register synchronously so page scripts never race an absent receiving end.
@@ -557,6 +627,14 @@
     try {
       if (message && message.type === MESSAGE_TYPE) return processPageObservation(message, sender);
       if (message && message.type === PLAYBACK_TYPE) return processFramePlayback(message, sender);
+      if (message && message.type === GET_LOGICAL_CANDIDATES_TYPE) {
+        const tabId = Number(message.tabId != null ? message.tabId : sender && sender.tab && sender.tab.id);
+        return Promise.resolve(chooserSummary(tabId));
+      }
+      if (message && message.type === SEND_LOGICAL_CANDIDATES_TYPE) {
+        const tabId = Number(message.tabId != null ? message.tabId : sender && sender.tab && sender.tab.id);
+        return sendLogicalCandidates(tabId, message.logicalMediaIds).catch(error => ({ ok: false, error: error && error.message ? error.message : String(error) }));
+      }
     } catch (error) {
       publishStatus({ lastError: error && error.message ? error.message : String(error), lastErrorAt: Date.now() });
     }

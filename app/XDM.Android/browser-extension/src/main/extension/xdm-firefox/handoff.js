@@ -149,15 +149,43 @@
       manifest: Boolean(candidate.manifest || /\.(?:m3u8|mpd)(?:$|[?#])/i.test(url)),
       playbackObserved: Boolean(candidate.playbackObserved),
       evidence,
+      canonicalUrl: safeHttpUrl(candidate.canonicalUrl || ""),
+      logicalMediaId: String(candidate.logicalMediaId || candidate.stableMediaId || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 160),
+      manifestRole: cleanText(candidate.manifestRole || (candidate.manifest ? "media" : "resource"), 24).toLowerCase(),
+      confidence: Math.max(0, Math.min(2000, Math.trunc(Number(candidate.confidence || 0)))),
+      observationCount: Math.max(1, Math.min(1000000, Math.trunc(Number(candidate.observationCount || 1)))),
+      segmentCount: Math.max(0, Math.min(1000000, Math.trunc(Number(candidate.segmentCount || 0)))),
+      encryptedAes128: Boolean(candidate.encryptedAes128),
+      protectedMedia: Boolean(candidate.protectedMedia),
+      lowLatency: Boolean(candidate.lowLatency),
+      variantInfo: (candidate.variantInfo || []).slice(0, 32).map(item => ({
+        url: safeHttpUrl(item && item.url),
+        bandwidth: Math.max(0, Math.trunc(Number(item && (item.averageBandwidth || item.bandwidth) || 0))),
+        width: Math.max(0, Math.trunc(Number(item && item.width || 0))),
+        height: Math.max(0, Math.trunc(Number(item && item.height || 0))),
+        codecs: cleanText(item && item.codecs || "", 160),
+        audioGroup: cleanText(item && item.audioGroup || "", 80),
+        subtitleGroup: cleanText(item && item.subtitleGroup || "", 80),
+      })).filter(item => item.url),
+      trackInfo: (candidate.trackInfo || []).slice(0, 32).map(item => ({
+        url: safeHttpUrl(item && item.url),
+        type: cleanText(item && item.type || "track", 24).toLowerCase(),
+        groupId: cleanText(item && item.groupId || "", 80),
+        name: cleanText(item && item.name || "", 120),
+        language: cleanText(item && item.language || "", 48),
+        default: Boolean(item && item.default),
+      })).filter(item => item.url),
       proposedHeaders: sanitizeHeaderBag(proposed || {}),
       finalHeaders: sanitizeHeaderBag(finalSent || {}),
     };
-    for (const key of ["pageUrl", "frameUrl", "title", "contentType", "thumbnailUrl", "stableMediaId", "requestFingerprint"]) {
+    for (const key of ["pageUrl", "frameUrl", "title", "contentType", "thumbnailUrl", "stableMediaId", "requestFingerprint", "canonicalUrl", "logicalMediaId"]) {
       if (!result[key]) delete result[key];
     }
     if (!result.contentLength) delete result.contentLength;
     if (!result.durationMs) delete result.durationMs;
     if (!result.evidence.length) delete result.evidence;
+    if (!result.variantInfo.length) delete result.variantInfo;
+    if (!result.trackInfo.length) delete result.trackInfo;
     if (!Object.keys(result.proposedHeaders).length) delete result.proposedHeaders;
     if (!Object.keys(result.finalHeaders).length) delete result.finalHeaders;
     return result;

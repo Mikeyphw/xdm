@@ -230,6 +230,59 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   assert.strictEqual(diagnostics["11"].reason, "hls-body");
   assert.strictEqual(diagnostics["11"].quality, "strong");
 
+
+  // Parity02: a child media playlist, its many segments, a late master playlist, and a poster
+  // must collapse to one logical chooser item. The chooser, not raw requests, controls app launch.
+  const tab20 = 20;
+  events.before.listeners[0]({ tabId: tab20, requestId: "child", requestHeaders: [{ name: "Referer", value: "https://page.example/watch/20" }] });
+  events.headers.listeners[0]({
+    tabId: tab20, frameId: 0, requestId: "child",
+    url: "https://cdn.example/hls/720p.m3u8?sig=one", type: "xmlhttprequest",
+    responseHeaders: [{ name: "Content-Type", value: "application/vnd.apple.mpegurl" }]
+  });
+  const childBody = ["#EXTM3U", "#EXT-X-TARGETDURATION:6", ...Array.from({ length: 25 }, (_, i) => `segment-${i + 1}.ts`)].join("\n");
+  messageListener({ type: "xdmPageObservationV1", observation: {
+    responseUrl: "https://cdn.example/hls/720p.m3u8?sig=one", contentType: "application/vnd.apple.mpegurl", bodyExcerpt: childBody
+  }}, { tab: { id: tab20, url: "https://page.example/watch/20", title: "Parity video" }, frameId: 0, url: "https://page.example/watch/20" });
+
+  events.before.listeners[0]({ tabId: tab20, requestId: "master", requestHeaders: [{ name: "Referer", value: "https://page.example/watch/20" }] });
+  events.headers.listeners[0]({
+    tabId: tab20, frameId: 0, requestId: "master",
+    url: "https://cdn.example/hls/master.m3u8?sig=master-one", type: "xmlhttprequest",
+    responseHeaders: [{ name: "Content-Type", value: "application/vnd.apple.mpegurl" }]
+  });
+  const masterBody = "#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",URI=\"subs/en.m3u8\"\n#EXT-X-STREAM-INF:BANDWIDTH=2000000,SUBTITLES=\"subs\"\n720p.m3u8?sig=one";
+  messageListener({ type: "xdmPageObservationV1", observation: {
+    responseUrl: "https://cdn.example/hls/master.m3u8?sig=master-one", contentType: "application/vnd.apple.mpegurl", bodyExcerpt: masterBody
+  }}, { tab: { id: tab20, url: "https://page.example/watch/20", title: "Parity video" }, frameId: 0, url: "https://page.example/watch/20" });
+
+  const chooser = await messageListener({ type: "xdmGetLogicalCandidatesV2", tabId: tab20 }, {});
+  assert.strictEqual(chooser.logicalCandidateCount, 1, "master + child must become one logical media item");
+  assert.strictEqual(chooser.candidates.length, 1);
+  assert.strictEqual(chooser.candidates[0].manifestRole, "master");
+  assert.ok(chooser.candidates[0].variantCount >= 1, "master retains child variant relationship");
+  assert.ok(chooser.candidates[0].trackCount >= 1, "master retains subtitle/audio track relationship");
+  assert.ok(chooser.candidates[0].segmentCount >= 25, "child segments remain internal evidence on the logical item");
+  assert.ok(!chooser.candidates[0].url.includes("master-one"), "chooser URL is credential-redacted/canonicalized");
+  assert.ok(!chooser.candidates[0].url.includes("sig="), "canonical chooser URL removes volatile signing parameters entirely");
+
+  const beforeChooserLaunch = executeCalls.length;
+  const chosenId = chooser.candidates[0].logicalMediaId;
+  const sendResult = await messageListener({ type: "xdmSendLogicalCandidatesV2", tabId: tab20, logicalMediaIds: [chosenId] }, {});
+  assert.strictEqual(sendResult.ok, true);
+  assert.strictEqual(sendResult.sentCount, 1);
+  assert.ok(executeCalls.slice(beforeChooserLaunch).some(call => String(call.options.code || "").includes("location.href")), "explicit chooser submission launches XDM");
+
+  // Signed request refreshes from several observers must not multiply chooser rows.
+  for (let i = 0; i < 120; i += 1) {
+    const signed = `https://cdn.example/hls/master.m3u8?sig=rotate-${i}`;
+    events.before.listeners[0]({ tabId: tab20, requestId: `refresh-${i}`, requestHeaders: [] });
+    events.headers.listeners[0]({ tabId: tab20, frameId: 0, requestId: `refresh-${i}`, url: signed, type: "xmlhttprequest", responseHeaders: [{ name: "Content-Type", value: "application/vnd.apple.mpegurl" }] });
+  }
+  const stressedChooser = await messageListener({ type: "xdmGetLogicalCandidatesV2", tabId: tab20 }, {});
+  assert.strictEqual(stressedChooser.logicalCandidateCount, 1, "rotating signed requests stay one logical media item");
+  assert.ok(stressedChooser.candidates[0].observationCount >= 100, "raw observation volume is tracked independently from logical row count");
+
   console.log("Phase 38 background smoke tests passed");
 })().catch(error => {
   console.error(error);

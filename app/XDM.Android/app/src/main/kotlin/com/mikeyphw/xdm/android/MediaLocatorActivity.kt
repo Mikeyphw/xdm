@@ -40,6 +40,8 @@ import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.mikeyphw.xdm.android.media.MediaCaptureService
+import com.mikeyphw.xdm.android.media.LogicalMediaGraphEngine
+import com.mikeyphw.xdm.android.media.MediaObservation
 import com.mikeyphw.xdm.android.media.MediaSniffingEngine
 import com.mikeyphw.xdm.android.media.MediaSniffingInput
 import com.mikeyphw.xdm.android.media.MediaSniffingSource
@@ -131,6 +133,7 @@ class MediaLocatorActivity : ComponentActivity() {
     private var pageOperationId: String? = null
 
     private data class LocatedMedia(
+        val logicalMediaId: String,
         val url: String,
         val mimeType: String?,
         val kind: MediaSourceKind,
@@ -152,6 +155,7 @@ class MediaLocatorActivity : ComponentActivity() {
 
     private val engine = MediaSniffingEngine()
     private val captureService = MediaCaptureService()
+    private val logicalGraph = LogicalMediaGraphEngine(sniffingEngine = engine, captureService = captureService)
     private val located = linkedMapOf<String, LocatedMedia>()
     private val requestLedgerLock = Any()
     private val requestLedger = object : LinkedHashMap<String, NativeRequestEvidence>(64, 0.75f, true) {
@@ -652,6 +656,7 @@ class MediaLocatorActivity : ComponentActivity() {
             return
         }
         located.clear()
+        logicalGraph.clear()
         resultsExpanded = true
         lastMainFrameError = null
         hideMainFrameError()
@@ -780,51 +785,48 @@ class MediaLocatorActivity : ComponentActivity() {
                     // credential-enriched request by calling the bridge directly.
                     val observedHeaders = if (correlated != null) exactHeaders + jsHeaders else emptyMap()
                     val primaryHeaders = inheritedHeaders + observedHeaders
-                    val plan = withContext(Dispatchers.Default) {
-                        engine.sniff(
-                            MediaSniffingInput(
+                    val graphSnapshot = withContext(Dispatchers.Default) {
+                        logicalGraph.observe(
+                            MediaObservation(
                                 url = url,
                                 mimeType = mime,
-                                contentDisposition = contentDisposition,
                                 contentLength = contentLength,
                                 durationMs = durationMs,
                                 thumbnailUrl = thumbnailUrl,
                                 thumbnailProvenance = thumbnailProvenance,
                                 bodyPrefix = body,
                                 pageUrl = authoritativePage,
-                                pageTitle = title,
+                                pageTitle = title ?: currentPageTitle,
                                 requestHeaders = primaryHeaders,
                                 source = if (source == "dom") MediaSniffingSource.AppPageProbe else MediaSniffingSource.NetworkObservation,
+                                initiator = source,
                             ),
                         )
                     }
-                    if (plan.candidates.isEmpty()) return@launch
-                    val recordsById = plan.records.associateBy(MediaCaptureRecord::id)
-                    val found = plan.candidates.mapNotNull { candidate ->
-                        val captureId = MediaCaptureService.captureIdFor(candidate.url)
-                        val record = recordsById[captureId] ?: return@mapNotNull null
-                        val candidateCorrelated = nativeEvidenceFor(candidate.url)
-                        val sameObservedUrl = correlationKey(candidate.url) == key
-                        val candidateHeaders = if (sameObservedUrl && candidateCorrelated != null) {
-                            safeInheritedSessionHeaders(authoritativePage) + correlatedRequestHeaders(candidate.url, candidateCorrelated) + jsHeaders
+                    val repository = (application as XdmApplication).container.repository
+                    graphSnapshot.evidence.lastOrNull()?.let { repository.saveMediaObservationEvidence(listOf(it)) }
+                    val found = graphSnapshot.items.map { item ->
+                        val nativeForCanonical = nativeEvidenceFor(item.requestUrl)
+                        val exactHeaders = if (nativeForCanonical != null) {
+                            safeInheritedSessionHeaders(authoritativePage) + correlatedRequestHeaders(item.requestUrl, nativeForCanonical)
                         } else {
-                            // URLs extracted from a response body may point at a different CDN. Do not
-                            // copy the parent Authorization/Cookie set onto that child URL.
-                            safeInheritedSessionHeaders(authoritativePage)
+                            item.requestHeaders
                         }
                         LocatedMedia(
-                            url = candidate.url,
-                            mimeType = candidate.mimeType,
-                            kind = candidate.kind,
-                            reason = candidate.reason + if (candidateCorrelated != null) "+native-request" else "+js-evidence",
-                            pageUrl = authoritativePage,
-                            pageTitle = candidate.title,
-                            requestHeaders = candidateHeaders,
-                            rank = candidate.rank + if (candidateCorrelated != null) 8 else 0,
-                            record = record,
-                            variants = plan.variants.filter { it.captureId == captureId },
+                            logicalMediaId = item.logicalMediaId,
+                            url = item.requestUrl,
+                            mimeType = item.record.mimeType,
+                            kind = item.record.kind,
+                            reason = "logical-media • ${item.observationCount} observations • ${item.segmentCount} segments internal",
+                            pageUrl = authoritativePage ?: item.record.pageUrl,
+                            pageTitle = item.record.title,
+                            requestHeaders = exactHeaders,
+                            rank = item.record.logicalConfidence,
+                            record = item.record,
+                            variants = item.variants,
                         )
                     }
+                    located.clear()
                     found.forEach(::putLocatedBounded)
                     refreshList()
                     status.text = resources.getQuantityString(
@@ -851,11 +853,11 @@ class MediaLocatorActivity : ComponentActivity() {
     }
 
     private fun putLocatedBounded(candidate: LocatedMedia) {
-        val previous = located[candidate.url]
-        if (previous == null || candidate.rank >= previous.rank) located[candidate.url] = candidate
+        val previous = located[candidate.logicalMediaId]
+        if (previous == null || candidate.rank >= previous.rank) located[candidate.logicalMediaId] = candidate
         while (located.size > MAX_LOCATED_CANDIDATES) {
             val weakest = located.values.minWithOrNull(compareBy<LocatedMedia> { it.rank }.thenBy { it.url }) ?: break
-            located.remove(weakest.url)
+            located.remove(weakest.logicalMediaId)
         }
     }
 
@@ -1249,6 +1251,7 @@ class MediaLocatorActivity : ComponentActivity() {
             }
             putLocatedBounded(
                 LocatedMedia(
+                    logicalMediaId = effectiveRecord.logicalMediaId ?: LogicalMediaGraphEngine.logicalIdFor(url, pageUrl, effectiveRecord.kind),
                     url = url,
                     mimeType = mime,
                     kind = effectiveRecord.kind,

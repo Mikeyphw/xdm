@@ -41,7 +41,7 @@ class ManifestLocatorMc04Mc05ContractTest {
         assertTrue(entities.contains("manifestProtectionScheme"))
         assertTrue(repository.contains("manifestRole = manifestRole.name"))
         assertTrue(repository.contains("audioGroupId = audioGroupId"))
-        assertTrue(database.contains("version = 22"))
+        assertTrue(database.contains("version = 23"))
         assertTrue(migrations.contains("Migration20To21 = object : Migration(20, 21)"))
         assertTrue(migrations.contains("Migration21To22 = object : Migration(21, 22)"))
         assertTrue(app.contains("Migration20To21"))

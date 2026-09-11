@@ -66,7 +66,7 @@ for token in (
     "navigate(AppRoute.Media)",
 ):
     need(vm, token, "Android session import")
-need(vm, "CurrentRoomSchemaVersion = 22", "Room schema")
+need(vm, "CurrentRoomSchemaVersion = 23", "Room schema")
 
 for token in ("BrowserCaptureSessionHeader", "Browser session values stay private", "XDM kept the highest-confidence results in this handoff"):
     need(screen, token, "captured media inbox")

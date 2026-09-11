@@ -137,7 +137,7 @@ data class FinalizationJournalEntity(
     @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
 )
 
-@Entity(tableName = "media_captures", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.SET_NULL)], indices = [Index("downloadId"), Index("status"), Index("kind"), Index("updatedAtEpochMs")])
+@Entity(tableName = "media_captures", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.SET_NULL)], indices = [Index("downloadId"), Index("status"), Index("kind"), Index("updatedAtEpochMs"), Index("logicalMediaId")])
 data class MediaCaptureEntity(
     @PrimaryKey val id: String,
     val sourceUrl: String,
@@ -165,6 +165,33 @@ data class MediaCaptureEntity(
     @ColumnInfo(defaultValue = "NULL") val manifestIsLive: Boolean?,
     @ColumnInfo(defaultValue = "0") val manifestProtected: Boolean,
     @ColumnInfo(defaultValue = "NULL") val manifestProtectionScheme: String?,
+    @ColumnInfo(defaultValue = "NULL") val logicalMediaId: String?,
+    @ColumnInfo(defaultValue = "NULL") val canonicalMediaUrl: String?,
+    @ColumnInfo(defaultValue = "1") val observationCount: Int,
+    @ColumnInfo(defaultValue = "0") val segmentCount: Int,
+    @ColumnInfo(defaultValue = "'None'") val protectionKind: String,
+    @ColumnInfo(defaultValue = "'Unknown'") val nativeCapability: String,
+    @ColumnInfo(defaultValue = "0") val logicalConfidence: Int,
+)
+
+@Entity(
+    tableName = "media_observations",
+    foreignKeys = [ForeignKey(entity = MediaCaptureEntity::class, parentColumns = ["id"], childColumns = ["captureId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("logicalMediaId"), Index("captureId"), Index("source"), Index("lastObservedAtEpochMs")],
+)
+data class MediaObservationEntity(
+    @PrimaryKey val id: String,
+    val logicalMediaId: String?,
+    val captureId: String?,
+    val url: String,
+    val pageUrl: String?,
+    val mimeType: String?,
+    val source: String,
+    val initiator: String?,
+    val semanticKind: String,
+    @ColumnInfo(defaultValue = "1") val observationCount: Int,
+    val firstObservedAtEpochMs: Long,
+    val lastObservedAtEpochMs: Long,
 )
 
 @Entity(

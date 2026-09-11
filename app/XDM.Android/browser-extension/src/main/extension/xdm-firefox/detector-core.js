@@ -59,7 +59,7 @@
       url.protocol = url.protocol.toLowerCase();
       url.hostname = url.hostname.toLowerCase();
       for (const [name] of [...url.searchParams.entries()]) {
-        if (SENSITIVE_QUERY_NAME_RE.test(name.replace(/[^A-Za-z0-9_-]+/g, "_"))) url.searchParams.set(name, "REDACTED");
+        if (SENSITIVE_QUERY_NAME_RE.test(name.replace(/[^A-Za-z0-9_-]+/g, "_"))) url.searchParams.delete(name);
       }
       return url.href;
     } catch (_) {
@@ -312,6 +312,98 @@
     };
   }
 
+
+  function hlsAttributes(value) {
+    const attrs = {};
+    const text = String(value || "");
+    const re = /([A-Z0-9-]+)=("[^"]*"|'[^']*'|[^,]*)/gi;
+    let match;
+    while ((match = re.exec(text))) {
+      let raw = String(match[2] || "").trim();
+      if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) raw = raw.slice(1, -1);
+      attrs[String(match[1] || "").toUpperCase()] = raw;
+    }
+    return attrs;
+  }
+
+  function parseHlsRelationships(text, responseUrl) {
+    const body = String(text || "").slice(0, MAX_BODY_CHARS);
+    const lines = body.split(/\r?\n/);
+    const childPlaylists = [];
+    const mediaTracks = [];
+    const variantInfo = [];
+    const trackInfo = [];
+    const segments = [];
+    let pendingStreamInf = null;
+    let encryptedAes128 = false;
+    let protectedMedia = false;
+    let lowLatency = false;
+    for (const rawLine of lines) {
+      const line = String(rawLine || "").trim();
+      if (!line) continue;
+      if (/^#EXT-X-STREAM-INF:/i.test(line)) { pendingStreamInf = hlsAttributes(line.slice(line.indexOf(':') + 1)); continue; }
+      if (/^#EXT-X-MEDIA:/i.test(line)) {
+        const attrs = hlsAttributes(line.slice(line.indexOf(':') + 1));
+        const uri = resolveUrl(attrs.URI, responseUrl);
+        if (uri) {
+          mediaTracks.push(uri);
+          trackInfo.push({
+            url: uri,
+            type: String(attrs.TYPE || "track").toLowerCase(),
+            groupId: String(attrs['GROUP-ID'] || ""),
+            name: String(attrs.NAME || ""),
+            language: String(attrs.LANGUAGE || ""),
+            default: String(attrs.DEFAULT || "").toUpperCase() === "YES",
+          });
+        }
+        continue;
+      }
+      if (/^#EXT-X-KEY:/i.test(line)) {
+        const method = (/METHOD=([^,]+)/i.exec(line) || [])[1] || "";
+        const keyFormat = (/KEYFORMAT=(?:"([^"]+)"|'([^']+)'|([^,]+))/i.exec(line) || []);
+        const format = String(keyFormat[1] || keyFormat[2] || keyFormat[3] || "identity").trim().toLowerCase();
+        if (/^AES-128$/i.test(method) && (!format || format === "identity")) encryptedAes128 = true;
+        if (/^SAMPLE-AES/i.test(method) || (format && format !== "identity")) protectedMedia = true;
+        continue;
+      }
+      if (/^#EXT-X-(?:PART|PRELOAD-HINT|SERVER-CONTROL):/i.test(line)) { lowLatency = true; continue; }
+      if (line.startsWith('#')) continue;
+      const resolved = resolveUrl(line, responseUrl);
+      if (!resolved) continue;
+      if (pendingStreamInf || /\.m3u8(?:$|[?#])/i.test(resolved)) {
+        childPlaylists.push(resolved);
+        if (pendingStreamInf) {
+          const resolution = String(pendingStreamInf.RESOLUTION || "").split("x");
+          variantInfo.push({
+            url: resolved,
+            bandwidth: Number(pendingStreamInf.BANDWIDTH || 0),
+            averageBandwidth: Number(pendingStreamInf['AVERAGE-BANDWIDTH'] || 0),
+            width: Number(resolution[0] || 0),
+            height: Number(resolution[1] || 0),
+            codecs: String(pendingStreamInf.CODECS || ""),
+            audioGroup: String(pendingStreamInf.AUDIO || ""),
+            subtitleGroup: String(pendingStreamInf.SUBTITLES || ""),
+          });
+        }
+        pendingStreamInf = null;
+      } else {
+        segments.push(resolved);
+      }
+    }
+    return {
+      isHls: /^\s*#EXTM3U/i.test(body),
+      master: childPlaylists.length > 0 || mediaTracks.length > 0,
+      childPlaylists: [...new Set(childPlaylists)],
+      mediaTracks: [...new Set(mediaTracks)],
+      variantInfo: [...new Map(variantInfo.map(item => [item.url, item])).values()],
+      trackInfo: [...new Map(trackInfo.map(item => [`${item.type}|${item.groupId}|${item.url}`, item])).values()],
+      segments: [...new Set(segments)],
+      encryptedAes128,
+      protectedMedia,
+      lowLatency,
+    };
+  }
+
   function rankCandidate(candidate) {
     let score = Number(candidate && candidate.confidence || 0);
     const url = String(candidate && candidate.url || "");
@@ -339,6 +431,7 @@
     classifyResponse,
     extractCandidatesFromText,
     analyzeBody,
+    parseHlsRelationships,
     rankCandidate,
     resolveUrl,
     candidateConfidence,

@@ -61,6 +61,7 @@ validators=(
   tools/validate-list-quick-actions-final-seal.py
   tools/validate-notification-webview-gap-hotfix.py
   tools/validate-media-parity01-runtime-truth.py
+  tools/validate-media-parity02-logical-capture.py
 )
 
 for validator in "${matrix_owned_validators[@]}" "${validators[@]}"; do

@@ -277,14 +277,16 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         val variants = lines.count { it.startsWith("#EXT-X-STREAM-INF", ignoreCase = true) }
         val mediaGroups = lines.filter { it.startsWith("#EXT-X-MEDIA", ignoreCase = true) }.map { attributeList(it.substringAfter(':', "")) }
         val keyLines = lines.filter { it.startsWith("#EXT-X-KEY", true) || it.startsWith("#EXT-X-SESSION-KEY", true) }
-        val protection = keyLines.map { attributeList(it.substringAfter(':', "")) }.firstOrNull { attrs -> attrs["METHOD"]?.equals("NONE", ignoreCase = true) != true }
+        val keyAttributes = keyLines.map { attributeList(it.substringAfter(':', "")) }
+        val protection = keyAttributes.firstOrNull { attrs -> attrs["METHOD"]?.equals("NONE", ignoreCase = true) != true }
         val scheme = protection?.let { it["KEYFORMAT"] ?: it["METHOD"] }
-        val protectionEvidence = BrowserHandoffMediaPolicy.classifyProtection(
-            hlsKeyMetadata = scheme,
-            dashContentProtection = null,
-            browserEncryptionEvent = null,
-            resolverReport = null,
-        )
+        // RFC 8216 AES-128 with the identity key format is encrypted media, not DRM. Treat
+        // SAMPLE-AES/non-identity key formats as protected and leave AES-128 eligible for native handling.
+        val hasDrm = keyAttributes.any { attrs ->
+            val method = attrs["METHOD"]?.uppercase(Locale.ROOT).orEmpty()
+            val keyFormat = attrs["KEYFORMAT"]?.lowercase(Locale.ROOT)
+            method.startsWith("SAMPLE-AES") || (!keyFormat.isNullOrBlank() && keyFormat != "identity")
+        }
         return MediaManifestSummary(
             kind = MediaSourceKind.HlsPlaylist,
             role = role,
@@ -293,8 +295,8 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             subtitleTrackCount = mediaGroups.count { it["TYPE"]?.equals("SUBTITLES", ignoreCase = true) == true || it["TYPE"]?.equals("CLOSED-CAPTIONS", ignoreCase = true) == true },
             // A master playlist is neither live nor VOD by itself. Live/VOD belongs to media playlists.
             isLive = if (isMaster) null else lines.none { it.equals("#EXT-X-ENDLIST", ignoreCase = true) },
-            hasDrm = protectionEvidence.protected,
-            protectionScheme = protectionEvidence.evidence.firstOrNull()?.scheme ?: scheme,
+            hasDrm = hasDrm,
+            protectionScheme = scheme,
         )
     }
 
@@ -469,6 +471,18 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             @Suppress("UNUSED_VARIABLE") val requestEvidence = sessionId to requestFingerprint
             return "media-browser-" + MessageDigest.getInstance("SHA-256")
                 .digest(captureIdentityUrl(url).toByteArray())
+                .joinToString("") { "%02x".format(it) }
+                .take(28)
+        }
+
+        /** Browser candidate stores may already supply a logical-media identity after collapsing
+         * variants, retries, and signed URL refreshes. Prefer that identity so Android import uses the
+         * same grouping semantics; exact request fingerprints remain evidence only. */
+        fun browserLogicalCaptureIdFor(stableMediaId: String?, url: String): String {
+            val stable = stableMediaId?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9._:-]{8,160}")) }
+            val identity = stable ?: captureIdentityUrl(url)
+            return "media-browser-logical-" + MessageDigest.getInstance("SHA-256")
+                .digest(identity.toByteArray())
                 .joinToString("") { "%02x".format(it) }
                 .take(28)
         }

@@ -58,7 +58,27 @@ object MediaArtworkMergePolicy {
 enum class MediaResolutionStatus { Unresolved, Resolved, RequiresRefresh, Failed }
 enum class MediaSourceKind { DirectFile, ProgressiveMedia, HlsPlaylist, DashManifest, AudioStream, VideoStream, Unknown }
 enum class MediaManifestRole { Unknown, HlsMaster, HlsMedia, DashMpd }
+/** Protection taxonomy is deliberately separate from DRM. AES-128 HLS is encrypted transport,
+ * but remains ordinary media and is eligible for native execution in the next pipeline stage. */
+enum class MediaProtectionKind { None, Aes128, SampleAes, Drm, UnknownEncrypted }
+/** Capture-time capability classification. Parity02 classifies; Parity03 performs execution. */
+enum class MediaNativeCapability { Unknown, NativeCandidate, FallbackRequired, ProtectedUnsupported }
 enum class MediaVariantKind { Primary, Video, Audio, Subtitle, Thumbnail }
+
+data class MediaObservationRecord(
+    val id: String,
+    val logicalMediaId: String?,
+    val captureId: String?,
+    val url: String,
+    val pageUrl: String?,
+    val mimeType: String?,
+    val source: String,
+    val initiator: String?,
+    val semanticKind: String,
+    val observationCount: Int = 1,
+    val firstObservedAtEpochMs: Long,
+    val lastObservedAtEpochMs: Long,
+)
 
 enum class MediaOutputOwnerKind { AppDownload, TermuxJob }
 
@@ -157,6 +177,17 @@ data class MediaCaptureRecord(
     val manifestIsLive: Boolean? = null,
     val manifestProtected: Boolean = false,
     val manifestProtectionScheme: String? = null,
+    /** Stable identity of the user-facing media item. Raw request/session fingerprints are evidence only. */
+    val logicalMediaId: String? = null,
+    /** Redacted canonical manifest/media URL used for durable grouping and Details presentation. */
+    val canonicalMediaUrl: String? = null,
+    /** Number of raw observations merged into this logical item. */
+    val observationCount: Int = 1,
+    /** Number of transport segments observed/parsed underneath this logical item; never separate UI rows. */
+    val segmentCount: Int = 0,
+    val protectionKind: MediaProtectionKind = MediaProtectionKind.None,
+    val nativeCapability: MediaNativeCapability = MediaNativeCapability.Unknown,
+    val logicalConfidence: Int = 0,
 ) {
     val isPlaylist: Boolean get() = kind == MediaSourceKind.HlsPlaylist || kind == MediaSourceKind.DashManifest
     val hasMetadata: Boolean get() = mimeType != null || container != null || durationMs != null || thumbnailUrl != null

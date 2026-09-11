@@ -31,6 +31,19 @@
     <button id="rescan" class="secondary" disabled>Rescan media</button>
   </section>
 
+
+  <section class="card" id="capturedMediaCard">
+    <div class="card-title-row">
+      <strong>Captured media</strong>
+      <span id="logicalMediaCount" class="count-pill">0</span>
+    </div>
+    <p class="hint">XDM groups manifests, variants, repeated requests, and segments into logical media items. Choose exactly what should be handed to the app.</p>
+    <div id="logicalMediaSummary" class="host">No logical media detected on this tab yet.</div>
+    <div id="logicalMediaCandidates" class="candidate-list" role="group" aria-label="Detected logical media"></div>
+    <button id="sendSelectedMedia" disabled>Send 0 to XDM</button>
+    <button id="refreshCapturedMedia" class="secondary" disabled>Refresh captured media</button>
+  </section>
+
   <section class="card">
     <label for="manualUrl">Manual URL</label>
     <input id="manualUrl" type="url" inputmode="url" placeholder="https://example.com/video.mp4">

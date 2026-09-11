@@ -179,7 +179,7 @@ class RemediationPhase06_07ContractTest {
         val schema20 = source("persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/20.json")
         val schema21 = source("persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/21.json")
 
-        assertTrue(database.contains("version = 22"))
+        assertTrue(database.contains("version = 23"))
         assertTrue(migrations.contains("Migration18To19 = object : Migration(18, 19)"))
         assertTrue(migrations.contains("completedArtifactUri"))
         assertTrue(migrations.contains("completedArtifactGeneration"))

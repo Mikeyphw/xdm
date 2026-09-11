@@ -48,8 +48,8 @@ app_gradle = text("app/build.gradle.kts")
 
 media_gate = manifest.get("media_final_validation_gate", {})
 require('versionName = "0.21.0"' in build, "media final gate must track current app version 0.21.0")
-require(re.search(r"version\s*=\s*22\b", database) is not None, "media final gate must track current Room schema 22")
-require(media_gate.get("schema_version_current") == 21, "PROJECT_MANIFEST media gate must be current-schema aware")
+require(re.search(r"version\s*=\s*23\b", database) is not None, "media final gate must track current Room schema 23")
+require(media_gate.get("schema_version_current") == 23, "PROJECT_MANIFEST media gate must be current-schema aware")
 require(media_gate.get("validation_reenabled") is True, "PROJECT_MANIFEST media gate must keep validation enabled")
 for marker in [
     "MediaFinalValidationGatePlanner",
@@ -83,7 +83,7 @@ for forbidden in [
     require(forbidden not in main_view_model, f"runtime release readiness must not self-certify with {forbidden}")
 require("staticValidationPassed: Boolean = false" in media_final and "fullValidationPassed: Boolean = false" in media_final, "media final gate evidence must default false")
 require("filesystemCoverageComplete" in media_final and "scannedFilesystemRootCount" in media_final, "media final gate must require real filesystem privacy coverage")
-require("schemaVersion != 22" in release_models, "final public release gate must track Room schema 22")
+require("schemaVersion != 23" in release_models, "final public release gate must track Room schema 23")
 
 if ERRORS:
     print("Media final validation gate failed:")

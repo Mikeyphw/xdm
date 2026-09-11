@@ -105,4 +105,19 @@ for (const name of ["part1.mp4", "init.mp4", "chunk.mp4"]) {
 }
 const realSegment=core.classifyResponse({url:"https://cdn.example/media/chunk_99.m4s",type:"media",contentType:"video/iso.segment"});
 assert.strictEqual(realSegment.accept,false); assert.strictEqual(realSegment.reason,"segment");
+
+const logicalSigned = core.logicalMediaUrl("https://cdn.example/master.m3u8?sig=one&expires=123&quality=1080p&X-Amz-Credential=secret&X-Amz-Signature=deadbeef");
+assert(!logicalSigned.includes("sig="));
+assert(!logicalSigned.toLowerCase().includes("x-amz"));
+assert(logicalSigned.includes("quality=1080p"));
+const rel = core.parseHlsRelationships(`#EXTM3U
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="English",LANGUAGE="en",DEFAULT=YES,URI="audio/en.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="subs/en.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=2800000,RESOLUTION=1280x720,CODECS="avc1.64001f",AUDIO="audio",SUBTITLES="subs"
+video/720.m3u8`, "https://cdn.example/master.m3u8");
+assert.strictEqual(rel.variantInfo.length,1);
+assert.strictEqual(rel.variantInfo[0].height,720);
+assert.strictEqual(rel.trackInfo.length,2);
+assert(rel.trackInfo.some(item => item.type === "subtitles" && item.language === "en"));
+
 console.log("detector and candidate-store tests passed");

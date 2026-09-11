@@ -69,8 +69,9 @@ aria2_manager = read("transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/tr
 aria2_backend = read("transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt")
 
 expected_overlay = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip"
+successor_overlay = "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"
 phase = manifest.get("media_parity01_runtime_truth_diagnostics_backend_reliability", {})
-require(manifest.get("current_overlay") == expected_overlay, "PROJECT_MANIFEST current_overlay must point to Media Parity01")
+require(manifest.get("current_overlay") in {expected_overlay, successor_overlay}, "PROJECT_MANIFEST current_overlay must point to Media Parity01 or an accepted successor")
 require(phase.get("status") == "implemented", "Media Parity01 manifest phase must be implemented")
 require(phase.get("room_schema") == 22, "Media Parity01 must report Room schema 22")
 require(phase.get("final_zip_privacy_scan_required") is True, "final ZIP privacy scan must be required")
@@ -100,7 +101,7 @@ require_all(release_security, ['"md5"', '"sess"'], "privacy diagnostics redactor
 require_all(debug_store, [
     '"xdm-debug-${safeFileName(run.id)}.zip"',
     "DiagnosticExportIntegrity.writeVerifiedZip",
-    "Room schema: 22",
+    "Room schema: 23",
     "Live Locator WebView",
     "Diagnostics version: v5 / Media Parity01",
     "DiagnosticBundleMetadata",
@@ -159,7 +160,7 @@ require("releaseDocsComplete = staticValidationPassed" not in main_vm, "release 
 require("noNewTopLevelRoutes = staticValidationPassed" not in main_vm, "route topology must not proxy static validation")
 require("diagnosticsRedacted = staticValidationPassed" not in main_vm, "diagnostics privacy must not proxy static validation")
 
-require("currentRoomSchemaVersion = 22" in developer, "Developer Center final media validation must use Room schema 22")
+require("currentRoomSchemaVersion = 23" in developer, "Developer Center final media validation must use current Room schema 23")
 require("currentRoomSchemaVersion = 21" not in developer, "stale Room schema 21 remains in Developer Center")
 require_all(developer, [
     "XDM_ROUTE_TOPOLOGY_VALIDATED",
@@ -168,7 +169,7 @@ require_all(developer, [
 ], "Developer media final validation")
 require_all(developer_workspace, [
     "Validation truth",
-    "Room schema: 22",
+    "Room schema: 23",
     "XDM_DIAGNOSTIC_EXPORT_VALIDATED",
     "XDM_REAL_DEVICE_SMOKE_PASSED",
     "XDM_ARIA2_PAYLOAD_VERIFIED",
@@ -179,7 +180,8 @@ require("Product: downloader-only; external browser handoff enabled; built-in br
 require("Browser and media-capture topology truthful" in final_seal, "active final RC seal must use truthful browser/media topology")
 require("Browser-free downloader boundary" not in final_seal, "active final RC seal still uses browser-free blocker")
 require_all(readme, [
-    "Media Parity01 is the current runtime-truth/diagnostics/backend-reliability authority",
+    "Media Parity01 remains the runtime-truth/diagnostics/backend-reliability baseline",
+    "Media Parity02 is the current logical-media capture and Firefox/WebView convergence authority",
     "keyless v3 `xdmdownload://capture` contract",
     "historical Phase-7 evidence",
 ], "README current truth")
@@ -194,7 +196,7 @@ require_all(core_test, [
 ], "core diagnostic regression tests")
 require_all(contract_test, [
     "legacyFirefoxCryptoTestsAreNotRequiredBlockers",
-    "validationFactsAreIndependentAndSchemaTruthIs22",
+    "validationFactsAreIndependentAndSchemaTruthIs23",
     "aria2DiagnosticUsesRealLifecycleSmokeAndOptionalUnavailableIsNonFatal",
 ], "Parity01 app contract tests")
 require_all(shell_model, [
@@ -234,7 +236,7 @@ for prop in [
 ]:
     require(prop in release_gate, f"signed release gate must attest earned independent evidence: {prop}")
 
-# Current source truth: current release-security/readiness diagnostics say schema 22, not stale v21.
+# Current source truth: successor source diagnostics say schema 23 while Parity01 historical metadata remains schema 22.
 for relative in [
     "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt",
     "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt",
@@ -266,9 +268,11 @@ for relative in [
     "tools/validate-phase64-final-android-downloader-rc-seal.py",
     "tools/validate-remediation-phase13-final-gate.py",
 ]:
-    require(expected_overlay in read(relative), f"active carry-forward validator must accept Media Parity01: {relative}")
+    source = read(relative)
+    require(expected_overlay in source, f"active carry-forward validator must accept Media Parity01: {relative}")
+    require(successor_overlay in source, f"active carry-forward validator must accept Media Parity02 successor: {relative}")
 
-require(manifest.get("final_public_release_gate", {}).get("room_schema_locked") == 22, "final public release gate must report Room schema 22")
-require(manifest.get("final_public_release_gate", {}).get("schema_version_unchanged") == 22, "final public release gate schema truth must be 22")
+require(manifest.get("final_public_release_gate", {}).get("room_schema_locked") == 23, "final public release gate must report current Room schema 23")
+require(manifest.get("final_public_release_gate", {}).get("schema_version_unchanged") == 23, "final public release gate schema truth must be 23")
 
 print("Media Parity01 runtime-truth validation passed: final diagnostics artifacts are fail-closed, topology/schema truth is current, legacy Firefox crypto blockers are retired, and aria2 health is lifecycle-backed")

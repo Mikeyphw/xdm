@@ -736,4 +736,41 @@ object Migrations {
         }
     }
 
+    /** Media Parity02: durable logical-media grouping and bounded, redacted observation evidence. */
+    val Migration22To23 = object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN logicalMediaId TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN canonicalMediaUrl TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN observationCount INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN segmentCount INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN protectionKind TEXT NOT NULL DEFAULT 'None'")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN nativeCapability TEXT NOT NULL DEFAULT 'Unknown'")
+            db.execSQL("ALTER TABLE media_captures ADD COLUMN logicalConfidence INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_captures_logicalMediaId ON media_captures(logicalMediaId)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS media_observations (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    logicalMediaId TEXT,
+                    captureId TEXT,
+                    url TEXT NOT NULL,
+                    pageUrl TEXT,
+                    mimeType TEXT,
+                    source TEXT NOT NULL,
+                    initiator TEXT,
+                    semanticKind TEXT NOT NULL,
+                    observationCount INTEGER NOT NULL DEFAULT 1,
+                    firstObservedAtEpochMs INTEGER NOT NULL,
+                    lastObservedAtEpochMs INTEGER NOT NULL,
+                    FOREIGN KEY(captureId) REFERENCES media_captures(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )""".trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_observations_logicalMediaId ON media_observations(logicalMediaId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_observations_captureId ON media_observations(captureId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_observations_source ON media_observations(source)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_media_observations_lastObservedAtEpochMs ON media_observations(lastObservedAtEpochMs)")
+            // Existing captures acquire a deterministic durable logical id from their already-redacted URL.
+            db.execSQL("UPDATE media_captures SET logicalMediaId = 'legacy:' || id, canonicalMediaUrl = sourceUrl WHERE logicalMediaId IS NULL")
+        }
+    }
+
 }
