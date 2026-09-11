@@ -211,7 +211,7 @@ private fun SettingsOverview(state: MainUiState, viewModel: MainViewModel) {
             XdmGroupedList {
                 XdmListRow(
                     headline = "XDM Android",
-                    supporting = "Version ${BuildConfig.VERSION_NAME.removeSuffix("-debug")} • ${releaseChannelLabel()} • Downloader-only Android app",
+                    supporting = "Version ${BuildConfig.VERSION_NAME.removeSuffix("-debug")} • ${releaseChannelLabel()} • Download manager with Live Locator browser capture",
                 )
             }
         }

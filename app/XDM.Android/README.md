@@ -1,6 +1,8 @@
 ## XDM Android 0.21.0
 
-Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. The post-UX13 roadmap-completion hotfix is the current UI release authority; UX13 is the end-to-end UI/UX release baseline; ACT01/ACT02 is the current experience-polish authority; and the 2026-09-10 notification/WebView gap hotfix is the current runtime-quality authority. Room is schema v22. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
+Current Android roadmap state: MC01–MC05 and DL01–DL03 are sealed. Media Parity01 is the current runtime-truth/diagnostics/backend-reliability authority, layered on top of the 2026-09-10 notification/WebView gap hotfix. The post-UX13 roadmap-completion hotfix remains the UI release authority; UX13 is the end-to-end UI/UX baseline and ACT01/ACT02 remains the experience-polish authority. Room is schema v22. The canonical release gate replays these contracts before the full Gradle/device/release matrix.
+
+Implementation evidence: `XDM_MEDIA_PARITY01_RUNTIME_TRUTH_DIAGNOSTICS_BACKEND_RELIABILITY_REPORT.md`.
 
 # XDM Android
 
@@ -19,11 +21,11 @@ The current Add flow follows the compact interaction model used by mature Androi
 
 The Media workspace treats direct progressive media as a normal one-tap download. Quality/audio/subtitle choices are shown only when an adaptive capture actually exposes meaningful alternatives; batch/debug-style intake tools are collapsed under **More tools**.
 
-## Downloader-only release seal
+## Download manager + lightweight capture release boundary
 
 XDM Android is a focused download manager with six stable destinations: Downloads, Add, Media, Library, Activity, and Settings. It integrates with external browsers through explicit sharing, typed download intents, file-extension handlers, and Android download-manager actions. It does not register as a general browser; Live Locator uses a constrained in-app WebView only for user-requested runtime media observation.
 
-The permanent product and release contract is documented in `docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md`. The final browser-removal validator is `tools/validate-browser-removal-phase-7.py`.
+The permanent product boundary is still documented in `docs/architecture/DOWNLOADER_PRODUCT_CONTRACT.md`: XDM does not claim ordinary web navigation, but it does ship the constrained Live Locator WebView for user-requested media observation. `tools/validate-browser-removal-phase-7.py` is retained as historical Phase-7 evidence and is not the current topology authority. Media Parity01 and the current final release seal own runtime topology truth.
 
 Phase 8A + 8B adds a review-first manual intake planner and a grouped Downloads control center. The contract is documented in `docs/downloader/PHASE-8AB-DOWNLOADER-INTAKE-DASHBOARD.md`, and its validator is `tools/validate-downloader-experience-phase-8ab.py`.
 
@@ -213,7 +215,7 @@ The Media worker bridge card stays inside the existing Media route. No Room migr
 
 ## Repository-owned Firefox extension
 
-The canonical Firefox Android media bridge source now lives in `browser-extension/`. The current bridge preserves the layered detector while superseding Phase 38 plaintext capture with the encrypted-v2 `xdmdownload://capture` envelope, retains an optional 1DM+ target, and prepares unpacked development output without committing an XPI. See `docs/architecture/PHASE-38-REPO-OWNED-FIREFOX-EXTENSION.md`.
+The canonical Firefox Android media bridge source lives in `browser-extension/`. The current production bridge uses the bounded, keyless v3 `xdmdownload://capture` contract and can carry a multi-candidate capture session directly into XDM. Legacy encrypted-v2 parsing remains compatibility-only for already-installed old XPIs and is not a release blocker. The bridge retains the optional 1DM+ target and prepares unpacked development output without committing an XPI. See `docs/architecture/PHASE-38-REPO-OWNED-FIREFOX-EXTENSION.md` for historical evolution.
 
 
 ### Deterministic Firefox XPI export
@@ -251,7 +253,7 @@ The remediation campaign's media execution phase now makes the real download but
 Room schema 20 adds `media_outputs`, a one-capture-to-many output/generation history that preserves app-download and Termux-job ownership separately. Migration 19→20 backfills the legacy capture→download link, and Library rows are keyed by output generation so multiple successful/retry outputs from one capture can coexist. “Remove library record” now removes only the selected generation rather than cascading the parent capture; Termux owner/output metadata is removed atomically and production disables legacy-link fallback so deleted final generations do not reappear. Media execution failure categories now come from structured strategy/state/backend signals rather than error-message substring matching. Authenticated Termux session transport remains intentionally held for Overlay 11 rather than placing secrets on command lines.
 ## Master remediation combined Overlays 11–12 — Termux security + UI/navigation truth
 
-The Termux/post-processing phase now treats the durable process token as mandatory ownership: result callbacks without the exact token fail closed, controls are signalled only after durable CAS acceptance, delayed callbacks cannot resurrect terminal jobs, and a child whose attach CAS loses is immediately force-cancelled through its exact owner. Capture-backed yt-dlp jobs use an opaque durable media-session identity and recover exact URL/header state only from the encrypted handoff into private transient Termux files/FIFO transport; raw yt-dlp paths are denied. Shared metadata staging receives only a restricted non-secret yt-dlp projection rather than raw `-J` output. Root filesystem actions are canonical-path authorized, terminal bridge artifacts are cleaned before graph detachment, and Developer Tools can run the same bounded privacy audit that scans private bridge files/FIFOs/run directories plus shared `.xdm-*` staging artifacts.
+The Termux/post-processing phase now treats the durable process token as mandatory ownership: result callbacks without the exact token fail closed, controls are signalled only after durable CAS acceptance, delayed callbacks cannot resurrect terminal jobs, and a child whose attach CAS loses is immediately force-cancelled through its exact owner. Capture-backed yt-dlp jobs use an opaque durable media-session identity and recover exact URL/header state only from app-private request-context transport into private transient Termux files/FIFO transport; raw yt-dlp paths are denied. Shared metadata staging receives only a restricted non-secret yt-dlp projection rather than raw `-J` output. Root filesystem actions are canonical-path authorized, terminal bridge artifacts are cleaned before graph detachment, and Developer Tools can run the same bounded privacy audit that scans private bridge files/FIFOs/run directories plus shared `.xdm-*` staging artifacts.
 
 Navigation/UI remediation keeps Add ephemeral while persisting actual Activity/Settings panels, Downloads detail targets, and Recovery target/action state. Downloads uses measured content width plus the exact window-space hinge rectangle for list/detail behavior, and fold-aware sheets choose a physical safe pane rather than straddling an off-center separating hinge. Completed-file actions re-check current provider/generation state and destructive confirmation is re-planned before execution. Destination rules use safe host boundaries with fallback-after-specific ordering, saved searches can actually restore their query/filter/archive state, bulk controls consume the real action planner, saved destination types use human labels, review/health/escalation surfaces have unique semantics tags, and the active accessibility validator enforces Add `imePadding()`, measured/fold behavior, and behavioral semantics instrumentation.
 
@@ -262,7 +264,7 @@ Campaign Gradle/unit/lint and final validator harmony remain deferred to Overlay
 
 The final remediation stage makes validation evidence fail-closed, audits real app-private media/browser persistence roots, groups media quality by exact request identity, and keeps player/execution failure classification on structured Media3/state/backend signals. The final media gate now targets Overlay 13 and Room schema 20 instead of the historical media phase ledger.
 
-The final gate also repaired the browser bridge after direct JS testing: popup/page/manual/probe Add uses the separate `xdmdownload://add?v=1` compatibility contract, while detected media requires a prebuilt encrypted-v2 capture link and fails closed without one. The optional `idmdownload:` route is restored without reintroducing plaintext XDM capture.
+The browser bridge was later superseded by the direct v3 capture contract: popup/page/manual/probe Add keeps the separate `xdmdownload://add?v=1` compatibility contract, while detected media uses bounded keyless v3 capture-session payloads. Legacy encrypted-v2 reader support is compatibility-only and must not block current Firefox capture qualification. The optional `idmdownload:` route remains available.
 
 `finalRemediationStaticGate` is wired into Devtool validation. The final Overlay-13 artifact does not allow deferred validation: Android compile/unit/lint and browser-extension Gradle gates must pass in the target environment before the final remediation commit is accepted.
 

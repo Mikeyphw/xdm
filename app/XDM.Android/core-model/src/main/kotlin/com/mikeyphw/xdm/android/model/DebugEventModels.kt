@@ -1,12 +1,9 @@
 package com.mikeyphw.xdm.android.model
 
 import java.io.File
-import java.io.FileOutputStream
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Locale
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 /** Runtime area that emitted a debug event. Values are stable for support-bundle filtering. */
 enum class DebugArea {
@@ -136,15 +133,18 @@ object DebugRedactor {
         "secret",
         "password",
         "session",
+        "sess",
+        "md5",
         "signature",
         "sig",
         "auth",
         "key",
     )
     private val jsonSecretValuePattern = Regex(
-        """(?i)("(?:authorization|proxy-authorization|cookie|set-cookie|token|secret|password|session|signature|sig|api[_-]?key|access[_-]?key|refresh[_-]?token)"\s*:\s*")[^"]*(")""",
+        """(?i)("(?:authorization|proxy-authorization|cookie|set-cookie|token|secret|password|session|sess|md5|signature|sig|api[_-]?key|access[_-]?key|refresh[_-]?token)"\s*:\s*")[^"]*(")""",
     )
     private val bearerPattern = Regex("(?i)\\b(bearer|basic)\\s+[A-Za-z0-9._~+/=-]{8,}")
+    private val sensitiveHeaderLinePattern = Regex("(?im)(^|\\n)(\\s*(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key|x-auth-token|x-csrf-token|x-xsrf-token)\\s*:)\\s*[^\\r\\n]+")
     private val queryParameterPattern = Regex("""([?&])([^=&#\s]+)=([^&#\s"']+)""")
 
     fun redactDetails(details: Map<String, String>): Map<String, String> = details
@@ -168,6 +168,7 @@ object DebugRedactor {
     fun redactText(value: String?): String {
         val text = value?.trim()?.takeIf { it.isNotBlank() } ?: return ""
         return text
+            .replace(sensitiveHeaderLinePattern) { match -> match.groupValues[1] + match.groupValues[2] + " <redacted>" }
             .replace(bearerPattern) { match -> match.groupValues[1].lowercase(Locale.US) + " <redacted>" }
             .replace(queryParameterPattern) { match ->
                 val part = "${match.groupValues[2]}=${match.groupValues[3]}"
@@ -200,12 +201,12 @@ object DebugRedactor {
 
     fun redactExportLine(value: String): String = value
         .replace(jsonSecretValuePattern) { match -> match.groupValues[1] + "<redacted>" + match.groupValues[2] }
+        .replace(sensitiveHeaderLinePattern) { match -> match.groupValues[1] + match.groupValues[2] + " <redacted>" }
         .replace(bearerPattern) { match -> match.groupValues[1].lowercase(Locale.US) + " <redacted>" }
         .replace(queryParameterPattern) { match ->
             val part = "${match.groupValues[2]}=${match.groupValues[3]}"
             match.groupValues[1] + ExternalUrlPolicy.redactQueryParameter(part, "<redacted>")
         }
-        .take(16 * 1024)
 
     fun jsonEscape(value: String): String = value.flatMap { char ->
         when (char) {
@@ -266,7 +267,7 @@ class RollingJsonlDebugEventRecorder(
 
     fun copySanitizedTimeline(maxChars: Int = 64 * 1024): String = synchronized(lock) {
         if (!currentFile.isFile) return@synchronized ""
-        currentFile.readText(Charsets.UTF_8).takeLast(maxChars)
+        DiagnosticExportIntegrity.tailWholeJsonlRecords(currentFile.readText(Charsets.UTF_8), maxChars)
     }
 
     fun clear() = synchronized(lock) {
@@ -279,30 +280,22 @@ class RollingJsonlDebugEventRecorder(
         destinationZip: File,
         metadata: Map<String, String> = emptyMap(),
     ): File = synchronized(lock) {
-        destinationZip.parentFile?.mkdirs()
-        ZipOutputStream(FileOutputStream(destinationZip)).use { zip ->
-            if (currentFile.isFile) {
-                zip.putNextEntry(ZipEntry("debug-session.jsonl"))
-                currentFile.useLines(Charsets.UTF_8) { lines ->
-                    lines.forEach { line ->
-                        zip.write((DebugRedactor.redactExportLine(line) + "\n").toByteArray(Charsets.UTF_8))
-                    }
-                }
-                zip.closeEntry()
-            }
-            zip.putNextEntry(ZipEntry("debug-metadata.txt"))
-            val redactedMetadata = DebugRedactor.redactDetails(metadata)
-                .entries
-                .joinToString("\n") { (key, value) -> "$key=$value" }
-            zip.write(redactedMetadata.toByteArray(Charsets.UTF_8))
-            zip.closeEntry()
-            zip.putNextEntry(ZipEntry("redaction-report.txt"))
-            zip.write(
-                "XDM Diagnostics & support redacted bundle. No automatic upload. Cookie, Authorization, token, signature, session, and key-like values are redacted before export.\n"
-                    .toByteArray(Charsets.UTF_8),
-            )
-            zip.closeEntry()
+        val entries = linkedMapOf<String, ByteArray>()
+        if (currentFile.isFile) {
+            entries["debug-session.jsonl"] = DiagnosticExportIntegrity
+                .sanitizeJsonl(currentFile.readText(Charsets.UTF_8))
+                .toByteArray(Charsets.UTF_8)
         }
+        val redactedMetadata = DebugRedactor.redactDetails(metadata)
+            .entries
+            .sortedBy(Map.Entry<String, String>::key)
+            .joinToString("\n", postfix = "\n") { (key, value) -> "$key=$value" }
+        entries["debug-metadata.txt"] = redactedMetadata.toByteArray(Charsets.UTF_8)
+        entries["redaction-report.txt"] = (
+            "XDM Diagnostics & support v5. The exact final ZIP is scanned before export. " +
+                "Cookie, Authorization, token, signature, session/sess, md5, and key-like values are redacted. No automatic upload.\n"
+            ).toByteArray(Charsets.UTF_8)
+        DiagnosticExportIntegrity.writeVerifiedZip(destinationZip, entries)
         destinationZip
     }
 

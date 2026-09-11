@@ -1,20 +1,17 @@
 package com.mikeyphw.xdm.android.ui.debug
 
-import android.util.Base64
 import com.mikeyphw.xdm.android.AppContainer
 import com.mikeyphw.xdm.android.BrowserBridgeSchemeState
-import com.mikeyphw.xdm.android.BrowserCaptureEnvelopeManager
 import com.mikeyphw.xdm.android.DebugWorkbenchRuntimeSelfTestSuite
 import com.mikeyphw.xdm.android.MainUiState
 import com.mikeyphw.xdm.android.RuntimeSelfTestLabels
 import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkContract
-import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkPayload
-import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
-import com.mikeyphw.xdm.android.model.AutomationCommandAction
+import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParser
 import com.mikeyphw.xdm.android.model.BackendSelectionReason
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.DebugArea
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
+import com.mikeyphw.xdm.android.model.DiagnosticExportIntegrity
 import com.mikeyphw.xdm.android.model.DebugSeverity
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -29,19 +26,10 @@ import com.mikeyphw.xdm.android.model.QueueExecutionPolicy
 import com.mikeyphw.xdm.android.model.QueueIntelligencePlanner
 import com.mikeyphw.xdm.android.model.QueueRuntimeConditions
 import com.mikeyphw.xdm.android.storage.DestinationUris
-import org.json.JSONArray
-import org.json.JSONObject
+import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessState
 import java.io.File
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.security.KeyFactory
-import java.security.SecureRandom
-import java.security.spec.MGF1ParameterSpec
-import java.security.spec.X509EncodedKeySpec
-import javax.crypto.Cipher
-import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.OAEPParameterSpec
-import javax.crypto.spec.PSource
-import javax.crypto.spec.SecretKeySpec
 
 interface DebugTest {
     val id: String
@@ -87,8 +75,7 @@ object DebugTestRegistry {
         MediaDownloadTransactionDebugTest,
         MediaSnifferSmokeDebugTest,
         BrowserBridgeDebugTest,
-        FirefoxSecureHandoffDebugTest,
-        FirefoxEncryptedEnvelopeDecodeDebugTest,
+        FirefoxDirectV3HandoffDebugTest,
         NativeBackendDebugTest,
         Aria2RuntimeDebugTest,
         TermuxRuntimeDebugTest,
@@ -559,10 +546,71 @@ private object MediaSnifferSmokeDebugTest : StateDebugTest(
 private object PrivacyRedactionDebugTest : StateDebugTest(
     id = "privacy-redaction",
     group = DebugTestGroup.Privacy,
-    name = "Privacy redaction",
-    description = "Runs the existing runtime self-test result for redaction before copy/share/export.",
+    name = "Final ZIP privacy & integrity",
+    description = "Exports a real diagnostics ZIP through the production exporter and scans the exact final artifact for malformed JSONL, manifest drift, and credential leaks.",
 ) {
-    override suspend fun run(context: DebugTestContext): DebugTestResult = runtimeSuiteResult(context, this, "redaction")
+    override suspend fun run(context: DebugTestContext): DebugTestResult {
+        val startedAt = context.clock()
+        context.ensureNotStopped()
+        val probeRoot = File(context.privateRoot, "privacy-final-zip-probe")
+        val probeStore = DebugTestStore(probeRoot, retainedRuns = 1)
+        val probeRun = DebugTestRun(
+            id = "privacy-probe-${context.runId}",
+            startedAtEpochMs = startedAt,
+            finishedAtEpochMs = startedAt,
+            selectedTestIds = listOf("privacy-probe"),
+            results = listOf(
+                DebugTestResult(
+                    testId = "privacy-probe",
+                    groupId = DebugTestGroup.Privacy.label,
+                    name = "Signed media export probe",
+                    status = DebugTestStatus.Passed,
+                    startedAtEpochMs = startedAt,
+                    durationMs = 0L,
+                    summary = "Exporter must redact signed-media request material.",
+                ),
+            ),
+        )
+        val rawJsonl = """{"safeDetails":{"url":"https://cdn.example.test/master.m3u8?md5=MD5_SECRET&sess=SESSION_SECRET&token=TOKEN_SECRET","nested":"Authorization: Bearer abcdefghijklmnopqrstuvwxyz"}}"""
+        val outcome = runCatching {
+            val zip = probeStore.exportRunZip(
+                run = probeRun,
+                supportReportText = "Cookie: sid=COOKIE_SECRET\nhttps://cdn.example.test/video?signature=SIGNATURE_SECRET",
+                debugTimelineJsonl = rawJsonl,
+            )
+            val scan = probeStore.scanExport(zip)
+            check(scan.safe) { scan.summary }
+            check(scan.manifestVerified) { "Final diagnostic manifest did not verify" }
+            check(DiagnosticExportIntegrity.contractSelfTest()) { "Secret-marker scanner self-test failed" }
+            scan
+        }
+        probeRoot.deleteRecursively()
+        return if (outcome.isSuccess) {
+            val scan = outcome.getOrThrow()
+            result(
+                status = DebugTestStatus.Passed,
+                context = context,
+                startedAt = startedAt,
+                summary = "Production diagnostics exporter produced a parseable, manifest-consistent, secret-safe final ZIP.",
+                details = mapOf(
+                    "entries" to scan.entryCount.toString(),
+                    "manifestVerified" to scan.manifestVerified.toString(),
+                    "finalArtifactScan" to "passed",
+                ),
+                suggestedAction = "No action needed. Every real export is rescanned again before sharing.",
+            )
+        } else {
+            result(
+                status = DebugTestStatus.Failed,
+                context = context,
+                startedAt = startedAt,
+                summary = "Final diagnostics ZIP privacy/integrity verification failed.",
+                details = mapOf("error" to (outcome.exceptionOrNull()?.message ?: outcome.exceptionOrNull()?.javaClass?.simpleName ?: "unknown")),
+                errorCode = "diagnostic-final-zip-unsafe",
+                suggestedAction = "Do not share diagnostics ZIPs until this test passes; the exporter blocks unsafe final artifacts.",
+            )
+        }
+    }
 }
 
 private object BrowserBridgeDebugTest : StateDebugTest(
@@ -596,94 +644,56 @@ private object BrowserBridgeDebugTest : StateDebugTest(
     }
 }
 
-private object FirefoxSecureHandoffDebugTest : StateDebugTest(
-    id = "firefox-secure-handoff",
+private object FirefoxDirectV3HandoffDebugTest : StateDebugTest(
+    id = "firefox-direct-v3-handoff",
     group = DebugTestGroup.Browser,
-    name = "Firefox secure handoff key wrap",
-    description = "Runs AndroidKeyStore RSA-OAEP key-wrap self-test with the same capture manager used by Firefox/IronFox handoff.",
+    name = "Firefox direct v3 handoff",
+    description = "Exercises the production keyless v3 capture parser with a bounded multi-candidate payload. Legacy RSA/encrypted-envelope compatibility is not a release blocker.",
 ) {
     override suspend fun run(context: DebugTestContext): DebugTestResult {
         val startedAt = context.clock()
         context.ensureNotStopped()
-        val manager = BrowserCaptureEnvelopeManager()
-        val outcome = manager.selfTestKeyWrap()
-        val current = context.state.browserExtension.isCurrent(
-            appTheme = context.state.themeMode,
-            appVersion = com.mikeyphw.xdm.android.BuildConfig.VERSION_NAME,
-            applicationId = com.mikeyphw.xdm.android.BuildConfig.APPLICATION_ID,
-            scheme = BrowserExtensionSourceContract.DefaultScheme,
-        )
-        return if (outcome.isSuccess) {
-            result(
-                status = if (current) DebugTestStatus.Passed else DebugTestStatus.Warning,
-                context = context,
-                startedAt = startedAt,
-                summary = if (current) "AndroidKeyStore RSA-OAEP key-wrap self-test passed and the generated XPI is current." else "AndroidKeyStore RSA-OAEP self-test passed, but the generated XPI may be stale.",
-                details = mapOf(
-                    "oaepHash" to manager.captureOaepHash,
-                    "expectedWrappedKeyBytes" to manager.expectedWrappedKeyBytes.toString(),
-                    "keyIdPrefix" to manager.keyId.take(8),
-                    "xpiCurrent" to current.toString(),
-                ),
-                errorCode = if (current) null else "firefox-xpi-stale",
-                suggestedAction = if (current) "Capture a page again and verify Media receives it." else "Regenerate the Firefox/IronFox XPI before retesting secure capture.",
-            )
-        } else {
-            result(
-                status = DebugTestStatus.Failed,
-                context = context,
-                startedAt = startedAt,
-                summary = "AndroidKeyStore RSA-OAEP key-wrap self-test failed.",
-                details = mapOf("error" to (outcome.exceptionOrNull()?.message ?: outcome.exceptionOrNull()?.javaClass?.simpleName ?: "unknown")),
-                errorCode = "firefox-secure-handoff-keywrap-failed",
-                suggestedAction = "Regenerate the XPI after this test passes; if it keeps failing, capture the exported debug ZIP.",
-            )
-        }
-    }
-}
-
-private object FirefoxEncryptedEnvelopeDecodeDebugTest : StateDebugTest(
-    id = "firefox-encrypted-envelope-decode",
-    group = DebugTestGroup.Browser,
-    name = "Firefox encrypted envelope decode",
-    description = "Builds a synthetic WebCrypto-compatible RSA-OAEP/AES-GCM envelope, decrypts it through BrowserCaptureEnvelopeManager, and verifies the decoded media candidate.",
-) {
-    override suspend fun run(context: DebugTestContext): DebugTestResult {
-        val startedAt = context.clock()
-        context.ensureNotStopped()
-        val manager = BrowserCaptureEnvelopeManager()
+        val scheme = com.mikeyphw.xdm.android.BuildConfig.XDM_BROWSER_SCHEME
+        val sessionId = "debug-v3-${startedAt}"
+        val mediaUrl = "https://cdn.example.test/master.m3u8?md5=opaque&sess=opaque"
+        val candidates = """[{"url":"https://cdn.example.test/master.m3u8","contentType":"application/vnd.apple.mpegurl","stableMediaId":"debug-hls"},{"url":"https://cdn.example.test/video-720.mp4","contentType":"video/mp4","stableMediaId":"debug-mp4"}]"""
+        fun enc(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.name())
+        val deepLink = "$scheme://${XdmBrowserDeepLinkContract.CaptureHost}?v=${XdmBrowserDeepLinkContract.CurrentVersion}" +
+            "&url=${enc(mediaUrl)}&page=${enc("https://example.test/watch")}" +
+            "&sid=${enc(sessionId)}&sessionRevision=7&candidateCount=2&candidates=${enc(candidates)}"
         val outcome = runCatching {
-            val payload = syntheticEncryptedCapturePayload(manager, startedAt)
-            val decoded = manager.decrypt(payload, nowEpochMs = startedAt).getOrThrow()
-            check(decoded.sessionId == payload.captureSessionId) { "Decoded session id mismatch" }
-            check(decoded.candidates.size == 1) { "Expected one candidate but decoded ${decoded.candidates.size}" }
-            check(decoded.candidates.first().url == "https://example.invalid/debug-center-media.mp4") { "Decoded candidate URL mismatch" }
-            decoded
+            val payload = requireNotNull(XdmBrowserDeepLinkParser.parse(deepLink, scheme)) { "v3 capture parser rejected the current direct handoff" }
+            check(payload.version == XdmBrowserDeepLinkContract.CurrentVersion)
+            check(payload.hasDirectCaptureSession)
+            check(!payload.hasEncryptedCaptureEnvelope)
+            check(payload.captureSessionId == sessionId)
+            check(payload.sessionRevision == 7L)
+            check(payload.totalCandidateCount == 2)
+            check(payload.directCandidatesJson == candidates)
+            payload
         }
         return if (outcome.isSuccess) {
-            val decoded = outcome.getOrThrow()
             result(
                 status = DebugTestStatus.Passed,
                 context = context,
                 startedAt = startedAt,
-                summary = "Synthetic encrypted Firefox capture envelope decrypted and decoded successfully.",
+                summary = "Current Firefox keyless v3 capture handoff parsed a two-candidate session without legacy crypto.",
                 details = mapOf(
-                    "sessionId" to decoded.sessionId,
-                    "candidates" to decoded.candidates.size.toString(),
-                    "oaepHash" to manager.captureOaepHash,
-                    "wrappedKeyBytes" to manager.expectedWrappedKeyBytes.toString(),
+                    "contractVersion" to XdmBrowserDeepLinkContract.CurrentVersion.toString(),
+                    "candidateCount" to "2",
+                    "legacyEncryptedBlocker" to "retired",
                 ),
-                suggestedAction = "Regenerate the XPI if real Firefox captures still fail.",
+                suggestedAction = "If a real capture fails, regenerate/check the current XPI and export Diagnostics; do not use legacy crypto tests as a release gate.",
             )
         } else {
             result(
                 status = DebugTestStatus.Failed,
                 context = context,
                 startedAt = startedAt,
-                summary = "Synthetic encrypted Firefox capture envelope failed to decode.",
+                summary = "Current Firefox direct v3 capture handoff failed.",
                 details = mapOf("error" to (outcome.exceptionOrNull()?.message ?: outcome.exceptionOrNull()?.javaClass?.simpleName ?: "unknown")),
-                errorCode = "firefox-encrypted-envelope-decode-failed",
-                suggestedAction = "Do not trust extension capture until this Android-side decrypt/decode test passes.",
+                errorCode = "firefox-direct-v3-handoff-failed",
+                suggestedAction = "Repair the v3 direct capture contract before trusting Firefox media handoff.",
             )
         }
     }
@@ -715,30 +725,50 @@ private object NativeBackendDebugTest : StateDebugTest(
 private object Aria2RuntimeDebugTest : StateDebugTest(
     id = "aria2-runtime",
     group = DebugTestGroup.Backends,
-    name = "aria2 runtime",
-    description = "Summarizes packaged aria2 status without starting downloads.",
+    name = "aria2 runtime lifecycle",
+    description = "Runs the real packaged aria2 lifecycle: executable probe, launch, authenticated loopback RPC, local transfer, pause/resume, save-session, cleanup, and shutdown.",
 ) {
     override suspend fun run(context: DebugTestContext): DebugTestResult {
         val startedAt = context.clock()
         context.ensureNotStopped()
-        val diagnostics = context.state.aria2Diagnostics
-        val status = when {
-            diagnostics.status.contains("ready", ignoreCase = true) || diagnostics.status.contains("pass", ignoreCase = true) -> DebugTestStatus.Passed
-            diagnostics.status.contains("fail", ignoreCase = true) -> DebugTestStatus.Failed
-            else -> DebugTestStatus.Warning
+        val manager = context.appContainer?.aria2ProcessManager ?: return missingRuntimeContext(context, startedAt)
+        val capability = manager.probe()
+        if (!capability.isAvailable) {
+            return result(
+                status = DebugTestStatus.Warning,
+                context = context,
+                startedAt = startedAt,
+                summary = "Optional packaged aria2 runtime is unavailable: ${capability.summary}",
+                details = mapOf("availability" to capability.availability.name, "nativeBackendAffected" to "false"),
+                errorCode = "aria2-runtime-unavailable",
+                suggestedAction = "Use Repair aria2 if you need the optional aria2 backend. Native downloads remain independently usable.",
+            )
         }
+        val outcome = runCatching { manager.smokeTest() }
+        val smoke = outcome.getOrNull()
+        val passed = smoke?.successful == true
+        val runtimeState = manager.state.value
+        val failure = (runtimeState as? Aria2ProcessState.Failed)?.diagnostic
         return result(
-            status = status,
+            status = if (passed) DebugTestStatus.Passed else DebugTestStatus.Failed,
             context = context,
             startedAt = startedAt,
-            summary = diagnostics.status + ". " + diagnostics.detail,
-            details = mapOf(
-                "status" to diagnostics.status,
-                "canRunSmokeTest" to diagnostics.canRunSmokeTest.toString(),
-                "canRepair" to diagnostics.canRepair.toString(),
-            ),
-            errorCode = if (status == DebugTestStatus.Failed) "aria2-runtime-failed" else null,
-            suggestedAction = "Use Storage doctor or aria2 repair only if this backend is required.",
+            summary = smoke?.summary ?: "aria2 runtime lifecycle threw ${outcome.exceptionOrNull()?.javaClass?.simpleName ?: "an unknown error"}.",
+            details = buildMap {
+                put("availability", capability.availability.name)
+                put("version", smoke?.version?.version ?: "unknown")
+                put("authenticatedRpc", passed.toString())
+                put("lifecycleSmoke", passed.toString())
+                put("runtimeState", runtimeState::class.java.simpleName)
+                failure?.let { diagnostic ->
+                    put("failureKind", diagnostic.kind.name)
+                    diagnostic.exitCode?.let { put("exitCode", it.toString()) }
+                    put("failureDetail", diagnostic.detail)
+                    diagnostic.logTail?.takeIf { it.isNotBlank() }?.let { put("runtimeLogTail", it) }
+                }
+            },
+            errorCode = if (passed) null else "aria2-runtime-lifecycle-failed",
+            suggestedAction = if (passed) "No action needed." else "Use Repair aria2, rerun this lifecycle test, and export the verified diagnostics ZIP if it still fails. The failure kind, exit code, and redacted runtime log are included when available.",
         )
     }
 }
@@ -774,76 +804,6 @@ private object TermuxRuntimeDebugTest : StateDebugTest(
         )
     }
 }
-
-private fun syntheticEncryptedCapturePayload(
-    manager: BrowserCaptureEnvelopeManager,
-    nowEpochMs: Long,
-): XdmBrowserDeepLinkPayload {
-    val sessionId = "debug-center-session-$nowEpochMs"
-    val keyId = manager.keyId
-    val clearKey = ByteArray(32).also(SecureRandom()::nextBytes)
-    val iv = ByteArray(12).also(SecureRandom()::nextBytes)
-    val clearJson = JSONObject()
-        .put("v", 1)
-        .put("sid", sessionId)
-        .put("revision", 1L)
-        .put("createdAt", nowEpochMs)
-        .put("expiresAt", nowEpochMs + 60_000L)
-        .put("pageUrl", "https://example.invalid/debug-center-page")
-        .put("title", "Diagnostics synthetic capture")
-        .put("totalCandidateCount", 1)
-        .put("truncated", false)
-        .put(
-            "candidates",
-            JSONArray().put(
-                JSONObject()
-                    .put("url", "https://example.invalid/debug-center-media.mp4")
-                    .put("pageUrl", "https://example.invalid/debug-center-page")
-                    .put("title", "Diagnostics media")
-                    .put("contentType", "video/mp4")
-                    .put("stableMediaId", "debug-center-media")
-                    .put("sessionRevision", 1L)
-                    .put("quality", "strong")
-                    .put("reason", "debug-center-synthetic")
-                    .put("streamKind", "video")
-                    .put("manifest", false)
-                    .put("playbackObserved", true)
-                    .put("evidence", JSONArray().put("synthetic-debug-center")),
-            ),
-        )
-        .toString()
-        .toByteArray(StandardCharsets.UTF_8)
-
-    val aes = Cipher.getInstance("AES/GCM/NoPadding")
-    aes.init(Cipher.ENCRYPT_MODE, SecretKeySpec(clearKey, "AES"), GCMParameterSpec(128, iv))
-    aes.updateAAD("xdm-capture-v2|$sessionId|$keyId".toByteArray(StandardCharsets.UTF_8))
-    val ciphertext = aes.doFinal(clearJson)
-
-    val publicKey = KeyFactory.getInstance("RSA").generatePublic(
-        X509EncodedKeySpec(decodeBase64Url(manager.publicKeySpkiBase64Url)),
-    )
-    val mgf1 = if (manager.captureOaepHash.equals("SHA-256", ignoreCase = true)) MGF1ParameterSpec.SHA256 else MGF1ParameterSpec.SHA1
-    val rsa = Cipher.getInstance("RSA/ECB/OAEPPadding")
-    rsa.init(
-        Cipher.ENCRYPT_MODE,
-        publicKey,
-        OAEPParameterSpec(manager.captureOaepHash, "MGF1", mgf1, PSource.PSpecified.DEFAULT),
-    )
-    val wrapped = rsa.doFinal(clearKey)
-
-    return XdmBrowserDeepLinkPayload(
-        version = XdmBrowserDeepLinkContract.CurrentVersion,
-        action = AutomationCommandAction.CaptureMedia,
-        captureSessionId = sessionId,
-        captureKeyId = keyId,
-        wrappedKey = base64Url(wrapped),
-        envelopeIv = base64Url(iv),
-        envelopeCiphertext = base64Url(ciphertext),
-    )
-}
-
-private fun base64Url(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
-private fun decodeBase64Url(value: String): ByteArray = Base64.decode(value, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
 
 private fun runtimeSuiteResult(
     context: DebugTestContext,

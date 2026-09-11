@@ -1454,7 +1454,7 @@
     "name": "Database Integrity And Migrations Runtime Wiring",
     "revision": 2
   },
-  "current_overlay": "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip",
+  "current_overlay": "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
   "database": {
     "backup_restore_metadata": true,
@@ -2584,8 +2584,8 @@
     "package_identity_locked": "com.mikeyphw.xdm.android",
     "release_candidate": true,
     "release_docs_complete": true,
-    "room_schema_locked": 21,
-    "schema_version_unchanged": 20,
+    "room_schema_locked": 22,
+    "schema_version_unchanged": 22,
     "signed_release_verification_documented": true,
     "static_validators_complete": true,
     "top_level_route_added": false,
@@ -4730,5 +4730,30 @@
     "allowed_environment_warnings": 1
   },
   "current_experience_polish_authority": "list_quick_actions_final_seal_act01_act02",
-  "current_runtime_quality_authority": "notification_webview_gap_hotfix_2026_09_10"
+  "current_runtime_quality_authority": "media_parity01_runtime_truth_diagnostics_backend_reliability",
+  "media_parity01_runtime_truth_diagnostics_backend_reliability": {
+    "status": "implemented",
+    "overlay": "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip",
+    "room_schema": 22,
+    "product_topology": "download manager + constrained Live Locator WebView + external Firefox/browser handoff",
+    "diagnostic_export_version": "v5",
+    "final_zip_privacy_scan_required": true,
+    "jsonl_whole_record_export": true,
+    "signed_media_query_aliases_redacted": [
+      "md5",
+      "sess",
+      "token",
+      "signature",
+      "session"
+    ],
+    "legacy_firefox_crypto_release_blocker": false,
+    "current_firefox_capture_contract": "direct-keyless-v3",
+    "aria2_runtime_health": "real authenticated RPC lifecycle smoke or truthful optional-unavailable warning",
+    "independent_validation_evidence": true,
+    "validation_policy": "intermediate-overlay-no-validate",
+    "report": "XDM_MEDIA_PARITY01_RUNTIME_TRUTH_DIAGNOSTICS_BACKEND_RELIABILITY_REPORT.md",
+    "scanner_version": "media-parity01-final-zip-v1",
+    "xdm_zip_regressions": true
+  },
+  "current_validation_truth_authority": "media_parity01_runtime_truth_diagnostics_backend_reliability"
 }

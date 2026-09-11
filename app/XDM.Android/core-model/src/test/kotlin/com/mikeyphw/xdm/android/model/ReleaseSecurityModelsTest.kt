@@ -17,6 +17,16 @@ class ReleaseSecurityModelsTest {
     }
 
     @Test
+    fun redactsSignedMediaMd5SessAndSessionAliases() {
+        assertEquals(
+            "https://cdn.example.test/master.m3u8?quality=720&md5=<redacted>&sess=<redacted>&session_key=<redacted>&signature=<redacted>",
+            PrivacyDiagnosticsRedactor.redactUrl(
+                "https://cdn.example.test/master.m3u8?quality=720&md5=md5-secret&sess=sess-secret&session_key=session-secret&signature=sig-secret",
+            ),
+        )
+    }
+
+    @Test
     fun redactionPreservesPublicQueryFieldsAndAvoidsSubstringFalsePositives() {
         val redacted = PrivacyDiagnosticsRedactor.redactUrl(
             "https://example.test/video.mp4?quality=1080&author=alice&monkey=capuchin&api_key=secret",

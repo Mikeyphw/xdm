@@ -44,6 +44,23 @@ class Aria2ProcessManager(
         )
     }
 
+    /**
+     * Runtime-aware capability used by backend selection. A packaged binary is not advertised
+     * as usable after its most recent managed launch/RPC lifecycle failed. The package probe
+     * remains available separately so Debug Center can still offer Repair + retest.
+     */
+    fun effectiveCapability(): Aria2CapabilityReport {
+        val packaged = probe()
+        val failed = _state.value as? Aria2ProcessState.Failed ?: return packaged
+        if (!packaged.isAvailable) return packaged
+        val kind = failed.diagnostic?.kind?.name ?: Aria2StartupFailureKind.Unknown.name
+        val exit = failed.diagnostic?.exitCode?.let { " (exit code $it)" }.orEmpty()
+        return Aria2CapabilityReport(
+            availability = Aria2Availability.ProbeFailed,
+            summary = "Packaged aria2 is present, but its managed runtime is unhealthy: $kind$exit. Use Repair aria2, then rerun the authenticated lifecycle test before selecting this backend.",
+        )
+    }
+
     suspend fun start(): Aria2StartResult = gate.withLock {
         val currentProcess = processReference.get()
         val currentState = _state.value

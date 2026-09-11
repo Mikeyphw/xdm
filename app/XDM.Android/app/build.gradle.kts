@@ -43,6 +43,11 @@ val staticValidationPassed = validationEvidence("xdm.validation.staticPassed")
 val fullValidationPassed = validationEvidence("xdm.validation.fullPassed")
 val realDeviceSmokePassed = validationEvidence("xdm.validation.realDeviceSmokePassed")
 val aria2PayloadVerified = validationEvidence("xdm.validation.aria2PayloadVerified")
+val diagnosticExportValidated = validationEvidence("xdm.validation.diagnosticExportPassed")
+val releaseDocsValidated = validationEvidence("xdm.validation.releaseDocsPassed")
+val routeTopologyValidated = validationEvidence("xdm.validation.routeTopologyPassed")
+val lintValidationPassed = validationEvidence("xdm.validation.lintPassed")
+val nativeSymbolsValidated = validationEvidence("xdm.validation.nativeSymbolsPassed")
 
 android {
     namespace = "com.mikeyphw.xdm.android"
@@ -67,6 +72,12 @@ android {
         buildConfigField("Boolean", "XDM_FULL_VALIDATION_PASSED", fullValidationPassed.toString())
         buildConfigField("Boolean", "XDM_REAL_DEVICE_SMOKE_PASSED", realDeviceSmokePassed.toString())
         buildConfigField("Boolean", "XDM_ARIA2_PAYLOAD_VERIFIED", aria2PayloadVerified.toString())
+        buildConfigField("Boolean", "XDM_DIAGNOSTIC_EXPORT_VALIDATED", diagnosticExportValidated.toString())
+        buildConfigField("Boolean", "XDM_RELEASE_DOCS_VALIDATED", releaseDocsValidated.toString())
+        buildConfigField("Boolean", "XDM_ROUTE_TOPOLOGY_VALIDATED", routeTopologyValidated.toString())
+        buildConfigField("Boolean", "XDM_LINT_VALIDATION_PASSED", lintValidationPassed.toString())
+        buildConfigField("Boolean", "XDM_NATIVE_SYMBOLS_VALIDATED", nativeSymbolsValidated.toString())
+        buildConfigField("Boolean", "XDM_ARIA2_PAYLOAD_GATE_CONFIGURED", "true")
         ndk {
             abiFilters += setOf("arm64-v8a")
         }

@@ -253,7 +253,7 @@ object FinalPublicReleaseGate {
                         id = "database.schema",
                         severity = FinalReleaseGateSeverity.Blocking,
                         title = "Unexpected Room schema for public gate",
-                        detail = "The public release gate expects reviewed Room schema v21 after the reviewed migration chain through MC04 manifest hardening.",
+                        detail = "The public release gate expects reviewed Room schema v22 after the reviewed migration chain through MC04 manifest hardening.",
                     ),
                 )
             }

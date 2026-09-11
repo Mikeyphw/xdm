@@ -88,8 +88,8 @@ object DebugWorkbenchRuntimeSelfTestSuite {
                 id = "redaction",
                 title = "Redaction smoke",
                 statusLabel = if (redaction) RuntimeSelfTestLabels.Pass else RuntimeSelfTestLabels.Fail,
-                detail = if (redaction) "Cookie, Authorization, token, and signed query values are masked in copied reports." else "A secret value survived the redaction smoke check.",
-                fixHint = "Do not share reports until the redaction smoke passes.",
+                detail = if (redaction) "Redaction primitives mask Cookie, Authorization, token, md5/sess, and signed query values; the exact final ZIP scanner remains authoritative for sharing." else "A secret value survived the redaction primitive smoke check.",
+                fixHint = "Do not share reports unless both this primitive smoke and the Final ZIP privacy & integrity diagnostic pass.",
             ),
             RuntimeSelfTestCheck(
                 id = "notification-intent",
@@ -145,7 +145,7 @@ object DebugWorkbenchRuntimeSelfTestSuite {
     }
 
     private fun redactionSmoke(): Boolean {
-        val redactedUrl = DebugRedactor.redactUrl("https://cdn.example.test/master.m3u8?token=secret-token&sig=secret-signature")
+        val redactedUrl = DebugRedactor.redactUrl("https://cdn.example.test/master.m3u8?token=secret-token&sig=secret-signature&md5=secret-md5&sess=secret-sess")
         val redactedText = DebugRedactor.redactText("Authorization: Bearer abc.def.ghi")
         val redactedDetails = DebugRedactor.redactDetails(
             mapOf(
@@ -156,6 +156,8 @@ object DebugWorkbenchRuntimeSelfTestSuite {
         return listOf(redactedUrl, redactedText, redactedDetails).none { value ->
             value.contains("secret-token") ||
                 value.contains("secret-signature") ||
+                value.contains("secret-md5") ||
+                value.contains("secret-sess") ||
                 value.contains("abc.def.ghi") ||
                 value.contains("secret-cookie")
         }

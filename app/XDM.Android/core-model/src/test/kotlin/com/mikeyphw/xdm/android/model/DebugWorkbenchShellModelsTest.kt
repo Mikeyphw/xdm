@@ -27,7 +27,8 @@ class DebugWorkbenchShellModelsTest {
         assertTrue(report.sessionLabel.contains("4 handoffs"))
         assertTrue(report.recorderStorageLabel.contains("current.jsonl"))
         assertTrue(report.retentionLabel.contains("2 MiB"))
-        assertTrue(report.supportBundleLabel.contains("debug-session.jsonl"))
+        assertTrue(report.supportBundleLabel.contains("manifest hashes"))
+        assertTrue(report.checks.first { it.id == "support-bundle" }.title.contains("Verified diagnostics bundle"))
         assertTrue(report.debugAreas.contains(DebugArea.MediaSniffing))
     }
 

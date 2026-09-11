@@ -88,9 +88,9 @@ object DebugWorkbenchShellPolicy {
             ),
             DebugWorkbenchCheck(
                 id = "support-bundle",
-                title = "Support bundle skeleton",
+                title = "Verified diagnostics bundle",
                 state = if (supportBundleReady) DebugWorkbenchCheckState.Pass else DebugWorkbenchCheckState.Warning,
-                detail = if (supportBundleReady) "Bundle export is local-only and user-shared." else "Bundle export is not wired yet.",
+                detail = if (supportBundleReady) "The exact local ZIP is redacted, structurally checked, manifest-hashed, rescanned, then explicitly user-shared." else "Verified diagnostics export is not available yet.",
             ),
             DebugWorkbenchCheck(
                 id = "hooks",
@@ -123,7 +123,7 @@ object DebugWorkbenchShellPolicy {
             recorderStorageLabel = "current.jsonl in app-private files/debug-sessions",
             retentionLabel = "2 MiB active session • last 5 rotated sessions retained",
             overallLabel = overall,
-            supportBundleLabel = "Local ZIP skeleton: debug-session.jsonl, debug-metadata.txt, redaction-report.txt",
+            supportBundleLabel = "Verified local ZIP: reports + whole-record JSONL + test results + manifest hashes + final privacy/integrity attestation",
             checks = checks,
             debugAreas = DebugArea.entries,
         )

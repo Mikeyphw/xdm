@@ -92,13 +92,14 @@ object ExternalUrlPolicy {
     private val clipboardUrlPattern = Regex("""https?://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
     private val trailingNoise = Regex("""[),.;:!?]+$""")
     private val sensitiveQueryNames = setOf(
-        "access_token", "auth", "auth_token", "code", "cookie", "credential", "expires", "key",
-        "password", "policy", "session", "session_id", "sessionid", "sig", "signature", "secret", "token",
+        "access_token", "auth", "auth_token", "authkey", "auth_key", "code", "cookie", "credential", "expires",
+        "hdnea", "hdnts", "hash", "hmac", "jwt", "key", "md5", "password", "policy", "sess", "session",
+        "session_id", "sessionid", "session_key", "sig", "signature", "secret", "ticket", "token",
         "x_amz_credential", "x_amz_security_token", "x_amz_signature",
         "x_goog_credential", "x_goog_security_token", "x_goog_signature",
     )
     private val sensitiveQuerySuffixes = setOf(
-        "_auth", "_credential", "_key", "_password", "_secret", "_session", "_session_id", "_signature", "_token",
+        "_auth", "_credential", "_key", "_password", "_secret", "_sess", "_session", "_session_id", "_signature", "_token",
     )
     private val localHostSuffixes = setOf(".local", ".localhost", ".lan", ".home", ".internal")
 

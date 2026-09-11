@@ -1,12 +1,13 @@
 package com.mikeyphw.xdm.android.ui.debug
 
+import com.mikeyphw.xdm.android.BuildConfig
 import com.mikeyphw.xdm.android.model.DebugRedactor
+import com.mikeyphw.xdm.android.model.DiagnosticBundleMetadata
+import com.mikeyphw.xdm.android.model.DiagnosticBundleScan
+import com.mikeyphw.xdm.android.model.DiagnosticExportIntegrity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class DebugTestStore(
     private val rootDirectory: File,
@@ -39,21 +40,50 @@ class DebugTestStore(
         problemIncidentsText: String = "",
     ): File {
         exportsDirectory.mkdirs()
-        val destination = File(exportsDirectory, safeFileName(run.id) + ".zip")
-        ZipOutputStream(FileOutputStream(destination)).use { zip ->
-            zip.writeEntry("report.txt", run.toReportText())
-            zip.writeEntry("test-results.json", run.toJson())
-            zip.writeEntry("debug-events.jsonl", listOf(run.toDebugEventJsonl(), debugTimelineJsonl).filter { it.isNotBlank() }.joinToString("\n"))
-            if (problemIncidentsText.isNotBlank()) zip.writeEntry("problem-incidents.txt", problemIncidentsText)
-            zip.writeEntry("environment.txt", buildEnvironmentText(run))
-            zip.writeEntry("support-report.txt", DebugRedactor.redactExportLine(supportReportText))
-            zip.writeEntry(
-                "redaction-report.txt",
-                "XDM diagnostics v4 export. Cookie, Authorization, token, signature, session, key-like values, and URL query secrets are redacted locally before export. No automatic upload is performed.\n",
-            )
+        val destination = File(exportsDirectory, "xdm-debug-${safeFileName(run.id)}.zip")
+        val debugEvents = listOf(run.toDebugEventJsonl(), debugTimelineJsonl)
+            .filter(String::isNotBlank)
+            .joinToString("\n")
+            .let(DiagnosticExportIntegrity::sanitizeJsonl)
+        val entries = linkedMapOf(
+            "bundle-readme.txt" to (
+                "XDM Diagnostics & support v5 / Media Parity01.\n" +
+                    "report.txt contains this Diagnostics run; support-report.txt contains the broader redacted runtime/release summary; " +
+                    "debug-events.jsonl is the structured event stream; test-results.json is the structured test result set; " +
+                    "diagnostic-manifest.json is generated last and binds the exact entry inventory with SHA-256 hashes.\n" +
+                    "The exact final ZIP is rescanned before sharing. No automatic upload is performed.\n"
+                ).toByteArray(Charsets.UTF_8),
+            "report.txt" to sanitizeText(run.toReportText()).toByteArray(Charsets.UTF_8),
+            "test-results.json" to DebugRedactor.redactExportLine(run.toJson()).toByteArray(Charsets.UTF_8),
+            "debug-events.jsonl" to debugEvents.toByteArray(Charsets.UTF_8),
+            "environment.txt" to buildEnvironmentText(run).toByteArray(Charsets.UTF_8),
+            "support-report.txt" to sanitizeText(supportReportText).toByteArray(Charsets.UTF_8),
+            "redaction-report.txt" to (
+                "XDM diagnostics v5 export. The exact final ZIP is rescanned before it can be shared. " +
+                    "Cookie, Authorization, token, signature, session/sess, md5, key-like values, and signed URL credentials are redacted locally. " +
+                    "No automatic upload is performed.\n"
+                ).toByteArray(Charsets.UTF_8),
+        )
+        if (problemIncidentsText.isNotBlank()) {
+            entries["problem-incidents.txt"] = sanitizeText(problemIncidentsText).toByteArray(Charsets.UTF_8)
         }
+        DiagnosticExportIntegrity.writeVerifiedZip(
+            destination = destination,
+            rawEntries = entries,
+            metadata = DiagnosticBundleMetadata(
+                diagnosticsSchema = 1,
+                diagnosticsVersion = "v5",
+                appVersion = BuildConfig.VERSION_NAME,
+                buildType = BuildConfig.BUILD_TYPE,
+                roomSchemaVersion = 22,
+                runId = run.id,
+                testSummary = run.summaryLabel,
+            ),
+        )
         return destination
     }
+
+    fun scanExport(file: File): DiagnosticBundleScan = DiagnosticExportIntegrity.scanZip(file)
 
     private fun pruneOldRuns() {
         runsDirectory
@@ -65,7 +95,9 @@ class DebugTestStore(
     }
 
     private fun buildEnvironmentText(run: DebugTestRun): String = buildString {
-        appendLine("Diagnostics version: v4")
+        appendLine("Diagnostics version: v5 / Media Parity01")
+        appendLine("Room schema: 22")
+        appendLine("Product topology: download manager + Live Locator WebView + external browser extension handoff")
         appendLine("Run ID: ${run.id}")
         appendLine("Started: ${run.startedAtEpochMs}")
         appendLine("Finished: ${run.finishedAtEpochMs ?: "running"}")
@@ -111,13 +143,10 @@ class DebugTestStore(
 
     private fun JSONArray.toStringList(): List<String> = (0 until length()).mapNotNull { index -> optString(index).takeIf(String::isNotBlank) }
 
-    private fun ZipOutputStream.writeEntry(name: String, value: String) {
-        putNextEntry(ZipEntry(name))
-        value.lineSequence().forEach { line ->
-            write((DebugRedactor.redactExportLine(line) + "\n").toByteArray(Charsets.UTF_8))
-        }
-        closeEntry()
-    }
+    private fun sanitizeText(value: String): String = value
+        .lineSequence()
+        .joinToString("\n") { line -> DebugRedactor.redactExportLine(line) }
+        .let { if (it.isBlank()) "" else "$it\n" }
 
     private fun safeFileName(value: String): String = value
         .replace(Regex("[^A-Za-z0-9._-]"), "_")

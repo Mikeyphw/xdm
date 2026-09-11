@@ -364,6 +364,12 @@ private fun ReleaseReadinessSection(state: MainUiState) {
         state.finalReleaseGateReport.checks.take(3).forEach { check ->
             XdmMetadataText("${check.severity.name}: ${check.title}", maxLines = 2)
         }
+        XdmSectionHeader("Validation truth")
+        XdmMetadataText("Room schema: 22 • topology: Live Locator WebView + external browser handoff", maxLines = 3)
+        XdmMetadataText("Static chain: ${if (BuildConfig.XDM_STATIC_VALIDATION_PASSED) "passed" else "not attested"} • full validation: ${if (BuildConfig.XDM_FULL_VALIDATION_PASSED) "passed" else "pending"}", maxLines = 3)
+        XdmMetadataText("Diagnostics final-ZIP gate: ${if (BuildConfig.XDM_DIAGNOSTIC_EXPORT_VALIDATED) "passed" else "not attested"} • route topology: ${if (BuildConfig.XDM_ROUTE_TOPOLOGY_VALIDATED) "passed" else "not attested"}", maxLines = 3)
+        XdmMetadataText("Lint/warnings: ${if (BuildConfig.XDM_LINT_VALIDATION_PASSED) "passed" else "not attested"} • native symbols: ${if (BuildConfig.XDM_NATIVE_SYMBOLS_VALIDATED) "passed" else "not attested"}", maxLines = 3)
+        XdmMetadataText("Real-device smoke: ${if (BuildConfig.XDM_REAL_DEVICE_SMOKE_PASSED) "passed" else "pending"} • aria2 payload: ${if (BuildConfig.XDM_ARIA2_PAYLOAD_VERIFIED) "verified" else "optional/unverified"}", maxLines = 3)
     }
 }
 

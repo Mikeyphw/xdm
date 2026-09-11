@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android.ui.debug
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -117,14 +118,26 @@ fun DebugCenterScreen(
 
     fun exportZip(run: DebugTestRun) {
         val timeline = (appRecorder as? RollingJsonlDebugEventRecorder)?.copySanitizedTimeline().orEmpty()
-        val zip = store.exportRunZip(
-            run = run,
-            supportReportText = state.supportReportText,
-            debugTimelineJsonl = timeline,
-            problemIncidentsText = problemReporter?.exportText().orEmpty(),
-        )
+        val outcome = runCatching {
+            store.exportRunZip(
+                run = run,
+                supportReportText = state.supportReportText,
+                debugTimelineJsonl = timeline,
+                problemIncidentsText = problemReporter?.exportText().orEmpty(),
+            )
+        }
+        val zip = outcome.getOrNull()
+        if (zip == null) {
+            Toast.makeText(
+                context,
+                "Diagnostics export blocked: final ZIP privacy/integrity verification failed.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
         latestRun = run
         history = store.loadRuns()
+        Toast.makeText(context, "Diagnostics ZIP verified and ready to share.", Toast.LENGTH_SHORT).show()
         shareDebugCenterZip(context, zip, run)
     }
 

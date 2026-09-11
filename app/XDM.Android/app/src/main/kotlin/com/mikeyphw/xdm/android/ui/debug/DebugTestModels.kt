@@ -164,7 +164,7 @@ data class DebugTestRun(
             appendLine(result.toReportText())
         }
         appendLine()
-        appendLine("Privacy: Diagnostics exports are redacted locally. No automatic upload is performed.")
+        appendLine("Privacy: The exact diagnostics ZIP is redacted, structurally verified, manifest-hashed, and rescanned before sharing. No automatic upload is performed.")
     }.trimEnd()
 
     fun toJson(): String = buildString {

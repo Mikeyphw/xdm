@@ -1401,7 +1401,7 @@ internal fun MediaDeveloperToolsSection(
     val finalValidation = remember(mobilePolish, privacyAudit, captureQuality, playerDiagnostics, libraryV2, termuxRuntime, nativeDirect) {
         MediaFinalValidationGatePlanner().dashboard(
             currentOverlay = MediaFinalValidationGatePlanner.FinalOverlayArtifact,
-            currentRoomSchemaVersion = 21,
+            currentRoomSchemaVersion = 22,
             mediaMobilePolish = mobilePolish,
             privacyAudit = privacyAudit,
             captureQuality = captureQuality,
@@ -1411,9 +1411,9 @@ internal fun MediaDeveloperToolsSection(
             nativeDirect = nativeDirect,
             staticValidationPassed = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
             fullValidationPassed = BuildConfig.XDM_FULL_VALIDATION_PASSED,
-            noNewTopLevelRoutes = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
-            keepDebugSymbolsProtected = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
-            warningsAsErrors = BuildConfig.XDM_STATIC_VALIDATION_PASSED,
+            noNewTopLevelRoutes = BuildConfig.XDM_ROUTE_TOPOLOGY_VALIDATED,
+            keepDebugSymbolsProtected = BuildConfig.XDM_NATIVE_SYMBOLS_VALIDATED,
+            warningsAsErrors = BuildConfig.XDM_LINT_VALIDATION_PASSED,
         )
     }
 

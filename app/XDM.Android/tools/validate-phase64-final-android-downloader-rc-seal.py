@@ -22,7 +22,7 @@ def find_root() -> Path:
 ROOT = find_root()
 REPO = ROOT.parent.parent
 OVERLAY = 'xdm_android_phase64_final_android_downloader_rc_seal_r2_overlay.zip'
-ACCEPTED_CURRENT_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip'}
+ACCEPTED_CURRENT_OVERLAYS = {'xdm_android_privacy_quality_final_gate_overlay_v2.zip', 'xdm_android_foundation_gate_repair_overlay.zip', OVERLAY, 'xdm_android_phase65_diagnostic_export_download_action_fix_overlay.zip', 'xdm_android_ux01_ux09_product_foundation_v3.zip', 'xdm_android_ux02_ux03_navigation_downloads_product_ui_v1.zip', 'xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip', 'xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip', 'xdm_android_bug_hunt_phase10_release_upgrade_packaging_publication_full_overlay.zip', 'xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip'}
 ERRORS: list[str] = []
 
 
@@ -95,7 +95,7 @@ for needle in [
     'Final validators harmonized',
     'Real-device smoke represented',
     'Support bundle readiness sealed',
-    'Browser-free downloader boundary',
+    'Browser and media-capture topology truthful',
     'Privacy and artifact handoff',
     'Private values: full links, raw headers, cookies, authorization values, bearer tokens, signatures, credential query values, and browser session values are redacted.',
 ]:

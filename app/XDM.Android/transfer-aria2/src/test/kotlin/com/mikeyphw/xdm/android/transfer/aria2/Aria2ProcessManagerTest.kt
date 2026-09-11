@@ -244,6 +244,42 @@ class Aria2ProcessManagerTest {
         assertTrue(files.deleteAttempts >= 2)
     }
 
+
+    @Test
+    fun processExitBeforeAuthenticatedRpcIsReportedAsRealFailureInsteadOfReady() = runTest {
+        val root = Files.createTempDirectory("aria2-process-exited-before-rpc").toFile()
+        val files = FakeRuntimeFiles(root, runtimeLogTail = "aria2 exited during startup")
+        val process = FakeManagedProcess().also { it.complete(1) }
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = files,
+            secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
+            processLauncher = Aria2ProcessLauncher { process },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> FakeRpcControl(process) },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 100,
+            pollIntervalMillis = 1,
+        )
+
+        val result = manager.start()
+
+        assertFalse(result.started)
+        val failed = result.state as Aria2ProcessState.Failed
+        assertEquals(Aria2StartupFailureKind.ProcessExited, failed.diagnostic?.kind)
+        assertEquals(1, failed.diagnostic?.exitCode)
+        assertTrue(failed.message.contains("ProcessExited"))
+        assertTrue(failed.message.contains("code 1"))
+        assertEquals(failed, manager.state.value)
+
+        val effective = manager.effectiveCapability()
+        assertFalse(effective.isAvailable)
+        assertEquals(Aria2Availability.ProbeFailed, effective.availability)
+        assertTrue(effective.summary.contains("ProcessExited"))
+        assertTrue(effective.summary.contains("exit code 1"))
+        assertTrue(effective.summary.contains("Repair aria2"))
+    }
+
     @Test
     fun startupClassifiesUnauthorizedRpcFailureInsteadOfCollapsingIt() = runTest {
         val root = Files.createTempDirectory("aria2-auth-failure").toFile()

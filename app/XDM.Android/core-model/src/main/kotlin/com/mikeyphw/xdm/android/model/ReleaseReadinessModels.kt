@@ -95,7 +95,7 @@ object ReleaseInstallReadinessGate {
                         id = "database.schema",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Unexpected schema migration",
-                        detail = "Install/update readiness must report the reviewed Room schema v21 after the reviewed migration chain through manifest hardening.",
+                        detail = "Install/update readiness must report the reviewed Room schema v22 after the reviewed migration chain through manifest hardening.",
                     ),
                 )
             }

@@ -42,6 +42,7 @@ import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
+import com.mikeyphw.xdm.android.model.DiagnosticExportIntegrity
 import com.mikeyphw.xdm.android.model.DebugWorkbenchShellPolicy
 import com.mikeyphw.xdm.android.model.DebugWorkbenchShellReport
 import com.mikeyphw.xdm.android.model.DestinationPermission
@@ -755,40 +756,45 @@ class MainViewModel(
         val fullValidationPassed = BuildConfig.XDM_FULL_VALIDATION_PASSED
         val realDeviceSmokePassed = BuildConfig.XDM_REAL_DEVICE_SMOKE_PASSED
         val aria2PayloadVerified = BuildConfig.XDM_ARIA2_PAYLOAD_VERIFIED
+        val diagnosticsRuntimePrivacyReady = DiagnosticExportIntegrity.contractSelfTest()
+        val diagnosticsExportValidated = BuildConfig.XDM_DIAGNOSTIC_EXPORT_VALIDATED
+        val releaseDocsValidated = BuildConfig.XDM_RELEASE_DOCS_VALIDATED
+        val routeTopologyValidated = BuildConfig.XDM_ROUTE_TOPOLOGY_VALIDATED
+        val packageIdentityStable = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".devunsigned") == "com.mikeyphw.xdm.android"
         val releaseSecurityReport = ReleaseSecurityGate.evaluate(
             versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             schemaVersion = CurrentRoomSchemaVersion,
             buildType = BuildConfig.BUILD_TYPE,
             debuggable = BuildConfig.DEBUG,
-            privacySafeDiagnostics = staticValidationPassed,
+            privacySafeDiagnostics = diagnosticsRuntimePrivacyReady,
             releaseSigningConfigured = releaseSigningAttestationConfigured(),
         )
         val installUpdateReadinessReport = ReleaseInstallReadinessGate.evaluate(
             versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             versionCode = BuildConfig.VERSION_CODE,
-            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
+            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".devunsigned"),
             schemaVersion = CurrentRoomSchemaVersion,
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyComplete = releaseSecurityReport.releaseReady,
             recoverySurfaceReady = snapshot.finalizationJournals.none { it.needsRecovery } || snapshot.recovery.isNotEmpty() || snapshot.finalizationJournals.isEmpty(),
-            diagnosticsExportRedacted = staticValidationPassed,
-            aria2PayloadGateRetained = staticValidationPassed,
-            updateKeepsPackageIdentity = staticValidationPassed,
+            diagnosticsExportRedacted = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
+            aria2PayloadGateRetained = BuildConfig.XDM_ARIA2_PAYLOAD_GATE_CONFIGURED,
+            updateKeepsPackageIdentity = packageIdentityStable,
             releaseSigningConfigured = releaseSigningAttestationConfigured(),
         )
         val finalReleaseGateReport = FinalPublicReleaseGate.evaluate(
             versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
             versionCode = BuildConfig.VERSION_CODE,
-            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
+            packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".devunsigned"),
             schemaVersion = CurrentRoomSchemaVersion,
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyReady = releaseSecurityReport.releaseReady,
             installUpdateReady = installUpdateReadinessReport.readyForInstall,
-            diagnosticsRedacted = staticValidationPassed,
+            diagnosticsRedacted = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
             aria2PayloadVerified = aria2PayloadVerified,
             staticValidatorsComplete = staticValidationPassed,
-            releaseDocsComplete = staticValidationPassed,
-            noNewTopLevelRoutes = staticValidationPassed,
+            releaseDocsComplete = releaseDocsValidated,
+            noNewTopLevelRoutes = routeTopologyValidated,
             fullValidationPassed = fullValidationPassed,
             releaseSigningConfigured = releaseSigningAttestationConfigured(),
         )
@@ -797,10 +803,10 @@ class MainViewModel(
             releaseSecurityIncluded = releaseSecurityReport.releaseReady,
             installUpdateReadinessIncluded = installUpdateReadinessReport.readyForInstall,
             finalReleaseWarningsExplained = finalReleaseGateReport.checks.isNotEmpty(),
-            realDeviceSmokeStatusIncluded = realDeviceSmokePassed,
-            redactedReportsOnly = staticValidationPassed,
-            rawUrlsExcluded = staticValidationPassed,
-            rawHeadersExcluded = staticValidationPassed,
+            realDeviceSmokeStatusIncluded = true,
+            redactedReportsOnly = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
+            rawUrlsExcluded = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
+            rawHeadersExcluded = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
             sessionValuesPersisted = false,
             copyReportAvailable = true,
         )
@@ -818,6 +824,16 @@ class MainViewModel(
             appendLine(installUpdateReadinessReport.redactedSummary())
             appendLine()
             appendLine(finalReleaseGateReport.redactedExplanationSummary())
+            appendLine()
+            appendLine("Validation evidence (independent facts)")
+            appendLine("- Runtime diagnostics redaction contract: ${if (diagnosticsRuntimePrivacyReady) "pass" else "fail"}")
+            appendLine("- Final diagnostics export validator: ${if (diagnosticsExportValidated) "passed" else "not attested"}")
+            appendLine("- Static validator chain: ${if (staticValidationPassed) "passed" else "not attested"}")
+            appendLine("- Release docs validator: ${if (releaseDocsValidated) "passed" else "not attested"}")
+            appendLine("- Route topology validator: ${if (routeTopologyValidated) "passed" else "not attested"}")
+            appendLine("- Full validation: ${if (fullValidationPassed) "passed" else "pending"}")
+            appendLine("- Real-device smoke: ${if (realDeviceSmokePassed) "passed" else "pending/not attested"}")
+            appendLine("- aria2 payload: ${if (aria2PayloadVerified) "verified" else "optional/unverified"}")
             appendLine()
             appendLine(supportBundleSeal.redactedSummary())
         }
@@ -904,7 +920,7 @@ class MainViewModel(
             releasePackagingReport = ReleasePackagingGate.report(
                 versionName = BuildConfig.VERSION_NAME.removeSuffix("-debug"),
                 versionCode = BuildConfig.VERSION_CODE,
-                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug"),
+                packageId = BuildConfig.APPLICATION_ID.removeSuffix(".debug").removeSuffix(".devunsigned"),
             ),
             desktopParityReport = DesktopParityGate.evaluate(
                 settingsImportExport = true,

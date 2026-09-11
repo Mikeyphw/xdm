@@ -20,7 +20,7 @@ class Phase64FinalAndroidDownloaderRcSealContractTest {
         assertTrue(seal.contains("Final validators harmonized"))
         assertTrue(seal.contains("Real-device smoke represented"))
         assertTrue(seal.contains("Support bundle readiness sealed"))
-        assertTrue(seal.contains("Browser-free downloader boundary"))
+        assertTrue(seal.contains("Browser and media-capture topology truthful"))
         assertTrue(test.contains("finalRcSealIsReadyWhenAllDownloaderReadinessSignalsArePresent"))
         assertTrue(test.contains("finalRcSealHoldsWhenValidationOrPrivacyBoundariesAreMissing"))
     }

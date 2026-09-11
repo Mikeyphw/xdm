@@ -14,7 +14,7 @@ class FinalAndroidDownloaderRcSealPlannerTest {
             finalGateValidatorsHarmonized = true,
             realDeviceSmokeRepresented = true,
             supportBundleSealed = true,
-            browserRuntimeAbsent = true,
+            browserTopologyTruthful = true,
             roomSchemaUnchanged = true,
             noBroadStoragePermission = true,
             noAutomaticWork = true,
@@ -31,7 +31,7 @@ class FinalAndroidDownloaderRcSealPlannerTest {
         assertTrue(seal.summary.contains("ready", ignoreCase = true))
         assertTrue(seal.redactedSummary().contains("XDM Android final downloader RC seal"))
         assertTrue(seal.redactedSummary().contains("Runtime recovery flow sealed"))
-        assertTrue(seal.redactedSummary().contains("Browser-free downloader boundary"))
+        assertTrue(seal.redactedSummary().contains("Browser and media-capture topology truthful"))
         assertFalse(seal.redactedSummary().contains("https://"))
         assertFalse(seal.redactedSummary().contains("Cookie:"))
         assertFalse(seal.redactedSummary().contains("Authorization:"))
@@ -47,7 +47,7 @@ class FinalAndroidDownloaderRcSealPlannerTest {
             finalGateValidatorsHarmonized = true,
             realDeviceSmokeRepresented = false,
             supportBundleSealed = true,
-            browserRuntimeAbsent = true,
+            browserTopologyTruthful = true,
             roomSchemaUnchanged = true,
             noBroadStoragePermission = false,
             noAutomaticWork = true,

@@ -17,6 +17,8 @@ bash tools/run-final-common-validation.sh
 # evidence is therefore earned by an earlier invocation rather than asserted optimistically.
 ./gradlew -Pxdm.requireAria2Runtime=true \
   -Pxdm.validation.staticPassed=true -Pxdm.validation.fullPassed=true -Pxdm.validation.aria2PayloadVerified=true \
+  -Pxdm.validation.diagnosticExportPassed=true -Pxdm.validation.releaseDocsPassed=true \
+  -Pxdm.validation.routeTopologyPassed=true -Pxdm.validation.lintPassed=true -Pxdm.validation.nativeSymbolsPassed=true \
   :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark \
   :browser-extension:packageFirefoxExtensionAmoled :browser-extension:verifyFirefoxExtensionReleaseArtifacts \
   lintRelease testReleaseUnitTest :app:assembleRelease :app:bundleRelease

@@ -59,7 +59,7 @@ class EmbeddedAria2Backend(
     private val finalizationGates = ConcurrentHashMap<String, Mutex>()
 
     override suspend fun capabilities(): BackendCapabilities {
-        val available = processManager.probe().isAvailable
+        val available = processManager.effectiveCapability().isAvailable
         return BackendCapabilities(
             protocols = if (available) setOf("http", "https", "ftp", "sftp", "magnet") else emptySet(),
             supportsSegmentation = available,
@@ -79,7 +79,7 @@ class EmbeddedAria2Backend(
     }
 
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
-        val capability = processManager.probe()
+        val capability = processManager.effectiveCapability()
         if (!capability.isAvailable) throw BackendUnavailableException(capability.summary)
         require(request.requestKind !in setOf(DownloadRequestKind.Torrent, DownloadRequestKind.Metalink)) {
             "Embedded aria2 integration does not implement aria2.addTorrent/addMetalink; use a backend with explicit protocol support"
@@ -383,7 +383,7 @@ class EmbeddedAria2Backend(
     }
 
     override suspend fun reconcile(ownership: BackendOwnership): BackendReconciliationResult {
-        val report = processManager.probe()
+        val report = processManager.effectiveCapability()
         if (!report.isAvailable) return BackendReconciliationResult(
             BackendReconciliationClassification.BackendUnavailable,
             report.summary,

@@ -84,6 +84,17 @@ class AutomationModelsTest {
     }
 
     @Test
+    fun signedMediaQueryAliasesAreCredentialBearingAndRedacted() {
+        val raw = "https://cdn.example.test/master.m3u8?quality=1080&md5=deadbeef&sess=session-secret&signature=sig-secret&token=token-secret"
+
+        assertTrue(ExternalUrlPolicy.hasCredentialBearingQuery(raw))
+        assertEquals(
+            "https://cdn.example.test/master.m3u8?quality=1080&md5=REDACTED&sess=REDACTED&signature=REDACTED&token=REDACTED",
+            ExternalUrlPolicy.persistableUrl(raw),
+        )
+    }
+
+    @Test
     fun sensitiveBrowserHeadersAreRedacted() {
         val draft = AutomationCommandDraft(
             source = AutomationCommandSource.BrowserExtension,

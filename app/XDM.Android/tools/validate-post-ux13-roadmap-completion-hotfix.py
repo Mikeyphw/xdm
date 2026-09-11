@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
 HOTFIX = "xdm_android_post_ux13_roadmap_completion_hotfix_v1.zip"
+PARITY01_OVERLAY = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliability_v2.zip"
 UX13 = "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
 
 
@@ -45,7 +46,7 @@ ux13_validator = text("tools/validate-ux13-end-to-end-ui-ux-release-seal.py")
 strings_xml = text("app/src/main/res/values/strings.xml")
 
 # Final-authority truth.
-require(manifest.get("current_overlay") == HOTFIX, "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix")
+require(manifest.get("current_overlay") in {HOTFIX, PARITY01_OVERLAY}, "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix")
 require(manifest.get("next_phase") == "complete", "roadmap must remain complete")
 require(manifest.get("current_release_authority") == "post_ux13_roadmap_completion_hotfix", "legacy current_release_authority must point to the final hotfix")
 require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the Room 21 hotfix baseline")
@@ -139,9 +140,11 @@ for source_name, source in (
 # Developer hierarchy and source-truth documentation.
 forbid(developer, 'XdmCardTitle("Developer Center")', "Developer Center must not repeat its page title in an intro card")
 require("Technical controls are separated from normal app settings" in developer, "Developer Center lightweight intro copy must remain")
-require("post-UX13 roadmap-completion hotfix is the current UI release authority" in readme,
-        "README must identify the current post-UX13 UI authority")
-require("UX13 is the end-to-end UI/UX release baseline" in readme, "README must retain UX13 as baseline")
+require("Media Parity01 is the current runtime-truth/diagnostics/backend-reliability authority" in readme,
+        "README must identify Media Parity01 as the current runtime-truth authority")
+require("post-UX13 roadmap-completion hotfix remains the UI release authority" in readme,
+        "README must retain the post-UX13 UI release authority")
+require("UX13 is the end-to-end UI/UX baseline" in readme, "README must retain UX13 as baseline")
 require("Live Locator uses a constrained in-app WebView" in readme and "does not register as a general browser" in readme,
         "README must truthfully describe the constrained Live Locator runtime")
 

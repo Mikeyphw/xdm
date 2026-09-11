@@ -160,7 +160,7 @@ object OperationalActivityPlanner {
         appendLine("Android: ${safeText(context.androidVersion)}")
         appendLine("Room schema: ${context.schemaVersion}")
         appendLine("Methods: ${context.enabledEngines.map(::engineLabel).joinToString().ifBlank { "none reported" }}")
-        appendLine("Product: downloader-only; external browser handoff enabled; built-in browser absent")
+        appendLine("Product: download manager; Live Locator WebView capture enabled; external Firefox/browser handoff enabled; no general-purpose browser claim")
         appendLine("Summary: ${summary.total} events, ${summary.unresolved} unresolved, ${summary.policyHolds} policy holds, ${summary.recentFailures} errors")
         appendLine("Secrets: cookies, authorization values, tokens, signatures, and credential-bearing query values are <redacted>")
         appendLine("Events:")
