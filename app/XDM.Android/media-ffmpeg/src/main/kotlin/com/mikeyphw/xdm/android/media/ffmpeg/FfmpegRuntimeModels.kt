@@ -10,7 +10,7 @@ enum class FfmpegRuntimeHealth {
 
 enum class FfmpegFailureKind {
     None, RuntimeMissing, RuntimeInvalid, PermissionDenied, InvalidArguments, Network, Authentication, UnsupportedMedia,
-    OutputFailure, Cancelled, TimedOut, ProcessFailed, ProbeFailed
+    OutputFailure, Cancelled, TimedOut, ProcessFailed, ProbeFailed, VerificationFailed
 }
 
 data class FfmpegRuntimeManifest(
@@ -46,6 +46,25 @@ data class FfmpegRuntimeCapabilityReport(
         }
 }
 
+enum class FfmpegProgressPhase { Preparing, Processing, Finalizing, Completed }
+
+data class FfmpegProgressSnapshot(
+    val phase: FfmpegProgressPhase,
+    val outTimeMs: Long? = null,
+    val expectedDurationMs: Long? = null,
+    val totalSizeBytes: Long? = null,
+    val frame: Long? = null,
+    val speed: String? = null,
+    val percent: Int? = null,
+) {
+    val userLabel: String get() = when (phase) {
+        FfmpegProgressPhase.Preparing -> "Preparing media"
+        FfmpegProgressPhase.Processing -> "Processing media"
+        FfmpegProgressPhase.Finalizing -> "Finalizing media"
+        FfmpegProgressPhase.Completed -> "Media processing complete"
+    }
+}
+
 data class FfmpegExecutionResult(
     val exitCode: Int,
     val stdout: String,
@@ -53,6 +72,7 @@ data class FfmpegExecutionResult(
     val durationMs: Long,
     val failureKind: FfmpegFailureKind = FfmpegFailureKind.None,
     val message: String = "",
+    val lastProgress: FfmpegProgressSnapshot? = null,
 ) {
     val success: Boolean get() = exitCode == 0 && failureKind == FfmpegFailureKind.None
     val redactedSummary: String get() = if (success) {
@@ -68,6 +88,15 @@ internal fun redactFfmpegDiagnostic(value: String): String = value
     .replace(Regex("""(?i)(token|signature)(\s*[:=]\s*)[^\r\n\s&;]+"""), "$1$2<redacted>")
     .replace(Regex("""(?i)(bearer\s+)[A-Za-z0-9._~+\-/=]+"""), "$1<redacted>")
     .take(1_000)
+
+enum class FfmpegInputKind { Video, Audio, Subtitle, Generic }
+
+data class FfmpegInput(
+    val source: String,
+    val kind: FfmpegInputKind = FfmpegInputKind.Generic,
+    val headers: Map<String, String> = emptyMap(),
+    val tlsCaFile: File? = null,
+)
 
 sealed interface FfmpegOperation {
     data class Version(val binary: FfmpegBinary) : FfmpegOperation
@@ -86,8 +115,46 @@ sealed interface FfmpegOperation {
         val durationMs: Long? = null,
         val overwrite: Boolean = false,
     ) : FfmpegOperation
+    data class FinalizeAdaptive(
+        val input: FfmpegInput,
+        val outputFile: File,
+        val expectedDurationMs: Long? = null,
+        val overwrite: Boolean = false,
+    ) : FfmpegOperation
+    data class ExtractRemoteAudio(
+        val input: FfmpegInput,
+        val outputFile: File,
+        val expectedDurationMs: Long? = null,
+        val overwrite: Boolean = false,
+    ) : FfmpegOperation
+
+    data class FinalizeHlsSegments(
+        val concatFile: File,
+        val outputFile: File,
+        val expectedDurationMs: Long? = null,
+        val overwrite: Boolean = false,
+    ) : FfmpegOperation
+    data class MuxRemoteTracks(
+        val inputs: List<FfmpegInput>,
+        val outputFile: File,
+        val expectedDurationMs: Long? = null,
+        val overwrite: Boolean = false,
+    ) : FfmpegOperation
     data class Remux(val inputFile: File, val outputFile: File, val overwrite: Boolean = false) : FfmpegOperation
-    data class MuxTracks(val videoFile: File, val audioFile: File, val outputFile: File, val overwrite: Boolean = false) : FfmpegOperation
+    data class MuxTracks(
+        val videoFile: File,
+        val audioFile: File,
+        val outputFile: File,
+        val subtitleFile: File? = null,
+        val expectedDurationMs: Long? = null,
+        val overwrite: Boolean = false,
+    ) : FfmpegOperation
+    data class AttachSubtitle(
+        val inputFile: File,
+        val subtitleFile: File,
+        val outputFile: File,
+        val overwrite: Boolean = false,
+    ) : FfmpegOperation
     data class ExtractAudio(val inputFile: File, val outputFile: File, val overwrite: Boolean = false) : FfmpegOperation
     data class FastStart(val inputFile: File, val outputFile: File, val overwrite: Boolean = false) : FfmpegOperation
 }
@@ -96,6 +163,8 @@ data class CompiledFfmpegCommand(
     val binary: FfmpegBinary,
     val arguments: List<String>,
     val timeoutMs: Long? = null,
+    val progressEnabled: Boolean = false,
+    val expectedDurationMs: Long? = null,
 )
 
 data class FfprobeStream(
@@ -122,4 +191,34 @@ data class FfprobeResult(
     val videoStreams: List<FfprobeStream> get() = streams.filter { it.codecType == "video" }
     val audioStreams: List<FfprobeStream> get() = streams.filter { it.codecType == "audio" }
     val subtitleStreams: List<FfprobeStream> get() = streams.filter { it.codecType == "subtitle" }
+}
+
+data class FfmpegVerificationExpectation(
+    val requireVideo: Boolean = false,
+    val requireAudio: Boolean = false,
+    val requireSubtitle: Boolean = false,
+    val requireAnyStream: Boolean = true,
+    val expectedDurationMs: Long? = null,
+    val minimumBytes: Long = 1_024L,
+)
+
+data class FfmpegVerificationReport(
+    val valid: Boolean,
+    val fileBytes: Long,
+    val videoStreams: Int,
+    val audioStreams: Int,
+    val subtitleStreams: Int,
+    val durationMs: Long?,
+    val message: String,
+)
+
+
+
+data class FfmpegPostProcessResult(
+    val execution: FfmpegExecutionResult,
+    val outputFile: File,
+    val verification: FfmpegVerificationReport? = null,
+) {
+    val success: Boolean get() = execution.success && verification?.valid != false
+    val summary: String get() = verification?.message ?: execution.redactedSummary
 }

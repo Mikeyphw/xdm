@@ -79,7 +79,7 @@ dispatch = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecu
 termux = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaTermuxRuntimeAdapter.kt")
 worker = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaWorkerBridge.kt")
 need("requiresTermux = strategy == MediaDownloadStrategy.YtDlp" in planner, "FfmpegLive is still classified as requiring Termux")
-need(has(execution, "EmbeddedFfmpegLive", '"embedded-ffmpeg"', "AndroidMediaWorkKind.EmbeddedFfmpeg", 'liveNeedsContainer', '".mkv"'), "execution planner does not own an embedded FFmpeg lane with a real media output container")
+need(has(execution, "EmbeddedFfmpegLive", '"embedded-ffmpeg"', "AndroidMediaWorkKind.EmbeddedFfmpeg", 'ffmpegNeedsContainer', '".mkv"'), "execution planner does not own an embedded FFmpeg lane with a real media output container")
 need("MediaExecutionLane.LiveRecording" not in execution + dispatch + worker + termux, "legacy Termux-backed LiveRecording execution lane remains")
 need(has(dispatch, "NeedsEmbeddedFfmpegRuntime", "LaunchEmbeddedFfmpeg"), "dispatcher does not gate/launch the embedded FFmpeg lane")
 need("EmbeddedFfmpegLive" in termux and "BlockedDiagnostic" in termux, "Termux adapter must refuse ownership of embedded FFmpeg work")

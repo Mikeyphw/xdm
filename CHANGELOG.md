@@ -1,3 +1,12 @@
+## 2026-09-11 — FF02 embedded adaptive mux, HLS finalization, and post-processing
+
+- Added an app-owned `FfmpegAdaptive` / `EmbeddedFfmpegAdaptive` lane for fully resolved video/audio/subtitle rendition URLs; unresolved/site-extractor cases still fall back to yt-dlp rather than pretending FFmpeg can resolve them.
+- Added stream-copy remote mux, audio-only extraction/finalization, local remux/mux/subtitle/audio/faststart operations, and native-HLS ordered-part finalization through embedded FFmpeg.
+- Added stable `-progress pipe:1` processing telemetry, coroutine-aware child-process cancellation, Media-card stage/percent/speed display, and cancellation of active embedded outputs.
+- Added FFprobe size/stream/duration correctness checks before publication; adaptive/live durable output still promotes only after verification, and reusable local post-processing now stages and requires atomic final replacement.
+- Corrected HLS ownership so simple media playlists remain on the resumable native segment engine while HLS masters with selected renditions go through the embedded mux lane; guessed captured extensions no longer force incompatible MP4 stream-copy output.
+- Added the FF02 contract/tests, Gradle verification task, Devtool preflight carry-forward, canonical final-gate registration, architecture report, and implementation report. FF02 remains an intermediate full overlay and is applied with `--no-validate`.
+
 ## 2026-09-11 — FF01 embedded FFmpeg/FFprobe runtime and media execution
 
 - Added an app-owned ARM64 FFmpeg 9.0.1 + FFprobe runtime built reproducibly with Android NDK 29 and pinned OpenSSL 3.5.8 source hashes; generated binaries are verified for AArch64 PIE shape, 16 KB PT_LOAD alignment, provenance, and APK presence.

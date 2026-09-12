@@ -34,7 +34,7 @@ enum class MediaExecutionStage(val label: String) {
 enum class MediaExecutionFailureKind(val label: String) {
     None("No failure"),
     Protected("Protected media"),
-    EmbeddedFfmpegFailed("Embedded FFmpeg recording failed"),
+    EmbeddedFfmpegFailed("Embedded FFmpeg media processing failed"),
     MetadataRefreshRequired("Metadata refresh required"),
     AppDownloadFailed("App download failed"),
     Aria2DownloadFailed("aria2 download failed"),
@@ -53,6 +53,7 @@ enum class MediaExecutionLane(val label: String) {
     Aria2Segmented("aria2 segmented"),
     NativeHlsSegmented("Native HLS segmented"),
     YtDlpAdaptive("yt-dlp adaptive"),
+    EmbeddedFfmpegAdaptive("Embedded FFmpeg adaptive processing"),
     EmbeddedFfmpegLive("Embedded FFmpeg live recording"),
     ProtectedBlocked("Protected diagnostic only"),
 }
@@ -129,6 +130,36 @@ data class MediaExecutionEnginePlan(
     ).joinToString("; ")
 }
 
+
+enum class MediaPostProcessingKind(val label: String) {
+    None("No media processing"),
+    AdaptiveMux("Combine selected tracks"),
+    AdaptiveFinalize("Finalize adaptive media"),
+    AudioExtract("Extract audio"),
+    SubtitleMux("Embed subtitle track"),
+    NativeHlsFinalize("Finalize native HLS"),
+    LiveCapture("Record live media"),
+}
+
+data class MediaSelectedTrackInput(
+    val variantId: String,
+    val kind: com.mikeyphw.xdm.android.model.MediaVariantKind,
+    val url: String,
+    val mimeType: String?,
+    val headers: Map<String, String>,
+) {
+    val redactedUrl: String get() = ExternalUrlPolicy.persistableUrl(url) ?: url.substringBefore('?')
+}
+
+data class MediaPostProcessingPlan(
+    val kind: MediaPostProcessingKind,
+    val required: Boolean,
+    val userLabel: String,
+    val expectedStages: List<String>,
+) {
+    val summary: String get() = if (required) "$userLabel • ${expectedStages.joinToString(" → ")}" else userLabel
+}
+
 data class MediaQueuedDownloadSpec(
     val captureId: String,
     val sourceUrl: String,
@@ -139,6 +170,8 @@ data class MediaQueuedDownloadSpec(
     val userLabel: String,
     val safeExplanation: String,
     val selectedTrackIds: Set<String>,
+    val selectedInputs: List<MediaSelectedTrackInput>,
+    val postProcessing: MediaPostProcessingPlan,
     val redactedSessionSummary: String,
     val requestHeaders: Map<String, String>,
     val isExpiringUrl: Boolean,
@@ -155,6 +188,7 @@ data class MediaQueuedDownloadSpec(
             "backend=${requestedBackend.name}",
             "destination=${destinationUri.take(96)}",
             "tracks=${selectedTrackIds.size}",
+            "processing=${postProcessing.kind.name}",
             "source=${sidecar.redactedSourceUrl}",
             "session=$redactedSessionSummary",
         ).joinToString("; ")
@@ -262,12 +296,14 @@ class MediaExecutionLibraryPlanner(
         variants: List<MediaVariant>,
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = capture.selectedVariantId),
         destinationUri: String,
+        intent: MediaDownloadIntent = MediaDownloadIntent.BestVideo,
         sessionHeaders: List<MediaSessionHeader> = emptyList(),
         variantSessionHeaders: Map<String, List<MediaSessionHeader>> = emptyMap(),
     ): MediaQueuedDownloadSpec {
         val plan = resolver.plan(
             capture = capture,
             variants = variants,
+            intent = intent,
             selection = selection,
             sessionHeaders = sessionHeaders,
             variantSessionHeaders = variantSessionHeaders,
@@ -277,10 +313,23 @@ class MediaExecutionLibraryPlanner(
             MediaDownloadStrategy.NativeHls -> BackendType.Native
             MediaDownloadStrategy.Aria2 -> BackendType.Aria2
             MediaDownloadStrategy.YtDlp,
+            MediaDownloadStrategy.FfmpegAdaptive,
             MediaDownloadStrategy.FfmpegLive,
             MediaDownloadStrategy.UnsupportedProtected -> BackendType.Automatic
         }
         val selectedTrackIds = plan.trackSelection.selectedIds()
+        val selectedInputs = selectedTrackIds.mapNotNull { id ->
+            variants.firstOrNull { it.id == id }?.let { variant ->
+                MediaSelectedTrackInput(
+                    variantId = variant.id,
+                    kind = variant.kind,
+                    url = variant.url,
+                    mimeType = variant.mimeType,
+                    headers = plan.sessionHandoff.requestHeaders(),
+                )
+            }
+        }
+        val postProcessing = postProcessingPlan(plan, selectedInputs)
         val sidecar = sidecar(capture, null, selectedTrackIds, null)
         val blocked = plan.strategy == MediaDownloadStrategy.UnsupportedProtected
         val needsTermux = plan.strategy == MediaDownloadStrategy.YtDlp
@@ -296,9 +345,12 @@ class MediaExecutionLibraryPlanner(
                 plan.explanation,
                 failureReason(capture, plan, null),
                 "destination=${destinationUri.take(160)}",
+                "processing=${postProcessing.summary}",
                 "sidecar=${sidecar.toRedactedJson()}",
             ).filter(String::isNotBlank).joinToString(" ").take(900),
             selectedTrackIds = selectedTrackIds,
+            selectedInputs = selectedInputs,
+            postProcessing = postProcessing,
             redactedSessionSummary = plan.sessionHandoff.redactedSummary,
             requestHeaders = plan.sessionHandoff.requestHeaders(),
             isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(plan.primaryUrl) || capture.needsManifestRefresh(System.currentTimeMillis()),
@@ -338,6 +390,7 @@ class MediaExecutionLibraryPlanner(
                 MediaExecutionLane.NativeHlsSegmented -> "native-hls"
                 MediaExecutionLane.Aria2Segmented -> "aria2c"
                 MediaExecutionLane.YtDlpAdaptive -> "yt-dlp"
+                MediaExecutionLane.EmbeddedFfmpegAdaptive -> "embedded-ffmpeg"
                 MediaExecutionLane.EmbeddedFfmpegLive -> "embedded-ffmpeg"
                 MediaExecutionLane.ProtectedBlocked -> "diagnostics-only"
             },
@@ -640,9 +693,40 @@ class MediaExecutionLibraryPlanner(
         )
     }
 
+    private fun postProcessingPlan(
+        plan: MediaDownloadPlan,
+        inputs: List<MediaSelectedTrackInput>,
+    ): MediaPostProcessingPlan {
+        val hasVideo = inputs.any { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Video || it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Primary }
+        val hasAudio = inputs.any { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Audio }
+        val hasSubtitle = inputs.any { it.kind == com.mikeyphw.xdm.android.model.MediaVariantKind.Subtitle }
+        val kind = when {
+            plan.strategy == MediaDownloadStrategy.FfmpegLive -> MediaPostProcessingKind.LiveCapture
+            plan.strategy == MediaDownloadStrategy.NativeHls -> MediaPostProcessingKind.NativeHlsFinalize
+            plan.strategy == MediaDownloadStrategy.FfmpegAdaptive && plan.intent == MediaDownloadIntent.AudioOnly -> MediaPostProcessingKind.AudioExtract
+            plan.strategy == MediaDownloadStrategy.FfmpegAdaptive && hasSubtitle -> MediaPostProcessingKind.SubtitleMux
+            plan.strategy == MediaDownloadStrategy.FfmpegAdaptive && hasVideo && hasAudio -> MediaPostProcessingKind.AdaptiveMux
+            plan.strategy == MediaDownloadStrategy.FfmpegAdaptive -> MediaPostProcessingKind.AdaptiveFinalize
+            else -> MediaPostProcessingKind.None
+        }
+        val stages = when (kind) {
+            MediaPostProcessingKind.None -> emptyList()
+            MediaPostProcessingKind.NativeHlsFinalize -> listOf("Downloading parts", "Finalizing", "Publishing", "Verifying")
+            MediaPostProcessingKind.LiveCapture -> listOf("Recording", "Finalizing", "FFprobe verification", "Publishing")
+            else -> listOf("Downloading selected tracks", "Processing media", "FFprobe verification", "Publishing")
+        }
+        return MediaPostProcessingPlan(
+            kind = kind,
+            required = kind != MediaPostProcessingKind.None,
+            userLabel = kind.label,
+            expectedStages = stages,
+        )
+    }
+
     private fun laneFor(spec: MediaQueuedDownloadSpec): MediaExecutionLane = when {
         spec.strategy == MediaDownloadStrategy.UnsupportedProtected || !spec.canUseAppQueue && !spec.requiresTermuxYtDlp && spec.strategy != MediaDownloadStrategy.NativeHls -> MediaExecutionLane.ProtectedBlocked
         spec.strategy == MediaDownloadStrategy.NativeHls -> MediaExecutionLane.NativeHlsSegmented
+        spec.strategy == MediaDownloadStrategy.FfmpegAdaptive -> MediaExecutionLane.EmbeddedFfmpegAdaptive
         spec.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionLane.EmbeddedFfmpegLive
         spec.requiresTermuxYtDlp -> MediaExecutionLane.YtDlpAdaptive
         spec.requestedBackend == BackendType.Aria2 -> MediaExecutionLane.Aria2Segmented
@@ -652,6 +736,7 @@ class MediaExecutionLibraryPlanner(
     private fun backgroundPolicyFor(lane: MediaExecutionLane, sdkInt: Int, userInitiated: Boolean): MediaBackgroundExecutionPolicy = when (lane) {
         MediaExecutionLane.ProtectedBlocked -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.BlockedDiagnostic, null, "Protected or unsupported media never enters background execution.")
         MediaExecutionLane.YtDlpAdaptive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.TermuxExternalJob, null, "yt-dlp execution stays in the typed Termux media pipeline.")
+        MediaExecutionLane.EmbeddedFfmpegAdaptive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.EmbeddedFfmpeg, "dataSync", "Resolved adaptive tracks are downloaded, muxed, verified, and published by XDM-owned embedded FFmpeg.")
         MediaExecutionLane.EmbeddedFfmpegLive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.EmbeddedFfmpeg, "dataSync", "Live media is recorded by XDM-owned embedded FFmpeg without requiring Termux.")
         MediaExecutionLane.DirectNative,
         MediaExecutionLane.NativeHlsSegmented,
@@ -730,6 +815,13 @@ class MediaExecutionLibraryPlanner(
                 spec.ytDlpFormatSelector?.takeIf(String::isNotBlank)?.let { selector -> args += listOf("--format", selector) }
                 args += listOf("--output", spec.fileName, spec.sidecar.redactedSourceUrl)
             }
+            MediaExecutionLane.EmbeddedFfmpegAdaptive -> {
+                args += listOf("--output", spec.fileName, "--processing", spec.postProcessing.kind.name)
+                spec.selectedInputs.forEach { input ->
+                    args += listOf("--${input.kind.name.lowercase()}-input", input.redactedUrl)
+                }
+                args += listOf("--progress-protocol", "ffmpeg-key-value", "--verify", "ffprobe")
+            }
             MediaExecutionLane.EmbeddedFfmpegLive -> {
                 args += listOf("--input", spec.sidecar.redactedSourceUrl, "--output", spec.fileName, "--stream-copy", "true")
                 spec.requestHeaders.keys.sorted().forEach { header -> args += listOf("--header", "$header=<redacted>") }
@@ -772,9 +864,9 @@ class MediaExecutionLibraryPlanner(
             download.errorMessage?.take(180).orEmpty().ifBlank { "Native HLS failed; retry keeps verified parts and rechecks manifest/session state." },
             retryable = true,
         )
-        plan.strategy == MediaDownloadStrategy.FfmpegLive && download?.state == DownloadState.Failed -> MediaExecutionFailure(
+        plan.strategy in setOf(MediaDownloadStrategy.FfmpegAdaptive, MediaDownloadStrategy.FfmpegLive) && download?.state == DownloadState.Failed -> MediaExecutionFailure(
             MediaExecutionFailureKind.EmbeddedFfmpegFailed,
-            download.errorMessage?.take(180).orEmpty().ifBlank { "Embedded FFmpeg live recording failed." },
+            download.errorMessage?.take(180).orEmpty().ifBlank { "Embedded FFmpeg media processing failed." },
             retryable = true,
         )
         capture.needsManifestRefresh(System.currentTimeMillis()) -> MediaExecutionFailure(
@@ -868,15 +960,19 @@ class MediaExecutionLibraryPlanner(
         val leaf = raw.substringAfterLast('/', raw)
         val existingExtension = leaf.substringAfterLast('.', "").lowercase()
         val hasExtension = existingExtension.length in 2..5
-        val liveNeedsContainer = plan.strategy == MediaDownloadStrategy.FfmpegLive &&
-            existingExtension in setOf("m3u8", "m3u", "mpd", "media", "")
-        val normalizedRaw = if (liveNeedsContainer && hasExtension) raw.substringBeforeLast('.') else raw
+        // FF02 intentionally gives stream-copy FFmpeg jobs a container we control. Captured names
+        // such as "movie.mp4" are often guesses made before track codecs are resolved; preserving
+        // that guessed extension can make a perfectly valid H.264/Opus/WebVTT selection fail at
+        // the mux header. Matroska is the conservative no-transcode target; audio-only uses M4A.
+        val ffmpegNeedsContainer = plan.strategy in setOf(MediaDownloadStrategy.FfmpegLive, MediaDownloadStrategy.FfmpegAdaptive)
+        val normalizedRaw = if (ffmpegNeedsContainer && hasExtension) raw.substringBeforeLast('.') else raw
         val extension = when {
-            liveNeedsContainer -> ".mkv"
+            ffmpegNeedsContainer && plan.intent == MediaDownloadIntent.AudioOnly -> ".m4a"
+            ffmpegNeedsContainer -> ".mkv"
             hasExtension -> ""
-            capture.mimeType?.contains("audio", ignoreCase = true) == true -> ".m4a"
+            capture.mimeType?.contains("audio", ignoreCase = true) == true || plan.intent == MediaDownloadIntent.AudioOnly -> ".m4a"
             plan.strategy == MediaDownloadStrategy.Native || plan.strategy == MediaDownloadStrategy.Aria2 -> ".mp4"
-            plan.strategy == MediaDownloadStrategy.FfmpegLive -> ".mkv"
+            plan.strategy in setOf(MediaDownloadStrategy.FfmpegLive, MediaDownloadStrategy.FfmpegAdaptive) -> ".mkv"
             else -> ".media"
         }
         return (normalizedRaw + extension).replace(Regex("[\\r\\n\\t]"), " ").take(120)

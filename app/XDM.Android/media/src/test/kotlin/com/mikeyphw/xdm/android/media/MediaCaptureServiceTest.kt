@@ -347,8 +347,9 @@ class MediaCaptureServiceTest {
         val safeText = listOf(spec.safeQueuedJobSummary, spec.safeExplanation, spec.sidecar.toRedactedJson()).joinToString("\n")
 
         assertFalse(spec.requiresTermuxYtDlp)
-        assertEquals(MediaDownloadStrategy.NativeHls, spec.strategy)
+        assertEquals(MediaDownloadStrategy.FfmpegAdaptive, spec.strategy)
         assertTrue(spec.canUseAppQueue)
+        assertEquals(MediaPostProcessingKind.SubtitleMux, spec.postProcessing.kind)
         assertEquals(3, spec.selectedTrackIds.size)
         assertTrue(spec.requestHeaders.containsKey("Referer"))
         assertFalse(safeText.contains("super-secret-token"))
@@ -389,7 +390,7 @@ class MediaCaptureServiceTest {
     }
 
     @Test
-    fun mediaEngineHardeningPlansUidtCookieCleanupAndLeakFreeYtDlp() {
+    fun resolvedAdaptiveTracksUseEmbeddedFfmpegWithoutTermuxOrSecretPersistence() {
         val service = MediaCaptureService(clock = { 3_000L })
         val record = service.recordFor(requireNotNull(service.candidateFor(
             url = "https://cdn.example.test/master.m3u8?token=secret-token",
@@ -421,11 +422,14 @@ class MediaCaptureServiceTest {
         val engine = planner.enginePlan(spec, androidSdkInt = 35)
         val safeText = listOf(engine.safeSummary, engine.tempCookieFile?.redactedPreview.orEmpty(), engine.typedArguments.joinToString(" ")).joinToString("\n")
 
-        assertEquals(MediaExecutionLane.YtDlpAdaptive, engine.lane)
-        assertEquals(AndroidMediaWorkKind.TermuxExternalJob, engine.backgroundPolicy.workKind)
-        assertEquals("# Netscape HTTP Cookie File", engine.tempCookieFile?.netscapeHeader)
-        assertEquals(2, engine.tempCookieFile?.redactedCookieLines)
-        assertTrue(engine.cleanupActions.any { it.contains("delete temporary Netscape cookie file") })
+        assertEquals(MediaDownloadStrategy.FfmpegAdaptive, spec.strategy)
+        assertEquals(MediaExecutionLane.EmbeddedFfmpegAdaptive, engine.lane)
+        assertEquals(AndroidMediaWorkKind.EmbeddedFfmpeg, engine.backgroundPolicy.workKind)
+        assertEquals("embedded-ffmpeg", engine.typedExecutor)
+        assertEquals(2, spec.selectedInputs.size)
+        assertEquals(MediaPostProcessingKind.AdaptiveMux, spec.postProcessing.kind)
+        assertEquals(null, engine.tempCookieFile)
+        assertFalse(spec.requiresTermuxYtDlp)
         assertTrue(engine.leakReport.safe)
         assertFalse(safeText.contains("secret-cookie"))
         assertFalse(safeText.contains("secret-auth"))
@@ -565,14 +569,16 @@ class MediaCaptureServiceTest {
             sessionHeaders = listOf(MediaSessionHeader("Cookie", "SID=secret-cookie")),
         )
         val engine = planner.enginePlan(spec, androidSdkInt = 35)
-        val dispatch = MediaExecutionDispatcher().dispatchPlan(spec, engine, record, termuxReady = true, nowEpochMs = 5_100L)
+        val dispatch = MediaExecutionDispatcher().dispatchPlan(
+            spec, engine, record, termuxReady = false, embeddedFfmpegReady = true, nowEpochMs = 5_100L,
+        )
 
         assertEquals(MediaDispatchReadiness.Ready, dispatch.readiness)
-        assertEquals(MediaExecutionLane.YtDlpAdaptive, dispatch.lane)
+        assertEquals(MediaExecutionLane.EmbeddedFfmpegAdaptive, dispatch.lane)
         assertTrue(dispatch.queueButtonEnabled)
-        assertTrue(dispatch.steps.any { it.kind == MediaDispatchStepKind.LaunchTermuxJob })
+        assertTrue(dispatch.steps.any { it.kind == MediaDispatchStepKind.LaunchEmbeddedFfmpeg })
         assertTrue(dispatch.steps.any { it.terminalCleanup })
-        assertTrue(dispatch.progressSignals.any { it.label.contains("extractor") })
+        assertTrue(dispatch.progressSignals.any { it.label.contains("FFmpeg", ignoreCase = true) || it.label.contains("FFprobe", ignoreCase = true) })
         assertFalse(dispatch.safeDiagnostics.contains("secret-cookie"))
         assertFalse(dispatch.safeDiagnostics.contains("secret-token"))
         assertFalse(dispatch.safeDiagnostics.contains("secret-session"))
@@ -874,6 +880,55 @@ class MediaCaptureServiceTest {
         assertFalse(plan.redactedPreview.contains("secret-cookie"))
         assertFalse(plan.redactedPreview.contains("secret-token"))
         assertFalse(plan.redactedPreview.contains("secret-session"))
+    }
+
+    @Test
+    fun termuxRuntimeAdapterBuildsAria2TransientInputAndSessionCleanup() {
+        val request = MediaWorkerBridgeRequest(
+            durableJobId = "aria2-runtime-job",
+            captureId = "capture-aria2-runtime",
+            title = "Segmented transfer",
+            kind = MediaWorkerBridgeKind.Aria2Adapter,
+            readiness = MediaWorkerBridgeReadiness.Ready,
+            lane = MediaExecutionLane.Aria2Segmented,
+            backgroundPolicy = MediaBackgroundExecutionPolicy(
+                sdkInt = 35,
+                workKind = AndroidMediaWorkKind.TermuxExternalJob,
+                foregroundServiceType = null,
+                reason = "typed aria2 adapter test",
+            ),
+            adapter = MediaWorkerAdapterContract(
+                executorLabel = "aria2c",
+                typedArguments = listOf("--input-file", "capture-aria2-runtime.aria2.input", "--save-session", "capture-aria2-runtime.aria2.session"),
+                transientInputLabels = listOf("capture-aria2-runtime.aria2.input", "capture-aria2-runtime.aria2.session"),
+                redactedPreview = "aria2c typed adapter; credentials redacted",
+                rawShellExposed = false,
+            ),
+            notification = MediaWorkerForegroundNotificationPlan(
+                channelId = "downloads",
+                title = "Segmented transfer",
+                body = "Downloading",
+                foregroundServiceType = null,
+                progressVisible = true,
+                actions = listOf("Pause", "Cancel"),
+            ),
+            cleanupAfterTerminal = listOf("delete aria2 transient input/session files"),
+            redactedSidecarJson = "{}",
+            safeRunbook = listOf("launch typed aria2 adapter"),
+            secretSafe = true,
+        )
+        val plan = MediaTermuxRuntimeAdapter().launchPlan(
+            request = request,
+            availableTools = setOf("aria2c"),
+        )
+
+        assertEquals(TermuxRuntimeLaunchKind.Aria2Download, plan.kind)
+        assertTrue(plan.launchable)
+        assertTrue(plan.noRawShell)
+        assertTrue(plan.transientFiles.any { it.kind == TermuxRuntimeTransientKind.Aria2Input })
+        assertTrue(plan.transientFiles.any { it.kind == TermuxRuntimeTransientKind.Aria2Session })
+        assertTrue(plan.cleanupSteps.count { it.required && it.label.contains("aria2") } >= 2)
+        assertFalse(plan.redactedPreview.contains("sh -c"))
     }
 
     @Test
@@ -1496,5 +1551,6 @@ class MediaCaptureServiceTest {
             )
         }
     }
+
 
 }

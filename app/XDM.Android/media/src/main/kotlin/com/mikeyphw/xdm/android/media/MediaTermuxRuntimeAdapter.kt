@@ -174,7 +174,7 @@ class MediaTermuxRuntimeAdapter {
 
     private fun kindFor(request: MediaWorkerBridgeRequest): TermuxRuntimeLaunchKind = when {
         request.kind == MediaWorkerBridgeKind.BlockedDiagnostic || request.lane == MediaExecutionLane.ProtectedBlocked -> TermuxRuntimeLaunchKind.BlockedDiagnostic
-        request.lane == MediaExecutionLane.EmbeddedFfmpegLive || request.kind == MediaWorkerBridgeKind.EmbeddedFfmpeg -> TermuxRuntimeLaunchKind.BlockedDiagnostic
+        request.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive) || request.kind == MediaWorkerBridgeKind.EmbeddedFfmpeg -> TermuxRuntimeLaunchKind.BlockedDiagnostic
         request.lane == MediaExecutionLane.YtDlpAdaptive || request.kind == MediaWorkerBridgeKind.TermuxYtDlp -> TermuxRuntimeLaunchKind.YtDlpDownload
         request.lane == MediaExecutionLane.Aria2Segmented || request.kind == MediaWorkerBridgeKind.Aria2Adapter -> TermuxRuntimeLaunchKind.Aria2Download
         else -> TermuxRuntimeLaunchKind.MetadataProbe

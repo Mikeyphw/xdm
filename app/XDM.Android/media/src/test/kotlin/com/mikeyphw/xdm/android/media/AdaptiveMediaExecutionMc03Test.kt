@@ -14,7 +14,7 @@ import org.junit.Test
 
 class AdaptiveMediaExecutionMc03Test {
     @Test
-    fun hlsTrackSelectionKeepsMasterAsExecutableInput() {
+    fun resolvedHlsTrackSelectionUsesEmbeddedFfmpegWithoutLosingMasterLineage() {
         val capture = capture(MediaSourceKind.HlsPlaylist, "https://cdn.example.test/master.m3u8").copy(nativeCapability = MediaNativeCapability.FallbackRequired)
         val video = variant(capture.id, "video", "https://cdn.example.test/video/720.m3u8", MediaVariantKind.Video, height = 720)
         val audio = variant(capture.id, "audio", "https://cdn.example.test/audio/pt.m3u8", MediaVariantKind.Audio, language = "pt", bitrate = 128_000L)
@@ -25,22 +25,22 @@ class AdaptiveMediaExecutionMc03Test {
             selection = MediaTrackSelection(video.id, audio.id, subtitle.id),
         )
 
-        assertEquals(MediaDownloadStrategy.YtDlp, plan.strategy)
+        assertEquals(MediaDownloadStrategy.FfmpegAdaptive, plan.strategy)
         assertEquals(capture.sourceUrl, plan.primaryUrl)
-        assertFalse(plan.ytDlpUsePageUrl)
-        assertTrue(requireNotNull(plan.ytDlpFormatSelector).contains("[height=720]"))
-        assertTrue(requireNotNull(plan.ytDlpFormatSelector).contains("[language^=pt]"))
-        assertEquals(listOf("--write-subs", "--sub-langs", "en", "--embed-subs"), plan.ytDlpExtraArguments)
+        assertFalse(plan.requiresTermux)
+        assertTrue(plan.canQueueDirectly)
+        assertEquals(null, plan.ytDlpFormatSelector)
         assertEquals(video.url, plan.sessionHandoff.selectedVariantUrl)
     }
 
     @Test
-    fun dashRepresentationNeverReplacesMpdInput() {
+    fun resolvedDashRepresentationUsesEmbeddedFfmpegAndKeepsMpdLineage() {
         val capture = capture(MediaSourceKind.DashManifest, "https://cdn.example.test/movie/manifest.mpd")
         val representation = variant(capture.id, "v1080", "https://cdn.example.test/movie/v1080.m4s", MediaVariantKind.Video, height = 1080)
         val plan = MediaDownloadPlanner().plan(capture, listOf(representation), selection = MediaTrackSelection(videoVariantId = representation.id))
 
-        assertEquals(MediaDownloadStrategy.YtDlp, plan.strategy)
+        assertEquals(MediaDownloadStrategy.FfmpegAdaptive, plan.strategy)
+        assertFalse(plan.requiresTermux)
         assertEquals("https://cdn.example.test/movie/manifest.mpd", plan.primaryUrl)
         assertFalse(plan.primaryUrl.endsWith(".m4s"))
     }

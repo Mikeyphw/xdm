@@ -180,6 +180,7 @@ class MediaWorkerBridgePlanner {
     private fun kindFor(enginePlan: MediaExecutionEnginePlan): MediaWorkerBridgeKind = when (enginePlan.lane) {
         MediaExecutionLane.ProtectedBlocked -> MediaWorkerBridgeKind.BlockedDiagnostic
         MediaExecutionLane.YtDlpAdaptive -> MediaWorkerBridgeKind.TermuxYtDlp
+        MediaExecutionLane.EmbeddedFfmpegAdaptive,
         MediaExecutionLane.EmbeddedFfmpegLive -> MediaWorkerBridgeKind.EmbeddedFfmpeg
         MediaExecutionLane.NativeHlsSegmented,
         MediaExecutionLane.Aria2Segmented,

@@ -2,16 +2,23 @@ package com.mikeyphw.xdm.android.media.ffmpeg
 
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 class FfmpegProcessLauncher(
     private val maxCapturedChars: Int = 256_000,
 ) {
-    suspend fun launch(executable: File, command: CompiledFfmpegCommand): FfmpegExecutionResult = withContext(Dispatchers.IO) {
+    suspend fun launch(
+        executable: File,
+        command: CompiledFfmpegCommand,
+        onProgress: (FfmpegProgressSnapshot) -> Unit = {},
+    ): FfmpegExecutionResult = withContext(Dispatchers.IO) {
         val started = System.currentTimeMillis()
         require(executable.isFile) { "Runtime executable missing: ${executable.name}" }
         val process = try {
@@ -25,9 +32,42 @@ class FfmpegProcessLauncher(
         }
         try {
             coroutineScope {
-                val stdoutJob = async(Dispatchers.IO) { process.inputStream.bufferedReader().use { it.readText().takeLast(maxCapturedChars) } }
-                val stderrJob = async(Dispatchers.IO) { process.errorStream.bufferedReader().use { it.readText().takeLast(maxCapturedChars) } }
-                val completed = command.timeoutMs?.let { process.waitFor(it, TimeUnit.MILLISECONDS) } ?: run { process.waitFor(); true }
+                val lastProgress = AtomicReference<FfmpegProgressSnapshot?>(null)
+                val stdoutJob = async(Dispatchers.IO) {
+                    val captured = StringBuilder()
+                    val parser = FfmpegProgressParser(command.expectedDurationMs)
+                    process.inputStream.bufferedReader().use { reader ->
+                        while (true) {
+                            val line = reader.readLine() ?: break
+                            appendBounded(captured, line + "\n")
+                            if (command.progressEnabled) {
+                                parser.accept(line)?.let { snapshot ->
+                                    lastProgress.set(snapshot)
+                                    runCatching { onProgress(snapshot) }
+                                }
+                            }
+                        }
+                    }
+                    captured.toString()
+                }
+                val stderrJob = async(Dispatchers.IO) {
+                    val captured = StringBuilder()
+                    process.errorStream.bufferedReader().use { reader ->
+                        while (true) {
+                            val line = reader.readLine() ?: break
+                            appendBounded(captured, line + "\n")
+                        }
+                    }
+                    captured.toString()
+                }
+                val deadline = command.timeoutMs?.let { started + it }
+                var completed = false
+                while (!completed) {
+                    currentCoroutineContext().ensureActive()
+                    if (deadline != null && System.currentTimeMillis() >= deadline) break
+                    val waitMs = deadline?.let { (it - System.currentTimeMillis()).coerceIn(1L, 250L) } ?: 250L
+                    completed = process.waitFor(waitMs, TimeUnit.MILLISECONDS)
+                }
                 if (!completed) {
                     process.destroy()
                     if (!process.waitFor(2, TimeUnit.SECONDS)) process.destroyForcibly()
@@ -38,6 +78,7 @@ class FfmpegProcessLauncher(
                         durationMs = System.currentTimeMillis() - started,
                         failureKind = FfmpegFailureKind.TimedOut,
                         message = "FFmpeg operation timed out",
+                        lastProgress = lastProgress.get(),
                     )
                 }
                 val stdout = stdoutJob.await()
@@ -50,12 +91,20 @@ class FfmpegProcessLauncher(
                     durationMs = System.currentTimeMillis() - started,
                     failureKind = if (exitCode == 0) FfmpegFailureKind.None else classify(stderr),
                     message = if (exitCode == 0) "" else redactFfmpegDiagnostic(stderr.lineSequence().lastOrNull { it.isNotBlank() }.orEmpty()).take(240),
+                    lastProgress = lastProgress.get(),
                 )
             }
         } catch (cancelled: CancellationException) {
             process.destroy()
-            if (process.isAlive) process.destroyForcibly()
+            if (!process.waitFor(750, TimeUnit.MILLISECONDS) && process.isAlive) process.destroyForcibly()
             throw cancelled
+        }
+    }
+
+    private fun appendBounded(target: StringBuilder, text: String) {
+        target.append(text)
+        if (target.length > maxCapturedChars) {
+            target.delete(0, target.length - maxCapturedChars)
         }
     }
 
@@ -67,7 +116,7 @@ class FfmpegProcessLauncher(
             "permission denied" in text -> FfmpegFailureKind.PermissionDenied
             "invalid argument" in text -> FfmpegFailureKind.InvalidArguments
             "unknown format" in text || "unsupported" in text || "decoder not found" in text -> FfmpegFailureKind.UnsupportedMedia
-            "no such file or directory" in text || "error opening output" in text -> FfmpegFailureKind.OutputFailure
+            "no such file or directory" in text || "error opening output" in text || "could not write header" in text -> FfmpegFailureKind.OutputFailure
             else -> FfmpegFailureKind.ProcessFailed
         }
     }

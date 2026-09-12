@@ -108,7 +108,7 @@ class MediaExecutionDispatcher {
             needsRefresh -> MediaDispatchReadiness.NeedsMetadataRefresh
             requiresChoice -> MediaDispatchReadiness.AwaitingUserChoice
             enginePlan.lane == MediaExecutionLane.YtDlpAdaptive && !termuxReady -> MediaDispatchReadiness.NeedsTermuxSetup
-            enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegLive && !embeddedFfmpegReady -> MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime
+            enginePlan.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive) && !embeddedFfmpegReady -> MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime
             else -> MediaDispatchReadiness.Ready
         }
         if (needsRefresh) warnings += "Refresh metadata before enqueue so expiring manifests, page cookies, and selected variants are current."
@@ -116,7 +116,7 @@ class MediaExecutionDispatcher {
         if (!termuxReady && enginePlan.lane == MediaExecutionLane.YtDlpAdaptive) {
             warnings += "Termux media pipeline is required for the yt-dlp resolver lane."
         }
-        if (!embeddedFfmpegReady && enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegLive) {
+        if (!embeddedFfmpegReady && enginePlan.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive)) {
             warnings += "The app-owned FFmpeg runtime is unavailable or failed its capability probe."
         }
         if (!leakSafe) warnings += "Potential secret leak detected in one or more execution surfaces."
@@ -206,6 +206,11 @@ class MediaExecutionDispatcher {
                 title = "Launch typed Termux media job",
                 detail = "executor=${enginePlan.typedExecutor}; args=${enginePlan.typedArguments.size}; raw shell disabled.",
             )
+            MediaExecutionLane.EmbeddedFfmpegAdaptive -> steps += MediaDispatchStep(
+                kind = MediaDispatchStepKind.LaunchEmbeddedFfmpeg,
+                title = "Process selected tracks with embedded FFmpeg",
+                detail = "${spec.postProcessing.summary}; executor=${enginePlan.typedExecutor}; FFprobe verification precedes publication.",
+            )
             MediaExecutionLane.EmbeddedFfmpegLive -> steps += MediaDispatchStep(
                 kind = MediaDispatchStepKind.LaunchEmbeddedFfmpeg,
                 title = "Launch app-owned FFmpeg recording",
@@ -248,6 +253,7 @@ class MediaExecutionDispatcher {
             MediaExecutionLane.NativeHlsSegmented -> "Queue native HLS"
             MediaExecutionLane.Aria2Segmented -> "Queue aria2 media"
             MediaExecutionLane.YtDlpAdaptive -> "Launch yt-dlp media"
+            MediaExecutionLane.EmbeddedFfmpegAdaptive -> "Download and combine selected tracks"
             MediaExecutionLane.EmbeddedFfmpegLive -> "Start embedded FFmpeg recording"
             MediaExecutionLane.ProtectedBlocked -> "View diagnostics"
         }
@@ -273,6 +279,7 @@ class MediaExecutionDispatcher {
             MediaExecutionLane.NativeHlsSegmented -> MediaRetryPolicy(5, listOf(5, 15, 45, 120, 300), listOf("segment timeout", "manifest refresh", "expired signed URL", "recoverable finalization"), listOf("DRM protected", "LL-HLS native unsupported", "invalid destination"))
             MediaExecutionLane.Aria2Segmented -> MediaRetryPolicy(4, listOf(5, 15, 45, 120), listOf("segment timeout", "temporary 5xx", "network switch"), listOf("expired cookie", "tokenized URL expired"))
             MediaExecutionLane.YtDlpAdaptive -> MediaRetryPolicy(2, listOf(10, 60), listOf("extractor transient failure", "metadata refresh available"), listOf("unsupported extractor", "DRM protected"))
+            MediaExecutionLane.EmbeddedFfmpegAdaptive -> MediaRetryPolicy(3, listOf(5, 20, 60), listOf("track connection dropped", "temporary server failure", "metadata refresh available"), listOf("protected media", "runtime invalid", "container incompatible"))
             MediaExecutionLane.EmbeddedFfmpegLive -> MediaRetryPolicy(2, listOf(10, 30), listOf("live connection dropped", "temporary server failure"), listOf("live ended", "protected media", "runtime invalid"))
             MediaExecutionLane.ProtectedBlocked -> MediaRetryPolicy(0, emptyList(), emptyList(), listOf("protected media"))
         }
@@ -299,6 +306,11 @@ class MediaExecutionDispatcher {
             MediaProgressSignal("download fragment progress", "yt-dlp", true),
             MediaProgressSignal("merge/finalize", "yt-dlp/FFmpeg", true),
         )
+        MediaExecutionLane.EmbeddedFfmpegAdaptive -> listOf(
+            MediaProgressSignal("selected track processing", "embedded FFmpeg progress protocol", true),
+            MediaProgressSignal("FFprobe verification", "embedded FFprobe", true),
+            MediaProgressSignal("atomic publication", "destination writer", true),
+        )
         MediaExecutionLane.EmbeddedFfmpegLive -> listOf(
             MediaProgressSignal("recording duration", "embedded FFmpeg", true),
             MediaProgressSignal("live heartbeat", "app-owned media runtime", true),
@@ -324,6 +336,7 @@ class MediaExecutionDispatcher {
         body += "executor=${enginePlan.typedExecutor}"
         body += "args=${enginePlan.typedArguments.size} typed argument(s)"
         body += "tracks=${spec.selectedTrackIds.size}"
+        body += "processing=${spec.postProcessing.kind.name}"
         body += "source=${spec.sidecar.redactedSourceUrl}"
         if (warnings.isNotEmpty()) body += "warnings=${warnings.joinToString(" | ")}"
         body += "steps=${steps.joinToString(" -> ") { it.kind.label }}"

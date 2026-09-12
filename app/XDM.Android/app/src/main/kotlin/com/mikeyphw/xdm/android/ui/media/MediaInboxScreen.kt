@@ -33,6 +33,7 @@ import com.mikeyphw.xdm.android.media.MediaBatchInputParser
 import com.mikeyphw.xdm.android.media.MediaBatchUrlDisposition
 import com.mikeyphw.xdm.android.media.MediaConsumerWorkspacePlanner
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
+import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegJobProgress
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.BrowserCaptureSessionSummary
@@ -54,6 +55,7 @@ fun MediaInboxScreen(
     mediaTrackSelections: Map<String, MediaTrackSelection>,
     downloads: List<Download>,
     outputs: List<MediaOutputRecord>,
+    embeddedFfmpegProgress: Map<String, EmbeddedFfmpegJobProgress>,
     mediaOutputAdmissionsInFlight: Set<String>,
     intakeFeedback: MediaIntakeFeedbackUi,
     browserCaptureSessions: List<BrowserCaptureSessionSummary>,
@@ -62,6 +64,7 @@ fun MediaInboxScreen(
     onDownload: (MediaCaptureRecord, MediaTrackSelection, MediaOutputAdmissionMode) -> Unit,
     onResumeOrRetryDownload: (Download) -> Unit,
     onCancelDownload: (Download) -> Unit,
+    onCancelEmbeddedFfmpeg: (MediaOutputRecord) -> Unit,
     onOpenDownload: (Download) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
@@ -241,9 +244,11 @@ fun MediaInboxScreen(
                                     ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
                                 consumerPlanner = consumerPlanner,
                                 latestOutput = latestOutputsByCaptureId[capture.id],
+                                embeddedFfmpegProgress = latestOutputsByCaptureId[capture.id]?.ownerId?.let(embeddedFfmpegProgress::get),
                                 downloadInFlight = capture.id in mediaOutputAdmissionsInFlight,
                                 onDownload = onDownload,
                                 onOpenOutput = { output -> openMediaOutput(context, output) },
+                                onCancelEmbeddedFfmpeg = onCancelEmbeddedFfmpeg,
                                 onResolve = onResolve,
                                 onSelectVariant = onSelectVariant,
                                 onTrackSelectionChanged = onTrackSelectionChanged,
@@ -263,9 +268,11 @@ fun MediaInboxScreen(
                                 ?: MediaTrackSelection(videoVariantId = capture.selectedVariantId),
                             consumerPlanner = consumerPlanner,
                             latestOutput = latestOutputsByCaptureId[capture.id],
+                            embeddedFfmpegProgress = latestOutputsByCaptureId[capture.id]?.ownerId?.let(embeddedFfmpegProgress::get),
                             downloadInFlight = capture.id in mediaOutputAdmissionsInFlight,
                             onDownload = onDownload,
                             onOpenOutput = { output -> openMediaOutput(context, output) },
+                            onCancelEmbeddedFfmpeg = onCancelEmbeddedFfmpeg,
                             onResolve = onResolve,
                             onSelectVariant = onSelectVariant,
                             onTrackSelectionChanged = onTrackSelectionChanged,

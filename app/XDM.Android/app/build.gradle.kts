@@ -227,6 +227,14 @@ tasks.register<Exec>("verifyFfmpeg01EmbeddedRuntimeContract") {
 }
 
 
+tasks.register<Exec>("verifyFfmpeg02MediaMuxHlsPostprocessingContract") {
+    group = "verification"
+    description = "Verify FF02 embedded adaptive mux, HLS finalization, progress, cancellation, atomic publication, and FFprobe correctness."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py")
+}
+
+
 tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."

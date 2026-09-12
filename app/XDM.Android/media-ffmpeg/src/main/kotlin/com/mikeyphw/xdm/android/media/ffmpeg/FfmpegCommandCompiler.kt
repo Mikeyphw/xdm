@@ -18,48 +18,132 @@ object FfmpegCommandCompiler {
             },
             timeoutMs = operation.timeoutMs.coerceIn(1_000, 120_000),
         )
-        is FfmpegOperation.RecordStream -> CompiledFfmpegCommand(
+        is FfmpegOperation.RecordStream -> ffmpegCommand(operation.durationMs) {
+            add(if (operation.overwrite) "-y" else "-n")
+            addHeaders(operation.headers)
+            addTlsVerification(operation.inputUrl, operation.tlsCaFile)
+            addAll(listOf("-i", validateInput(operation.inputUrl), "-map", "0", "-c", "copy"))
+            operation.durationMs?.takeIf { it > 0 }?.let { addAll(listOf("-t", formatSeconds(it))) }
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.path))
+        }
+        is FfmpegOperation.FinalizeAdaptive -> ffmpegCommand(operation.expectedDurationMs) {
+            add(if (operation.overwrite) "-y" else "-n")
+            addInput(operation.input)
+            addAll(listOf("-map", "0", "-c", "copy"))
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.path))
+        }
+        is FfmpegOperation.ExtractRemoteAudio -> ffmpegCommand(operation.expectedDurationMs) {
+            add(if (operation.overwrite) "-y" else "-n")
+            addInput(operation.input)
+            addAll(listOf("-map", "0:a:0?", "-vn", "-sn", "-dn", "-c:a", "copy"))
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.path))
+        }
+        is FfmpegOperation.FinalizeHlsSegments -> ffmpegCommand(operation.expectedDurationMs) {
+            require(operation.concatFile.isFile) { "Native HLS concat manifest is missing" }
+            add(if (operation.overwrite) "-y" else "-n")
+            addAll(listOf("-f", "concat", "-safe", "0", "-i", validateInput(operation.concatFile.absolutePath)))
+            addAll(listOf("-map", "0", "-c", "copy"))
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.absolutePath))
+        }
+
+        is FfmpegOperation.MuxRemoteTracks -> compileRemoteMux(operation)
+        is FfmpegOperation.Remux -> ffmpegCommand(null) {
+            add(if (operation.overwrite) "-y" else "-n")
+            addAll(listOf("-i", validateInput(operation.inputFile.path), "-map", "0", "-c", "copy"))
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.path))
+        }
+        is FfmpegOperation.MuxTracks -> ffmpegCommand(operation.expectedDurationMs) {
+            add(if (operation.overwrite) "-y" else "-n")
+            addAll(listOf("-i", validateInput(operation.videoFile.path), "-i", validateInput(operation.audioFile.path)))
+            operation.subtitleFile?.let { addAll(listOf("-i", validateInput(it.path))) }
+            addAll(listOf("-map", "0:v:0", "-map", "1:a:0", "-c", "copy"))
+            if (operation.subtitleFile != null) {
+                addAll(listOf("-map", "2:s:0?", "-c:s", subtitleCodec(operation.outputFile)))
+            }
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.path))
+        }
+        is FfmpegOperation.AttachSubtitle -> ffmpegCommand(null) {
+            add(if (operation.overwrite) "-y" else "-n")
+            addAll(listOf("-i", validateInput(operation.inputFile.path), "-i", validateInput(operation.subtitleFile.path)))
+            addAll(listOf("-map", "0", "-map", "1:s:0?", "-c", "copy", "-c:s", subtitleCodec(operation.outputFile)))
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.path))
+        }
+        is FfmpegOperation.ExtractAudio -> ffmpegCommand(null) {
+            add(if (operation.overwrite) "-y" else "-n")
+            addAll(listOf("-i", validateInput(operation.inputFile.path), "-vn", "-c:a", "copy"))
+            add(validateOutput(operation.outputFile.path))
+        }
+        is FfmpegOperation.FastStart -> ffmpegCommand(null) {
+            require(isMovFamily(operation.outputFile)) { "Faststart requires an MP4/MOV-family output container" }
+            add(if (operation.overwrite) "-y" else "-n")
+            addAll(listOf("-i", validateInput(operation.inputFile.path), "-map", "0", "-c", "copy", "-movflags", "+faststart", validateOutput(operation.outputFile.path)))
+        }
+    }
+
+    private fun compileRemoteMux(operation: FfmpegOperation.MuxRemoteTracks): CompiledFfmpegCommand {
+        require(operation.inputs.isNotEmpty()) { "At least one adaptive media input is required" }
+        require(operation.inputs.count { it.kind == FfmpegInputKind.Video } <= 1) { "Only one selected video track may be muxed" }
+        require(operation.inputs.count { it.kind == FfmpegInputKind.Audio } <= 1) { "Only one selected audio track may be muxed" }
+        require(operation.inputs.count { it.kind == FfmpegInputKind.Subtitle } <= 1) { "Only one selected subtitle track may be muxed" }
+        return ffmpegCommand(operation.expectedDurationMs) {
+            add(if (operation.overwrite) "-y" else "-n")
+            operation.inputs.forEach { input -> addInput(input) }
+            operation.inputs.forEachIndexed { index, input ->
+                when (input.kind) {
+                    FfmpegInputKind.Video -> addAll(listOf("-map", "$index:v:0?"))
+                    FfmpegInputKind.Audio -> addAll(listOf("-map", "$index:a:0?"))
+                    FfmpegInputKind.Subtitle -> addAll(listOf("-map", "$index:s:0?"))
+                    FfmpegInputKind.Generic -> addAll(listOf("-map", "$index"))
+                }
+            }
+            addAll(listOf("-c", "copy"))
+            if (operation.inputs.any { it.kind == FfmpegInputKind.Subtitle }) {
+                addAll(listOf("-c:s", subtitleCodec(operation.outputFile)))
+            } else {
+                addAll(listOf("-c:s", "copy"))
+            }
+            addMovFastStart(operation.outputFile)
+            add(validateOutput(operation.outputFile.path))
+        }
+    }
+
+    private inline fun ffmpegCommand(expectedDurationMs: Long?, block: MutableList<String>.() -> Unit): CompiledFfmpegCommand {
+        val arguments = buildList {
+            addAll(listOf("-hide_banner", "-nostdin", "-progress", "pipe:1", "-nostats"))
+            block()
+        }
+        return CompiledFfmpegCommand(
             binary = FfmpegBinary.Ffmpeg,
-            arguments = buildList {
-                add("-hide_banner"); add("-nostdin")
-                if (operation.overwrite) add("-y") else add("-n")
-                addHeaders(operation.headers)
-                addTlsVerification(operation.inputUrl, operation.tlsCaFile)
-                addAll(listOf("-i", validateInput(operation.inputUrl), "-map", "0", "-c", "copy"))
-                operation.durationMs?.takeIf { it > 0 }?.let { addAll(listOf("-t", formatSeconds(it))) }
-                if (isMovFamily(operation.outputFile)) addAll(listOf("-movflags", "+faststart"))
-                add(validateOutput(operation.outputFile.path))
-            },
-        )
-        is FfmpegOperation.Remux -> simpleCopy(operation.inputFile.path, operation.outputFile.path, operation.overwrite)
-        is FfmpegOperation.MuxTracks -> CompiledFfmpegCommand(
-            FfmpegBinary.Ffmpeg,
-            buildList {
-                add("-hide_banner"); add("-nostdin"); add(if (operation.overwrite) "-y" else "-n")
-                addAll(listOf("-i", validateInput(operation.videoFile.path), "-i", validateInput(operation.audioFile.path)))
-                addAll(listOf("-map", "0:v:0", "-map", "1:a:0", "-c", "copy", "-movflags", "+faststart", validateOutput(operation.outputFile.path)))
-            },
-        )
-        is FfmpegOperation.ExtractAudio -> CompiledFfmpegCommand(
-            FfmpegBinary.Ffmpeg,
-            listOf("-hide_banner", "-nostdin", if (operation.overwrite) "-y" else "-n", "-i", validateInput(operation.inputFile.path), "-vn", "-c:a", "copy", validateOutput(operation.outputFile.path)),
-        )
-        is FfmpegOperation.FastStart -> CompiledFfmpegCommand(
-            FfmpegBinary.Ffmpeg,
-            listOf("-hide_banner", "-nostdin", if (operation.overwrite) "-y" else "-n", "-i", validateInput(operation.inputFile.path), "-map", "0", "-c", "copy", "-movflags", "+faststart", validateOutput(operation.outputFile.path)),
+            arguments = arguments,
+            progressEnabled = true,
+            expectedDurationMs = expectedDurationMs,
         )
     }
 
-    private fun simpleCopy(input: String, output: String, overwrite: Boolean) = CompiledFfmpegCommand(
-        FfmpegBinary.Ffmpeg,
-        listOf("-hide_banner", "-nostdin", if (overwrite) "-y" else "-n", "-i", validateInput(input), "-map", "0", "-c", "copy", validateOutput(output)),
-    )
+    private fun MutableList<String>.addInput(input: FfmpegInput) {
+        addHeaders(input.headers)
+        addTlsVerification(input.source, input.tlsCaFile)
+        addAll(listOf("-i", validateInput(input.source)))
+    }
 
     private fun MutableList<String>.addTlsVerification(input: String, caFile: File?) {
         if (!input.startsWith("https://", ignoreCase = true)) return
         require(caFile != null && caFile.isFile && caFile.length() > 0L) { "Verified HTTPS requires an Android CA trust bundle" }
         addAll(listOf("-tls_verify", "1", "-ca_file", validateInput(caFile.absolutePath)))
     }
+
+    private fun MutableList<String>.addMovFastStart(file: File) {
+        if (isMovFamily(file)) addAll(listOf("-movflags", "+faststart"))
+    }
+
+    private fun subtitleCodec(file: File): String = if (isMovFamily(file)) "mov_text" else "copy"
 
     private fun isMovFamily(file: File): Boolean = file.extension.lowercase() in setOf("mp4", "m4v", "mov", "m4a", "3gp", "3g2", "mj2")
 

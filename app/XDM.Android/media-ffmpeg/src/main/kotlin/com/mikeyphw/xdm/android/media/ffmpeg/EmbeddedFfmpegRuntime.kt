@@ -113,12 +113,15 @@ class EmbeddedFfmpegRuntime(
         }
     }
 
-    suspend fun execute(operation: FfmpegOperation): FfmpegExecutionResult {
+    suspend fun execute(
+        operation: FfmpegOperation,
+        onProgress: (FfmpegProgressSnapshot) -> Unit = {},
+    ): FfmpegExecutionResult {
         val capability = capabilities()
         if (!capability.ready && operation !is FfmpegOperation.Version && operation !is FfmpegOperation.Protocols) {
             return FfmpegExecutionResult(-1, "", "", 0, FfmpegFailureKind.RuntimeInvalid, capability.summary)
         }
-        return executeRaw(withAndroidTrust(operation))
+        return executeRaw(withAndroidTrust(operation), onProgress)
     }
 
     suspend fun probe(input: String, headers: Map<String, String> = emptyMap()): Result<FfprobeResult> = runCatching {
@@ -134,6 +137,10 @@ class EmbeddedFfmpegRuntime(
     }
 
     private fun withAndroidTrust(operation: FfmpegOperation): FfmpegOperation {
+        fun trusted(input: FfmpegInput): FfmpegInput {
+            if (!input.source.startsWith("https://", ignoreCase = true) || input.tlsCaFile != null) return input
+            return input.copy(tlsCaFile = trustBundleProvider.ensure().getOrNull())
+        }
         val caFile = when (operation) {
             is FfmpegOperation.Probe -> if (operation.input.startsWith("https://", ignoreCase = true)) trustBundleProvider.ensure().getOrNull() else null
             is FfmpegOperation.RecordStream -> if (operation.inputUrl.startsWith("https://", ignoreCase = true)) trustBundleProvider.ensure().getOrNull() else null
@@ -142,11 +149,17 @@ class EmbeddedFfmpegRuntime(
         return when (operation) {
             is FfmpegOperation.Probe -> operation.copy(tlsCaFile = caFile ?: operation.tlsCaFile)
             is FfmpegOperation.RecordStream -> operation.copy(tlsCaFile = caFile ?: operation.tlsCaFile)
+            is FfmpegOperation.FinalizeAdaptive -> operation.copy(input = trusted(operation.input))
+            is FfmpegOperation.ExtractRemoteAudio -> operation.copy(input = trusted(operation.input))
+            is FfmpegOperation.MuxRemoteTracks -> operation.copy(inputs = operation.inputs.map(::trusted))
             else -> operation
         }
     }
 
-    private suspend fun executeRaw(operation: FfmpegOperation): FfmpegExecutionResult {
+    private suspend fun executeRaw(
+        operation: FfmpegOperation,
+        onProgress: (FfmpegProgressSnapshot) -> Unit = {},
+    ): FfmpegExecutionResult {
         val command = runCatching { FfmpegCommandCompiler.compile(operation) }.getOrElse { error ->
             return FfmpegExecutionResult(-1, "", "", 0, FfmpegFailureKind.InvalidArguments, error.message ?: "invalid FFmpeg arguments")
         }
@@ -155,7 +168,7 @@ class EmbeddedFfmpegRuntime(
             FfmpegBinary.Ffprobe -> ffprobeBinary
         }
         if (!binary.isFile) return FfmpegExecutionResult(-1, "", "", 0, FfmpegFailureKind.RuntimeMissing, "Embedded ${command.binary.name} runtime is missing")
-        return launcher.launch(binary, command)
+        return launcher.launch(binary, command, onProgress)
     }
 
     private fun parseVersion(text: String): String? = Regex("(?i)ff(?:mpeg|probe) version\\s+([^\\s]+)")

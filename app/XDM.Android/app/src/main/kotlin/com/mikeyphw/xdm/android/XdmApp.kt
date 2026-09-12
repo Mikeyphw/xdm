@@ -289,6 +289,7 @@ private fun XdmRouteContent(
                 mediaTrackSelections = state.mediaTrackSelections,
                 downloads = state.downloads,
                 outputs = state.mediaOutputs,
+                embeddedFfmpegProgress = state.embeddedFfmpegProgress,
                 mediaOutputAdmissionsInFlight = state.mediaOutputAdmissionsInFlight,
                 intakeFeedback = state.mediaIntakeFeedback,
                 browserCaptureSessions = state.browserCaptureSessions,
@@ -297,6 +298,7 @@ private fun XdmRouteContent(
                 onDownload = viewModel::downloadMediaCapture,
                 onResumeOrRetryDownload = viewModel::togglePause,
                 onCancelDownload = viewModel::cancelDownload,
+                onCancelEmbeddedFfmpeg = viewModel::cancelEmbeddedFfmpegOutput,
                 onOpenDownload = { download ->
                     viewModel.selectDownloadDetail(download.id)
                     viewModel.navigate(AppRoute.Downloads)

@@ -27,6 +27,7 @@ data class MediaConsumerCaptureSummary(
     val trackSummary: String,
     val estimatedSizeBytes: Long?,
     val notice: String?,
+    val processingNotice: String? = null,
     val canDownload: Boolean,
     val canOpen: Boolean,
     val primaryActionLabel: String,
@@ -90,6 +91,17 @@ class MediaConsumerWorkspacePlanner(
             trackSummary = trackSummary(selectedAudio, selectedSubtitle),
             estimatedSizeBytes = estimatedSize,
             notice = notice,
+            processingNotice = when (plan.strategy) {
+                MediaDownloadStrategy.FfmpegAdaptive -> when {
+                    selectedVideo != null && selectedAudio != null && selectedSubtitle != null -> "XDM will combine the selected video, audio, and subtitle tracks with embedded FFmpeg, then verify the saved media with FFprobe."
+                    selectedVideo != null && selectedAudio != null -> "XDM will combine the selected video and audio tracks with embedded FFmpeg, then verify the saved media with FFprobe."
+                    plan.intent == MediaDownloadIntent.AudioOnly -> "XDM will extract/finalize the selected audio with embedded FFmpeg and verify it before publishing."
+                    else -> "XDM will finalize this adaptive media with embedded FFmpeg and verify it before publishing."
+                }
+                MediaDownloadStrategy.FfmpegLive -> "XDM will record this live media with embedded FFmpeg and verify it before publishing."
+                MediaDownloadStrategy.NativeHls -> "XDM will download HLS parts natively, finalize the media, and verify the finished artifact before completion."
+                else -> null
+            },
             canDownload = state == MediaConsumerState.Ready && plan.canQueueDirectly,
             canOpen = state == MediaConsumerState.Downloaded && !latestOutput?.completedArtifactUri.isNullOrBlank(),
             primaryActionLabel = when (state) {

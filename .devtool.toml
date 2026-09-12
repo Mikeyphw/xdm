@@ -92,6 +92,7 @@ preflight = [
   ":app:checkBrowserIntegration",
   ":media-ffmpeg:verifyFfmpegRuntime",
   ":app:verifyFfmpeg01EmbeddedRuntimeContract",
+  ":app:verifyFfmpeg02MediaMuxHlsPostprocessingContract",
 ]
 
 dependencies = [

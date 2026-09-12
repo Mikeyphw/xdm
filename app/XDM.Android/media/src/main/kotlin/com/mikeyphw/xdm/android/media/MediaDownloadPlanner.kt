@@ -6,6 +6,7 @@ import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.BrowserHandoffMediaPolicy
 import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.model.MediaNativeCapability
+import com.mikeyphw.xdm.android.model.MediaManifestRole
 import com.mikeyphw.xdm.android.model.MediaProtectionKind
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
@@ -19,7 +20,7 @@ import java.util.Locale
  * implementation: inspect page context, group variants, choose tracks, hand off safe session hints,
  * and keep protected media diagnostic-only.
  */
-enum class MediaDownloadStrategy { Native, NativeHls, Aria2, YtDlp, FfmpegLive, UnsupportedProtected }
+enum class MediaDownloadStrategy { Native, NativeHls, Aria2, YtDlp, FfmpegAdaptive, FfmpegLive, UnsupportedProtected }
 
 enum class MediaDownloadIntent { BestVideo, AudioOnly, VideoOnly, Subtitles, Thumbnail, LiveRecording }
 
@@ -168,6 +169,7 @@ class MediaDownloadPlanner {
         variantSessionHeaders: Map<String, List<MediaSessionHeader>> = emptyMap(),
     ): MediaDownloadPlan {
         val selected = selectedVariant(capture, variants, intent, selection)
+        val normalizedSelection = normalizeSelection(capture, variants, selection, selected)
         val live = isLive(capture)
         val protectedDiagnostic = protectedDiagnostic(capture, variants)
         val shape = BrowserHandoffMediaPolicy.classifyShape(capture.kind, capture.pageUrl, capture.mimeType, live, protectedDiagnostic.protected)
@@ -175,16 +177,16 @@ class MediaDownloadPlanner {
             shape == MediaTransferShape.ProtectedDiagnostic -> MediaDownloadStrategy.UnsupportedProtected
             capture.nativeCapability == MediaNativeCapability.ProtectedUnsupported -> MediaDownloadStrategy.UnsupportedProtected
             shape == MediaTransferShape.LiveRecording -> MediaDownloadStrategy.FfmpegLive
+            intent == MediaDownloadIntent.Subtitles -> MediaDownloadStrategy.NativeHls.takeIf { capture.kind == MediaSourceKind.HlsPlaylist && nativeHlsEligible(capture, variants) } ?: MediaDownloadStrategy.YtDlp
             shape == MediaTransferShape.AdaptivePlaylist && capture.kind == MediaSourceKind.HlsPlaylist && nativeHlsEligible(capture, variants) -> MediaDownloadStrategy.NativeHls
+            shape == MediaTransferShape.AdaptivePlaylist && embeddedAdaptiveEligible(variants, intent, normalizedSelection) -> MediaDownloadStrategy.FfmpegAdaptive
             shape == MediaTransferShape.AdaptivePlaylist -> MediaDownloadStrategy.YtDlp
             shape == MediaTransferShape.SiteResolver -> MediaDownloadStrategy.YtDlp
             intent == MediaDownloadIntent.AudioOnly && capture.kind != MediaSourceKind.AudioStream -> MediaDownloadStrategy.YtDlp
-            intent == MediaDownloadIntent.Subtitles -> MediaDownloadStrategy.NativeHls.takeIf { capture.kind == MediaSourceKind.HlsPlaylist && nativeHlsEligible(capture, variants) } ?: MediaDownloadStrategy.YtDlp
             capture.kind == MediaSourceKind.AudioStream -> MediaDownloadStrategy.Native
             shape == MediaTransferShape.DirectMedia || shape == MediaTransferShape.DirectFile -> MediaDownloadStrategy.Native
             else -> MediaDownloadStrategy.YtDlp
         }
-        val normalizedSelection = normalizeSelection(capture, variants, selection, selected)
         val ytDlpUsePageUrl = strategy == MediaDownloadStrategy.YtDlp &&
             shape == MediaTransferShape.SiteResolver && !capture.pageUrl.isNullOrBlank()
         // Adaptive yt-dlp execution must stay anchored to the authoritative master/MPD (or the
@@ -192,7 +194,7 @@ class MediaDownloadPlanner {
         // executable input URL. Direct app-owned transfers may still execute a selected variant.
         val primaryUrl = when {
             strategy == MediaDownloadStrategy.YtDlp && ytDlpUsePageUrl -> capture.pageUrl!!
-            strategy == MediaDownloadStrategy.YtDlp || strategy == MediaDownloadStrategy.FfmpegLive || strategy == MediaDownloadStrategy.NativeHls -> capture.sourceUrl
+            strategy == MediaDownloadStrategy.YtDlp || strategy == MediaDownloadStrategy.FfmpegAdaptive || strategy == MediaDownloadStrategy.FfmpegLive || strategy == MediaDownloadStrategy.NativeHls -> capture.sourceUrl
             else -> selected?.url ?: capture.selectedVariantUrl ?: capture.sourceUrl
         }
         val selectedVariantHeaders = normalizedSelection.selectedIds()
@@ -226,8 +228,34 @@ class MediaDownloadPlanner {
     }
 
 
+    private fun embeddedAdaptiveEligible(
+        variants: List<MediaVariant>,
+        intent: MediaDownloadIntent,
+        selection: MediaTrackSelection,
+    ): Boolean {
+        fun selected(id: String?, kind: MediaVariantKind): MediaVariant? = id?.let { wanted ->
+            variants.firstOrNull { it.id == wanted && (it.kind == kind || (kind == MediaVariantKind.Video && it.kind == MediaVariantKind.Primary)) }
+        }?.takeIf { it.url.startsWith("http://", true) || it.url.startsWith("https://", true) }
+        val video = selected(selection.videoVariantId, MediaVariantKind.Video)
+        val audio = selected(selection.audioVariantId, MediaVariantKind.Audio)
+        val subtitle = selected(selection.subtitleVariantId, MediaVariantKind.Subtitle)
+        return when (intent) {
+            MediaDownloadIntent.BestVideo -> video != null && (variants.none { it.kind == MediaVariantKind.Audio } || audio != null)
+            MediaDownloadIntent.VideoOnly -> video != null
+            MediaDownloadIntent.AudioOnly -> audio != null
+            MediaDownloadIntent.Subtitles -> subtitle != null
+            MediaDownloadIntent.Thumbnail -> false
+            MediaDownloadIntent.LiveRecording -> false
+        }
+    }
+
     private fun nativeHlsEligible(capture: MediaCaptureRecord, variants: List<MediaVariant>): Boolean {
         if (capture.kind != MediaSourceKind.HlsPlaylist) return false
+        // The native segmented engine owns media playlists. Master playlists with separate
+        // rendition URLs need a selected-track mux/finalization lane, which FF02 gives to the
+        // embedded FFmpeg runtime instead of pretending child playlists are media segments.
+        if (capture.manifestRole == MediaManifestRole.HlsMaster) return false
+        if (variants.any { it.kind in setOf(MediaVariantKind.Video, MediaVariantKind.Audio, MediaVariantKind.Subtitle) }) return false
         if (capture.manifestIsLive == true) return false
         if (capture.manifestProtected) return false
         if (capture.protectionKind in setOf(MediaProtectionKind.SampleAes, MediaProtectionKind.Drm, MediaProtectionKind.UnknownEncrypted)) return false
@@ -423,6 +451,7 @@ class MediaDownloadPlanner {
         MediaDownloadStrategy.NativeHls -> "Native HLS"
         MediaDownloadStrategy.Aria2 -> "aria2 segmented"
         MediaDownloadStrategy.YtDlp -> "yt-dlp resolver"
+        MediaDownloadStrategy.FfmpegAdaptive -> "Embedded FFmpeg adaptive"
         MediaDownloadStrategy.FfmpegLive -> "Live recorder"
         MediaDownloadStrategy.UnsupportedProtected -> "Protected media"
     }
@@ -432,7 +461,8 @@ class MediaDownloadPlanner {
             MediaDownloadStrategy.Native -> "Direct audio or file download can stay inside XDM native storage handling."
             MediaDownloadStrategy.NativeHls -> "Supported VOD HLS is executed as one durable native segmented job with selected tracks, part accounting, storage preflight, finalization, and completion verification."
             MediaDownloadStrategy.Aria2 -> "Progressive media can use aria2 with referer/header handoff when the page context matters."
-            MediaDownloadStrategy.YtDlp -> "Playlist, site-page, subtitle, or audio extraction workflows use yt-dlp metadata, track selection, and session hints."
+            MediaDownloadStrategy.YtDlp -> "Playlist or site-page workflows that still need an extractor use yt-dlp metadata, track selection, and session hints."
+            MediaDownloadStrategy.FfmpegAdaptive -> "Resolved adaptive tracks are downloaded and stream-muxed by XDM's embedded FFmpeg runtime, then verified with FFprobe before publication."
             MediaDownloadStrategy.FfmpegLive -> "Live playlists need an explicit stop-and-save recording workflow."
             MediaDownloadStrategy.UnsupportedProtected -> "Protected DRM media is detected but is not bypassed or downloaded."
         }

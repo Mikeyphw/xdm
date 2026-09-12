@@ -89,6 +89,7 @@ import com.mikeyphw.xdm.android.media.MediaExecutionDispatcher
 import com.mikeyphw.xdm.android.media.MediaExecutionLane
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegRuntimeCapabilityReport
 import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegMediaManager
+import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegJobProgress
 import com.mikeyphw.xdm.android.media.MediaDispatchReadiness
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -303,6 +304,7 @@ data class MainUiState(
     val mediaObservations: List<MediaObservationRecord> = emptyList(),
     val mediaVariants: List<MediaVariant> = emptyList(),
     val mediaOutputs: List<MediaOutputRecord> = emptyList(),
+    val embeddedFfmpegProgress: Map<String, EmbeddedFfmpegJobProgress> = emptyMap(),
     val mediaIntakeFeedback: MediaIntakeFeedbackUi = MediaIntakeFeedbackUi(),
     val browserCaptureSessions: List<BrowserCaptureSessionSummary> = emptyList(),
     val mediaTrackSelections: Map<String, MediaTrackSelection> = emptyMap(),
@@ -992,8 +994,8 @@ class MainViewModel(
         transferRuntime.liveVerification,
     ) { summary, progress, verification -> LiveTransferUi(summary, progress, verification) }
 
-    /** Cheap final overlay: high-frequency bytes never recompute release reports/settings/activity. */
-    val uiState: StateFlow<MainUiState> = combine(durableUiState, liveTransferUi) { durable, live ->
+    /** Cheap final overlay: high-frequency bytes and FFmpeg progress never recompute release reports/settings/activity. */
+    val uiState: StateFlow<MainUiState> = combine(durableUiState, liveTransferUi, embeddedFfmpegMediaManager.progress) { durable, live, ffmpegProgress ->
         val downloads = durable.downloads.map { download ->
             val snapshot = live.progress[download.id] ?: return@map download
             download.copy(
@@ -1014,6 +1016,7 @@ class MainViewModel(
             downloads = downloads,
             activeTransfers = live.summary,
             verificationRecords = verificationRecords,
+            embeddedFfmpegProgress = ffmpegProgress,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -4105,7 +4108,7 @@ class MainViewModel(
             )
             val enginePlan = mediaExecutionPlanner.enginePlan(spec, androidSdkInt = android.os.Build.VERSION.SDK_INT)
             val termuxReady = !spec.requiresTermuxYtDlp || termuxMediaPipelineManager.ytDlpExecutionReady(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
-            val embeddedFfmpegReady = enginePlan.lane != MediaExecutionLane.EmbeddedFfmpegLive || embeddedFfmpegMediaManager.runtime.capabilities().ready
+            val embeddedFfmpegReady = enginePlan.lane !in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive) || embeddedFfmpegMediaManager.runtime.capabilities().ready
             val dispatchPlan = mediaExecutionDispatcher.dispatchPlan(
                 spec = spec,
                 enginePlan = enginePlan,
@@ -4143,13 +4146,22 @@ class MainViewModel(
                 navigate(AppRoute.Media)
                 return@launch
             }
-            if (enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegLive) {
+            if (enginePlan.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive)) {
+                val adaptive = enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegAdaptive
                 val outcome = runCatching {
-                    embeddedFfmpegMediaManager.enqueueLiveRecording(
-                        capture = exactRecord,
-                        spec = spec,
-                        admissionMode = admissionMode,
-                    )
+                    if (adaptive) {
+                        embeddedFfmpegMediaManager.enqueueAdaptiveProcessing(
+                            capture = exactRecord,
+                            spec = spec,
+                            admissionMode = admissionMode,
+                        )
+                    } else {
+                        embeddedFfmpegMediaManager.enqueueLiveRecording(
+                            capture = exactRecord,
+                            spec = spec,
+                            admissionMode = admissionMode,
+                        )
+                    }
                 }.getOrElse { error ->
                     publishMediaIntakeFeedback(
                         MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not start embedded FFmpeg", error.message ?: "Embedded media runtime enqueue failed."),
@@ -4161,20 +4173,23 @@ class MainViewModel(
                 publishMediaIntakeFeedback(
                     MediaIntakeFeedbackUi(
                         if (outcome.accepted || outcome.existingOutput != null) MediaIntakeFeedbackKind.Found else MediaIntakeFeedbackKind.Failed,
-                        if (outcome.accepted) "Live recording started" else "Media already added",
+                        if (outcome.accepted) {
+                            if (adaptive) spec.postProcessing.userLabel else "Live recording started"
+                        } else "Media already added",
                         outcome.message,
                     ),
                     navigateToMedia = false,
                 )
                 debugEventRecorder.record(
                     area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
-                    action = "media-embedded-ffmpeg-enqueue",
+                    action = if (adaptive) "media-embedded-ffmpeg-adaptive-enqueue" else "media-embedded-ffmpeg-enqueue",
                     result = if (outcome.accepted) "committed" else "existing",
                     safeDetails = mapOf(
                         "captureId" to record.id,
                         "ownerId" to outcome.output.ownerId,
                         "attemptGeneration" to outcome.output.attemptGeneration.toString(),
                         "owner" to "EmbeddedFfmpeg",
+                        "processing" to spec.postProcessing.kind.name,
                     ),
                 )
                 navigate(AppRoute.Media)
@@ -4425,6 +4440,19 @@ class MainViewModel(
 
     fun updateMediaTrackSelection(record: MediaCaptureRecord, selection: MediaTrackSelection) {
         mediaResolverSelectionStore.save(record.id, selection)
+    }
+
+    fun cancelEmbeddedFfmpegOutput(output: MediaOutputRecord) {
+        if (output.ownerKind != MediaOutputOwnerKind.EmbeddedFfmpeg) return
+        val cancelled = embeddedFfmpegMediaManager.cancel(output.ownerId)
+        publishMediaIntakeFeedback(
+            MediaIntakeFeedbackUi(
+                kind = if (cancelled) MediaIntakeFeedbackKind.Working else MediaIntakeFeedbackKind.Failed,
+                title = if (cancelled) "Cancelling media processing" else "Media processing is not running",
+                detail = if (cancelled) "Embedded FFmpeg is stopping and its staged output will be removed." else "The FFmpeg job is already terminal or no longer active.",
+            ),
+            navigateToMedia = false,
+        )
     }
 
     fun removeMediaCapture(record: MediaCaptureRecord) {

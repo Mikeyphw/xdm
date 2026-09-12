@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.media.MediaConsumerCaptureSummary
 import com.mikeyphw.xdm.android.media.MediaConsumerState
 import com.mikeyphw.xdm.android.media.MediaConsumerWorkspacePlanner
+import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegJobProgress
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
 import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
@@ -48,9 +49,11 @@ internal fun MediaCaptureCard(
     persistedSelection: MediaTrackSelection,
     consumerPlanner: MediaConsumerWorkspacePlanner,
     latestOutput: MediaOutputRecord?,
+    embeddedFfmpegProgress: EmbeddedFfmpegJobProgress?,
     downloadInFlight: Boolean,
     onDownload: (MediaCaptureRecord, MediaTrackSelection, MediaOutputAdmissionMode) -> Unit,
     onOpenOutput: (MediaOutputRecord) -> Unit,
+    onCancelEmbeddedFfmpeg: (MediaOutputRecord) -> Unit,
     onResolve: (MediaCaptureRecord) -> Unit,
     onSelectVariant: (MediaCaptureRecord, String) -> Unit,
     onTrackSelectionChanged: (MediaCaptureRecord, MediaTrackSelection) -> Unit,
@@ -160,6 +163,20 @@ internal fun MediaCaptureCard(
             summary.estimatedSizeBytes?.let { size -> XdmMetadataText("About ${size.formatBytes()}") }
         }
 
+        summary.processingNotice?.let { notice ->
+            XdmNoticeRow(text = notice, tone = XdmStatusTone.Info)
+        }
+
+        embeddedFfmpegProgress?.let { progress ->
+            val progressText = buildString {
+                append(progress.stage.userLabel)
+                progress.percent?.let { append(" • $it%") }
+                progress.speed?.let { append(" • $it") }
+                if (progress.detail.isNotBlank() && progress.detail != progress.stage.userLabel) append(" • ${progress.detail}")
+            }
+            XdmNoticeRow(text = progressText, tone = XdmStatusTone.Info)
+        }
+
         summary.notice?.let { notice ->
             XdmNoticeRow(
                 text = notice,
@@ -194,7 +211,12 @@ internal fun MediaCaptureCard(
                         enabled = !downloadInFlight,
                     ) { Text(if (downloadInFlight) "Adding…" else "Download again") }
                 }
-                MediaConsumerState.Downloading -> StatusPill("Downloading", tone = XdmStatusTone.Info)
+                MediaConsumerState.Downloading -> {
+                    StatusPill(embeddedFfmpegProgress?.stage?.userLabel ?: "Downloading", tone = XdmStatusTone.Info)
+                    if (latestOutput?.ownerKind == com.mikeyphw.xdm.android.model.MediaOutputOwnerKind.EmbeddedFfmpeg) {
+                        TextButton(onClick = { onCancelEmbeddedFfmpeg(latestOutput) }) { Text("Cancel") }
+                    }
+                }
                 MediaConsumerState.Captured,
                 MediaConsumerState.RefreshNeeded,
                 MediaConsumerState.Unavailable -> Button(onClick = { onResolve(capture) }) {
