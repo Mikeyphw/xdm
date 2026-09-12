@@ -1,3 +1,13 @@
+## 2026-09-11 — FF03 runtime routing, safe Termux fallback, and media-runtime UX
+
+- Added durable `Automatic`, `Embedded FFmpeg`, and `Termux FFmpeg` runtime policy; Automatic always prefers the app-owned runtime and only falls back to a fresh verified Termux FFmpeg/FFprobe pair.
+- Added dedicated Termux FFmpeg adaptive/live execution ownership and worker routing without weakening the embedded FFmpeg or native/direct lanes.
+- Made the external fallback fail closed for request/track headers, signed or credential-bearing URLs, and private-network targets; only public session-safe media inputs can enter durable Termux fallback jobs.
+- Added typed multi-input FFmpeg fallback mapping with stream-copy and FFprobe verification under the existing durable Termux job/publication lifecycle.
+- Split yt-dlp metadata-resolver readiness from full yt-dlp download readiness while declaring the latter's actual yt-dlp + FFmpeg + FFprobe dependency.
+- Added runtime selection and health to External Tools, Developer Center, and redacted support reporting, with readiness UX that respects explicit user policy instead of silently switching runtimes.
+- Added FF03 routing regression tests, static contract verification, Devtool preflight wiring, final-gate carry-forward, architecture documentation, and implementation report. FF03 remains an intermediate full overlay and is applied with `--no-validate`.
+
 ## 2026-09-11 — FF02 embedded adaptive mux, HLS finalization, and post-processing
 
 - Added an app-owned `FfmpegAdaptive` / `EmbeddedFfmpegAdaptive` lane for fully resolved video/audio/subtitle rendition URLs; unresolved/site-extractor cases still fall back to yt-dlp rather than pretending FFmpeg can resolve them.

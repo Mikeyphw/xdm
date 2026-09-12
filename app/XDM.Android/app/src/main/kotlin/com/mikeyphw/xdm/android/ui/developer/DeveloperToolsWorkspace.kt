@@ -203,6 +203,22 @@ private fun RuntimeAndEnginesSection(
                 }
             }
         }
+        item {
+            XdmListCard {
+                XdmCardTitle("FFmpeg routing policy")
+                XdmSupportingText(state.mediaFfmpegRuntimePreference.description, maxLines = 4)
+                val termuxFfmpeg = state.termuxBridge.toolRows.any { it.tool == com.mikeyphw.xdm.android.termux.ExternalTool.Ffmpeg && it.available }
+                val termuxFfprobe = state.termuxBridge.toolRows.any { it.tool == com.mikeyphw.xdm.android.termux.ExternalTool.Ffprobe && it.available }
+                XdmMetadataText(
+                    "Selected ${state.mediaFfmpegRuntimePreference.label} • embedded ${state.ffmpegDiagnostics.status.lowercase()} • Termux pair ${if (termuxFfmpeg && termuxFfprobe && state.termuxBridge.hasFreshSuccessfulToolProbe()) "verified" else "not verified"}",
+                    maxLines = 3,
+                )
+                XdmSupportingText(
+                    "External fallback is limited to public header-free URLs. Cookies, Authorization, signed URLs, and private-network sessions stay app-owned and fail closed when embedded FFmpeg is unavailable.",
+                    maxLines = 5,
+                )
+            }
+        }
         item { XdmSectionHeader("Backend matrix") }
         items(state.backendCapabilities, key = { it.backend.name }) { row ->
             XdmListCard(compact = true) {

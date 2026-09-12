@@ -12,6 +12,7 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
 import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
 import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
+import com.mikeyphw.xdm.android.media.MediaFfmpegRuntimePreference
 import com.mikeyphw.xdm.android.browserextension.BrowserExtensionSourceContract
 import com.mikeyphw.xdm.android.storage.DestinationUris
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,7 @@ data class UserPreferences(
     val themeMode: XdmThemeMode = XdmThemeMode.Dark,
     val developerOptionsEnabled: Boolean = false,
     val verboseDebugLoggingEnabled: Boolean = false,
+    val mediaFfmpegRuntimePreference: MediaFfmpegRuntimePreference = MediaFfmpegRuntimePreference.Automatic,
     val destinationUri: String = DestinationUris.PUBLIC_DOWNLOADS,
     val conflictPolicy: FilenameConflictPolicy = FilenameConflictPolicy.Rename,
     val proxySettings: ProxyCredentialSettings = ProxyCredentialSettings(),
@@ -55,6 +57,7 @@ class UserPreferencesStore(private val context: Context) {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DeveloperOptionsEnabled = booleanPreferencesKey("developer_options_enabled")
         val VerboseDebugLoggingEnabled = booleanPreferencesKey("verbose_debug_logging_enabled")
+        val MediaFfmpegRuntimePreference = stringPreferencesKey("media_ffmpeg_runtime_preference")
         val DestinationUri = stringPreferencesKey("destination_uri")
         val ConflictPolicy = stringPreferencesKey("filename_conflict_policy")
         val ProxyEnabled = booleanPreferencesKey("proxy_enabled")
@@ -109,6 +112,9 @@ class UserPreferencesStore(private val context: Context) {
                 ?: XdmThemeMode.Dark,
             developerOptionsEnabled = preferences[Keys.DeveloperOptionsEnabled] ?: false,
             verboseDebugLoggingEnabled = preferences[Keys.VerboseDebugLoggingEnabled] ?: false,
+            mediaFfmpegRuntimePreference = preferences[Keys.MediaFfmpegRuntimePreference]
+                ?.let { runCatching { MediaFfmpegRuntimePreference.valueOf(it) }.getOrNull() }
+                ?: MediaFfmpegRuntimePreference.Automatic,
             destinationUri = preferences[Keys.DestinationUri] ?: defaultDestinationUri(),
             conflictPolicy = preferences[Keys.ConflictPolicy]?.let { runCatching { FilenameConflictPolicy.valueOf(it) }.getOrNull() } ?: FilenameConflictPolicy.Rename,
             proxySettings = ProxyCredentialSettings(
@@ -232,6 +238,10 @@ class UserPreferencesStore(private val context: Context) {
 
     suspend fun setVerboseDebugLoggingEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.VerboseDebugLoggingEnabled] = enabled }
+    }
+
+    suspend fun setMediaFfmpegRuntimePreference(preference: MediaFfmpegRuntimePreference) {
+        context.dataStore.edit { it[Keys.MediaFfmpegRuntimePreference] = preference.name }
     }
 
     suspend fun setDestination(uri: String) {

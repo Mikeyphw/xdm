@@ -16,6 +16,7 @@ enum class MediaWorkerBridgeKind(val label: String) {
     NativeDirect("Native direct request"),
     Aria2Adapter("aria2 launch adapter"),
     TermuxYtDlp("Termux yt-dlp adapter"),
+    TermuxFfmpeg("Termux FFmpeg adapter"),
     EmbeddedFfmpeg("Embedded FFmpeg adapter"),
     BlockedDiagnostic("Blocked diagnostic"),
 }
@@ -163,7 +164,7 @@ class MediaWorkerBridgePlanner {
                 request.kind == MediaWorkerBridgeKind.Aria2Adapter ||
                 request.kind == MediaWorkerBridgeKind.EmbeddedFfmpeg
         }
-        val termuxWorkers = requests.count { it.kind == MediaWorkerBridgeKind.TermuxYtDlp }
+        val termuxWorkers = requests.count { it.kind in setOf(MediaWorkerBridgeKind.TermuxYtDlp, MediaWorkerBridgeKind.TermuxFfmpeg) }
         val blocked = requests.count { it.readiness == MediaWorkerBridgeReadiness.Blocked || it.kind == MediaWorkerBridgeKind.BlockedDiagnostic }
         val confirm = requests.count { it.readiness == MediaWorkerBridgeReadiness.NeedsConfirmation }
         return MediaWorkerBridgeDashboard(
@@ -180,6 +181,8 @@ class MediaWorkerBridgePlanner {
     private fun kindFor(enginePlan: MediaExecutionEnginePlan): MediaWorkerBridgeKind = when (enginePlan.lane) {
         MediaExecutionLane.ProtectedBlocked -> MediaWorkerBridgeKind.BlockedDiagnostic
         MediaExecutionLane.YtDlpAdaptive -> MediaWorkerBridgeKind.TermuxYtDlp
+        MediaExecutionLane.TermuxFfmpegAdaptive,
+        MediaExecutionLane.TermuxFfmpegLive -> MediaWorkerBridgeKind.TermuxFfmpeg
         MediaExecutionLane.EmbeddedFfmpegAdaptive,
         MediaExecutionLane.EmbeddedFfmpegLive -> MediaWorkerBridgeKind.EmbeddedFfmpeg
         MediaExecutionLane.NativeHlsSegmented,

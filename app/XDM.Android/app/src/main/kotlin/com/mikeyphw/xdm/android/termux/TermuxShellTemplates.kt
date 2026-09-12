@@ -211,9 +211,30 @@ object TermuxShellTemplates {
             PostProcessingActionKind.FfmpegRemux -> {
                 appendLine("command -v ffmpeg >/dev/null 2>&1 || { printf 'missing ffmpeg\\n' >&2; exit 127; }")
                 appendLine("printf 'phase=preflight\\npercent=0\\nmessage=Validating media streams and output container\\n' > \"${'$'}XDM_PROGRESS\"")
-                appendLine("ffprobe -v error -show_entries stream=codec_type -of csv=p=0 ${shellQuote(plan.inputPath)} | grep -Eq '^(video|audio)$' || { printf 'input has no remuxable media stream\\n' >&2; exit 65; }")
-                appendLine("ffmpeg -hide_banner -nostdin -nostats -loglevel warning -progress \"${'$'}XDM_PROGRESS\" -y -i ${shellQuote(plan.inputPath)} -map 0 -c copy ${shellQuote(plan.outputPath)}")
-                appendLine("ffprobe -v error -show_entries format=format_name,duration:stream=codec_name -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\" 2>/dev/null || true")
+                val fallbackInputs = plan.ffmpegFallbackInputs
+                val probeInput = fallbackInputs.firstOrNull()?.url ?: plan.inputPath
+                appendLine("ffprobe -v error -show_entries stream=codec_type -of csv=p=0 ${shellQuote(probeInput)} | grep -Eq '^(video|audio)$' || { printf 'input has no remuxable media stream\\n' >&2; exit 65; }")
+                val inputArgs = if (fallbackInputs.isEmpty()) {
+                    "-i ${shellQuote(plan.inputPath)}"
+                } else {
+                    fallbackInputs.joinToString(" ") { input -> "-i ${shellQuote(input.url)}" }
+                }
+                val mapArgs = if (fallbackInputs.isEmpty()) {
+                    "-map 0"
+                } else {
+                    fallbackInputs.mapIndexed { index, input ->
+                        when (input.kind) {
+                            FfmpegFallbackInputKind.Video -> "-map $index:v?"
+                            FfmpegFallbackInputKind.Audio -> "-map $index:a?"
+                            FfmpegFallbackInputKind.Subtitle -> "-map $index:s?"
+                            FfmpegFallbackInputKind.Media -> "-map $index"
+                        }
+                    }.joinToString(" ")
+                }
+                appendLine("ffmpeg -hide_banner -nostdin -nostats -loglevel warning -progress \"${'$'}XDM_PROGRESS\" -y $inputArgs $mapArgs -c copy ${shellQuote(plan.outputPath)}")
+                appendLine("test -s ${shellQuote(plan.outputPath)} || { printf 'FFmpeg produced an empty output\\n' >&2; exit 66; }")
+                appendLine("ffprobe -v error -show_entries format=format_name,duration:stream=codec_type,codec_name -print_format json ${shellQuote(plan.outputPath)} > \"${'$'}XDM_METADATA\"")
+                appendLine("ffprobe -v error -show_entries stream=codec_type -of csv=p=0 ${shellQuote(plan.outputPath)} | grep -Eq '^(video|audio)$' || { printf 'output has no playable audio/video stream\\n' >&2; exit 66; }")
             }
             PostProcessingActionKind.YtDlpMetadata -> {
                 appendLine("command -v yt-dlp >/dev/null 2>&1 || { printf 'missing yt-dlp\\n' >&2; exit 127; }")

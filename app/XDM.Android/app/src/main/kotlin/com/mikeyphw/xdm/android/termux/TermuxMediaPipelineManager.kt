@@ -5,9 +5,11 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
 import com.mikeyphw.xdm.android.media.MediaDownloadPlanner
+import com.mikeyphw.xdm.android.media.MediaQueuedDownloadSpec
 import com.mikeyphw.xdm.android.media.MediaSessionHeader
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.ConversionPreset
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.MediaCaptureRecord
@@ -116,6 +118,18 @@ class TermuxMediaPipelineManager(
             }
         }
     }
+
+    fun ytDlpResolverReadinessIssue(nowEpochMs: Long = System.currentTimeMillis()): String? {
+        val bridge = TermuxRunStore.status.value
+        if (!bridge.termuxInstalled) return "Termux is not installed."
+        if (!bridge.runCommandPermissionGranted) return "Termux RUN_COMMAND permission is not granted."
+        if (!bridge.hasFreshSuccessfulToolProbe(nowEpochMs)) return "Run a fresh successful Termux tool probe."
+        val ytDlpReady = bridge.toolRows.any { it.available && it.tool == ExternalTool.YtDlp }
+        return if (ytDlpReady) null else "yt-dlp must be verified before metadata resolution."
+    }
+
+    fun ytDlpResolverReady(nowEpochMs: Long = System.currentTimeMillis()): Boolean =
+        ytDlpResolverReadinessIssue(nowEpochMs) == null
 
     fun ytDlpReadinessIssue(
         requestHeaders: Map<String, String> = emptyMap(),
@@ -232,6 +246,89 @@ class TermuxMediaPipelineManager(
             admissionMode = admissionMode,
         )
         return enqueueInternal(spec, durableClaim = false, mediaOutputSeed = seed)
+    }
+
+    fun ffmpegFallbackReadinessIssue(nowEpochMs: Long = System.currentTimeMillis()): String? {
+        val bridge = TermuxRunStore.status.value
+        if (!bridge.termuxInstalled) return "Termux is not installed."
+        if (!bridge.runCommandPermissionGranted) return "Termux RUN_COMMAND permission is not granted."
+        if (!bridge.hasFreshSuccessfulToolProbe(nowEpochMs)) return "Run a fresh successful Termux tool probe."
+        val required = setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
+        val available = bridge.toolRows.filter(TermuxToolProbeRow::available).map(TermuxToolProbeRow::tool).toSet()
+        return if (required.all(available::contains)) null else "FFmpeg and FFprobe must both be verified before external media fallback."
+    }
+
+    fun ffmpegFallbackReady(nowEpochMs: Long = System.currentTimeMillis()): Boolean =
+        ffmpegFallbackReadinessIssue(nowEpochMs) == null
+
+    suspend fun enqueueFfmpegFallback(
+        record: MediaCaptureRecord,
+        spec: MediaQueuedDownloadSpec,
+        admissionMode: MediaOutputAdmissionMode = MediaOutputAdmissionMode.Primary,
+    ): EnqueueOutcome {
+        require(com.mikeyphw.xdm.android.media.MediaFfmpegRuntimeRoutingPolicy.termuxFallbackEligible(spec)) {
+            "Termux FFmpeg fallback refused: this media session contains headers, credentials, a signed URL, or a private-network target."
+        }
+        ffmpegFallbackReadinessIssue()?.let { error(it) }
+        val sourceInputs = if (spec.selectedInputs.isNotEmpty()) {
+            spec.selectedInputs.filter { it.kind != MediaVariantKind.Thumbnail }
+        } else {
+            listOf(com.mikeyphw.xdm.android.media.MediaSelectedTrackInput(
+                variantId = "capture-primary",
+                kind = MediaVariantKind.Primary,
+                url = record.selectedVariantUrl ?: record.sourceUrl,
+                mimeType = record.mimeType,
+                headers = emptyMap(),
+            ))
+        }
+        val safeInputs = sourceInputs.map { input ->
+            val safeUrl = ExternalUrlPolicy.normalizedUrl(input.url)
+                ?.takeUnless(ExternalUrlPolicy::hasCredentialBearingQuery)
+                ?: error("Termux FFmpeg fallback refused an unsafe media URL.")
+            FfmpegFallbackInputSpec(
+                uri = safeUrl,
+                kind = when (input.kind) {
+                    MediaVariantKind.Video -> FfmpegFallbackInputKind.Video
+                    MediaVariantKind.Audio -> FfmpegFallbackInputKind.Audio
+                    MediaVariantKind.Subtitle -> FfmpegFallbackInputKind.Subtitle
+                    MediaVariantKind.Primary, MediaVariantKind.Thumbnail -> FfmpegFallbackInputKind.Media
+                },
+            )
+        }
+        require(safeInputs.isNotEmpty()) { "Termux FFmpeg fallback has no executable media input." }
+        val outputName = spec.fileName
+        val outputMime = when (outputName.substringAfterLast('.', missingDelimiterValue = "").lowercase(Locale.US)) {
+            "mp4", "m4v" -> "video/mp4"
+            "m4a" -> "audio/mp4"
+            "webm" -> "video/webm"
+            "mkv" -> "video/x-matroska"
+            else -> record.mimeType ?: "video/x-matroska"
+        }
+        val jobSpec = manualSpec(
+            record = record,
+            kind = PostProcessingActionKind.FfmpegRemux,
+            input = safeInputs.first().uri,
+            outputName = outputName,
+            mimeType = outputMime,
+            requiredTools = setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
+            destinationUri = spec.destinationUri.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
+            downloadId = null,
+            ffmpegFallbackInputs = safeInputs,
+            timeoutSeconds = if (spec.strategy == com.mikeyphw.xdm.android.media.MediaDownloadStrategy.FfmpegLive) 86_400L else 7_200L,
+            expectedDurationMs = record.durationMs,
+        )
+        return enqueueInternal(
+            spec = jobSpec,
+            durableClaim = false,
+            mediaOutputSeed = MediaOutputSeed(
+                captureId = record.id,
+                destinationUri = spec.destinationUri.ifBlank { "xdm://post-processing" },
+                fileName = outputName,
+                mimeType = outputMime,
+                selectedTrackIds = spec.selectedTrackIds,
+                admissionMode = admissionMode,
+            ),
+        )
     }
 
     private fun ytDlpDownloadSpec(
@@ -1543,7 +1640,10 @@ class TermuxMediaPipelineManager(
                             }
                         }
                     }
-                    val progress = parseProgress(artifactBridge.readText(job.progressBridgeUri), status)
+                    val expectedDurationMs = runCatching {
+                        PostProcessingJobSpec.fromJson(job.immutableSpecJson).expectedDurationMs
+                    }.getOrNull()
+                    val progress = parseProgress(artifactBridge.readText(job.progressBridgeUri), status, expectedDurationMs)
                     dao.updateProgress(job.id, progress.status.name, progress.percent, progress.bytes, progress.totalBytes, progress.message, System.currentTimeMillis())
                     val timeoutAtEpochMs = job.timeoutAtEpochMs
                     if (timeoutAtEpochMs != null && System.currentTimeMillis() >= timeoutAtEpochMs && job.requestedControl != "Timeout") {
@@ -1605,7 +1705,11 @@ class TermuxMediaPipelineManager(
 
     private data class ParsedProgress(val status: PostProcessingJobStatus, val percent: Int, val bytes: Long, val totalBytes: Long?, val message: String)
 
-    private fun parseProgress(raw: String, current: PostProcessingJobStatus): ParsedProgress {
+    private fun parseProgress(
+        raw: String,
+        current: PostProcessingJobStatus,
+        expectedDurationMs: Long? = null,
+    ): ParsedProgress {
         if (raw.isBlank()) return ParsedProgress(current, 0, 0L, null, current.label)
         val ytdlp = raw.lineSequence().lastOrNull { it.startsWith("XDM_YTDLP\t") }
         if (ytdlp != null) {
@@ -1618,8 +1722,19 @@ class TermuxMediaPipelineManager(
         val values = parseKeyValues(raw)
         val totalBytes = values["total_size"]?.toLongOrNull() ?: values["total_bytes"]?.toLongOrNull()
         val bytes = values["bytes"]?.toLongOrNull() ?: totalBytes ?: 0L
-        val percent = values["percent"]?.toIntOrNull()?.coerceIn(0, 100) ?: if (values["progress"] == "end") 100 else 0
-        val message = values["message"] ?: values["phase"]?.let { "$it • ${current.label}" } ?: current.label
+        // FFmpeg's historical out_time_ms field is also expressed in microseconds.
+        val outTimeUs = values["out_time_us"]?.toLongOrNull()
+            ?: values["out_time_ms"]?.toLongOrNull()
+        val timelinePercent = if (expectedDurationMs != null && expectedDurationMs > 0L && outTimeUs != null) {
+            ((outTimeUs / 1_000.0) / expectedDurationMs.toDouble() * 100.0).toInt().coerceIn(0, 99)
+        } else null
+        val percent = values["percent"]?.toIntOrNull()?.coerceIn(0, 100)
+            ?: if (values["progress"] == "end") 100 else timelinePercent ?: 0
+        val speed = values["speed"]?.takeIf(String::isNotBlank)
+        val message = values["message"]
+            ?: values["phase"]?.let { "$it • ${current.label}" }
+            ?: outTimeUs?.let { "FFmpeg processing $percent%${speed?.let { value -> " • $value" }.orEmpty()}" }
+            ?: current.label
         return ParsedProgress(current, percent, bytes, totalBytes, message)
     }
 
@@ -1714,6 +1829,7 @@ class TermuxMediaPipelineManager(
             expectedSha256 = spec.expectedSha256.orEmpty(),
             formatSelector = spec.formatSelector.orEmpty(),
             extraArguments = spec.extraArguments,
+            ffmpegFallbackInputs = spec.ffmpegFallbackInputs.map { input -> TermuxFfmpegFallbackInput(input.uri, input.kind) },
             ytDlpConfigLines = transientSession?.configLines.orEmpty(),
             ytDlpUrl = transientSession?.exactUrl,
         )
@@ -1744,11 +1860,14 @@ class TermuxMediaPipelineManager(
         metadataOnly: Boolean = false,
         formatSelector: String? = null,
         extraArguments: List<String> = emptyList(),
+        ffmpegFallbackInputs: List<FfmpegFallbackInputSpec> = emptyList(),
         destinationUri: String? = null,
         downloadId: String? = record.downloadId,
         sessionPrimaryVariantId: String? = null,
         sessionVariantIds: List<String> = emptyList(),
         sessionUsePageUrl: Boolean = false,
+        timeoutSeconds: Long = 30 * 60L,
+        expectedDurationMs: Long? = record.durationMs,
     ) = PostProcessingJobSpec(
         subjectId = record.id,
         subjectType = PostProcessingSubjectType.MediaCapture,
@@ -1769,10 +1888,13 @@ class TermuxMediaPipelineManager(
         inputCodecs = record.codecs,
         output = PostProcessingOutputSpec(outputName, mimeType, destinationUri),
         requiredTools = requiredTools,
+        timeoutSeconds = timeoutSeconds,
+        expectedDurationMs = expectedDurationMs,
         resultMode = if (metadataOnly) PostProcessingResultMode.MetadataOnly else PostProcessingResultMode.OutputArtifact,
         metadataOnly = metadataOnly,
         formatSelector = formatSelector,
         extraArguments = extraArguments,
+        ffmpegFallbackInputs = ffmpegFallbackInputs,
         sessionPrimaryVariantId = sessionPrimaryVariantId,
         sessionVariantIds = sessionVariantIds,
         sessionUsePageUrl = sessionUsePageUrl,

@@ -55,6 +55,8 @@ enum class MediaExecutionLane(val label: String) {
     YtDlpAdaptive("yt-dlp adaptive"),
     EmbeddedFfmpegAdaptive("Embedded FFmpeg adaptive processing"),
     EmbeddedFfmpegLive("Embedded FFmpeg live recording"),
+    TermuxFfmpegAdaptive("Termux FFmpeg adaptive processing"),
+    TermuxFfmpegLive("Termux FFmpeg live recording"),
     ProtectedBlocked("Protected diagnostic only"),
 }
 
@@ -120,6 +122,7 @@ data class MediaExecutionEnginePlan(
     val aria2Input: Aria2TransientInputPlan?,
     val cleanupActions: List<String>,
     val leakReport: MediaSecretLeakReport,
+    val ffmpegRuntimeDecision: MediaFfmpegRuntimeDecision? = null,
 ) {
     val safeSummary: String get() = listOf(
         "lane=${lane.label}",
@@ -127,7 +130,8 @@ data class MediaExecutionEnginePlan(
         "policy=${backgroundPolicy.summary}",
         "cleanup=${cleanupActions.joinToString()}",
         "leaks=${leakReport.summary}",
-    ).joinToString("; ")
+        ffmpegRuntimeDecision?.let { "ffmpeg=${it.summary}" },
+    ).filterNotNull().joinToString("; ")
 }
 
 
@@ -363,8 +367,20 @@ class MediaExecutionLibraryPlanner(
         )
     }
 
-    fun enginePlan(spec: MediaQueuedDownloadSpec, androidSdkInt: Int, userInitiated: Boolean = true): MediaExecutionEnginePlan {
-        val lane = laneFor(spec)
+    fun enginePlan(
+        spec: MediaQueuedDownloadSpec,
+        androidSdkInt: Int,
+        userInitiated: Boolean = true,
+        ffmpegRuntimeContext: MediaFfmpegRuntimeContext = MediaFfmpegRuntimeContext(
+            termuxNetworkFallbackEligible = MediaFfmpegRuntimeRoutingPolicy.termuxFallbackEligible(spec),
+        ),
+    ): MediaExecutionEnginePlan {
+        val ffmpegDecision = if (spec.strategy in setOf(MediaDownloadStrategy.FfmpegAdaptive, MediaDownloadStrategy.FfmpegLive)) {
+            MediaFfmpegRuntimeRoutingPolicy.decide(ffmpegRuntimeContext.copy(
+                termuxNetworkFallbackEligible = ffmpegRuntimeContext.termuxNetworkFallbackEligible && MediaFfmpegRuntimeRoutingPolicy.termuxFallbackEligible(spec),
+            ))
+        } else null
+        val lane = laneFor(spec, ffmpegDecision)
         val policy = backgroundPolicyFor(lane, androidSdkInt, userInitiated)
         val tempCookie = tempCookieFilePlan(spec)
         val aria2 = aria2TransientInputPlan(spec, lane)
@@ -392,6 +408,8 @@ class MediaExecutionLibraryPlanner(
                 MediaExecutionLane.YtDlpAdaptive -> "yt-dlp"
                 MediaExecutionLane.EmbeddedFfmpegAdaptive -> "embedded-ffmpeg"
                 MediaExecutionLane.EmbeddedFfmpegLive -> "embedded-ffmpeg"
+                MediaExecutionLane.TermuxFfmpegAdaptive -> "termux-ffmpeg"
+                MediaExecutionLane.TermuxFfmpegLive -> "termux-ffmpeg"
                 MediaExecutionLane.ProtectedBlocked -> "diagnostics-only"
             },
             typedArguments = typedArgs,
@@ -399,6 +417,7 @@ class MediaExecutionLibraryPlanner(
             aria2Input = aria2,
             cleanupActions = cleanup,
             leakReport = leakReport,
+            ffmpegRuntimeDecision = ffmpegDecision,
         )
     }
 
@@ -723,9 +742,14 @@ class MediaExecutionLibraryPlanner(
         )
     }
 
-    private fun laneFor(spec: MediaQueuedDownloadSpec): MediaExecutionLane = when {
-        spec.strategy == MediaDownloadStrategy.UnsupportedProtected || !spec.canUseAppQueue && !spec.requiresTermuxYtDlp && spec.strategy != MediaDownloadStrategy.NativeHls -> MediaExecutionLane.ProtectedBlocked
+    private fun laneFor(
+        spec: MediaQueuedDownloadSpec,
+        ffmpegDecision: MediaFfmpegRuntimeDecision? = null,
+    ): MediaExecutionLane = when {
+        spec.strategy == MediaDownloadStrategy.UnsupportedProtected || !spec.canUseAppQueue && !spec.requiresTermuxYtDlp && spec.strategy != MediaDownloadStrategy.NativeHls && spec.strategy !in setOf(MediaDownloadStrategy.FfmpegAdaptive, MediaDownloadStrategy.FfmpegLive) -> MediaExecutionLane.ProtectedBlocked
         spec.strategy == MediaDownloadStrategy.NativeHls -> MediaExecutionLane.NativeHlsSegmented
+        spec.strategy == MediaDownloadStrategy.FfmpegAdaptive && ffmpegDecision?.source == MediaFfmpegRuntimeSource.Termux -> MediaExecutionLane.TermuxFfmpegAdaptive
+        spec.strategy == MediaDownloadStrategy.FfmpegLive && ffmpegDecision?.source == MediaFfmpegRuntimeSource.Termux -> MediaExecutionLane.TermuxFfmpegLive
         spec.strategy == MediaDownloadStrategy.FfmpegAdaptive -> MediaExecutionLane.EmbeddedFfmpegAdaptive
         spec.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionLane.EmbeddedFfmpegLive
         spec.requiresTermuxYtDlp -> MediaExecutionLane.YtDlpAdaptive
@@ -738,6 +762,8 @@ class MediaExecutionLibraryPlanner(
         MediaExecutionLane.YtDlpAdaptive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.TermuxExternalJob, null, "yt-dlp execution stays in the typed Termux media pipeline.")
         MediaExecutionLane.EmbeddedFfmpegAdaptive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.EmbeddedFfmpeg, "dataSync", "Resolved adaptive tracks are downloaded, muxed, verified, and published by XDM-owned embedded FFmpeg.")
         MediaExecutionLane.EmbeddedFfmpegLive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.EmbeddedFfmpeg, "dataSync", "Live media is recorded by XDM-owned embedded FFmpeg without requiring Termux.")
+        MediaExecutionLane.TermuxFfmpegAdaptive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.TermuxExternalJob, null, "Session-safe adaptive media is processed by the verified user-managed Termux FFmpeg fallback.")
+        MediaExecutionLane.TermuxFfmpegLive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.TermuxExternalJob, null, "Session-safe live media is recorded by the verified user-managed Termux FFmpeg fallback.")
         MediaExecutionLane.DirectNative,
         MediaExecutionLane.NativeHlsSegmented,
         MediaExecutionLane.Aria2Segmented -> when {
@@ -825,6 +851,14 @@ class MediaExecutionLibraryPlanner(
             MediaExecutionLane.EmbeddedFfmpegLive -> {
                 args += listOf("--input", spec.sidecar.redactedSourceUrl, "--output", spec.fileName, "--stream-copy", "true")
                 spec.requestHeaders.keys.sorted().forEach { header -> args += listOf("--header", "$header=<redacted>") }
+            }
+            MediaExecutionLane.TermuxFfmpegAdaptive -> {
+                args += listOf("--output", spec.fileName, "--processing", spec.postProcessing.kind.name, "--runtime", "termux")
+                spec.selectedInputs.forEach { input -> args += listOf("--${input.kind.name.lowercase()}-input", input.redactedUrl) }
+                args += listOf("--verify", "ffprobe", "--session-safe", "true")
+            }
+            MediaExecutionLane.TermuxFfmpegLive -> {
+                args += listOf("--input", spec.sidecar.redactedSourceUrl, "--output", spec.fileName, "--stream-copy", "true", "--runtime", "termux", "--session-safe", "true")
             }
             MediaExecutionLane.ProtectedBlocked -> {
                 args += listOf("--diagnostics-only", spec.captureId)

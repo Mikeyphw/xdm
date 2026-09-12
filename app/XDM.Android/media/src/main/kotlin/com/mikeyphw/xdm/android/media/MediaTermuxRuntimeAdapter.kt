@@ -45,6 +45,8 @@ data class TermuxMediaRuntimeCapabilityReport(
 enum class TermuxRuntimeLaunchKind(val label: String) {
     YtDlpDownload("yt-dlp download"),
     Aria2Download("aria2 download"),
+    FfmpegAdaptive("FFmpeg adaptive media"),
+    FfmpegLive("FFmpeg live recording"),
     MetadataProbe("metadata probe"),
     BlockedDiagnostic("blocked diagnostic"),
 }
@@ -175,14 +177,17 @@ class MediaTermuxRuntimeAdapter {
     private fun kindFor(request: MediaWorkerBridgeRequest): TermuxRuntimeLaunchKind = when {
         request.kind == MediaWorkerBridgeKind.BlockedDiagnostic || request.lane == MediaExecutionLane.ProtectedBlocked -> TermuxRuntimeLaunchKind.BlockedDiagnostic
         request.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive) || request.kind == MediaWorkerBridgeKind.EmbeddedFfmpeg -> TermuxRuntimeLaunchKind.BlockedDiagnostic
+        request.lane == MediaExecutionLane.TermuxFfmpegAdaptive -> TermuxRuntimeLaunchKind.FfmpegAdaptive
+        request.lane == MediaExecutionLane.TermuxFfmpegLive -> TermuxRuntimeLaunchKind.FfmpegLive
         request.lane == MediaExecutionLane.YtDlpAdaptive || request.kind == MediaWorkerBridgeKind.TermuxYtDlp -> TermuxRuntimeLaunchKind.YtDlpDownload
         request.lane == MediaExecutionLane.Aria2Segmented || request.kind == MediaWorkerBridgeKind.Aria2Adapter -> TermuxRuntimeLaunchKind.Aria2Download
         else -> TermuxRuntimeLaunchKind.MetadataProbe
     }
 
     private fun requiredToolsFor(kind: TermuxRuntimeLaunchKind): Set<TermuxMediaRuntimeTool> = when (kind) {
-        TermuxRuntimeLaunchKind.YtDlpDownload -> setOf(TermuxMediaRuntimeTool.YtDlp)
+        TermuxRuntimeLaunchKind.YtDlpDownload -> setOf(TermuxMediaRuntimeTool.YtDlp, TermuxMediaRuntimeTool.Ffmpeg, TermuxMediaRuntimeTool.Ffprobe)
         TermuxRuntimeLaunchKind.Aria2Download -> setOf(TermuxMediaRuntimeTool.Aria2c)
+        TermuxRuntimeLaunchKind.FfmpegAdaptive, TermuxRuntimeLaunchKind.FfmpegLive -> setOf(TermuxMediaRuntimeTool.Ffmpeg, TermuxMediaRuntimeTool.Ffprobe)
         TermuxRuntimeLaunchKind.MetadataProbe -> setOf(TermuxMediaRuntimeTool.YtDlp, TermuxMediaRuntimeTool.Ffprobe)
         TermuxRuntimeLaunchKind.BlockedDiagnostic -> emptySet()
     }

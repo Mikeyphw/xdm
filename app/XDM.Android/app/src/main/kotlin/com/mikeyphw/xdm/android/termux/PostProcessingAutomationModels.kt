@@ -75,6 +75,11 @@ data class PostProcessingAutomationRule(
     }
 }
 
+data class TermuxFfmpegFallbackInput(
+    val url: String,
+    val kind: FfmpegFallbackInputKind,
+)
+
 data class TermuxPostProcessingPlan(
     val kind: PostProcessingActionKind,
     val inputPath: String,
@@ -82,6 +87,8 @@ data class TermuxPostProcessingPlan(
     val expectedSha256: String = "",
     val formatSelector: String = "",
     val extraArguments: List<String> = emptyList(),
+    /** Public session-safe FFmpeg inputs. Credential-bearing inputs are rejected before this plan exists. */
+    val ffmpegFallbackInputs: List<TermuxFfmpegFallbackInput> = emptyList(),
     /** Transient-only yt-dlp session material. Never serialized into PostProcessingJobSpec. */
     val ytDlpConfigLines: List<String> = emptyList(),
     val ytDlpUrl: String? = null,

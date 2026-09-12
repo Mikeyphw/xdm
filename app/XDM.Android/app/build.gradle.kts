@@ -235,6 +235,14 @@ tasks.register<Exec>("verifyFfmpeg02MediaMuxHlsPostprocessingContract") {
 }
 
 
+tasks.register<Exec>("verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract") {
+    group = "verification"
+    description = "Verify FF03 runtime routing, safe Termux fallback, yt-dlp boundary, UI controls, and redacted diagnostics."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py")
+}
+
+
 tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."

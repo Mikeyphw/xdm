@@ -87,6 +87,9 @@ import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
 import com.mikeyphw.xdm.android.media.OfflineMediaLibraryItem
 import com.mikeyphw.xdm.android.media.MediaExecutionDispatcher
 import com.mikeyphw.xdm.android.media.MediaExecutionLane
+import com.mikeyphw.xdm.android.media.MediaFfmpegRuntimeContext
+import com.mikeyphw.xdm.android.media.MediaFfmpegRuntimePreference
+import com.mikeyphw.xdm.android.media.MediaFfmpegRuntimeRoutingPolicy
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegRuntimeCapabilityReport
 import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegMediaManager
 import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegJobProgress
@@ -254,6 +257,7 @@ data class MainUiState(
     val themeMode: XdmThemeMode = XdmThemeMode.Dark,
     val developerOptionsEnabled: Boolean = false,
     val verboseDebugLoggingEnabled: Boolean = false,
+    val mediaFfmpegRuntimePreference: MediaFfmpegRuntimePreference = MediaFfmpegRuntimePreference.Automatic,
     val browserExtension: BrowserExtensionExportPreferences = BrowserExtensionExportPreferences(),
     val browserExtensionRuntime: BrowserExtensionRuntimeStatus = BrowserExtensionRuntimeStatus(),
     val browserBridgeStatus: BrowserBridgeIntegrationStatus = BrowserBridgeIntegrationStatus(),
@@ -879,6 +883,15 @@ class MainViewModel(
             appendLine("- Real-device smoke: ${if (realDeviceSmokePassed) "passed" else "pending/not attested"}")
             appendLine("- aria2 payload: ${if (aria2PayloadVerified) "verified" else "optional/unverified"}")
             appendLine()
+            appendLine("Media runtime routing")
+            appendLine("- Preference: ${prefs.mediaFfmpegRuntimePreference.label}")
+            appendLine("- Embedded FFmpeg: ${runtime.ffmpeg.status}")
+            val termuxFfmpegVerified = runtime.termuxBridge.hasFreshSuccessfulToolProbe() &&
+                runtime.termuxBridge.toolRows.any { it.tool == com.mikeyphw.xdm.android.termux.ExternalTool.Ffmpeg && it.available } &&
+                runtime.termuxBridge.toolRows.any { it.tool == com.mikeyphw.xdm.android.termux.ExternalTool.Ffprobe && it.available }
+            appendLine("- Termux FFmpeg fallback: ${if (termuxFfmpegVerified) "verified" else "not verified"}")
+            appendLine("- External media boundary: public header-free URLs only; authenticated/signed/private-network sessions remain app-owned")
+            appendLine()
             appendLine(supportBundleSeal.redactedSummary())
         }
         MainUiState(
@@ -887,6 +900,7 @@ class MainViewModel(
             themeMode = prefs.themeMode,
             developerOptionsEnabled = prefs.developerOptionsEnabled,
             verboseDebugLoggingEnabled = prefs.verboseDebugLoggingEnabled,
+            mediaFfmpegRuntimePreference = prefs.mediaFfmpegRuntimePreference,
             browserExtension = prefs.browserExtension,
             browserExtensionRuntime = browserExtensionRuntimeStatus,
             browserBridgeStatus = browserBridgeIntegrationStatus,
@@ -1791,6 +1805,14 @@ class MainViewModel(
 
     fun setVerboseDebugLoggingEnabled(enabled: Boolean) {
         viewModelScope.launch { preferences.setVerboseDebugLoggingEnabled(enabled) }
+    }
+
+    fun setMediaFfmpegRuntimePreference(preference: MediaFfmpegRuntimePreference) {
+        viewModelScope.launch {
+            preferences.setMediaFfmpegRuntimePreference(preference)
+            ffmpegSelfTestMessage.value = null
+            termuxBridgeManager.refreshStatus()
+        }
     }
 
     fun setProxySettings(settings: ProxyCredentialSettings) {
@@ -4106,22 +4128,48 @@ class MainViewModel(
                 sessionHeaders = captureSessionHeaders,
                 variantSessionHeaders = variantSessionHeaders,
             )
-            val enginePlan = mediaExecutionPlanner.enginePlan(spec, androidSdkInt = android.os.Build.VERSION.SDK_INT)
+            val embeddedFfmpegCapability = embeddedFfmpegMediaManager.runtime.capabilities()
+            val termuxBridge = termuxBridgeManager.status.value
+            val termuxFfmpegReady = termuxMediaPipelineManager.ffmpegFallbackReady(now)
+            val ffmpegRuntimeContext = MediaFfmpegRuntimeContext(
+                preference = prefs.mediaFfmpegRuntimePreference,
+                embeddedReady = embeddedFfmpegCapability.ready,
+                termuxBridgeReady = termuxBridge.termuxInstalled && termuxBridge.runCommandPermissionGranted && termuxBridge.hasFreshSuccessfulToolProbe(now),
+                termuxFfmpegReady = termuxFfmpegReady,
+                termuxFfprobeReady = termuxFfmpegReady,
+                termuxNetworkFallbackEligible = MediaFfmpegRuntimeRoutingPolicy.termuxFallbackEligible(spec),
+            )
+            val enginePlan = mediaExecutionPlanner.enginePlan(
+                spec,
+                androidSdkInt = android.os.Build.VERSION.SDK_INT,
+                ffmpegRuntimeContext = ffmpegRuntimeContext,
+            )
             val termuxReady = !spec.requiresTermuxYtDlp || termuxMediaPipelineManager.ytDlpExecutionReady(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
-            val embeddedFfmpegReady = enginePlan.lane !in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive) || embeddedFfmpegMediaManager.runtime.capabilities().ready
+            val embeddedFfmpegReady = enginePlan.lane !in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive) || embeddedFfmpegCapability.ready
             val dispatchPlan = mediaExecutionDispatcher.dispatchPlan(
                 spec = spec,
                 enginePlan = enginePlan,
                 capture = exactRecord,
                 termuxReady = termuxReady,
                 embeddedFfmpegReady = embeddedFfmpegReady,
+                termuxFfmpegReady = termuxFfmpegReady,
                 nowEpochMs = now,
             )
             if (dispatchPlan.readiness != MediaDispatchReadiness.Ready) {
                 val detail = when (dispatchPlan.readiness) {
-                    MediaDispatchReadiness.NeedsTermuxSetup -> termuxMediaPipelineManager.ytDlpReadinessIssue(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
-                        ?: dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
-                    MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> embeddedFfmpegMediaManager.runtime.capabilities().summary
+                    MediaDispatchReadiness.NeedsTermuxSetup -> if (
+                        enginePlan.lane in setOf(MediaExecutionLane.TermuxFfmpegAdaptive, MediaExecutionLane.TermuxFfmpegLive) ||
+                        enginePlan.ffmpegRuntimeDecision?.requestedPreference == MediaFfmpegRuntimePreference.Termux
+                    ) {
+                        enginePlan.ffmpegRuntimeDecision?.reason
+                            ?: termuxMediaPipelineManager.ffmpegFallbackReadinessIssue(now)
+                            ?: dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
+                    } else {
+                        termuxMediaPipelineManager.ytDlpReadinessIssue(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
+                            ?: dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
+                    }
+                    MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> enginePlan.ffmpegRuntimeDecision?.reason
+                        ?: embeddedFfmpegMediaManager.runtime.capabilities().summary
                     else -> dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
                 }
                 if (dispatchPlan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh) {
@@ -4131,7 +4179,13 @@ class MainViewModel(
                     MediaIntakeFeedbackUi(
                         kind = when (dispatchPlan.readiness) {
                             MediaDispatchReadiness.NeedsMetadataRefresh -> MediaIntakeFeedbackKind.NeedsBrowserCapture
-                            MediaDispatchReadiness.NeedsTermuxSetup -> if (spec.requestHeaders.keys.any { it.equals("Cookie", true) || it.equals("Authorization", true) }) MediaIntakeFeedbackKind.AuthenticationRequired else MediaIntakeFeedbackKind.Unsupported
+                            MediaDispatchReadiness.NeedsTermuxSetup -> if (enginePlan.ffmpegRuntimeDecision?.requestedPreference == MediaFfmpegRuntimePreference.Termux) {
+                                MediaIntakeFeedbackKind.Unsupported
+                            } else if (spec.requestHeaders.keys.any { it.equals("Cookie", true) || it.equals("Authorization", true) }) {
+                                MediaIntakeFeedbackKind.AuthenticationRequired
+                            } else {
+                                MediaIntakeFeedbackKind.Unsupported
+                            }
                             MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> MediaIntakeFeedbackKind.Failed
                             MediaDispatchReadiness.BlockedProtected, MediaDispatchReadiness.AwaitingUserChoice -> MediaIntakeFeedbackKind.Unsupported
                             MediaDispatchReadiness.BlockedSecretLeak -> MediaIntakeFeedbackKind.Failed
@@ -4190,6 +4244,44 @@ class MainViewModel(
                         "attemptGeneration" to outcome.output.attemptGeneration.toString(),
                         "owner" to "EmbeddedFfmpeg",
                         "processing" to spec.postProcessing.kind.name,
+                    ),
+                )
+                navigate(AppRoute.Media)
+                return@launch
+            }
+            if (enginePlan.lane in setOf(MediaExecutionLane.TermuxFfmpegAdaptive, MediaExecutionLane.TermuxFfmpegLive)) {
+                val outcome = runCatching {
+                    termuxMediaPipelineManager.enqueueFfmpegFallback(
+                        record = exactRecord,
+                        spec = spec,
+                        admissionMode = admissionMode,
+                    )
+                }.getOrElse { error ->
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not queue Termux FFmpeg", error.message ?: "External FFmpeg fallback enqueue failed."),
+                        navigateToMedia = false,
+                    )
+                    navigate(AppRoute.Media)
+                    return@launch
+                }
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        if (outcome.accepted || outcome.existingOutput != null) MediaIntakeFeedbackKind.Found else MediaIntakeFeedbackKind.Failed,
+                        if (outcome.accepted) spec.postProcessing.userLabel else "Media already added",
+                        outcome.message,
+                    ),
+                    navigateToMedia = false,
+                )
+                debugEventRecorder.record(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                    action = "media-termux-ffmpeg-fallback-enqueue",
+                    result = if (outcome.accepted) "committed" else "existing",
+                    safeDetails = mapOf(
+                        "captureId" to record.id,
+                        "postProcessingJobId" to outcome.job.id,
+                        "attemptGeneration" to outcome.job.attemptGeneration.toString(),
+                        "owner" to "TermuxFfmpeg",
+                        "fallback" to (enginePlan.ffmpegRuntimeDecision?.fallbackUsed == true).toString(),
                     ),
                 )
                 navigate(AppRoute.Media)

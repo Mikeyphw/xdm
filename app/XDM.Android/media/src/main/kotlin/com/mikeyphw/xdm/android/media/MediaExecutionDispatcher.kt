@@ -94,6 +94,7 @@ class MediaExecutionDispatcher {
         capture: MediaCaptureRecord? = null,
         termuxReady: Boolean = true,
         embeddedFfmpegReady: Boolean = true,
+        termuxFfmpegReady: Boolean = true,
         nowEpochMs: Long = System.currentTimeMillis(),
     ): MediaDispatchPlan {
         val warnings = mutableListOf<String>()
@@ -102,12 +103,16 @@ class MediaExecutionDispatcher {
         val captureNeedsRefresh = capture?.needsManifestRefresh(nowEpochMs) == true || capture?.resolutionStatus == MediaResolutionStatus.RequiresRefresh
         val needsRefresh = captureNeedsRefresh || (capture == null && spec.isExpiringUrl)
         val leakSafe = enginePlan.leakReport.safe
+        val runtimeDecision = enginePlan.ffmpegRuntimeDecision
         val readiness = when {
             !leakSafe -> MediaDispatchReadiness.BlockedSecretLeak
             enginePlan.lane == MediaExecutionLane.ProtectedBlocked -> MediaDispatchReadiness.BlockedProtected
             needsRefresh -> MediaDispatchReadiness.NeedsMetadataRefresh
             requiresChoice -> MediaDispatchReadiness.AwaitingUserChoice
+            runtimeDecision?.runnable == false && runtimeDecision.requestedPreference == MediaFfmpegRuntimePreference.Termux -> MediaDispatchReadiness.NeedsTermuxSetup
+            runtimeDecision?.runnable == false -> MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime
             enginePlan.lane == MediaExecutionLane.YtDlpAdaptive && !termuxReady -> MediaDispatchReadiness.NeedsTermuxSetup
+            enginePlan.lane in setOf(MediaExecutionLane.TermuxFfmpegAdaptive, MediaExecutionLane.TermuxFfmpegLive) && !termuxFfmpegReady -> MediaDispatchReadiness.NeedsTermuxSetup
             enginePlan.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive) && !embeddedFfmpegReady -> MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime
             else -> MediaDispatchReadiness.Ready
         }
@@ -115,6 +120,13 @@ class MediaExecutionDispatcher {
         if (requiresChoice) warnings += "Select a variant or explicit yt-dlp format before launching adaptive media."
         if (!termuxReady && enginePlan.lane == MediaExecutionLane.YtDlpAdaptive) {
             warnings += "Termux media pipeline is required for the yt-dlp resolver lane."
+        }
+        if (!termuxFfmpegReady && enginePlan.lane in setOf(MediaExecutionLane.TermuxFfmpegAdaptive, MediaExecutionLane.TermuxFfmpegLive)) {
+            warnings += "A fresh Termux tool probe must verify both FFmpeg and FFprobe for the selected external media runtime."
+        }
+        runtimeDecision?.let { decision ->
+            if (!decision.runnable) warnings += decision.reason
+            warnings += decision.warnings
         }
         if (!embeddedFfmpegReady && enginePlan.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive)) {
             warnings += "The app-owned FFmpeg runtime is unavailable or failed its capability probe."
@@ -216,6 +228,16 @@ class MediaExecutionDispatcher {
                 title = "Launch app-owned FFmpeg recording",
                 detail = "executor=${enginePlan.typedExecutor}; typed arguments only; Termux is not required.",
             )
+            MediaExecutionLane.TermuxFfmpegAdaptive -> steps += MediaDispatchStep(
+                kind = MediaDispatchStepKind.LaunchTermuxJob,
+                title = "Process selected tracks with Termux FFmpeg",
+                detail = "Verified FFmpeg + FFprobe fallback; session-safe public inputs only; ${spec.postProcessing.summary}.",
+            )
+            MediaExecutionLane.TermuxFfmpegLive -> steps += MediaDispatchStep(
+                kind = MediaDispatchStepKind.LaunchTermuxJob,
+                title = "Record with Termux FFmpeg",
+                detail = "Verified FFmpeg + FFprobe fallback; session-safe public input only.",
+            )
             MediaExecutionLane.ProtectedBlocked -> steps += MediaDispatchStep(
                 kind = MediaDispatchStepKind.NotifyUser,
                 title = "Protected media diagnostic only",
@@ -255,6 +277,8 @@ class MediaExecutionDispatcher {
             MediaExecutionLane.YtDlpAdaptive -> "Launch yt-dlp media"
             MediaExecutionLane.EmbeddedFfmpegAdaptive -> "Download and combine selected tracks"
             MediaExecutionLane.EmbeddedFfmpegLive -> "Start embedded FFmpeg recording"
+            MediaExecutionLane.TermuxFfmpegAdaptive -> "Use Termux FFmpeg for selected tracks"
+            MediaExecutionLane.TermuxFfmpegLive -> "Start Termux FFmpeg recording"
             MediaExecutionLane.ProtectedBlocked -> "View diagnostics"
         }
         MediaDispatchReadiness.AwaitingUserChoice -> "Choose variant / tracks"
@@ -281,6 +305,8 @@ class MediaExecutionDispatcher {
             MediaExecutionLane.YtDlpAdaptive -> MediaRetryPolicy(2, listOf(10, 60), listOf("extractor transient failure", "metadata refresh available"), listOf("unsupported extractor", "DRM protected"))
             MediaExecutionLane.EmbeddedFfmpegAdaptive -> MediaRetryPolicy(3, listOf(5, 20, 60), listOf("track connection dropped", "temporary server failure", "metadata refresh available"), listOf("protected media", "runtime invalid", "container incompatible"))
             MediaExecutionLane.EmbeddedFfmpegLive -> MediaRetryPolicy(2, listOf(10, 30), listOf("live connection dropped", "temporary server failure"), listOf("live ended", "protected media", "runtime invalid"))
+            MediaExecutionLane.TermuxFfmpegAdaptive -> MediaRetryPolicy(2, listOf(10, 45), listOf("external runtime transient failure", "temporary server failure"), listOf("session boundary unsafe", "Termux unavailable", "container incompatible"))
+            MediaExecutionLane.TermuxFfmpegLive -> MediaRetryPolicy(2, listOf(10, 30), listOf("external live connection dropped", "temporary server failure"), listOf("session boundary unsafe", "live ended", "Termux unavailable"))
             MediaExecutionLane.ProtectedBlocked -> MediaRetryPolicy(0, emptyList(), emptyList(), listOf("protected media"))
         }
     }
@@ -315,6 +341,16 @@ class MediaExecutionDispatcher {
             MediaProgressSignal("recording duration", "embedded FFmpeg", true),
             MediaProgressSignal("live heartbeat", "app-owned media runtime", true),
             MediaProgressSignal("terminal cleanup", "FFmpeg runtime manager", false),
+        )
+        MediaExecutionLane.TermuxFfmpegAdaptive -> listOf(
+            MediaProgressSignal("selected track processing", "Termux FFmpeg progress bridge", true),
+            MediaProgressSignal("FFprobe verification", "Termux FFprobe", true),
+            MediaProgressSignal("transactional publication", "XDM artifact bridge", true),
+        )
+        MediaExecutionLane.TermuxFfmpegLive -> listOf(
+            MediaProgressSignal("recording progress", "Termux FFmpeg progress bridge", true),
+            MediaProgressSignal("FFprobe verification", "Termux FFprobe", true),
+            MediaProgressSignal("transactional publication", "XDM artifact bridge", true),
         )
         MediaExecutionLane.ProtectedBlocked -> listOf(
             MediaProgressSignal("diagnostic summary", "resolver", true),

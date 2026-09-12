@@ -10,6 +10,24 @@ import org.json.JSONObject
 
 enum class PostProcessingSubjectType { Download, MediaCapture, Manual }
 
+enum class FfmpegFallbackInputKind { Video, Audio, Subtitle, Media }
+
+data class FfmpegFallbackInputSpec(
+    val uri: String,
+    val kind: FfmpegFallbackInputKind = FfmpegFallbackInputKind.Media,
+) {
+    init {
+        require(uri.isNotBlank()) { "FFmpeg fallback input must not be blank" }
+        require(!PostProcessingExecutionPolicy.inputContainsBearerSecret(uri)) {
+            "Credential-bearing FFmpeg fallback input cannot cross the Termux boundary."
+        }
+        val scheme = Uri.parse(uri).scheme?.lowercase(Locale.US)
+        require(scheme in setOf("http", "https", "ftp")) {
+            "FFmpeg fallback inputs must be public network URLs; local files use the normal post-processing bridge."
+        }
+    }
+}
+
 enum class PostProcessingJobStatus(val label: String, val terminal: Boolean = false) {
     Queued("Queued"),
     WaitingForPrerequisites("Waiting for prerequisites"),
@@ -57,11 +75,15 @@ data class PostProcessingJobSpec(
     val expectedSha256: String? = null,
     val requiredTools: Set<ExternalTool> = emptySet(),
     val timeoutSeconds: Long = 30 * 60L,
+    /** Expected playable timeline used only for progress estimation/verification; never a secret. */
+    val expectedDurationMs: Long? = null,
     val estimatedOutputBytes: Long? = null,
     val resultMode: PostProcessingResultMode = PostProcessingResultMode.OutputArtifact,
     val metadataOnly: Boolean = resultMode == PostProcessingResultMode.MetadataOnly,
     val formatSelector: String? = null,
     val extraArguments: List<String> = emptyList(),
+    /** Public, non-credential-bearing network inputs for the explicit Termux FFmpeg fallback. */
+    val ffmpegFallbackInputs: List<FfmpegFallbackInputSpec> = emptyList(),
     /** Non-secret identifiers used to recover the encrypted request/session envelope at execution time. */
     val sessionPrimaryVariantId: String? = null,
     val sessionVariantIds: List<String> = emptyList(),
@@ -75,12 +97,16 @@ data class PostProcessingJobSpec(
         require(title.isNotBlank()) { "Post-processing title must not be blank" }
         require(inputUri.isNotBlank()) { "Post-processing input must not be blank" }
         require(timeoutSeconds in 10L..86_400L) { "Post-processing timeout must be between 10 seconds and 24 hours" }
+        expectedDurationMs?.let { require(it > 0L) { "Expected duration must be positive when provided" } }
         expectedSha256?.let { require(PostProcessingExecutionPolicy.isValidSha256(it)) { "Expected SHA-256 must be exactly 64 hexadecimal characters" } }
         require(PostProcessingExecutionPolicy.sensitiveArgumentReason(extraArguments) == null) {
             PostProcessingExecutionPolicy.sensitiveArgumentReason(extraArguments).orEmpty()
         }
         require(!PostProcessingExecutionPolicy.inputContainsBearerSecret(inputUri)) {
             "Bearer-like or signed remote URLs cannot cross the Termux command-line boundary; refresh the session and use an Android-owned backend."
+        }
+        require(ffmpegFallbackInputs.all { !PostProcessingExecutionPolicy.inputContainsBearerSecret(it.uri) }) {
+            "Credential-bearing FFmpeg fallback input cannot cross the Termux command-line boundary."
         }
         if (kind == PostProcessingActionKind.VerifySha256) {
             require(expectedSha256 != null) { "Verify SHA-256 requires an expected digest" }
@@ -111,11 +137,15 @@ data class PostProcessingJobSpec(
         .putNullable("expectedSha256", expectedSha256)
         .put("requiredTools", JSONArray(requiredTools.map(ExternalTool::name)))
         .put("timeoutSeconds", timeoutSeconds)
+        .putNullable("expectedDurationMs", expectedDurationMs)
         .putNullable("estimatedOutputBytes", estimatedOutputBytes)
         .put("resultMode", resultMode.name)
         .put("metadataOnly", metadataOnly)
         .putNullable("formatSelector", formatSelector)
         .put("extraArguments", JSONArray(extraArguments))
+        .put("ffmpegFallbackInputs", JSONArray(ffmpegFallbackInputs.map { input ->
+            JSONObject().put("uri", input.uri).put("kind", input.kind.name)
+        }))
         .putNullable("sessionPrimaryVariantId", sessionPrimaryVariantId)
         .put("sessionVariantIds", JSONArray(sessionVariantIds.distinct()))
         .put("sessionUsePageUrl", sessionUsePageUrl)
@@ -128,6 +158,7 @@ data class PostProcessingJobSpec(
             val tools = json.optJSONArray("requiredTools") ?: JSONArray()
             val arguments = json.optJSONArray("extraArguments") ?: JSONArray()
             val sessionVariantIds = json.optJSONArray("sessionVariantIds") ?: JSONArray()
+            val ffmpegFallbackInputs = json.optJSONArray("ffmpegFallbackInputs") ?: JSONArray()
             return PostProcessingJobSpec(
                 subjectId = json.getString("subjectId"),
                 subjectType = enumValueOrThrow(json.getString("subjectType"), "subjectType"),
@@ -155,11 +186,21 @@ data class PostProcessingJobSpec(
                     repeat(tools.length()) { index -> add(enumValueOrThrow(tools.getString(index), "requiredTools[$index]")) }
                 },
                 timeoutSeconds = json.getLong("timeoutSeconds"),
+                expectedDurationMs = json.optNullableLong("expectedDurationMs"),
                 estimatedOutputBytes = json.optNullableLong("estimatedOutputBytes"),
                 resultMode = enumValueOrThrow(json.getString("resultMode"), "resultMode"),
                 metadataOnly = json.getBoolean("metadataOnly"),
                 formatSelector = json.optNullableString("formatSelector"),
                 extraArguments = buildList { repeat(arguments.length()) { add(arguments.getString(it)) } },
+                ffmpegFallbackInputs = buildList {
+                    repeat(ffmpegFallbackInputs.length()) { index ->
+                        val item = ffmpegFallbackInputs.getJSONObject(index)
+                        add(FfmpegFallbackInputSpec(
+                            uri = item.getString("uri"),
+                            kind = enumValueOrThrow(item.optString("kind", FfmpegFallbackInputKind.Media.name), "ffmpegFallbackInputs[$index].kind"),
+                        ))
+                    }
+                },
                 sessionPrimaryVariantId = json.optNullableString("sessionPrimaryVariantId"),
                 sessionVariantIds = buildList { repeat(sessionVariantIds.length()) { sessionVariantIds.getString(it).takeIf(String::isNotBlank)?.let(::add) } }.distinct(),
                 sessionUsePageUrl = json.optBoolean("sessionUsePageUrl", false),

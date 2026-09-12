@@ -40,6 +40,7 @@ matrix_owned_validators=(
 # carry-forward seals, run exactly once here.
 validators=(
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
+  tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py
   tools/validate-uix-r3-downloads-add-workspace.py
   tools/validate-uix-r6-accessibility-performance-release-seal.py
   tools/validate-ux13-end-to-end-ui-ux-release-seal.py

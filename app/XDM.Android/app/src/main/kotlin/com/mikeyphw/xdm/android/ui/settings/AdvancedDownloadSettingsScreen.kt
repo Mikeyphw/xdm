@@ -35,6 +35,8 @@ import com.mikeyphw.xdm.android.model.FilenameConflictPolicy
 import com.mikeyphw.xdm.android.model.PostProcessingSettings
 import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
 import com.mikeyphw.xdm.android.model.displayName
+import com.mikeyphw.xdm.android.media.MediaFfmpegRuntimePreference
+import com.mikeyphw.xdm.android.termux.ExternalTool
 import com.mikeyphw.xdm.android.storage.DestinationCatalog
 import com.mikeyphw.xdm.android.storage.DestinationUris
 import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
@@ -511,6 +513,33 @@ internal fun ExternalToolsSettingsScreen(state: MainUiState, viewModel: MainView
                 }
             }
         }
+        item { XdmSectionHeader("Media runtime routing") }
+        item {
+            XdmListCard {
+                XdmCardTitle("FFmpeg runtime")
+                XdmSupportingText(
+                    "Embedded FFmpeg is the safe default. Termux is optional and only receives public, header-free media URLs; authenticated, signed, or private-network sessions never cross that boundary.",
+                    maxLines = 5,
+                )
+                XdmActionFlowRow {
+                    MediaFfmpegRuntimePreference.entries.forEach { preference ->
+                        FilterChip(
+                            selected = state.mediaFfmpegRuntimePreference == preference,
+                            onClick = { viewModel.setMediaFfmpegRuntimePreference(preference) },
+                            label = { Text(preference.label) },
+                        )
+                    }
+                }
+                XdmSupportingText(state.mediaFfmpegRuntimePreference.description, maxLines = 4)
+                val ffmpegAvailable = state.termuxBridge.toolRows.any { it.tool == ExternalTool.Ffmpeg && it.available }
+                val ffprobeAvailable = state.termuxBridge.toolRows.any { it.tool == ExternalTool.Ffprobe && it.available }
+                XdmMetadataText(
+                    "Embedded: ${state.ffmpegDiagnostics.status} • Termux bridge: ${state.termuxBridge.readinessLabel} • Termux FFmpeg/FFprobe: ${if (ffmpegAvailable && ffprobeAvailable && state.termuxBridge.hasFreshSuccessfulToolProbe()) "verified" else "not verified"}",
+                    maxLines = 3,
+                )
+            }
+        }
+
         item { XdmSectionHeader("Termux") }
         item {
             TermuxBridgeSettingsCard(
