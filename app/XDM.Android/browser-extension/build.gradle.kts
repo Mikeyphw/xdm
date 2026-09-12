@@ -20,6 +20,7 @@ val prepareFirefoxExtension = tasks.register<Exec>("prepareFirefoxExtension") {
     group = "browser extension"
     description = "Render the development Firefox extension into build/firefox/unpacked."
     inputs.dir(extensionSource)
+    inputs.file(layout.projectDirectory.file("tools/prepare_extension.py"))
     outputs.dir(unpackedOutput)
     commandLine(
         "python3",
@@ -39,6 +40,11 @@ val prepareFirefoxExtension = tasks.register<Exec>("prepareFirefoxExtension") {
 val jsTest = tasks.register<Exec>("jsTest") {
     group = "verification"
     description = "Run detector, media-locator, handoff, FAB, and background JavaScript tests."
+    inputs.dir(extensionSource)
+    inputs.dir(layout.projectDirectory.dir("tests"))
+    inputs.property("xdmNode", providers.environmentVariable("XDM_NODE").orElse(""))
+    val successMarker = layout.buildDirectory.file("test-results/jsTest/success.marker")
+    outputs.file(successMarker)
     commandLine(
         "bash", "-lc",
         """
@@ -66,6 +72,11 @@ val jsTest = tasks.register<Exec>("jsTest") {
         "${'$'}NODE_RUNTIME" tests/test_release_gate.js
         """.trimIndent(),
     )
+    doLast {
+        val marker = successMarker.get().asFile
+        marker.parentFile.mkdirs()
+        marker.writeText("ok\n")
+    }
 }
 
 val validateFirefoxExtension = tasks.register<Exec>("validateFirefoxExtension") {
@@ -73,7 +84,15 @@ val validateFirefoxExtension = tasks.register<Exec>("validateFirefoxExtension") 
     description = "Validate the rendered unpacked Firefox extension and source contracts."
     dependsOn(prepareFirefoxExtension, jsTest, tasks.named("test"))
     inputs.dir(unpackedOutput)
+    inputs.file(layout.projectDirectory.file("tools/validate_extension.py"))
+    val successMarker = layout.buildDirectory.file("validation/firefox-extension.success")
+    outputs.file(successMarker)
     commandLine("python3", layout.projectDirectory.file("tools/validate_extension.py").asFile.absolutePath, unpackedOutput.get().asFile.absolutePath)
+    doLast {
+        val marker = successMarker.get().asFile
+        marker.parentFile.mkdirs()
+        marker.writeText("ok\n")
+    }
 }
 
 fun registerXpiTask(name: String, theme: String) = tasks.register<JavaExec>(name) {

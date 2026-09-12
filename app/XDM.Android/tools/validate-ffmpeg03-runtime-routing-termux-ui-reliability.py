@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """FF03 contract: FFmpeg routing is explicit, secret-safe, observable, and reliability-complete."""
 from __future__ import annotations
+import argparse
 import subprocess, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 errors: list[str] = []
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--skip-prerequisites", action="store_true", help="Skip prerequisite validators when the caller owns the validation DAG.")
+args = parser.parse_args()
 def text(path: str) -> str:
     p = ROOT / path
     if not p.is_file(): errors.append(f"missing {path}"); return ""
@@ -47,8 +51,9 @@ ui_tests = text("app/src/test/kotlin/com/mikeyphw/xdm/android/Ffmpeg03RuntimeRou
 need(has(routing_tests, "automaticPrefersEmbeddedRuntime", "automaticFallsBackOnlyForVerifiedPublicHeaderFreeSession", "signedUrlAndHeadersNeverCrossTermuxBoundary", "explicitEmbeddedNeverFallsBack", "explicitTermuxUnavailableIsBlockedInsteadOfSilentlyUsingEmbedded", "privateNetworkTargetNeverCrossesTermuxBoundary", "engineAndDispatcherRouteSafeFallbackToTermuxLane", "unsafeAutomaticFallbackFailsClosedToEmbeddedRepair"), "FF03 routing regression tests are incomplete")
 need(has(ui_tests, "settingsExposeAutomaticEmbeddedAndTermuxPolicy", "supportAndDeveloperDiagnosticsExposeRuntimeTruth"), "FF03 UI/support diagnostics contract tests are incomplete")
 
-ff02 = subprocess.run([sys.executable, str(ROOT / "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py")], cwd=ROOT, text=True, capture_output=True)
-need(ff02.returncode == 0, "FF02 prerequisite regressed: " + (ff02.stderr or ff02.stdout).strip())
+if not args.skip_prerequisites:
+    ff02 = subprocess.run([sys.executable, str(ROOT / "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py")], cwd=ROOT, text=True, capture_output=True)
+    need(ff02.returncode == 0, "FF02 prerequisite regressed: " + (ff02.stderr or ff02.stdout).strip())
 if errors:
     print("FF03 runtime routing/Termux/UI/reliability contract FAILED", file=sys.stderr)
     for e in errors: print(f"- {e}", file=sys.stderr)

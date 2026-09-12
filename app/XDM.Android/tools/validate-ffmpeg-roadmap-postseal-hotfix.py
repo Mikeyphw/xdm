@@ -2,12 +2,16 @@
 """Post-seal audit gate for FF01-FF04 production execution ownership."""
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 errors: list[str] = []
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--skip-prerequisites", action="store_true", help="Skip prerequisite validators when the caller owns the validation DAG.")
+args = parser.parse_args()
 
 def text(path: str) -> str:
     p = ROOT / path
@@ -107,14 +111,15 @@ need(has(postseal_report, "Second-pass roadmap re-audit", "Literal handoff roadm
 ff02_source = text("tools/validate-ffmpeg02-media-mux-hls-postprocessing.py")
 need("NativeHlsMediaManager.kt" in ff02_source and "runEmbeddedMediaAction" in ff02_source, "FF02 validator still allows class-without-production-caller false positives")
 
-for prerequisite in (
-    "tools/validate-ffmpeg01-embedded-runtime-media-execution.py",
-    "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py",
-    "tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py",
-    "tools/validate-execution-media-semantics-repair.py",
-):
-    result = subprocess.run([sys.executable, str(ROOT / prerequisite)], cwd=ROOT, text=True, capture_output=True)
-    need(result.returncode == 0, f"prerequisite regressed: {prerequisite}: " + (result.stderr or result.stdout).strip())
+if not args.skip_prerequisites:
+    for prerequisite in (
+        "tools/validate-ffmpeg01-embedded-runtime-media-execution.py",
+        "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py",
+        "tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py",
+        "tools/validate-execution-media-semantics-repair.py",
+    ):
+        result = subprocess.run([sys.executable, str(ROOT / prerequisite)], cwd=ROOT, text=True, capture_output=True)
+        need(result.returncode == 0, f"prerequisite regressed: {prerequisite}: " + (result.stderr or result.stdout).strip())
 
 if errors:
     print("FFmpeg roadmap post-seal hotfix contract FAILED", file=sys.stderr)

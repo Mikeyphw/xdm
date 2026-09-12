@@ -68,6 +68,86 @@ def filename_from_url(url: str) -> str:
     return name or "aria2c"
 
 
+def default_cache_dir() -> Path:
+    configured = os.environ.get("XDM_ARIA2_CACHE_DIR") or os.environ.get("XDG_CACHE_HOME")
+    base = Path(configured).expanduser() if configured else Path.home() / ".cache"
+    return base / "xdm" / "aria2-runtime"
+
+
+def cached_download_path(manifest: dict, cache_dir: Path) -> Path:
+    archive_name = manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])
+    identity = "\n".join(
+        [
+            str(manifest.get("component", "aria2c")),
+            str(manifest.get("version", "")),
+            str(manifest.get("releaseTag", "")),
+            str(manifest["officialUrl"]),
+            archive_name,
+        ]
+    )
+    key = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+    return cache_dir / f"{archive_name}.{key}"
+
+
+def cached_payload_usable(path: Path, manifest: dict) -> bool:
+    if not path.is_file() or path.stat().st_size < manifest["minimumBinaryBytes"]:
+        return False
+    expected_hash = manifest.get("archiveSha256")
+    if expected_hash:
+        return sha256(path).lower() == str(expected_hash).lower()
+
+    archive_name = str(manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])).lower()
+    if archive_name.endswith(".zip"):
+        if not zipfile.is_zipfile(path):
+            return False
+        try:
+            with zipfile.ZipFile(path) as source_zip:
+                return source_zip.testzip() is None
+        except (OSError, zipfile.BadZipFile):
+            return False
+
+    # The currently pinned upstream payload is a raw ELF. Validate its ABI/header before reuse
+    # so a partial/corrupt cache entry self-heals instead of failing every subsequent build.
+    try:
+        validate_elf(path, manifest)
+    except (OSError, SystemExit):
+        return False
+    return True
+
+
+def download_official(manifest: dict, cache_dir: Path, use_cache: bool) -> Path:
+    archive_name = manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])
+    if not use_cache:
+        directory = Path(tempfile.mkdtemp(prefix="xdm-aria2-download-"))
+        target = directory / archive_name
+        request = urllib.request.Request(manifest["officialUrl"], headers={"User-Agent": "XDM-Android-runtime-installer/1"})
+        with urllib.request.urlopen(request, timeout=120) as response:
+            copy_stream_to_path(response, target)
+        return target
+
+    target = cached_download_path(manifest, cache_dir)
+    if cached_payload_usable(target, manifest):
+        print(f"Reusing cached aria2 payload: {target}")
+        return target
+    if target.exists():
+        print(f"Discarding unusable cached aria2 payload: {target}")
+        target.unlink(missing_ok=True)
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{archive_name}.", dir=cache_dir)
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        request = urllib.request.Request(manifest["officialUrl"], headers={"User-Agent": "XDM-Android-runtime-installer/1"})
+        with urllib.request.urlopen(request, timeout=120) as response:
+            copy_stream_to_path(response, temporary)
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
+    print(f"Cached aria2 payload: {target}")
+    return target
+
+
 def copy_stream_to_path(input_stream, output_path: Path) -> None:
     with output_path.open("wb") as output:
         shutil.copyfileobj(input_stream, output)
@@ -125,6 +205,8 @@ def main() -> None:
     source.add_argument("--download-official", action="store_true")
     parser.add_argument("--expected-archive-sha256", default=os.environ.get("XDM_ARIA2_ARCHIVE_SHA256"))
     parser.add_argument("--require-trusted-digest", action="store_true")
+    parser.add_argument("--cache-dir", type=Path, default=default_cache_dir())
+    parser.add_argument("--no-download-cache", action="store_true")
     args = parser.parse_args()
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -133,15 +215,9 @@ def main() -> None:
     try:
         archive = args.archive
         if args.download_official:
-            download_directory = Path(tempfile.mkdtemp(prefix="xdm-aria2-download-"))
-            archive_name = manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])
-            archive = download_directory / archive_name
-            request = urllib.request.Request(
-                manifest["officialUrl"],
-                headers={"User-Agent": "XDM-Android-runtime-installer/1"},
-            )
-            with urllib.request.urlopen(request, timeout=120) as response:
-                copy_stream_to_path(response, archive)
+            archive = download_official(manifest, args.cache_dir.expanduser(), not args.no_download_cache)
+            if args.no_download_cache:
+                download_directory = archive.parent
 
         assert archive is not None
         archive = archive.resolve()

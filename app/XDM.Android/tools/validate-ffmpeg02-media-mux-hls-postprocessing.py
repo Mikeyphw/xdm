@@ -2,12 +2,17 @@
 """FF02 contract: resolved adaptive media and post-processing are app-owned, verified, cancellable and atomic."""
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 errors: list[str] = []
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--skip-prerequisites", action="store_true", help="Skip prerequisite validators when the caller owns the validation DAG.")
+args = parser.parse_args()
 
 
 def text(path: str) -> str:
@@ -122,9 +127,11 @@ need(has(publication, "fun decode(text: String): PublicationCommitRecord", "fun 
 need(has(destination_writer, "suspend fun publicationCommitMatches", "PublicationCommitBoundary.DestinationCommitInProgress", "committedPublicationSize", "sha256File", "sha256Content", "stagedDigest == committedDigest"), "FF02 destination publication cannot prove/adopt a provider commit after process death")
 need(has(publication_tests, "committedJournalRoundTripsForCrashRecovery", "fileReadUsesTheSameDurableCodec"), "FF02 publication journal crash-recovery codec lacks regression coverage")
 
-# Preserve FF01 as a strict prerequisite; FF02 must not regress the runtime foundation.
-ff01 = subprocess.run([sys.executable, str(ROOT / "tools/validate-ffmpeg01-embedded-runtime-media-execution.py")], cwd=ROOT, text=True, capture_output=True)
-need(ff01.returncode == 0, "FF01 prerequisite contract regressed: " + (ff01.stderr or ff01.stdout).strip())
+# Standalone FF02 remains self-contained. Gradle/final-gate orchestration owns this edge
+# explicitly so FF01 is executed once rather than recursively in every downstream validator.
+if not args.skip_prerequisites:
+    ff01 = subprocess.run([sys.executable, str(ROOT / "tools/validate-ffmpeg01-embedded-runtime-media-execution.py")], cwd=ROOT, text=True, capture_output=True)
+    need(ff01.returncode == 0, "FF01 prerequisite contract regressed: " + (ff01.stderr or ff01.stdout).strip())
 
 # Post-seal FF02 execution-ownership hardening.
 manager = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ffmpeg/NativeHlsMediaManager.kt")

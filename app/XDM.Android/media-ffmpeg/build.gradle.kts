@@ -85,13 +85,31 @@ dependencies {
 
 val verifyFfmpegRuntime = tasks.register<Exec>("verifyFfmpegRuntime") {
     group = "verification"
+    dependsOn(installPinnedFfmpegRuntime)
     description = "Verifies the pinned FFmpeg/FFprobe runtime, provenance lock, ABI and 16 KB alignment."
     workingDir(rootProject.projectDir)
+    inputs.files(
+        layout.projectDirectory.file("runtime/ffmpeg-runtime.json"),
+        layout.projectDirectory.file("runtime/ffmpeg-runtime.lock.json"),
+        layout.projectDirectory.file("runtime/licenses/FFmpeg-LGPL-2.1.txt"),
+        layout.projectDirectory.file("runtime/licenses/OpenSSL-Apache-2.0.txt"),
+        layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so"),
+        layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libxdm_ffprobe.so"),
+        rootProject.layout.projectDirectory.file("tools/verify-ffmpeg-runtime.py"),
+    )
+    inputs.property("requireFfmpegRuntime", requireFfmpegRuntime)
+    val successMarker = layout.buildDirectory.file("validation/verifyFfmpegRuntime.success")
+    outputs.file(successMarker)
     commandLine(
         "python3",
         "tools/verify-ffmpeg-runtime.py",
         *if (requireFfmpegRuntime.get()) arrayOf("--require-payload", "--require-16kb-alignment") else emptyArray(),
     )
+    doLast {
+        val marker = successMarker.get().asFile
+        marker.parentFile.mkdirs()
+        marker.writeText("ok\n")
+    }
 }
 
 tasks.matching { it.name in setOf("preDebugBuild", "preReleaseBuild") }.configureEach {

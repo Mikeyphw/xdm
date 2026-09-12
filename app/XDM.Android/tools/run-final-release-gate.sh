@@ -39,6 +39,7 @@ matrix_owned_validators=(
 # Validators outside the Phase-11 static matrix, including current roadmap
 # carry-forward seals, run exactly once here.
 validators=(
+  tools/validate-gradle-task-graph-optimization.py
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
   tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py
   tools/validate-ffmpeg04-full-release-seal.py
@@ -85,7 +86,40 @@ for validator in "${matrix_owned_validators[@]}" "${validators[@]}"; do
   [[ -f "$validator" ]] || { echo "Missing final-gate validator: $validator" >&2; exit 1; }
 done
 
+ffmpeg_gradle_owned_validators=(
+  tools/validate-ffmpeg01-embedded-runtime-media-execution.py
+  tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
+  tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py
+  tools/validate-execution-media-semantics-repair.py
+  tools/validate-ffmpeg04-full-release-seal.py
+  tools/validate-ffmpeg-roadmap-postseal-hotfix.py
+)
+
+is_ffmpeg_gradle_owned() {
+  local candidate="$1"
+  local owned
+  for owned in "${ffmpeg_gradle_owned_validators[@]}"; do
+    [[ "$candidate" == "$owned" ]] && return 0
+  done
+  return 1
+}
+
+# Standalone shell use remains complete, but the FFmpeg chain is flattened: each validator
+# executes exactly once and downstream validators skip their recursive prerequisites. When this
+# script is launched by :app:finalRemediationStaticGate, Gradle already owns these same nodes.
+if [[ "${XDM_GRADLE_ORCHESTRATED:-0}" != "1" ]]; then
+  python3 tools/validate-ffmpeg01-embedded-runtime-media-execution.py
+  python3 tools/validate-ffmpeg02-media-mux-hls-postprocessing.py --skip-prerequisites
+  python3 tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py --skip-prerequisites
+  python3 tools/validate-execution-media-semantics-repair.py
+  python3 tools/validate-ffmpeg04-full-release-seal.py --skip-prerequisites
+  python3 tools/validate-ffmpeg-roadmap-postseal-hotfix.py --skip-prerequisites
+fi
+
 for validator in "${validators[@]}"; do
+  if is_ffmpeg_gradle_owned "$validator"; then
+    continue
+  fi
   python3 "$validator"
 done
 

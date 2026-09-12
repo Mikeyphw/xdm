@@ -2,6 +2,7 @@
 """FF04 final seal: runtime attestation, APK gate, fixtures, no-Termux acceptance, and roadmap closure."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import subprocess
@@ -10,6 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 errors: list[str] = []
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--skip-prerequisites", action="store_true", help="Skip prerequisite validators when the caller owns the validation DAG.")
+args = parser.parse_args()
 
 
 def text(path: str) -> str:
@@ -36,15 +40,17 @@ def sha256(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-# FF01-FF03 must remain green; FF04 is a seal, not a replacement authority.
-for prerequisite in (
-    "tools/validate-ffmpeg01-embedded-runtime-media-execution.py",
-    "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py",
-    "tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py",
-    "tools/validate-execution-media-semantics-repair.py",
-):
-    result = subprocess.run([sys.executable, str(ROOT / prerequisite)], cwd=ROOT, text=True, capture_output=True)
-    need(result.returncode == 0, f"prerequisite failed: {prerequisite}: " + (result.stderr or result.stdout).strip())
+# FF01-FF03/execution semantics remain strict prerequisites for standalone use.
+# Gradle/final-gate orchestration passes --skip-prerequisites and owns the same DAG natively.
+if not args.skip_prerequisites:
+    for prerequisite in (
+        "tools/validate-ffmpeg01-embedded-runtime-media-execution.py",
+        "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py",
+        "tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py",
+        "tools/validate-execution-media-semantics-repair.py",
+    ):
+        result = subprocess.run([sys.executable, str(ROOT / prerequisite)], cwd=ROOT, text=True, capture_output=True)
+        need(result.returncode == 0, f"prerequisite failed: {prerequisite}: " + (result.stderr or result.stdout).strip())
 
 manifest_path = ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.json"
 manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}

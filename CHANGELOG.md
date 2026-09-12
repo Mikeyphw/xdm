@@ -1,3 +1,22 @@
+
+## Gradle task-graph optimization v2
+
+- Fix Gradle 9.7 work validation by making `verifyFfmpegRuntime` explicitly depend on `installPinnedFfmpegRuntime` and `verifyAria2Runtime` explicitly depend on `installOfficialAria2Runtime`; these verifiers consume installer-declared outputs, so ordering alone is insufficient.
+- Keep the installers incremental: the explicit dependency does not force rebuild/redownload when manifest, installer and generated payload/lock outputs are unchanged.
+- Make `GradleTaskGraphOptimizationContractTest` resolve `user.dir` and repository parents non-nullably, removing the Kotlin Java-interop warnings reported by the first real Termux validation run.
+- Strengthen `validate-gradle-task-graph-optimization.py` so both producer dependencies and the non-null test-root resolver are required by the optimization seal.
+
+## 2026-09-12 — XDM Android Gradle task-graph optimization v1
+
+- Flatten FF01→FF04 and post-seal validation under Gradle-owned task dependencies; downstream Python validators keep standalone prerequisite checks but use `--skip-prerequisites` when Gradle owns the DAG, eliminating recursive duplicate validator subprocesses.
+- Add input/output stamps to static validator tasks so unchanged validation can become UP-TO-DATE across Devtool split Gradle phases.
+- Keep the canonical final static shell gate complete for direct use while allowing `finalRemediationStaticGate` to skip only the FFmpeg/execution validators Gradle already ran.
+- Make the aria2 runtime installer incremental, packaging-owned, deterministic-cache-backed, and self-healing for corrupt cached payloads instead of forcing `outputs.upToDateWhen { false }`.
+- Remove duplicate top-level native-installer/package scheduling from `.devtool.toml`; Gradle packaging dependencies now own runtime installation, while build/package phases keep compile/APK/Android-test/runtime-attestation coverage.
+- Add incremental inputs/outputs to Firefox JavaScript and rendered-extension checks.
+- Remove unnecessary FF04 serialization between app tests, Android-test APK assembly, APK runtime attestation, and static validation while retaining lint ordering behind the generated-JNI/static boundary.
+- Add `verifyGradleTaskGraphOptimization`, aria2 cache regressions, and a Kotlin source-contract test so task-graph optimization cannot silently reduce release coverage.
+
 ## FFmpeg roadmap post-seal hotfix v7 — suspend compile closure
 
 - Fixes the authoritative v6 Termux `:app:compileDebugKotlin` failure: `embeddedToolVersionsJson()` now has a `suspend` signature before calling `EmbeddedFfmpegRuntime.capabilities()`.

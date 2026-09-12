@@ -8,10 +8,17 @@ val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runti
 
 val installOfficialAria2Runtime = tasks.register<Exec>("installOfficialAria2Runtime") {
     group = "build setup"
-    description = "Downloads and installs the official ARM64 aria2 runtime payload."
+    description = "Installs the pinned official ARM64 aria2 runtime payload incrementally."
     workingDir(rootProject.projectDir)
     commandLine("python3", "tools/install-aria2-runtime.py", "--download-official")
-    outputs.upToDateWhen { false }
+    inputs.files(
+        layout.projectDirectory.file("runtime/aria2-runtime.json"),
+        rootProject.layout.projectDirectory.file("tools/install-aria2-runtime.py"),
+    )
+    outputs.files(
+        layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
+        layout.projectDirectory.file("runtime/aria2-runtime.lock.json"),
+    )
 }
 
 android {
@@ -49,6 +56,15 @@ android {
     }
 }
 
+// Packaging owns runtime installation. Declaring this dependency on JNI merge tasks makes
+// standalone assemble/package invocations correct while Gradle can mark the installer UP-TO-DATE
+// across Devtool's split phases.
+tasks.matching { task ->
+    task.name.startsWith("merge") && task.name.contains("JniLib", ignoreCase = true)
+}.configureEach {
+    dependsOn(installOfficialAria2Runtime)
+}
+
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-utils"))
@@ -65,8 +81,18 @@ dependencies {
 
 val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
     group = "verification"
+    dependsOn(installOfficialAria2Runtime)
     description = "Verifies the attested ARM64 aria2 runtime when present or required."
     workingDir(rootProject.projectDir)
+    inputs.files(
+        layout.projectDirectory.file("runtime/aria2-runtime.json"),
+        layout.projectDirectory.file("runtime/aria2-runtime.lock.json"),
+        layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
+        rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
+    )
+    inputs.property("requireAlignedAria2Runtime", requireAlignedAria2Runtime)
+    val successMarker = layout.buildDirectory.file("validation/verifyAria2Runtime.success")
+    outputs.file(successMarker)
     commandLine(
         "python3",
         "tools/verify-aria2-runtime.py",
@@ -76,8 +102,14 @@ val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
             emptyArray()
         },
     )
+    doLast {
+        val marker = successMarker.get().asFile
+        marker.parentFile.mkdirs()
+        marker.writeText("ok\n")
+    }
 }
 
 tasks.matching { it.name in setOf("preDebugBuild", "preReleaseBuild") }.configureEach {
     dependsOn(verifyAria2Runtime)
 }
+

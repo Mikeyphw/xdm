@@ -231,43 +231,96 @@ dependencies {
 }
 
 
-tasks.register<Exec>("verifyFfmpeg01EmbeddedRuntimeContract") {
+val repositoryRoot = rootProject.projectDir.parentFile.parentFile
+val staticValidationExtensions = setOf("kt", "kts", "py", "sh", "json", "toml", "xml", "md")
+val staticValidationInputs = files(
+    File(repositoryRoot, ".devtool.toml"),
+    File(repositoryRoot, "CHANGELOG.md"),
+    fileTree(repositoryRoot) {
+        include { element ->
+            val path = element.path.replace('\\', '/')
+            val extension = element.file.extension
+            val topLevelReport = !path.contains('/') && path.startsWith("XDM_") && extension == "md"
+            val androidSource = path.startsWith("app/XDM.Android/") && extension in staticValidationExtensions
+            (topLevelReport || androidSource) &&
+                !path.contains("/build/") &&
+                !path.contains("/.gradle/") &&
+                !path.contains("/__pycache__/") &&
+                extension != "pyc"
+        }
+    },
+)
+
+
+fun Exec.trackStaticValidation(stampName: String) {
+    inputs.files(staticValidationInputs)
+    val stampFile = project.layout.buildDirectory.file("validation/$stampName.stamp")
+    outputs.file(stampFile)
+    doLast {
+        val stamp = stampFile.get().asFile
+        stamp.parentFile.mkdirs()
+        stamp.writeText("ok\n")
+    }
+}
+
+val verifyFfmpeg01EmbeddedRuntimeContract = tasks.register<Exec>("verifyFfmpeg01EmbeddedRuntimeContract") {
     group = "verification"
     description = "Verify the FF01 embedded FFmpeg/FFprobe runtime and app-owned media execution contract."
     workingDir(rootProject.projectDir)
     commandLine("python3", "tools/validate-ffmpeg01-embedded-runtime-media-execution.py")
+    trackStaticValidation("ffmpeg01")
 }
 
-
-tasks.register<Exec>("verifyFfmpeg02MediaMuxHlsPostprocessingContract") {
+val verifyFfmpeg02MediaMuxHlsPostprocessingContract = tasks.register<Exec>("verifyFfmpeg02MediaMuxHlsPostprocessingContract") {
     group = "verification"
     description = "Verify FF02 embedded adaptive mux, HLS finalization, progress, cancellation, atomic publication, and FFprobe correctness."
+    dependsOn(verifyFfmpeg01EmbeddedRuntimeContract)
     workingDir(rootProject.projectDir)
-    commandLine("python3", "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py")
+    commandLine("python3", "tools/validate-ffmpeg02-media-mux-hls-postprocessing.py", "--skip-prerequisites")
+    trackStaticValidation("ffmpeg02")
 }
 
-
-tasks.register<Exec>("verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract") {
+val verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract = tasks.register<Exec>("verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract") {
     group = "verification"
     description = "Verify FF03 runtime routing, safe Termux fallback, yt-dlp boundary, UI controls, and redacted diagnostics."
+    dependsOn(verifyFfmpeg02MediaMuxHlsPostprocessingContract)
     workingDir(rootProject.projectDir)
-    commandLine("python3", "tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py")
+    commandLine("python3", "tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py", "--skip-prerequisites")
+    trackStaticValidation("ffmpeg03")
 }
 
+val verifyExecutionMediaSemanticsRepair = tasks.register<Exec>("verifyExecutionMediaSemanticsRepair") {
+    group = "verification"
+    description = "Verify the retained execution/media semantics repair contract once for the FFmpeg release DAG."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-execution-media-semantics-repair.py")
+    trackStaticValidation("execution-media-semantics")
+}
 
-tasks.register<Exec>("verifyFfmpeg04FullReleaseSeal") {
+val verifyFfmpeg04FullReleaseSeal = tasks.register<Exec>("verifyFfmpeg04FullReleaseSeal") {
     group = "verification"
     description = "Verify the complete FF01-FF04 embedded media runtime release seal and no-Termux acceptance contract."
+    dependsOn(verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract, verifyExecutionMediaSemanticsRepair)
     workingDir(rootProject.projectDir)
-    commandLine("python3", "tools/validate-ffmpeg04-full-release-seal.py")
+    commandLine("python3", "tools/validate-ffmpeg04-full-release-seal.py", "--skip-prerequisites")
+    trackStaticValidation("ffmpeg04")
 }
 
-
-tasks.register<Exec>("verifyFfmpegRoadmapPostSealHotfix") {
+val verifyFfmpegRoadmapPostSealHotfix = tasks.register<Exec>("verifyFfmpegRoadmapPostSealHotfix") {
     group = "verification"
     description = "Verify post-seal FFmpeg roadmap execution ownership: native HLS production wiring and embedded-first local post-processing."
+    dependsOn(verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract, verifyExecutionMediaSemanticsRepair)
     workingDir(rootProject.projectDir)
-    commandLine("python3", "tools/validate-ffmpeg-roadmap-postseal-hotfix.py")
+    commandLine("python3", "tools/validate-ffmpeg-roadmap-postseal-hotfix.py", "--skip-prerequisites")
+    trackStaticValidation("ffmpeg-postseal")
+}
+
+val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
+    group = "verification"
+    description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
+    workingDir(repositoryRoot)
+    commandLine("python3", "app/XDM.Android/tools/validate-gradle-task-graph-optimization.py")
+    trackStaticValidation("gradle-task-graph-optimization")
 }
 
 tasks.register<Exec>("verifyFfmpegDebugApkRuntime") {
@@ -275,11 +328,28 @@ tasks.register<Exec>("verifyFfmpegDebugApkRuntime") {
     description = "Build and verify the debug APK contains the exact attested 16 KB FFmpeg/FFprobe payload and licenses."
     dependsOn("assembleDebug")
     workingDir(rootProject.projectDir)
+    inputs.files(
+        layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"),
+        rootProject.layout.projectDirectory.file("tools/verify-ffmpeg-runtime.py"),
+        rootProject.layout.projectDirectory.file("media-ffmpeg/runtime/ffmpeg-runtime.json"),
+        rootProject.layout.projectDirectory.file("media-ffmpeg/runtime/ffmpeg-runtime.lock.json"),
+        rootProject.layout.projectDirectory.file("media-ffmpeg/runtime/licenses/FFmpeg-LGPL-2.1.txt"),
+        rootProject.layout.projectDirectory.file("media-ffmpeg/runtime/licenses/OpenSSL-Apache-2.0.txt"),
+        rootProject.layout.projectDirectory.file("media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so"),
+        rootProject.layout.projectDirectory.file("media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffprobe.so"),
+    )
+    val successMarker = layout.buildDirectory.file("validation/verifyFfmpegDebugApkRuntime.success")
+    outputs.file(successMarker)
     commandLine(
         "python3", "tools/verify-ffmpeg-runtime.py",
         "--require-payload", "--require-16kb-alignment",
         "--apk", "app/build/outputs/apk/debug/app-debug.apk",
     )
+    doLast {
+        val marker = successMarker.get().asFile
+        marker.parentFile.mkdirs()
+        marker.writeText("ok\n")
+    }
 }
 
 // AGP registers assembleDebug after this build script body is evaluated. Configure the
@@ -293,19 +363,25 @@ tasks.matching { it.name == "assembleDebug" }.configureEach {
 val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."
+    dependsOn(verifyFfmpeg04FullReleaseSeal, verifyFfmpegRoadmapPostSealHotfix, verifyGradleTaskGraphOptimization)
     workingDir(rootProject.projectDir)
+    // Preserve the historical command line for retained source-contract tests. The environment
+    // tells the shell gate that Gradle already executed the FFmpeg/execution DAG exactly once.
+    environment("XDM_GRADLE_ORCHESTRATED", "1")
     commandLine("bash", "tools/run-final-release-gate.sh", "--ci")
+    trackStaticValidation("final-remediation-static")
 }
 
-// FF04 final validation is deliberately represented as one lifecycle task. The dependency
-// graph still uses Gradle-native tasks, but the major roots are ordered so expensive lint model
-// generation cannot overlap the native-runtime mutation/package stages on ARM64 Termux.
+// FF04 final validation remains one lifecycle task, but Gradle now owns the prerequisite DAG.
+// Independent tests/package/static work may overlap; only lint remains ordered behind the
+// static/runtime stages to avoid the known generated-JNI race on ARM64 Termux.
 val verifyFfmpeg04FinalReleaseValidation = tasks.register("verifyFfmpeg04FinalReleaseValidation") {
     group = "verification"
-    description = "Run the complete staged FF04 release validation: seal, unit tests, Android-test APK, runtime APK attestation, static gate, then lint."
+    description = "Run the complete FF04 release validation with a deduplicated Gradle-owned static validator DAG."
     dependsOn(
         "verifyFfmpeg04FullReleaseSeal",
         "verifyFfmpegRoadmapPostSealHotfix",
+        "verifyGradleTaskGraphOptimization",
         ":media-ffmpeg:testDebugUnitTest",
         ":media:test",
         "testDebugUnitTest",
@@ -314,21 +390,6 @@ val verifyFfmpeg04FinalReleaseValidation = tasks.register("verifyFfmpeg04FinalRe
         finalRemediationStaticGate,
         "lintDebug",
     )
-}
-
-// Order the heavyweight roots. `mustRunAfter` is used in addition to dependencies because the
-// lifecycle task intentionally keeps each existing validator/test task authoritative.
-tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
-    mustRunAfter(":media-ffmpeg:testDebugUnitTest", ":media:test", "verifyFfmpeg04FullReleaseSeal", "verifyFfmpegRoadmapPostSealHotfix")
-}
-tasks.matching { it.name == "assembleDebugAndroidTest" }.configureEach {
-    mustRunAfter("testDebugUnitTest")
-}
-tasks.matching { it.name == "verifyFfmpegDebugApkRuntime" }.configureEach {
-    mustRunAfter("assembleDebugAndroidTest")
-}
-finalRemediationStaticGate.configure {
-    mustRunAfter("verifyFfmpegDebugApkRuntime")
 }
 
 // Keep every lint task in every Android subproject behind the static/runtime stages. This closes

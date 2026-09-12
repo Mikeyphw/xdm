@@ -102,7 +102,14 @@ need(has(workspace, "Embedded FFmpeg + FFprobe", "Run FFmpeg self-test", "ffmpeg
 
 repo_root = ROOT.parents[1]
 devtool = (repo_root / ".devtool.toml").read_text(encoding="utf-8") if (repo_root / ".devtool.toml").is_file() else ""
-need(":media-ffmpeg:installPinnedFfmpegRuntime" in devtool, "Devtool build/package phases do not install the pinned FFmpeg runtime")
+need(
+    ":media-ffmpeg:installPinnedFfmpegRuntime" in devtool
+    or (
+        'dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")' in app_gradle
+        and "dependsOn(installPinnedFfmpegRuntime)" in module_gradle
+    ),
+    "FFmpeg runtime installation is neither Devtool-owned nor packaging-owned by Gradle",
+)
 need(":media-ffmpeg:testDebugUnitTest" in devtool, "Devtool unit-test phase does not include media-ffmpeg tests")
 need(":media-ffmpeg:verifyFfmpegRuntime" in devtool, "Devtool preflight does not verify FFmpeg runtime provenance")
 
