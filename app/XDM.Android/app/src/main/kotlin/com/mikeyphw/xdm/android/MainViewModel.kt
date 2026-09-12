@@ -86,6 +86,9 @@ import com.mikeyphw.xdm.android.media.MediaSessionHeader
 import com.mikeyphw.xdm.android.media.MediaExecutionLibraryPlanner
 import com.mikeyphw.xdm.android.media.OfflineMediaLibraryItem
 import com.mikeyphw.xdm.android.media.MediaExecutionDispatcher
+import com.mikeyphw.xdm.android.media.MediaExecutionLane
+import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegRuntimeCapabilityReport
+import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegMediaManager
 import com.mikeyphw.xdm.android.media.MediaDispatchReadiness
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
 import com.mikeyphw.xdm.android.model.MediaVariant
@@ -216,6 +219,15 @@ data class Aria2DiagnosticsUi(
     val storageDoctor: StorageDoctorUi = StorageDoctorUi(),
 )
 
+data class FfmpegDiagnosticsUi(
+    val status: String = "Checking",
+    val detail: String = "Inspecting the app-owned FFmpeg and FFprobe runtime.",
+    val canRunSelfTest: Boolean = false,
+    val selfTestRunning: Boolean = false,
+    val version: String? = null,
+    val httpsSupported: Boolean = false,
+)
+
 private const val CurrentRoomSchemaVersion = 23
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
@@ -277,6 +289,7 @@ data class MainUiState(
     val externalAddDraft: DownloadIntakeDraft? = null,
     val destinationPermissions: List<DestinationPermission> = emptyList(),
     val aria2Diagnostics: Aria2DiagnosticsUi = Aria2DiagnosticsUi(),
+    val ffmpegDiagnostics: FfmpegDiagnosticsUi = FfmpegDiagnosticsUi(),
     val termuxBridge: TermuxBridgeStatus = TermuxBridgeStatus(),
     val termuxAria2: TermuxAria2CockpitStatus = TermuxAria2CockpitStatus(),
     val termuxMediaPipeline: TermuxMediaPipelineStatus = TermuxMediaPipelineStatus(),
@@ -359,6 +372,7 @@ class MainViewModel(
     private val queueIntelligenceCoordinator: QueueIntelligenceCoordinator,
     private val destinationWriter: AndroidDestinationWriter,
     private val aria2ProcessManager: Aria2ProcessManager,
+    private val embeddedFfmpegMediaManager: EmbeddedFfmpegMediaManager,
     private val termuxBridgeManager: TermuxBridgeManager,
     private val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     private val termuxMediaPipelineManager: TermuxMediaPipelineManager,
@@ -413,6 +427,9 @@ class MainViewModel(
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
     private val aria2SmokeRunning = MutableStateFlow(false)
+    private val ffmpegCapability = MutableStateFlow<FfmpegRuntimeCapabilityReport?>(null)
+    private val ffmpegSelfTestMessage = MutableStateFlow<String?>(null)
+    private val ffmpegSelfTestRunning = MutableStateFlow(false)
     private val storageDoctorMessage = MutableStateFlow<String?>(null)
     private val storageDoctorRunning = MutableStateFlow(false)
     private val storageDoctorUi = combine(storageDoctorMessage, storageDoctorRunning) { message, running ->
@@ -671,10 +688,27 @@ class MainViewModel(
         )
     }
 
+    private val ffmpegDiagnostics = combine(ffmpegCapability, ffmpegSelfTestMessage, ffmpegSelfTestRunning) { capability, selfTestMessage, running ->
+        FfmpegDiagnosticsUi(
+            status = when {
+                running -> "Testing"
+                capability?.ready == true -> "Ready"
+                capability == null -> "Checking"
+                else -> capability.health.name.replace('_', ' ')
+            },
+            detail = selfTestMessage ?: capability?.detail ?: FfmpegDiagnosticsUi().detail,
+            canRunSelfTest = capability?.ready == true && !running,
+            selfTestRunning = running,
+            version = capability?.ffmpegVersion,
+            httpsSupported = capability?.httpsSupported == true,
+        )
+    }
+
     private data class RuntimeUiSnapshot(
         val activeTransfers: ActiveTransferSummary,
         val queueIntelligence: QueueIntelligenceSummary,
         val aria2: Aria2DiagnosticsUi,
+        val ffmpeg: FfmpegDiagnosticsUi,
         val capabilities: List<BackendCapabilityRow>,
         val termuxBridge: TermuxBridgeStatus,
         val termuxAria2: TermuxAria2CockpitStatus,
@@ -710,8 +744,8 @@ class MainViewModel(
         TermuxUiSnapshot(bridge, aria2, mediaPipeline, postAutomation)
     }
 
-    private val runtimeUi = combine(queueIntelligenceCoordinator.status, aria2Diagnostics, capabilitySnapshot, termuxUi) { queueIntelligence, aria2, capabilities, termux ->
-        RuntimeUiSnapshot(ActiveTransferSummary(), queueIntelligence, aria2, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
+    private val runtimeUi = combine(queueIntelligenceCoordinator.status, aria2Diagnostics, ffmpegDiagnostics, capabilitySnapshot, termuxUi) { queueIntelligence, aria2, ffmpeg, capabilities, termux ->
+        RuntimeUiSnapshot(ActiveTransferSummary(), queueIntelligence, aria2, ffmpeg, backendSelectionPolicy.capabilityRows(capabilities), termux.bridge, termux.aria2, termux.mediaPipeline, termux.postProcessingAutomation)
     }
 
     private val durableUiState: StateFlow<MainUiState> = combine(
@@ -887,6 +921,7 @@ class MainViewModel(
             externalAddDraft = review.externalAddDraft,
             destinationPermissions = snapshot.destinationPermissions,
             aria2Diagnostics = runtime.aria2,
+            ffmpegDiagnostics = runtime.ffmpeg,
             termuxBridge = runtime.termuxBridge,
             termuxAria2 = runtime.termuxAria2,
             termuxMediaPipeline = runtime.termuxMediaPipeline,
@@ -990,6 +1025,7 @@ class MainViewModel(
             semanticDownloads.collectLatest { downloads -> operationalActivityStore.observeDownloads(downloads) }
         }
         refreshAria2Probe()
+        refreshFfmpegProbe()
         refreshBackendCapabilities()
         termuxBridgeManager.refreshStatus()
         termuxMediaPipelineManager.refreshStatus()
@@ -1482,6 +1518,37 @@ class MainViewModel(
             aria2Capability.value = aria2ProcessManager.probe()
             aria2SmokeMessage.value = null
             capabilitySnapshot.value = transferRuntime.backendCapabilities()
+        }
+    }
+
+    fun refreshFfmpegProbe() {
+        viewModelScope.launch(Dispatchers.IO) {
+            ffmpegCapability.value = embeddedFfmpegMediaManager.runtime.capabilities(force = true)
+            ffmpegSelfTestMessage.value = null
+        }
+    }
+
+    fun runFfmpegSelfTest() {
+        if (ffmpegSelfTestRunning.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            ffmpegSelfTestRunning.value = true
+            ffmpegSelfTestMessage.value = "Running app-owned FFmpeg/FFprobe self-test."
+            try {
+                val result = embeddedFfmpegMediaManager.runtime.selfTest()
+                ffmpegCapability.value = embeddedFfmpegMediaManager.runtime.capabilities(force = true)
+                ffmpegSelfTestMessage.value = if (result.success) {
+                    "Embedded FFmpeg/FFprobe self-test passed; runtime execution and HTTPS capability are app-owned."
+                } else {
+                    result.redactedSummary
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                ffmpegSelfTestMessage.value = "Embedded FFmpeg self-test failed safely: ${error.message ?: error::class.java.simpleName}"
+                ffmpegCapability.value = embeddedFfmpegMediaManager.runtime.capabilities(force = true)
+            } finally {
+                ffmpegSelfTestRunning.value = false
+            }
         }
     }
 
@@ -4038,17 +4105,20 @@ class MainViewModel(
             )
             val enginePlan = mediaExecutionPlanner.enginePlan(spec, androidSdkInt = android.os.Build.VERSION.SDK_INT)
             val termuxReady = !spec.requiresTermuxYtDlp || termuxMediaPipelineManager.ytDlpExecutionReady(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
+            val embeddedFfmpegReady = enginePlan.lane != MediaExecutionLane.EmbeddedFfmpegLive || embeddedFfmpegMediaManager.runtime.capabilities().ready
             val dispatchPlan = mediaExecutionDispatcher.dispatchPlan(
                 spec = spec,
                 enginePlan = enginePlan,
                 capture = exactRecord,
                 termuxReady = termuxReady,
+                embeddedFfmpegReady = embeddedFfmpegReady,
                 nowEpochMs = now,
             )
             if (dispatchPlan.readiness != MediaDispatchReadiness.Ready) {
                 val detail = when (dispatchPlan.readiness) {
                     MediaDispatchReadiness.NeedsTermuxSetup -> termuxMediaPipelineManager.ytDlpReadinessIssue(spec.requestHeaders, exactRecord.pageUrl ?: exactRecord.sourceUrl, now)
                         ?: dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
+                    MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> embeddedFfmpegMediaManager.runtime.capabilities().summary
                     else -> dispatchPlan.warnings.joinToString(" ").ifBlank { dispatchPlan.readiness.label }
                 }
                 if (dispatchPlan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh) {
@@ -4059,6 +4129,7 @@ class MainViewModel(
                         kind = when (dispatchPlan.readiness) {
                             MediaDispatchReadiness.NeedsMetadataRefresh -> MediaIntakeFeedbackKind.NeedsBrowserCapture
                             MediaDispatchReadiness.NeedsTermuxSetup -> if (spec.requestHeaders.keys.any { it.equals("Cookie", true) || it.equals("Authorization", true) }) MediaIntakeFeedbackKind.AuthenticationRequired else MediaIntakeFeedbackKind.Unsupported
+                            MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> MediaIntakeFeedbackKind.Failed
                             MediaDispatchReadiness.BlockedProtected, MediaDispatchReadiness.AwaitingUserChoice -> MediaIntakeFeedbackKind.Unsupported
                             MediaDispatchReadiness.BlockedSecretLeak -> MediaIntakeFeedbackKind.Failed
                             MediaDispatchReadiness.Ready -> MediaIntakeFeedbackKind.Found
@@ -4068,6 +4139,43 @@ class MainViewModel(
                         diagnostics = dispatchPlan.safeDiagnostics.lines().take(8),
                     ),
                     navigateToMedia = false,
+                )
+                navigate(AppRoute.Media)
+                return@launch
+            }
+            if (enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegLive) {
+                val outcome = runCatching {
+                    embeddedFfmpegMediaManager.enqueueLiveRecording(
+                        capture = exactRecord,
+                        spec = spec,
+                        admissionMode = admissionMode,
+                    )
+                }.getOrElse { error ->
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not start embedded FFmpeg", error.message ?: "Embedded media runtime enqueue failed."),
+                        navigateToMedia = false,
+                    )
+                    navigate(AppRoute.Media)
+                    return@launch
+                }
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        if (outcome.accepted || outcome.existingOutput != null) MediaIntakeFeedbackKind.Found else MediaIntakeFeedbackKind.Failed,
+                        if (outcome.accepted) "Live recording started" else "Media already added",
+                        outcome.message,
+                    ),
+                    navigateToMedia = false,
+                )
+                debugEventRecorder.record(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                    action = "media-embedded-ffmpeg-enqueue",
+                    result = if (outcome.accepted) "committed" else "existing",
+                    safeDetails = mapOf(
+                        "captureId" to record.id,
+                        "ownerId" to outcome.output.ownerId,
+                        "attemptGeneration" to outcome.output.attemptGeneration.toString(),
+                        "owner" to "EmbeddedFfmpeg",
+                    ),
                 )
                 navigate(AppRoute.Media)
                 return@launch
@@ -4343,6 +4451,10 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             when (item.ownerKind) {
                 MediaOutputOwnerKind.AppDownload -> repository.hideAppMediaOutput(item.outputId)
+                MediaOutputOwnerKind.EmbeddedFfmpeg -> {
+                    embeddedFfmpegMediaManager.cancel(item.ownerId)
+                    repository.hideMediaOutput(item.outputId)
+                }
                 MediaOutputOwnerKind.TermuxJob -> termuxMediaPipelineManager.removeLibraryOutput(item.ownerId, item.outputId)
             }
         }
@@ -4621,6 +4733,7 @@ class MainViewModel(
             container.queueIntelligenceCoordinator,
             container.destinationWriter,
             container.aria2ProcessManager,
+            container.embeddedFfmpegMediaManager,
             container.termuxBridgeManager,
             container.termuxAria2CockpitManager,
             container.termuxMediaPipelineManager,

@@ -125,6 +125,7 @@ class MediaQueueTelemetryPlanner {
             MediaDispatchReadiness.AwaitingUserChoice -> "Waiting for variant or track choice"
             MediaDispatchReadiness.NeedsMetadataRefresh -> "Waiting for metadata refresh"
             MediaDispatchReadiness.NeedsTermuxSetup -> "Waiting for Termux media pipeline"
+            MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> "Waiting for embedded FFmpeg runtime"
             MediaDispatchReadiness.BlockedProtected -> "Protected media diagnostic only"
             MediaDispatchReadiness.BlockedSecretLeak -> "Blocked by redaction guard"
         }
@@ -147,6 +148,7 @@ class MediaQueueTelemetryPlanner {
             MediaDispatchReadiness.AwaitingUserChoice -> "Choose tracks"
             MediaDispatchReadiness.NeedsMetadataRefresh -> "Refresh metadata"
             MediaDispatchReadiness.NeedsTermuxSetup -> "Open Termux setup"
+            MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> "Inspect FFmpeg runtime"
             MediaDispatchReadiness.BlockedProtected -> "View protected-media diagnostics"
             MediaDispatchReadiness.BlockedSecretLeak -> "Review redaction failure"
         }
@@ -159,15 +161,15 @@ class MediaQueueTelemetryPlanner {
         secretSafe: Boolean,
     ): MediaQueueTelemetryTone = when {
         !secretSafe || plan.blocked || stage == MediaExecutionStage.Blocked -> MediaQueueTelemetryTone.Blocked
-        stalled || plan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh || plan.readiness == MediaDispatchReadiness.NeedsTermuxSetup || stage == MediaExecutionStage.Failed -> MediaQueueTelemetryTone.Attention
+        stalled || plan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh || plan.readiness == MediaDispatchReadiness.NeedsTermuxSetup || plan.readiness == MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime || stage == MediaExecutionStage.Failed -> MediaQueueTelemetryTone.Attention
         stage == MediaExecutionStage.Probing || stage == MediaExecutionStage.Queued || stage == MediaExecutionStage.Downloading -> MediaQueueTelemetryTone.Active
         else -> MediaQueueTelemetryTone.Stable
     }
 
     private fun isStalled(plan: MediaDispatchPlan, job: MediaExecutionJob?): Boolean {
         if (job?.stage == MediaExecutionStage.Failed || job?.stage == MediaExecutionStage.Blocked) return true
-        if (plan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh || plan.readiness == MediaDispatchReadiness.NeedsTermuxSetup) return true
-        return plan.warnings.any { warning -> warning.contains("refresh", ignoreCase = true) || warning.contains("Termux", ignoreCase = true) }
+        if (plan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh || plan.readiness == MediaDispatchReadiness.NeedsTermuxSetup || plan.readiness == MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime) return true
+        return plan.warnings.any { warning -> warning.contains("refresh", ignoreCase = true) || warning.contains("Termux", ignoreCase = true) || warning.contains("FFmpeg", ignoreCase = true) }
     }
 
     private fun safeDiagnostic(

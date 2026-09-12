@@ -178,6 +178,7 @@ class MediaQueueActionPlanner {
         MediaDispatchReadiness.AwaitingUserChoice -> action(MediaQueueActionKind.ChooseTracks, MediaQueueActionAvailability.Available, "Select video, audio, or subtitle tracks before launch.")
         MediaDispatchReadiness.NeedsMetadataRefresh -> action(MediaQueueActionKind.RefreshMetadata, MediaQueueActionAvailability.Available, "Refresh manifest and page metadata before launch.")
         MediaDispatchReadiness.NeedsTermuxSetup -> action(MediaQueueActionKind.OpenTermuxSetup, MediaQueueActionAvailability.Available, "Enable or repair the Termux media pipeline.")
+        MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> action(MediaQueueActionKind.ViewDiagnostics, MediaQueueActionAvailability.Available, "Open Developer Center to inspect the packaged FFmpeg/FFprobe runtime.")
         MediaDispatchReadiness.BlockedProtected -> action(MediaQueueActionKind.ViewDiagnostics, MediaQueueActionAvailability.Available, "Protected media stays diagnostic-only; no bypass action is available.")
         MediaDispatchReadiness.BlockedSecretLeak -> action(MediaQueueActionKind.ViewDiagnostics, MediaQueueActionAvailability.Available, "Redaction guard blocked dispatch.")
     }
@@ -188,6 +189,7 @@ class MediaQueueActionPlanner {
             MediaDispatchReadiness.AwaitingUserChoice -> unavailable += "Launch queue waits for track selection."
             MediaDispatchReadiness.NeedsMetadataRefresh -> unavailable += "Launch queue waits for metadata refresh."
             MediaDispatchReadiness.NeedsTermuxSetup -> unavailable += "Launch queue waits for Termux setup."
+            MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> unavailable += "Launch queue waits for the packaged FFmpeg/FFprobe runtime to be healthy."
             MediaDispatchReadiness.BlockedProtected -> unavailable += "Protected media cannot be downloaded or bypassed."
             MediaDispatchReadiness.BlockedSecretLeak -> unavailable += "Launch queue waits for redaction review."
         }

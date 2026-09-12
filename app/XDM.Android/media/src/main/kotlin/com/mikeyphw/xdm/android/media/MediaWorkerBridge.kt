@@ -16,6 +16,7 @@ enum class MediaWorkerBridgeKind(val label: String) {
     NativeDirect("Native direct request"),
     Aria2Adapter("aria2 launch adapter"),
     TermuxYtDlp("Termux yt-dlp adapter"),
+    EmbeddedFfmpeg("Embedded FFmpeg adapter"),
     BlockedDiagnostic("Blocked diagnostic"),
 }
 
@@ -159,7 +160,8 @@ class MediaWorkerBridgePlanner {
                 request.kind == MediaWorkerBridgeKind.WorkManagerForeground ||
                 request.kind == MediaWorkerBridgeKind.ForegroundServiceDataSync ||
                 request.kind == MediaWorkerBridgeKind.NativeDirect ||
-                request.kind == MediaWorkerBridgeKind.Aria2Adapter
+                request.kind == MediaWorkerBridgeKind.Aria2Adapter ||
+                request.kind == MediaWorkerBridgeKind.EmbeddedFfmpeg
         }
         val termuxWorkers = requests.count { it.kind == MediaWorkerBridgeKind.TermuxYtDlp }
         val blocked = requests.count { it.readiness == MediaWorkerBridgeReadiness.Blocked || it.kind == MediaWorkerBridgeKind.BlockedDiagnostic }
@@ -177,14 +179,15 @@ class MediaWorkerBridgePlanner {
 
     private fun kindFor(enginePlan: MediaExecutionEnginePlan): MediaWorkerBridgeKind = when (enginePlan.lane) {
         MediaExecutionLane.ProtectedBlocked -> MediaWorkerBridgeKind.BlockedDiagnostic
-        MediaExecutionLane.YtDlpAdaptive,
-        MediaExecutionLane.LiveRecording -> MediaWorkerBridgeKind.TermuxYtDlp
+        MediaExecutionLane.YtDlpAdaptive -> MediaWorkerBridgeKind.TermuxYtDlp
+        MediaExecutionLane.EmbeddedFfmpegLive -> MediaWorkerBridgeKind.EmbeddedFfmpeg
         MediaExecutionLane.NativeHlsSegmented,
         MediaExecutionLane.Aria2Segmented,
         MediaExecutionLane.DirectNative -> when (enginePlan.backgroundPolicy.workKind) {
             AndroidMediaWorkKind.UserInitiatedDataTransfer -> MediaWorkerBridgeKind.AndroidUidt
             AndroidMediaWorkKind.WorkManagerForeground -> MediaWorkerBridgeKind.WorkManagerForeground
             AndroidMediaWorkKind.ForegroundServiceFallback -> MediaWorkerBridgeKind.ForegroundServiceDataSync
+            AndroidMediaWorkKind.EmbeddedFfmpeg -> MediaWorkerBridgeKind.EmbeddedFfmpeg
             AndroidMediaWorkKind.TermuxExternalJob -> if (enginePlan.lane == MediaExecutionLane.Aria2Segmented) MediaWorkerBridgeKind.Aria2Adapter else MediaWorkerBridgeKind.NativeDirect
             AndroidMediaWorkKind.BlockedDiagnostic -> MediaWorkerBridgeKind.BlockedDiagnostic
         }
@@ -199,6 +202,7 @@ class MediaWorkerBridgePlanner {
         actionPlan.primaryAction.requiresConfirmation -> MediaWorkerBridgeReadiness.NeedsConfirmation
         dispatchPlan.readiness == MediaDispatchReadiness.NeedsMetadataRefresh -> MediaWorkerBridgeReadiness.WaitingForMetadata
         dispatchPlan.readiness == MediaDispatchReadiness.NeedsTermuxSetup -> MediaWorkerBridgeReadiness.WaitingForTermux
+        dispatchPlan.readiness == MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> MediaWorkerBridgeReadiness.Blocked
         dispatchPlan.readiness == MediaDispatchReadiness.AwaitingUserChoice -> MediaWorkerBridgeReadiness.WaitingForUserAction
         dispatchPlan.readiness == MediaDispatchReadiness.BlockedProtected || dispatchPlan.readiness == MediaDispatchReadiness.BlockedSecretLeak -> MediaWorkerBridgeReadiness.Blocked
         actionPlan.primaryAction.kind != MediaQueueActionKind.Launch || !actionPlan.primaryAction.enabled -> MediaWorkerBridgeReadiness.WaitingForUserAction

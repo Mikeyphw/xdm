@@ -102,6 +102,19 @@ See `docs/architecture/PHASE-7-BACKEND-STRATEGY-MIGRATION.md` and the earlier ar
 
 Place a PIE ARM64 Android build of aria2 at `transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so`. XDM executes it only from Android's installed `nativeLibraryDir`; it never copies executable code into writable app storage. Builds without the file remain usable and report the optional backend as unavailable.
 
+## Embedded FFmpeg + FFprobe runtime
+
+FF01 makes FFmpeg and FFprobe app-owned Android runtimes instead of requiring Termux for live FFmpeg execution. The pinned ARM64 payload is built from FFmpeg 9.0.1 and OpenSSL 3.5.8 with Android NDK 29, packaged from `nativeLibraryDir`, verified for 16 KB load alignment, and accompanied by reproducible provenance/license metadata. HTTPS inputs use Android's trusted CA store through an app-private PEM bundle with peer verification enabled.
+
+Build/install and verify the runtime with:
+
+```bash
+python3 tools/install-ffmpeg-runtime.py --build-pinned
+python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment
+```
+
+Distribution builds should pass `-Pxdm.requireFfmpegRuntime=true`. `FfmpegLive` plans then execute through the embedded runtime and publish verified media outputs without Termux; yt-dlp remains an optional external resolver/executor path. See `docs/architecture/FF01-EMBEDDED-FFMPEG-RUNTIME-MEDIA-EXECUTION.md` and `media-ffmpeg/FFMPEG_RUNTIME_PACKAGING.md`.
+
 ## Embedded aria2 runtime
 
 Phase 6 provides an operational on-device aria2 backend with durable Room-to-GID mappings, paused-before-ownership activation, authenticated loopback RPC, session reconciliation, and XDM-controlled completion promotion. The optional official ARM64 payload is installed and attested with:

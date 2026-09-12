@@ -45,6 +45,7 @@ fun DeveloperToolsWorkspace(
     clipboardInbox: List<ClipboardInboxItem>,
     onRunAria2SmokeTest: () -> Unit,
     onRepairAria2: () -> Unit,
+    onRunFfmpegSelfTest: () -> Unit,
     onRunTermuxProbe: () -> Unit,
     onRunTermuxRootProbe: () -> Unit,
     onCollectRootDiagnostics: () -> Unit,
@@ -91,7 +92,7 @@ fun DeveloperToolsWorkspace(
             }
         }
         when (section) {
-            DeveloperToolSection.RuntimeEngines -> RuntimeAndEnginesSection(state, onRunAria2SmokeTest, onRepairAria2)
+            DeveloperToolSection.RuntimeEngines -> RuntimeAndEnginesSection(state, onRunAria2SmokeTest, onRepairAria2, onRunFfmpegSelfTest)
             DeveloperToolSection.TermuxAria2 -> TermuxAndAria2Section(
                 state = state,
                 onRunTermuxProbe = onRunTermuxProbe,
@@ -153,6 +154,7 @@ private fun RuntimeAndEnginesSection(
     state: MainUiState,
     onRunAria2SmokeTest: () -> Unit,
     onRepairAria2: () -> Unit,
+    onRunFfmpegSelfTest: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -175,6 +177,29 @@ private fun RuntimeAndEnginesSection(
                     TextButton(onClick = onRepairAria2, enabled = state.aria2Diagnostics.canRepair && !state.aria2Diagnostics.smokeTestRunning) {
                         Text("Repair aria2")
                     }
+                }
+            }
+        }
+        item {
+            XdmListCard {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        XdmCardTitle("Embedded FFmpeg + FFprobe")
+                        XdmSupportingText(state.ffmpegDiagnostics.detail, maxLines = 5)
+                        state.ffmpegDiagnostics.version?.let { version ->
+                            XdmMetadataText("Version $version • HTTPS ${if (state.ffmpegDiagnostics.httpsSupported) "available" else "unavailable"} • app-owned", maxLines = 2)
+                        }
+                    }
+                    StatusPill(
+                        state.ffmpegDiagnostics.status,
+                        if (state.ffmpegDiagnostics.status.contains("ready", true)) XdmStatusTone.Success else XdmStatusTone.Warning,
+                    )
+                }
+                Button(
+                    onClick = onRunFfmpegSelfTest,
+                    enabled = state.ffmpegDiagnostics.canRunSelfTest && !state.ffmpegDiagnostics.selfTestRunning,
+                ) {
+                    Text(if (state.ffmpegDiagnostics.selfTestRunning) "Testing…" else "Run FFmpeg self-test")
                 }
             }
         }

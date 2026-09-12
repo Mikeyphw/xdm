@@ -16,6 +16,7 @@ enum class MediaDispatchReadiness(val label: String) {
     AwaitingUserChoice("Awaiting user choice"),
     NeedsMetadataRefresh("Needs metadata refresh"),
     NeedsTermuxSetup("Needs Termux setup"),
+    NeedsEmbeddedFfmpegRuntime("Needs embedded FFmpeg runtime"),
     BlockedProtected("Blocked protected"),
     BlockedSecretLeak("Blocked secret leak"),
 }
@@ -25,6 +26,7 @@ enum class MediaDispatchStepKind(val label: String) {
     PrepareTransientFiles("Prepare transient files"),
     QueueBackgroundWork("Queue background work"),
     LaunchTermuxJob("Launch Termux job"),
+    LaunchEmbeddedFfmpeg("Launch embedded FFmpeg"),
     PersistRedactedSidecar("Persist redacted sidecar"),
     RegisterCleanup("Register cleanup"),
     VerifyRedaction("Verify redaction"),
@@ -91,6 +93,7 @@ class MediaExecutionDispatcher {
         enginePlan: MediaExecutionEnginePlan,
         capture: MediaCaptureRecord? = null,
         termuxReady: Boolean = true,
+        embeddedFfmpegReady: Boolean = true,
         nowEpochMs: Long = System.currentTimeMillis(),
     ): MediaDispatchPlan {
         val warnings = mutableListOf<String>()
@@ -104,13 +107,17 @@ class MediaExecutionDispatcher {
             enginePlan.lane == MediaExecutionLane.ProtectedBlocked -> MediaDispatchReadiness.BlockedProtected
             needsRefresh -> MediaDispatchReadiness.NeedsMetadataRefresh
             requiresChoice -> MediaDispatchReadiness.AwaitingUserChoice
-            (enginePlan.lane == MediaExecutionLane.YtDlpAdaptive || enginePlan.lane == MediaExecutionLane.LiveRecording) && !termuxReady -> MediaDispatchReadiness.NeedsTermuxSetup
+            enginePlan.lane == MediaExecutionLane.YtDlpAdaptive && !termuxReady -> MediaDispatchReadiness.NeedsTermuxSetup
+            enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegLive && !embeddedFfmpegReady -> MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime
             else -> MediaDispatchReadiness.Ready
         }
         if (needsRefresh) warnings += "Refresh metadata before enqueue so expiring manifests, page cookies, and selected variants are current."
         if (requiresChoice) warnings += "Select a variant or explicit yt-dlp format before launching adaptive media."
-        if (!termuxReady && (enginePlan.lane == MediaExecutionLane.YtDlpAdaptive || enginePlan.lane == MediaExecutionLane.LiveRecording)) {
-            warnings += "Termux media pipeline is required for this resolver lane."
+        if (!termuxReady && enginePlan.lane == MediaExecutionLane.YtDlpAdaptive) {
+            warnings += "Termux media pipeline is required for the yt-dlp resolver lane."
+        }
+        if (!embeddedFfmpegReady && enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegLive) {
+            warnings += "The app-owned FFmpeg runtime is unavailable or failed its capability probe."
         }
         if (!leakSafe) warnings += "Potential secret leak detected in one or more execution surfaces."
         val steps = dispatchSteps(spec, enginePlan, readiness)
@@ -194,11 +201,15 @@ class MediaExecutionDispatcher {
                 title = "Queue visible transfer",
                 detail = enginePlan.backgroundPolicy.summary,
             )
-            MediaExecutionLane.YtDlpAdaptive,
-            MediaExecutionLane.LiveRecording -> steps += MediaDispatchStep(
+            MediaExecutionLane.YtDlpAdaptive -> steps += MediaDispatchStep(
                 kind = MediaDispatchStepKind.LaunchTermuxJob,
                 title = "Launch typed Termux media job",
                 detail = "executor=${enginePlan.typedExecutor}; args=${enginePlan.typedArguments.size}; raw shell disabled.",
+            )
+            MediaExecutionLane.EmbeddedFfmpegLive -> steps += MediaDispatchStep(
+                kind = MediaDispatchStepKind.LaunchEmbeddedFfmpeg,
+                title = "Launch app-owned FFmpeg recording",
+                detail = "executor=${enginePlan.typedExecutor}; typed arguments only; Termux is not required.",
             )
             MediaExecutionLane.ProtectedBlocked -> steps += MediaDispatchStep(
                 kind = MediaDispatchStepKind.NotifyUser,
@@ -237,12 +248,13 @@ class MediaExecutionDispatcher {
             MediaExecutionLane.NativeHlsSegmented -> "Queue native HLS"
             MediaExecutionLane.Aria2Segmented -> "Queue aria2 media"
             MediaExecutionLane.YtDlpAdaptive -> "Launch yt-dlp media"
-            MediaExecutionLane.LiveRecording -> "Start live recording"
+            MediaExecutionLane.EmbeddedFfmpegLive -> "Start embedded FFmpeg recording"
             MediaExecutionLane.ProtectedBlocked -> "View diagnostics"
         }
         MediaDispatchReadiness.AwaitingUserChoice -> "Choose variant / tracks"
         MediaDispatchReadiness.NeedsMetadataRefresh -> "Refresh metadata"
         MediaDispatchReadiness.NeedsTermuxSetup -> "Open Termux setup"
+        MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> "Repair embedded FFmpeg"
         MediaDispatchReadiness.BlockedProtected -> "View protected-media diagnostics"
         MediaDispatchReadiness.BlockedSecretLeak -> "Review redaction failure"
     }
@@ -261,7 +273,7 @@ class MediaExecutionDispatcher {
             MediaExecutionLane.NativeHlsSegmented -> MediaRetryPolicy(5, listOf(5, 15, 45, 120, 300), listOf("segment timeout", "manifest refresh", "expired signed URL", "recoverable finalization"), listOf("DRM protected", "LL-HLS native unsupported", "invalid destination"))
             MediaExecutionLane.Aria2Segmented -> MediaRetryPolicy(4, listOf(5, 15, 45, 120), listOf("segment timeout", "temporary 5xx", "network switch"), listOf("expired cookie", "tokenized URL expired"))
             MediaExecutionLane.YtDlpAdaptive -> MediaRetryPolicy(2, listOf(10, 60), listOf("extractor transient failure", "metadata refresh available"), listOf("unsupported extractor", "DRM protected"))
-            MediaExecutionLane.LiveRecording -> MediaRetryPolicy(1, listOf(30), listOf("live connection dropped"), listOf("live ended", "protected media"))
+            MediaExecutionLane.EmbeddedFfmpegLive -> MediaRetryPolicy(2, listOf(10, 30), listOf("live connection dropped", "temporary server failure"), listOf("live ended", "protected media", "runtime invalid"))
             MediaExecutionLane.ProtectedBlocked -> MediaRetryPolicy(0, emptyList(), emptyList(), listOf("protected media"))
         }
     }
@@ -287,10 +299,10 @@ class MediaExecutionDispatcher {
             MediaProgressSignal("download fragment progress", "yt-dlp", true),
             MediaProgressSignal("merge/finalize", "yt-dlp/FFmpeg", true),
         )
-        MediaExecutionLane.LiveRecording -> listOf(
-            MediaProgressSignal("recording duration", "yt-dlp/FFmpeg", true),
-            MediaProgressSignal("live heartbeat", "Termux media pipeline", true),
-            MediaProgressSignal("terminal cleanup", "handoff store", false),
+        MediaExecutionLane.EmbeddedFfmpegLive -> listOf(
+            MediaProgressSignal("recording duration", "embedded FFmpeg", true),
+            MediaProgressSignal("live heartbeat", "app-owned media runtime", true),
+            MediaProgressSignal("terminal cleanup", "FFmpeg runtime manager", false),
         )
         MediaExecutionLane.ProtectedBlocked -> listOf(
             MediaProgressSignal("diagnostic summary", "resolver", true),
@@ -324,6 +336,7 @@ class MediaExecutionDispatcher {
         MediaDispatchReadiness.AwaitingUserChoice -> null
         MediaDispatchReadiness.NeedsMetadataRefresh -> "Metadata refresh is required before dispatch."
         MediaDispatchReadiness.NeedsTermuxSetup -> "Termux media pipeline is not ready for this lane."
+        MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> "Embedded FFmpeg runtime is not ready for this lane."
         MediaDispatchReadiness.BlockedProtected -> "Protected media is diagnostic-only."
         MediaDispatchReadiness.BlockedSecretLeak -> "Secret redaction failed; dispatch is blocked."
     }

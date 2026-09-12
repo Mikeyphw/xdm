@@ -27,6 +27,7 @@ include(
     ":transfer-aria2",
     ":scheduler",
     ":media",
+    ":media-ffmpeg",
     ":diagnostics",
     ":browser-integration",
     ":browser-extension",

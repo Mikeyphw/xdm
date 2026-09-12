@@ -1,3 +1,12 @@
+## 2026-09-11 — FF01 embedded FFmpeg/FFprobe runtime and media execution
+
+- Added an app-owned ARM64 FFmpeg 9.0.1 + FFprobe runtime built reproducibly with Android NDK 29 and pinned OpenSSL 3.5.8 source hashes; generated binaries are verified for AArch64 PIE shape, 16 KB PT_LOAD alignment, provenance, and APK presence.
+- Added typed, shell-free FFmpeg operations and FFprobe JSON inspection with bounded/redacted diagnostics, verified HTTPS using AndroidCAStore materialized as an app-private CA bundle, cancellation/timeout handling, and runtime health/self-test reporting.
+- Migrated `FfmpegLive` away from mandatory Termux ownership into the app-owned `EmbeddedFfmpegLive` execution lane; yt-dlp remains the optional Termux-backed resolver/executor boundary.
+- Added durable embedded-FFmpeg output ownership, interrupted-job recovery, staged destination publication, FFprobe verification before completion, Matroska output normalization for live HLS/DASH sources, and Developer Center health/self-test controls.
+- Wired FF01 into the Android module graph, Devtool runtime install/test/preflight/package phases, the canonical static release matrix, focused contract tests, runtime packaging documentation, and provenance/license notices. Room schema remains unchanged.
+- FF01 is an intermediate full overlay: apply with `--no-validate`; the final FF04 release seal owns the complete Android validation matrix.
+
 ## 2026-09-10 — ACT01/ACT02 list quick actions and final roadmap seal
 
 - Added planner-owned two-action download-card shortcuts: the canonical primary action plus a contextual Cancel, Replace source URL, Share, recovery, or redownload/remove shortcut as appropriate.

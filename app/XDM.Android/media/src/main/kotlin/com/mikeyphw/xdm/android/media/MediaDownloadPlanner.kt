@@ -211,7 +211,7 @@ class MediaDownloadPlanner {
             selectedVariantId = selected?.id ?: capture.selectedVariantId,
             transferShape = shape,
             displayName = displayNameFor(strategy, intent),
-            requiresTermux = strategy == MediaDownloadStrategy.YtDlp || strategy == MediaDownloadStrategy.FfmpegLive,
+            requiresTermux = strategy == MediaDownloadStrategy.YtDlp,
             canQueueDirectly = strategy != MediaDownloadStrategy.UnsupportedProtected,
             explanation = explanationFor(strategy, capture.kind, intent, capture, variants, normalizedSelection, session),
             metadataProbeUrl = metadataProbeUrl(capture),

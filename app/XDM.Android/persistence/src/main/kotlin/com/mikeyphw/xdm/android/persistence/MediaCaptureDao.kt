@@ -61,6 +61,9 @@ interface MediaCaptureDao {
     @Query("UPDATE media_outputs SET state = 'Hidden', updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id AND ownerKind = 'AppDownload'")
     suspend fun hideAppOutput(id: String, updatedAtEpochMs: Long): Int
 
+    @Query("UPDATE media_outputs SET state = 'Hidden', updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
+    suspend fun hideOutput(id: String, updatedAtEpochMs: Long): Int
+
     @Query("UPDATE media_captures SET selectedVariantId = :variantId, selectedVariantUrl = :variantUrl, resolutionStatus = :resolutionStatus, lastResolvedAtEpochMs = :updatedAtEpochMs, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :captureId")
     suspend fun selectVariant(captureId: String, variantId: String, variantUrl: String, resolutionStatus: String, updatedAtEpochMs: Long)
 

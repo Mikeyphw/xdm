@@ -34,7 +34,7 @@ enum class MediaExecutionStage(val label: String) {
 enum class MediaExecutionFailureKind(val label: String) {
     None("No failure"),
     Protected("Protected media"),
-    LiveRequiresExternalJob("Live recording requires external job"),
+    EmbeddedFfmpegFailed("Embedded FFmpeg recording failed"),
     MetadataRefreshRequired("Metadata refresh required"),
     AppDownloadFailed("App download failed"),
     Aria2DownloadFailed("aria2 download failed"),
@@ -53,7 +53,7 @@ enum class MediaExecutionLane(val label: String) {
     Aria2Segmented("aria2 segmented"),
     NativeHlsSegmented("Native HLS segmented"),
     YtDlpAdaptive("yt-dlp adaptive"),
-    LiveRecording("yt-dlp/FFmpeg live recording"),
+    EmbeddedFfmpegLive("Embedded FFmpeg live recording"),
     ProtectedBlocked("Protected diagnostic only"),
 }
 
@@ -61,6 +61,7 @@ enum class AndroidMediaWorkKind(val label: String) {
     UserInitiatedDataTransfer("User-initiated data transfer"),
     WorkManagerForeground("WorkManager foreground fallback"),
     ForegroundServiceFallback("Foreground service fallback"),
+    EmbeddedFfmpeg("Embedded FFmpeg runtime"),
     TermuxExternalJob("Termux external job"),
     BlockedDiagnostic("Blocked diagnostic"),
 }
@@ -282,7 +283,7 @@ class MediaExecutionLibraryPlanner(
         val selectedTrackIds = plan.trackSelection.selectedIds()
         val sidecar = sidecar(capture, null, selectedTrackIds, null)
         val blocked = plan.strategy == MediaDownloadStrategy.UnsupportedProtected
-        val needsTermux = plan.strategy == MediaDownloadStrategy.YtDlp || plan.strategy == MediaDownloadStrategy.FfmpegLive
+        val needsTermux = plan.strategy == MediaDownloadStrategy.YtDlp
         return MediaQueuedDownloadSpec(
             captureId = capture.id,
             sourceUrl = plan.primaryUrl,
@@ -336,7 +337,8 @@ class MediaExecutionLibraryPlanner(
                 MediaExecutionLane.DirectNative -> "native-request"
                 MediaExecutionLane.NativeHlsSegmented -> "native-hls"
                 MediaExecutionLane.Aria2Segmented -> "aria2c"
-                MediaExecutionLane.YtDlpAdaptive, MediaExecutionLane.LiveRecording -> "yt-dlp"
+                MediaExecutionLane.YtDlpAdaptive -> "yt-dlp"
+                MediaExecutionLane.EmbeddedFfmpegLive -> "embedded-ffmpeg"
                 MediaExecutionLane.ProtectedBlocked -> "diagnostics-only"
             },
             typedArguments = typedArgs,
@@ -383,6 +385,21 @@ class MediaExecutionLibraryPlanner(
                             historicalAppExecutionJob(capture, output)
                         }
                     }
+                    MediaOutputOwnerKind.EmbeddedFfmpeg -> MediaExecutionJob(
+                        captureId = capture.id,
+                        title = capture.title.ifBlank { output.fileName },
+                        stage = when (output.state) {
+                            MediaOutputState.Completed -> MediaExecutionStage.Completed
+                            MediaOutputState.Failed, MediaOutputState.Cancelled, MediaOutputState.RecoveryRequired -> MediaExecutionStage.Failed
+                            MediaOutputState.Active -> MediaExecutionStage.Downloading
+                            MediaOutputState.Queued -> MediaExecutionStage.Queued
+                            MediaOutputState.Hidden -> return@mapNotNull null
+                        },
+                        engine = "Embedded FFmpeg",
+                        detail = "App-owned FFmpeg output generation ${output.attemptGeneration} • ${output.state.name}",
+                        downloadId = output.ownerId,
+                        canRetry = output.state in setOf(MediaOutputState.Failed, MediaOutputState.Cancelled, MediaOutputState.RecoveryRequired),
+                    )
                     MediaOutputOwnerKind.TermuxJob -> externalJobs.firstOrNull { it.id == output.ownerId }
                         ?.let { executionJobForExternal(capture, it) }
                         ?: MediaExecutionJob(
@@ -435,6 +452,11 @@ class MediaExecutionLibraryPlanner(
                                 historicalAppOutputLibraryItem(capture, output)
                             }
                         }
+                        MediaOutputOwnerKind.EmbeddedFfmpeg -> externalOutputLibraryItem(
+                            capture = capture,
+                            output = output,
+                            external = null,
+                        )
                         MediaOutputOwnerKind.TermuxJob -> externalOutputLibraryItem(
                             capture = capture,
                             output = output,
@@ -596,7 +618,7 @@ class MediaExecutionLibraryPlanner(
         return OfflineMediaLibraryItem(
             outputId = output.id,
             captureId = capture.id,
-            ownerKind = MediaOutputOwnerKind.TermuxJob,
+            ownerKind = output.ownerKind,
             ownerId = output.ownerId,
             attemptGeneration = output.attemptGeneration,
             downloadId = null,
@@ -608,7 +630,7 @@ class MediaExecutionLibraryPlanner(
             thumbnailUrl = capture.thumbnailUrl,
             state = null,
             detail = external?.message?.ifBlank { null }
-                ?: "External generation ${output.attemptGeneration} • ${output.state.name}",
+                ?: "${if (output.ownerKind == MediaOutputOwnerKind.EmbeddedFfmpeg) "Embedded FFmpeg" else "External"} generation ${output.attemptGeneration} • ${output.state.name}",
             playbackUrl = playback,
             isCompleted = completed,
             canPlayDirect = completed && playback != null,
@@ -621,7 +643,7 @@ class MediaExecutionLibraryPlanner(
     private fun laneFor(spec: MediaQueuedDownloadSpec): MediaExecutionLane = when {
         spec.strategy == MediaDownloadStrategy.UnsupportedProtected || !spec.canUseAppQueue && !spec.requiresTermuxYtDlp && spec.strategy != MediaDownloadStrategy.NativeHls -> MediaExecutionLane.ProtectedBlocked
         spec.strategy == MediaDownloadStrategy.NativeHls -> MediaExecutionLane.NativeHlsSegmented
-        spec.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionLane.LiveRecording
+        spec.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionLane.EmbeddedFfmpegLive
         spec.requiresTermuxYtDlp -> MediaExecutionLane.YtDlpAdaptive
         spec.requestedBackend == BackendType.Aria2 -> MediaExecutionLane.Aria2Segmented
         else -> MediaExecutionLane.DirectNative
@@ -629,8 +651,8 @@ class MediaExecutionLibraryPlanner(
 
     private fun backgroundPolicyFor(lane: MediaExecutionLane, sdkInt: Int, userInitiated: Boolean): MediaBackgroundExecutionPolicy = when (lane) {
         MediaExecutionLane.ProtectedBlocked -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.BlockedDiagnostic, null, "Protected or unsupported media never enters background execution.")
-        MediaExecutionLane.YtDlpAdaptive,
-        MediaExecutionLane.LiveRecording -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.TermuxExternalJob, null, "yt-dlp/FFmpeg execution stays in the typed Termux media pipeline.")
+        MediaExecutionLane.YtDlpAdaptive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.TermuxExternalJob, null, "yt-dlp execution stays in the typed Termux media pipeline.")
+        MediaExecutionLane.EmbeddedFfmpegLive -> MediaBackgroundExecutionPolicy(sdkInt, AndroidMediaWorkKind.EmbeddedFfmpeg, "dataSync", "Live media is recorded by XDM-owned embedded FFmpeg without requiring Termux.")
         MediaExecutionLane.DirectNative,
         MediaExecutionLane.NativeHlsSegmented,
         MediaExecutionLane.Aria2Segmented -> when {
@@ -702,13 +724,15 @@ class MediaExecutionLibraryPlanner(
                 args += listOf("--input-file", aria2?.inputFileName ?: "<transient-aria2-input>")
                 args += listOf("--save-session", aria2?.sessionFileName ?: "<transient-aria2-session>")
             }
-            MediaExecutionLane.YtDlpAdaptive,
-            MediaExecutionLane.LiveRecording -> {
+            MediaExecutionLane.YtDlpAdaptive -> {
                 args += listOf("--no-progress", "--newline")
                 tempCookie?.let { args += listOf("--cookies", it.fileName) }
                 spec.ytDlpFormatSelector?.takeIf(String::isNotBlank)?.let { selector -> args += listOf("--format", selector) }
-                if (lane == MediaExecutionLane.LiveRecording) args += "--live-from-start"
                 args += listOf("--output", spec.fileName, spec.sidecar.redactedSourceUrl)
+            }
+            MediaExecutionLane.EmbeddedFfmpegLive -> {
+                args += listOf("--input", spec.sidecar.redactedSourceUrl, "--output", spec.fileName, "--stream-copy", "true")
+                spec.requestHeaders.keys.sorted().forEach { header -> args += listOf("--header", "$header=<redacted>") }
             }
             MediaExecutionLane.ProtectedBlocked -> {
                 args += listOf("--diagnostics-only", spec.captureId)
@@ -748,10 +772,10 @@ class MediaExecutionLibraryPlanner(
             download.errorMessage?.take(180).orEmpty().ifBlank { "Native HLS failed; retry keeps verified parts and rechecks manifest/session state." },
             retryable = true,
         )
-        plan.strategy == MediaDownloadStrategy.FfmpegLive -> MediaExecutionFailure(
-            MediaExecutionFailureKind.LiveRequiresExternalJob,
-            "Live stream requires an explicit yt-dlp/FFmpeg recording job instead of a normal finite download.",
-            retryable = false,
+        plan.strategy == MediaDownloadStrategy.FfmpegLive && download?.state == DownloadState.Failed -> MediaExecutionFailure(
+            MediaExecutionFailureKind.EmbeddedFfmpegFailed,
+            download.errorMessage?.take(180).orEmpty().ifBlank { "Embedded FFmpeg live recording failed." },
+            retryable = true,
         )
         capture.needsManifestRefresh(System.currentTimeMillis()) -> MediaExecutionFailure(
             MediaExecutionFailureKind.MetadataRefreshRequired,
@@ -841,14 +865,21 @@ class MediaExecutionLibraryPlanner(
 
     private fun safeMediaFileName(capture: MediaCaptureRecord, plan: MediaDownloadPlan): String {
         val raw = capture.fileName.ifBlank { capture.title.ifBlank { "xdm-media" } }
-        val hasExtension = raw.substringAfterLast('/', raw).substringAfterLast('.', "").length in 2..5
+        val leaf = raw.substringAfterLast('/', raw)
+        val existingExtension = leaf.substringAfterLast('.', "").lowercase()
+        val hasExtension = existingExtension.length in 2..5
+        val liveNeedsContainer = plan.strategy == MediaDownloadStrategy.FfmpegLive &&
+            existingExtension in setOf("m3u8", "m3u", "mpd", "media", "")
+        val normalizedRaw = if (liveNeedsContainer && hasExtension) raw.substringBeforeLast('.') else raw
         val extension = when {
+            liveNeedsContainer -> ".mkv"
             hasExtension -> ""
             capture.mimeType?.contains("audio", ignoreCase = true) == true -> ".m4a"
             plan.strategy == MediaDownloadStrategy.Native || plan.strategy == MediaDownloadStrategy.Aria2 -> ".mp4"
+            plan.strategy == MediaDownloadStrategy.FfmpegLive -> ".mkv"
             else -> ".media"
         }
-        return (raw + extension).replace(Regex("[\\r\\n\\t]"), " ").take(120)
+        return (normalizedRaw + extension).replace(Regex("[\\r\\n\\t]"), " ").take(120)
     }
 
     private fun libraryDetail(capture: MediaCaptureRecord, download: Download?): String = when {

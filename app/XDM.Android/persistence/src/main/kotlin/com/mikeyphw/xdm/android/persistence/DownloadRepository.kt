@@ -267,6 +267,8 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteMediaOutput(id: String): Boolean = database.mediaCaptureDao().deleteOutput(id) > 0
     suspend fun hideAppMediaOutput(id: String, updatedAtEpochMs: Long = System.currentTimeMillis()): Boolean =
         database.mediaCaptureDao().hideAppOutput(id, updatedAtEpochMs) > 0
+    suspend fun hideMediaOutput(id: String, updatedAtEpochMs: Long = System.currentTimeMillis()): Boolean =
+        database.mediaCaptureDao().hideOutput(id, updatedAtEpochMs) > 0
 
     suspend fun recordExternalMediaOutput(
         captureId: String,

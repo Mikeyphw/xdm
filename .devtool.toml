@@ -56,6 +56,7 @@ restore = ["help"]
 
 build = [
   ":transfer-aria2:installOfficialAria2Runtime",
+  ":media-ffmpeg:installPinnedFfmpegRuntime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
 ]
@@ -67,6 +68,7 @@ test = [
     ":browser-extension:test",
     ":browser-integration:testDebugUnitTest",
     ":media:test",
+    ":media-ffmpeg:testDebugUnitTest",
     ":persistence:testDebugUnitTest",
     ":scheduler:testDebugUnitTest",
     ":storage:testDebugUnitTest",
@@ -88,6 +90,8 @@ preflight = [
   ":app:finalRemediationStaticGate",
   ":browser-extension:validateFirefoxExtension",
   ":app:checkBrowserIntegration",
+  ":media-ffmpeg:verifyFfmpegRuntime",
+  ":app:verifyFfmpeg01EmbeddedRuntimeContract",
 ]
 
 dependencies = [
@@ -109,6 +113,7 @@ unit-test = [
     ":browser-extension:test",
     ":browser-integration:testDebugUnitTest",
     ":media:test",
+    ":media-ffmpeg:testDebugUnitTest",
     ":persistence:testDebugUnitTest",
     ":scheduler:testDebugUnitTest",
     ":storage:testDebugUnitTest",
@@ -120,6 +125,7 @@ unit-test = [
 
 package = [
   ":transfer-aria2:installOfficialAria2Runtime",
+  ":media-ffmpeg:installPinnedFfmpegRuntime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
 ]

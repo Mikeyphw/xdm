@@ -36,6 +36,8 @@ import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
 import java.io.File
 import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
 import com.mikeyphw.xdm.android.media.BrowserCaptureSessionRegistry
+import com.mikeyphw.xdm.android.media.ffmpeg.EmbeddedFfmpegRuntime
+import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegMediaManager
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.transfer.aria2.AndroidAria2CapabilityProbe
 import com.mikeyphw.xdm.android.transfer.aria2.AppPrivateAria2SecretProvider
@@ -122,6 +124,8 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val finalizationStore = RoomFinalizationJournalStore(database)
         val recoveryStore = RoomRecoveryWorkflowStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
+        val embeddedFfmpegRuntime = EmbeddedFfmpegRuntime(this)
+        val embeddedFfmpegMediaManager = EmbeddedFfmpegMediaManager(repository, destinationWriter, embeddedFfmpegRuntime)
         MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))
         val sensitivePersistenceMigrator = SensitivePersistenceMigrator(this, repository)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
@@ -207,6 +211,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             queueSchedulingRecoveryCoordinator = queueSchedulingRecoveryCoordinator,
             destinationWriter = destinationWriter,
             aria2ProcessManager = aria2ProcessManager,
+            embeddedFfmpegMediaManager = embeddedFfmpegMediaManager,
             termuxBridgeManager = termuxBridgeManager,
             termuxAria2CockpitManager = termuxAria2CockpitManager,
             termuxMediaPipelineManager = termuxMediaPipelineManager,
@@ -223,6 +228,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             problemReporter = problemReporter,
         )
         termuxMediaPipelineManager.recoverInterruptedJobs()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { embeddedFfmpegMediaManager.recoverInterruptedJobs() }
         postProcessingAutomationManager.startAutomaticProcessing()
         queueConditionMonitor = QueueConditionMonitor(this) {
             QueueIntelligenceWorker.enqueueImmediate(this)
@@ -302,6 +308,7 @@ data class AppContainer(
     val queueSchedulingRecoveryCoordinator: QueueSchedulingRecoveryCoordinator,
     val destinationWriter: AndroidDestinationWriter,
     val aria2ProcessManager: Aria2ProcessManager,
+    val embeddedFfmpegMediaManager: EmbeddedFfmpegMediaManager,
     val termuxBridgeManager: TermuxBridgeManager,
     val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     val termuxMediaPipelineManager: TermuxMediaPipelineManager,

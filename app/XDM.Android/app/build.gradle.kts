@@ -33,6 +33,9 @@ val hasReleaseSigning = listOf(
 val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runtime")
     .map(String::toBoolean)
     .orElse(false)
+val requireAlignedFfmpegRuntime = providers.gradleProperty("xdm.requireFfmpegRuntime")
+    .map(String::toBoolean)
+    .orElse(false)
 
 fun validationEvidence(propertyName: String): Boolean = providers.gradleProperty(propertyName)
     .map(String::toBoolean)
@@ -78,6 +81,7 @@ android {
         buildConfigField("Boolean", "XDM_LINT_VALIDATION_PASSED", lintValidationPassed.toString())
         buildConfigField("Boolean", "XDM_NATIVE_SYMBOLS_VALIDATED", nativeSymbolsValidated.toString())
         buildConfigField("Boolean", "XDM_ARIA2_PAYLOAD_GATE_CONFIGURED", "true")
+        buildConfigField("Boolean", "XDM_FFMPEG_PAYLOAD_GATE_CONFIGURED", "true")
         ndk {
             abiFilters += setOf("arm64-v8a")
         }
@@ -125,8 +129,8 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
     packaging {
         jniLibs.useLegacyPackaging = true
-        // Keep only the attested aria2 runtime symbols; release inventory rejects broad debug-symbol retention.
-        jniLibs.keepDebugSymbols += "**/libaria2c.so"
+        // Keep only attested app-owned runtime symbols; release inventory rejects broad debug-symbol retention.
+        jniLibs.keepDebugSymbols += setOf("**/libaria2c.so", "**/libxdm_ffmpeg.so", "**/libxdm_ffprobe.so")
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
     lint {
@@ -145,10 +149,9 @@ android {
             "ObsoleteSdkInt",
             "UseKtx",
         )
-        if (!requireAlignedAria2Runtime.get()) {
-            // The currently pinned upstream aria2 payload is optional for developer builds
-            // and is not guaranteed to be 16 KB ELF-page aligned. Strict aria2 builds
-            // keep the check enabled via -Pxdm.requireAria2Runtime=true.
+        if (!requireAlignedAria2Runtime.get() && !requireAlignedFfmpegRuntime.get()) {
+            // Native payloads are optional for source-only developer compilation. Strict artifact
+            // builds keep 16 KB validation enabled with either runtime requirement property.
             disable += "Aligned16KB"
         }
     }
@@ -180,6 +183,7 @@ dependencies {
     implementation(project(":transfer-aria2"))
     implementation(project(":scheduler"))
     implementation(project(":media"))
+    implementation(project(":media-ffmpeg"))
     implementation(project(":diagnostics"))
     implementation(project(":browser-integration"))
     implementation(project(":browser-extension"))
@@ -212,6 +216,14 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+}
+
+
+tasks.register<Exec>("verifyFfmpeg01EmbeddedRuntimeContract") {
+    group = "verification"
+    description = "Verify the FF01 embedded FFmpeg/FFprobe runtime and app-owned media execution contract."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-ffmpeg01-embedded-runtime-media-execution.py")
 }
 
 

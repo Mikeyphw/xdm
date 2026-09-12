@@ -443,3 +443,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 # END repo-cleanup managed ignores
+
+# Generated XDM Android embedded FFmpeg/FFprobe runtime payload and attestation.
+app/XDM.Android/media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so
+app/XDM.Android/media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffprobe.so
+app/XDM.Android/media-ffmpeg/runtime/ffmpeg-runtime.lock.json
+app/XDM.Android/media-ffmpeg/runtime/licenses/

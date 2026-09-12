@@ -434,6 +434,82 @@ class MediaCaptureServiceTest {
     }
 
     @Test
+    fun liveMediaUsesEmbeddedFfmpegWithoutTermuxAndKeepsSecretsOutOfPlanningSurfaces() {
+        val service = MediaCaptureService(clock = { 3_500L })
+        val record = service.recordFor(requireNotNull(service.candidateFor(
+            url = "https://cdn.example.test/live/master.m3u8?token=secret-token",
+            pageTitle = "Live show",
+            pageUrl = "https://watch.example.test/live?session=secret-session",
+            mimeTypeHint = "application/vnd.apple.mpegurl",
+        ))).copy(
+            manifestIsLive = true,
+            nativeCapability = MediaNativeCapability.FallbackRequired,
+        )
+        val planner = MediaExecutionLibraryPlanner()
+        val spec = planner.queueSpec(
+            capture = record,
+            variants = emptyList(),
+            selection = MediaTrackSelection(),
+            destinationUri = "content://downloads",
+            sessionHeaders = listOf(
+                MediaSessionHeader("Cookie", "SID=secret-cookie"),
+                MediaSessionHeader("Authorization", "Bearer secret-auth"),
+            ),
+        )
+        val engine = planner.enginePlan(spec, androidSdkInt = 35)
+        val dispatcher = MediaExecutionDispatcher()
+        val ready = dispatcher.dispatchPlan(
+            spec = spec,
+            enginePlan = engine,
+            capture = record,
+            termuxReady = false,
+            embeddedFfmpegReady = true,
+            nowEpochMs = 3_600L,
+        )
+        val missingRuntime = dispatcher.dispatchPlan(
+            spec = spec,
+            enginePlan = engine,
+            capture = record,
+            termuxReady = true,
+            embeddedFfmpegReady = false,
+            nowEpochMs = 3_600L,
+        )
+        val actions = MediaQueueActionPlanner().actionPlan(ready, null)
+        val worker = MediaWorkerBridgePlanner().request(spec, engine, ready, actions, nowEpochMs = 3_700L)
+        val dashboard = MediaWorkerBridgePlanner().dashboard(listOf(worker))
+        val termuxPlan = MediaTermuxRuntimeAdapter().launchPlan(
+            worker,
+            availableTools = setOf("yt-dlp", "ffmpeg", "ffprobe", "aria2c"),
+        )
+        val safeText = listOf(
+            spec.safeQueuedJobSummary,
+            engine.safeSummary,
+            engine.typedArguments.joinToString(" "),
+            ready.safeDiagnostics,
+            worker.adapter.redactedPreview,
+        ).joinToString("\n")
+
+        assertEquals(MediaDownloadStrategy.FfmpegLive, spec.strategy)
+        assertFalse(spec.requiresTermuxYtDlp)
+        assertTrue(spec.canUseAppQueue)
+        assertEquals(MediaExecutionLane.EmbeddedFfmpegLive, engine.lane)
+        assertEquals(AndroidMediaWorkKind.EmbeddedFfmpeg, engine.backgroundPolicy.workKind)
+        assertEquals("embedded-ffmpeg", engine.typedExecutor)
+        assertEquals(MediaDispatchReadiness.Ready, ready.readiness)
+        assertTrue(ready.steps.any { it.kind == MediaDispatchStepKind.LaunchEmbeddedFfmpeg })
+        assertEquals(MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime, missingRuntime.readiness)
+        assertEquals(MediaWorkerBridgeKind.EmbeddedFfmpeg, worker.kind)
+        assertEquals(1, dashboard.androidWorkerCount)
+        assertEquals(0, dashboard.termuxWorkerCount)
+        assertEquals(TermuxRuntimeLaunchKind.BlockedDiagnostic, termuxPlan.kind)
+        assertFalse(termuxPlan.launchable)
+        assertFalse(safeText.contains("secret-cookie"))
+        assertFalse(safeText.contains("secret-auth"))
+        assertFalse(safeText.contains("secret-token"))
+        assertFalse(safeText.contains("secret-session"))
+    }
+
+    @Test
     fun mediaEngineHardeningKeepsProgressiveReplayContextOnNativeLane() {
         val service = MediaCaptureService(clock = { 4_000L })
         val record = service.detect("https://cdn.example.test/movie.mp4?token=secret-token", pageTitle = "Movie").single()

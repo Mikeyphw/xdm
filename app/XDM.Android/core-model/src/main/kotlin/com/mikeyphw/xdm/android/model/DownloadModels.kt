@@ -80,7 +80,7 @@ data class MediaObservationRecord(
     val lastObservedAtEpochMs: Long,
 )
 
-enum class MediaOutputOwnerKind { AppDownload, TermuxJob }
+enum class MediaOutputOwnerKind { AppDownload, EmbeddedFfmpeg, TermuxJob }
 
 /** Admission intent for one capture -> output generation. Primary is idempotent across app/Termux;
  * AdditionalGeneration is an explicit user request for another output. */
