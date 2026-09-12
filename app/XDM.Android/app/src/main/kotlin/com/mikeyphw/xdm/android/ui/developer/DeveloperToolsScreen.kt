@@ -663,7 +663,8 @@ internal fun toneForQueueTelemetry(tone: MediaQueueTelemetryTone): XdmStatusTone
 internal fun toneForDispatchReadiness(readiness: MediaDispatchReadiness): XdmStatusTone = when (readiness) {
     MediaDispatchReadiness.Ready -> XdmStatusTone.Success
     MediaDispatchReadiness.AwaitingUserChoice,
-    MediaDispatchReadiness.NeedsTermuxSetup -> XdmStatusTone.Info
+    MediaDispatchReadiness.NeedsTermuxSetup,
+    MediaDispatchReadiness.NeedsEmbeddedFfmpegRuntime -> XdmStatusTone.Info
     MediaDispatchReadiness.NeedsMetadataRefresh,
     MediaDispatchReadiness.BlockedProtected,
     MediaDispatchReadiness.BlockedSecretLeak -> XdmStatusTone.Warning

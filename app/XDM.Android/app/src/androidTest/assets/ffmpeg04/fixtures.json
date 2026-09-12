@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "purpose": "FF04 embedded runtime no-Termux mux acceptance",
+  "files": [
+    {
+      "name": "audio-only.m4a",
+      "sha256": "b181621fcfc904ee3364db9ceb2b850af2be30b96f45e387efb0e1f37d174b95",
+      "bytes": 4406
+    },
+    {
+      "name": "video-only.mp4",
+      "sha256": "806061e0bb10ece230282049bb95d796e40386b7189c07bba88371776e20c50f",
+      "bytes": 884
+    }
+  ]
+}

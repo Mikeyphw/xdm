@@ -46,6 +46,7 @@ val staticValidationPassed = validationEvidence("xdm.validation.staticPassed")
 val fullValidationPassed = validationEvidence("xdm.validation.fullPassed")
 val realDeviceSmokePassed = validationEvidence("xdm.validation.realDeviceSmokePassed")
 val aria2PayloadVerified = validationEvidence("xdm.validation.aria2PayloadVerified")
+val ffmpegPayloadVerified = validationEvidence("xdm.validation.ffmpegPayloadVerified")
 val diagnosticExportValidated = validationEvidence("xdm.validation.diagnosticExportPassed")
 val releaseDocsValidated = validationEvidence("xdm.validation.releaseDocsPassed")
 val routeTopologyValidated = validationEvidence("xdm.validation.routeTopologyPassed")
@@ -75,6 +76,7 @@ android {
         buildConfigField("Boolean", "XDM_FULL_VALIDATION_PASSED", fullValidationPassed.toString())
         buildConfigField("Boolean", "XDM_REAL_DEVICE_SMOKE_PASSED", realDeviceSmokePassed.toString())
         buildConfigField("Boolean", "XDM_ARIA2_PAYLOAD_VERIFIED", aria2PayloadVerified.toString())
+        buildConfigField("Boolean", "XDM_FFMPEG_PAYLOAD_VERIFIED", ffmpegPayloadVerified.toString())
         buildConfigField("Boolean", "XDM_DIAGNOSTIC_EXPORT_VALIDATED", diagnosticExportValidated.toString())
         buildConfigField("Boolean", "XDM_RELEASE_DOCS_VALIDATED", releaseDocsValidated.toString())
         buildConfigField("Boolean", "XDM_ROUTE_TOPOLOGY_VALIDATED", routeTopologyValidated.toString())
@@ -129,8 +131,17 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
     packaging {
         jniLibs.useLegacyPackaging = true
-        // Keep only attested app-owned runtime symbols; release inventory rejects broad debug-symbol retention.
-        jniLibs.keepDebugSymbols += setOf("**/libaria2c.so", "**/libxdm_ffmpeg.so", "**/libxdm_ffprobe.so")
+        // Keep app-owned attested runtimes plus the two AndroidX dependency payloads that AGP's
+        // x86_64 strip helper cannot execute on native ARM64 Termux. This is an exact allowlist,
+        // not broad symbol retention; AGP packages these dependency libraries unchanged instead of
+        // repeatedly invoking the unavailable glibc/qemu strip path.
+        jniLibs.keepDebugSymbols += setOf(
+            "**/libaria2c.so",
+            "**/libxdm_ffmpeg.so",
+            "**/libxdm_ffprobe.so",
+            "**/libandroidx.graphics.path.so",
+            "**/libdatastore_shared_counter.so",
+        )
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
     lint {
@@ -243,11 +254,86 @@ tasks.register<Exec>("verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract") 
 }
 
 
-tasks.register<Exec>("finalRemediationStaticGate") {
+tasks.register<Exec>("verifyFfmpeg04FullReleaseSeal") {
+    group = "verification"
+    description = "Verify the complete FF01-FF04 embedded media runtime release seal and no-Termux acceptance contract."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-ffmpeg04-full-release-seal.py")
+}
+
+tasks.register<Exec>("verifyFfmpegDebugApkRuntime") {
+    group = "verification"
+    description = "Build and verify the debug APK contains the exact attested 16 KB FFmpeg/FFprobe payload and licenses."
+    dependsOn("assembleDebug")
+    workingDir(rootProject.projectDir)
+    commandLine(
+        "python3", "tools/verify-ffmpeg-runtime.py",
+        "--require-payload", "--require-16kb-alignment",
+        "--apk", "app/build/outputs/apk/debug/app-debug.apk",
+    )
+}
+
+// AGP registers assembleDebug after this build script body is evaluated. Configure the
+// variant task lazily so project configuration never assumes it already exists, and make
+// packaging depend on the freshly installed attested runtime rather than merely ordering it.
+tasks.matching { it.name == "assembleDebug" }.configureEach {
+    dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")
+}
+
+
+val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."
     workingDir(rootProject.projectDir)
     commandLine("bash", "tools/run-final-release-gate.sh", "--ci")
+}
+
+// FF04 final validation is deliberately represented as one lifecycle task. The dependency
+// graph still uses Gradle-native tasks, but the major roots are ordered so expensive lint model
+// generation cannot overlap the native-runtime mutation/package stages on ARM64 Termux.
+val verifyFfmpeg04FinalReleaseValidation = tasks.register("verifyFfmpeg04FinalReleaseValidation") {
+    group = "verification"
+    description = "Run the complete staged FF04 release validation: seal, unit tests, Android-test APK, runtime APK attestation, static gate, then lint."
+    dependsOn(
+        "verifyFfmpeg04FullReleaseSeal",
+        ":media-ffmpeg:testDebugUnitTest",
+        ":media:test",
+        "testDebugUnitTest",
+        "assembleDebugAndroidTest",
+        "verifyFfmpegDebugApkRuntime",
+        finalRemediationStaticGate,
+        "lintDebug",
+    )
+}
+
+// Order the heavyweight roots. `mustRunAfter` is used in addition to dependencies because the
+// lifecycle task intentionally keeps each existing validator/test task authoritative.
+tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
+    mustRunAfter(":media-ffmpeg:testDebugUnitTest", ":media:test", "verifyFfmpeg04FullReleaseSeal")
+}
+tasks.matching { it.name == "assembleDebugAndroidTest" }.configureEach {
+    mustRunAfter("testDebugUnitTest")
+}
+tasks.matching { it.name == "verifyFfmpegDebugApkRuntime" }.configureEach {
+    mustRunAfter("assembleDebugAndroidTest")
+}
+finalRemediationStaticGate.configure {
+    mustRunAfter("verifyFfmpegDebugApkRuntime")
+}
+
+// Keep every lint task in every Android subproject behind the static/runtime stages. This closes
+// the v7r1 parallel-build race where media-ffmpeg lint-model work could inspect generated JNI
+// inputs while installPinnedFfmpegRuntime/package tasks were mutating the same module.
+rootProject.subprojects.forEach { subproject ->
+    subproject.tasks.matching { it.name.contains("lint", ignoreCase = true) }.configureEach {
+        mustRunAfter(finalRemediationStaticGate)
+    }
+}
+
+verifyFfmpeg04FinalReleaseValidation.configure {
+    doLast {
+        println("FF04 staged final release validation completed")
+    }
 }
 
 

@@ -5,9 +5,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Ffmpeg03RuntimeRoutingUiContractTest {
-    private val root = File(System.getProperty("user.dir")).let { cwd ->
-        if (File(cwd, "app/src/main").isDirectory) cwd else File(cwd, "app/XDM.Android")
+    private val root: File = run {
+        val userDir = requireNotNull(System.getProperty("user.dir")) {
+            "user.dir is required to resolve the Android project root"
+        }
+        generateSequence(File(userDir).canonicalFile) { it.parentFile }
+            .mapNotNull { candidate ->
+                when {
+                    File(candidate, "app/src/main").isDirectory -> candidate
+                    File(candidate, "app/XDM.Android/app/src/main").isDirectory -> File(candidate, "app/XDM.Android")
+                    else -> null
+                }
+            }
+            .firstOrNull()
+            ?: error("Unable to locate app/XDM.Android from user.dir=$userDir")
     }
+
     private fun text(path: String) = File(root, path).readText()
 
     @Test fun settingsExposeAutomaticEmbeddedAndTermuxPolicy() {

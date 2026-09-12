@@ -40,7 +40,16 @@ phase=project.get('bug_hunt_phase_10_release_upgrade_packaging', {})
 for needle in ['versionCode = 22','versionName = "0.21.0"','XDM_RELEASE_BUILD_ID','XDM_RELEASE_SIGNER_SHA256','XDM_RELEASE_CERTIFICATE_NOT_AFTER','XDM_RELEASE_SIGNING_CONFIGURED','xdmAssertReleaseSigningInputs','create("developmentUnsigned")','abiFilters += setOf("arm64-v8a")']:
     require(needle in build, f'app build missing {needle}')
 require('jniLibs.useLegacyPackaging = true' in build, 'app release packaging must extract JNI libraries')
-require('jniLibs.keepDebugSymbols += "**/libaria2c.so"' in build, 'debug symbols must be scoped to aria2 runtime only')
+for native_symbol_exception in [
+    '"**/libaria2c.so"',
+    '"**/libxdm_ffmpeg.so"',
+    '"**/libxdm_ffprobe.so"',
+    '"**/libandroidx.graphics.path.so"',
+    '"**/libdatastore_shared_counter.so"',
+]:
+    require(native_symbol_exception in build, f'missing exact native debug-symbol allowlist entry {native_symbol_exception}')
+require('**/*.so' not in build and '**/*' not in build,
+        'native debug-symbol retention must remain an exact allowlist, never a broad wildcard')
 require('android:extractNativeLibs' not in manifest, 'manifest must delegate native extraction policy to AGP jniLibs.useLegacyPackaging')
 require('android:allowBackup="false"' in manifest, 'allowBackup must remain false')
 require('android:dataExtractionRules="@xml/data_extraction_rules"' in manifest, 'manifest must reference data extraction rules')

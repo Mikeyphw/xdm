@@ -19,11 +19,16 @@ data class FfmpegRuntimeManifest(
     val abi: String,
     val androidApi: Int,
     val ndkVersion: String,
+    val buildProfile: String,
     val ffmpegLicense: String,
     val opensslLicense: String,
     val gplEnabled: Boolean,
     val nonfreeEnabled: Boolean,
     val httpsRequired: Boolean,
+    val requiredProtocols: Set<String> = emptySet(),
+    val requiredConfigureFlags: Set<String> = emptySet(),
+    val forbiddenConfigureFlags: Set<String> = emptySet(),
+    val maxCombinedBinaryBytes: Long = Long.MAX_VALUE,
 )
 
 data class FfmpegRuntimeCapabilityReport(
@@ -33,14 +38,16 @@ data class FfmpegRuntimeCapabilityReport(
     val ffprobeVersion: String? = null,
     val httpsSupported: Boolean = false,
     val tlsTrustReady: Boolean = false,
+    val attestationVerified: Boolean = false,
+    val buildConfigurationVerified: Boolean = false,
     val ffmpegPath: String? = null,
     val ffprobePath: String? = null,
     val detail: String = "Runtime has not been probed.",
 ) {
-    val ready: Boolean get() = health == FfmpegRuntimeHealth.Ready && httpsSupported && tlsTrustReady
+    val ready: Boolean get() = health == FfmpegRuntimeHealth.Ready && httpsSupported && tlsTrustReady && attestationVerified && buildConfigurationVerified
     val summary: String
         get() = if (ready) {
-            "FFmpeg ${ffmpegVersion ?: expectedVersion} + FFprobe ready • verified HTTPS • app-owned"
+            "FFmpeg ${ffmpegVersion ?: expectedVersion} + FFprobe ready • attested • verified HTTPS • app-owned"
         } else {
             "${health.name}: $detail"
         }

@@ -107,9 +107,10 @@ need("mediaEngineHardeningKeepsProgressiveReplayContextOnNativeLane" in legacy_m
      "legacy media suite must carry progressive replay context forward on the Native lane")
 need("directProgressiveMediaNeverSynthesizesAria2TransientFiles" in legacy_media_test,
      "legacy media suite must reject synthetic aria2 transient files for direct progressive media")
-need("mediaEngineHardeningPlansAria2TransientInputAndUidtPolicy" not in legacy_media_test and
-     "termuxRuntimeAdapterBuildsAria2TransientInputAndSessionCleanup" not in legacy_media_test,
+need("mediaEngineHardeningPlansAria2TransientInputAndUidtPolicy" not in legacy_media_test,
      "pre-repair progressive-media aria2 expectations must not return")
+need("termuxRuntimeAdapterBuildsAria2TransientInputAndSessionCleanup" in legacy_media_test,
+     "generic typed aria2 adapter cleanup coverage must remain after progressive-media semantics repair")
 need("directBrowserFileAndProgressiveMediaStayDirectAcrossLayers" in app_test, "app source contract missing cross-layer direct semantics")
 need("liveLocatorRecreationKeepsSecretsOutOfBundleAndContextInProcess" in app_test, "app source contract missing locator lifecycle semantics")
 need('requireNotNull(System.getProperty("user.dir"))' in app_test,

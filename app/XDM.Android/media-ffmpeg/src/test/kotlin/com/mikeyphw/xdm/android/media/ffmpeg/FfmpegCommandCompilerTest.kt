@@ -74,7 +74,7 @@ class FfmpegCommandCompilerTest {
                 ),
             )
             assertTrue(command.progressEnabled)
-            assertEquals(10_000, command.expectedDurationMs)
+            assertEquals(10_000L, command.expectedDurationMs)
             assertTrue(command.arguments.windowed(2).contains(listOf("-progress", "pipe:1")))
             assertTrue(command.arguments.windowed(2).contains(listOf("-c", "copy")))
             assertTrue(command.arguments.windowed(2).contains(listOf("-map", "0:v:0?")))

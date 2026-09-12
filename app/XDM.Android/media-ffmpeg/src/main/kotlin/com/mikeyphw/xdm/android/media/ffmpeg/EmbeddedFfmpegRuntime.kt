@@ -2,10 +2,12 @@ package com.mikeyphw.xdm.android.media.ffmpeg
 
 import android.content.Context
 import java.io.File
+import java.security.MessageDigest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -30,11 +32,16 @@ class EmbeddedFfmpegRuntime(
             abi = root.getValue("abi").jsonPrimitive.content,
             androidApi = root.getValue("androidApi").jsonPrimitive.intOrNull ?: 26,
             ndkVersion = root.getValue("ndkVersion").jsonPrimitive.content,
+            buildProfile = root.getValue("buildProfile").jsonPrimitive.content,
             ffmpegLicense = root.getValue("ffmpegLicense").jsonPrimitive.content,
             opensslLicense = root.getValue("opensslLicense").jsonPrimitive.content,
             gplEnabled = root.getValue("gplEnabled").jsonPrimitive.booleanOrNull == true,
             nonfreeEnabled = root.getValue("nonfreeEnabled").jsonPrimitive.booleanOrNull == true,
             httpsRequired = root.getValue("httpsRequired").jsonPrimitive.booleanOrNull != false,
+            requiredProtocols = root.getValue("requiredProtocols").jsonArray.map { it.jsonPrimitive.content }.toSet(),
+            requiredConfigureFlags = root.getValue("configureFlags").jsonArray.map { it.jsonPrimitive.content }.toSet(),
+            forbiddenConfigureFlags = root.getValue("forbiddenConfigureFlags").jsonArray.map { it.jsonPrimitive.content }.toSet(),
+            maxCombinedBinaryBytes = root.getValue("maxCombinedBinaryBytes").jsonPrimitive.content.toLong(),
         )
     }
 
@@ -55,6 +62,15 @@ class EmbeddedFfmpegRuntime(
                     ffmpegPath = ffmpegBinary.absolutePath,
                     ffprobePath = ffprobeBinary.absolutePath,
                     detail = "Embedded FFmpeg/FFprobe payload is missing from nativeLibraryDir.",
+                ).also { cachedCapability = it }
+            }
+            val attestation = verifyInstalledAttestation(manifest).getOrElse { error ->
+                return@withLock FfmpegRuntimeCapabilityReport(
+                    health = FfmpegRuntimeHealth.Corrupt,
+                    expectedVersion = manifest.ffmpegVersion,
+                    ffmpegPath = ffmpegBinary.absolutePath,
+                    ffprobePath = ffprobeBinary.absolutePath,
+                    detail = "Embedded runtime attestation failed: ${redactFfmpegDiagnostic(error.message.orEmpty())}",
                 ).also { cachedCapability = it }
             }
             val ffmpegVersionResult = executeRaw(FfmpegOperation.Version(FfmpegBinary.Ffmpeg))
@@ -86,14 +102,31 @@ class EmbeddedFfmpegRuntime(
                     detail = "Packaged runtime version does not match the pinned manifest.",
                 ).also { cachedCapability = it }
             }
+            val versionText = ffmpegVersionResult.stdout + "\n" + ffmpegVersionResult.stderr
+            val missingConfigureFlags = manifest.requiredConfigureFlags.filterNot { flag -> versionText.contains(flag) }
+            val forbiddenConfigureFlags = manifest.forbiddenConfigureFlags.filter { flag -> versionText.contains(flag) }
+            if (missingConfigureFlags.isNotEmpty() || forbiddenConfigureFlags.isNotEmpty()) {
+                return@withLock FfmpegRuntimeCapabilityReport(
+                    health = FfmpegRuntimeHealth.UnsupportedBuild,
+                    expectedVersion = manifest.ffmpegVersion,
+                    ffmpegVersion = ffmpegVersion,
+                    ffprobeVersion = ffprobeVersion,
+                    attestationVerified = true,
+                    ffmpegPath = ffmpegBinary.absolutePath,
+                    ffprobePath = ffprobeBinary.absolutePath,
+                    detail = "Packaged runtime configuration differs from the pinned downloader profile.",
+                ).also { cachedCapability = it }
+            }
             val protocols = executeRaw(FfmpegOperation.Protocols())
             val protocolText = protocols.stdout + "\n" + protocols.stderr
-            val https = Regex("""(?m)^\s*https\s*$""").containsMatchIn(protocolText)
+            val availableProtocols = protocolText.lineSequence().map { line -> line.trim() }.filter { line -> line.isNotEmpty() }.toSet()
+            val missingProtocols = manifest.requiredProtocols - availableProtocols
+            val https = "https" in availableProtocols
             val trust = if (manifest.httpsRequired && https) trustBundleProvider.ensure() else Result.success(File("/dev/null"))
             val trustReady = !manifest.httpsRequired || (https && trust.isSuccess)
             FfmpegRuntimeCapabilityReport(
                 health = when {
-                    manifest.httpsRequired && !https -> FfmpegRuntimeHealth.UnsupportedBuild
+                    missingProtocols.isNotEmpty() -> FfmpegRuntimeHealth.UnsupportedBuild
                     manifest.httpsRequired && trust.isFailure -> FfmpegRuntimeHealth.Failed
                     else -> FfmpegRuntimeHealth.Ready
                 },
@@ -102,12 +135,14 @@ class EmbeddedFfmpegRuntime(
                 ffprobeVersion = ffprobeVersion,
                 httpsSupported = https,
                 tlsTrustReady = trustReady,
+                attestationVerified = attestation,
+                buildConfigurationVerified = true,
                 ffmpegPath = ffmpegBinary.absolutePath,
                 ffprobePath = ffprobeBinary.absolutePath,
                 detail = when {
-                    !https -> "FFmpeg is executable but HTTPS protocol support is absent; rebuild the pinned runtime with OpenSSL."
+                    missingProtocols.isNotEmpty() -> "FFmpeg is executable but required downloader protocols are missing: ${missingProtocols.sorted().joinToString()}."
                     trust.isFailure -> "FFmpeg HTTPS is present but Android CA trust could not be materialized: ${redactFfmpegDiagnostic(trust.exceptionOrNull()?.message.orEmpty())}"
-                    else -> "App-owned FFmpeg and FFprobe are executable; verified HTTPS uses AndroidCAStore. NDK ${manifest.ndkVersion}; ${manifest.ffmpegLicense}; OpenSSL ${manifest.opensslVersion}."
+                    else -> "App-owned FFmpeg and FFprobe are hash-attested and executable; verified HTTPS uses AndroidCAStore. NDK ${manifest.ndkVersion}; ${manifest.ffmpegLicense}; OpenSSL ${manifest.opensslVersion}."
                 },
             ).also { cachedCapability = it }
         }
@@ -169,6 +204,36 @@ class EmbeddedFfmpegRuntime(
         }
         if (!binary.isFile) return FfmpegExecutionResult(-1, "", "", 0, FfmpegFailureKind.RuntimeMissing, "Embedded ${command.binary.name} runtime is missing")
         return launcher.launch(binary, command, onProgress)
+    }
+
+    private fun verifyInstalledAttestation(manifest: FfmpegRuntimeManifest): Result<Boolean> = runCatching {
+        val lock = appContext.assets.open("ffmpeg-runtime.lock.json").bufferedReader().use {
+            Json.parseToJsonElement(it.readText()).jsonObject
+        }
+        require(lock.getValue("ffmpegVersion").jsonPrimitive.content == manifest.ffmpegVersion) { "version lock mismatch" }
+        require(lock.getValue("ndkVersion").jsonPrimitive.content == manifest.ndkVersion) { "NDK lock mismatch" }
+        require(lock.getValue("buildProfile").jsonPrimitive.content == manifest.buildProfile) { "build profile lock mismatch" }
+        require(lock.getValue("gplEnabled").jsonPrimitive.booleanOrNull != true) { "GPL runtime unexpectedly enabled" }
+        require(lock.getValue("nonfreeEnabled").jsonPrimitive.booleanOrNull != true) { "nonfree runtime unexpectedly enabled" }
+        val expectedFfmpeg = lock.getValue("ffmpegBinarySha256").jsonPrimitive.content
+        val expectedFfprobe = lock.getValue("ffprobeBinarySha256").jsonPrimitive.content
+        require(sha256(ffmpegBinary) == expectedFfmpeg) { "FFmpeg payload digest mismatch" }
+        require(sha256(ffprobeBinary) == expectedFfprobe) { "FFprobe payload digest mismatch" }
+        require(ffmpegBinary.length() + ffprobeBinary.length() <= manifest.maxCombinedBinaryBytes) { "embedded runtime exceeds size budget" }
+        true
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (read > 0) digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun parseVersion(text: String): String? = Regex("(?i)ff(?:mpeg|probe) version\\s+([^\\s]+)")

@@ -59,6 +59,7 @@ build = [
   ":media-ffmpeg:installPinnedFfmpegRuntime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
+  ":app:verifyFfmpegDebugApkRuntime",
 ]
 
 test = [
@@ -94,6 +95,7 @@ preflight = [
   ":app:verifyFfmpeg01EmbeddedRuntimeContract",
   ":app:verifyFfmpeg02MediaMuxHlsPostprocessingContract",
   ":app:verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract",
+  ":app:verifyFfmpeg04FullReleaseSeal",
 ]
 
 dependencies = [
@@ -130,6 +132,7 @@ package = [
   ":media-ffmpeg:installPinnedFfmpegRuntime",
   "assembleDebug",
   ":app:assembleDebugAndroidTest",
+  ":app:verifyFfmpegDebugApkRuntime",
 ]
 
 lint = [

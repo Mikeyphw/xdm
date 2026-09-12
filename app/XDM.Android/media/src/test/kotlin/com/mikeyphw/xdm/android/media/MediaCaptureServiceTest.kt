@@ -226,7 +226,7 @@ class MediaCaptureServiceTest {
     }
 
     @Test
-    fun resolverPickerGroupsCreateFormatSelectorAndPreviewMetadata() {
+    fun resolverPickerGroupsCreateEmbeddedAdaptivePlanAndPreviewMetadata() {
         val service = MediaCaptureService(clock = { 800L })
         val record = service.recordFor(requireNotNull(service.candidateFor(
             url = "https://cdn.example.test/show/master.m3u8?token=secret",
@@ -256,10 +256,13 @@ class MediaCaptureServiceTest {
         val groups = planner.pickerGroups(record, variants, selection)
         val preview = planner.metadataProbePreview(record, variants)
 
-        val selector = requireNotNull(plan.ytDlpFormatSelector)
+        assertEquals(MediaDownloadStrategy.FfmpegAdaptive, plan.strategy)
         assertEquals(3, groups.size)
-        assertTrue(selector.contains("bestvideo"))
-        assertTrue(selector.contains("bestaudio"))
+        assertEquals(video.id, plan.trackSelection.videoVariantId)
+        assertEquals(audio.id, plan.trackSelection.audioVariantId)
+        assertEquals(subtitle.id, plan.trackSelection.subtitleVariantId)
+        assertEquals(null, plan.ytDlpFormatSelector)
+        assertTrue(plan.ytDlpExtraArguments.isEmpty())
         assertEquals("https://video.example.test/watch/resolver", plan.metadataProbeUrl)
         assertEquals("Resolver episode", preview.title)
         assertTrue(preview.formatCount >= 4)
@@ -815,6 +818,7 @@ class MediaCaptureServiceTest {
             variants = variants,
             selection = MediaTrackSelection(videoVariantId = variants.last().id, audioVariantId = variants.first().id),
             destinationUri = "content://downloads",
+            intent = MediaDownloadIntent.Subtitles,
             sessionHeaders = listOf(MediaSessionHeader("Cookie", "SID=secret-cookie")),
         )
         val engine = planner.enginePlan(spec, androidSdkInt = 35)
@@ -861,6 +865,7 @@ class MediaCaptureServiceTest {
             variants = variants,
             selection = MediaTrackSelection(videoVariantId = variants.last().id, audioVariantId = variants.first().id),
             destinationUri = "content://downloads",
+            intent = MediaDownloadIntent.Subtitles,
             sessionHeaders = listOf(MediaSessionHeader("Cookie", "SID=secret-cookie")),
         )
         val engine = execution.enginePlan(spec, androidSdkInt = 35)
@@ -1383,10 +1388,13 @@ class MediaCaptureServiceTest {
         assertEquals("variant-agent", spec.requestHeaders["User-Agent"])
         assertEquals("capture-value", spec.requestHeaders["X-Capture"])
         assertEquals("variant-value", spec.requestHeaders["X-Variant"])
-        assertTrue(spec.ytDlpFormatSelector?.isNotBlank() == true)
-        val formatIndex = engine.typedArguments.indexOf("--format")
-        assertTrue(formatIndex >= 0)
-        assertEquals(spec.ytDlpFormatSelector, engine.typedArguments.getOrNull(formatIndex + 1))
+        assertEquals(MediaDownloadStrategy.FfmpegAdaptive, spec.strategy)
+        assertEquals(null, spec.ytDlpFormatSelector)
+        assertEquals(MediaExecutionLane.EmbeddedFfmpegAdaptive, engine.lane)
+        assertFalse(engine.typedArguments.contains("--format"))
+        assertTrue(spec.selectedInputs.single().headers["User-Agent"] == "variant-agent")
+        assertTrue(spec.selectedInputs.single().headers["X-Capture"] == "capture-value")
+        assertTrue(spec.selectedInputs.single().headers["X-Variant"] == "variant-value")
     }
 
     @Test

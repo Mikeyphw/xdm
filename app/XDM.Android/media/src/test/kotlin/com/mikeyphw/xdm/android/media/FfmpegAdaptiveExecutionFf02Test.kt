@@ -43,7 +43,7 @@ class FfmpegAdaptiveExecutionFf02Test {
         assertFalse(spec.requiresTermuxYtDlp)
         assertEquals(MediaDispatchReadiness.Ready, dispatch.readiness)
         assertTrue(dispatch.steps.any { it.kind == MediaDispatchStepKind.LaunchEmbeddedFfmpeg })
-        assertTrue(engine.typedArguments.any { it == "--verify=ffprobe" })
+        assertTrue(engine.typedArguments.windowed(2).any { it == listOf("--verify", "ffprobe") })
     }
 
     @Test

@@ -177,7 +177,7 @@ class MediaRuntimeRoutingFf03Test {
     }
 
     private fun adaptiveSpec(url: String, headers: List<MediaSessionHeader> = emptyList()): MediaQueuedDownloadSpec {
-        val c = capture()
+        val c = capture().copy(pageUrl = null)
         val video = MediaVariant(
             id = "video", captureId = c.id, url = url, kind = MediaVariantKind.Video,
             mimeType = "video/mp4", height = 1080, bitrateBitsPerSecond = 4_000_000L, displayLabel = "1080p",

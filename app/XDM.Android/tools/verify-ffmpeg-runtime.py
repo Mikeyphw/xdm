@@ -104,12 +104,17 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
         "ffmpegSourceSha256": MANIFEST["ffmpegSourceSha256"],
         "opensslSourceSha256": MANIFEST["opensslSourceSha256"],
         "requiredLoadAlignment": MANIFEST["requiredLoadAlignment"],
+        "buildProfile": MANIFEST["buildProfile"],
+        "configureFlags": MANIFEST["configureFlags"],
         "gplEnabled": False,
         "nonfreeEnabled": False,
     }
     for key, value in expected_fields.items():
         if lock.get(key) != value:
             raise SystemExit(f"runtime lock field {key} differs from the pinned manifest")
+    toolchain_backend = str(lock.get("toolchainBackend", ""))
+    if not (toolchain_backend.startswith("ndk:") or toolchain_backend == "termux-native-llvm"):
+        raise SystemExit(f"runtime lock has unsupported toolchain backend: {toolchain_backend or '<missing>'}")
     license_paths = {
         "ffmpeg": ROOT / MANIFEST["ffmpegLicenseAsset"],
         "openssl": ROOT / MANIFEST["opensslLicenseAsset"],
@@ -130,7 +135,18 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
             raise SystemExit(f"{name} payload digest differs from runtime lock")
         if len(data) != lock.get(bytes_key):
             raise SystemExit(f"{name} payload size differs from runtime lock")
-    print(f"FFmpeg {lock['ffmpegVersion']} + FFprobe runtime verified for {lock['abi']}")
+        budget_key = "maxFfmpegBinaryBytes" if name == "ffmpeg" else "maxFfprobeBinaryBytes"
+        if len(data) > int(MANIFEST[budget_key]):
+            raise SystemExit(f"{name} payload exceeds {budget_key} budget")
+    combined = sum(path.stat().st_size for path in paths.values())
+    if combined > int(MANIFEST["maxCombinedBinaryBytes"]):
+        raise SystemExit("combined FFmpeg/FFprobe payload exceeds runtime size budget")
+    configured = set(lock.get("configureFlags") or [])
+    missing_flags = set(MANIFEST["configureFlags"]) - configured
+    forbidden_flags = set(MANIFEST["forbiddenConfigureFlags"]) & configured
+    if missing_flags or forbidden_flags:
+        raise SystemExit(f"runtime configure attestation mismatch; missing={sorted(missing_flags)} forbidden={sorted(forbidden_flags)}")
+    print(f"FFmpeg {lock['ffmpegVersion']} + FFprobe runtime verified for {lock['abi']} ({combined} bytes)")
     return lock
 
 
@@ -142,6 +158,9 @@ def verify_apk(apk: Path, lock: dict, require_alignment: bool) -> None:
         "ffprobe": "lib/arm64-v8a/libxdm_ffprobe.so",
     }
     with zipfile.ZipFile(apk) as zf:
+        compressed_runtime_bytes = sum(zf.getinfo(member).compress_size for member in entries.values() if member in zf.namelist())
+        if compressed_runtime_bytes > int(MANIFEST["maxCompressedApkRuntimeBytes"]):
+            raise SystemExit(f"APK embedded runtime exceeds compressed size budget: {compressed_runtime_bytes} bytes")
         license_entries = {
             "ffmpeg": "assets/licenses/FFmpeg-LGPL-2.1.txt",
             "openssl": "assets/licenses/OpenSSL-Apache-2.0.txt",
@@ -161,7 +180,7 @@ def verify_apk(apk: Path, lock: dict, require_alignment: bool) -> None:
             validate_payload(name, data, require_alignment)
             if digest_bytes(data) != lock[f"{name}BinarySha256"]:
                 raise SystemExit(f"APK {name} differs from attested runtime payload")
-    print(f"APK FFmpeg/FFprobe payload verified: {apk}")
+    print(f"APK FFmpeg/FFprobe payload verified: {apk} ({compressed_runtime_bytes} compressed bytes)")
 
 
 def main() -> None:

@@ -382,7 +382,7 @@ class MediaExecutionLibraryPlanner(
         } else null
         val lane = laneFor(spec, ffmpegDecision)
         val policy = backgroundPolicyFor(lane, androidSdkInt, userInitiated)
-        val tempCookie = tempCookieFilePlan(spec)
+        val tempCookie = if (lane == MediaExecutionLane.YtDlpAdaptive) tempCookieFilePlan(spec) else null
         val aria2 = aria2TransientInputPlan(spec, lane)
         val typedArgs = typedExecutorArguments(spec, lane, tempCookie, aria2)
         val surfaces = mutableListOf(

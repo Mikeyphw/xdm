@@ -220,8 +220,8 @@ class MediaDownloadPlanner {
             needsCookieContext = session.hasCredentialContext || ExternalUrlPolicy.hasCredentialBearingQuery(capture.sourceUrl) || variants.any { ExternalUrlPolicy.hasCredentialBearingQuery(it.url) },
             trackSelection = normalizedSelection,
             sessionHandoff = session,
-            ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent),
-            ytDlpExtraArguments = ytdlpExtraArguments(variants, normalizedSelection),
+            ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent).takeIf { strategy == MediaDownloadStrategy.YtDlp },
+            ytDlpExtraArguments = ytdlpExtraArguments(variants, normalizedSelection).takeIf { strategy == MediaDownloadStrategy.YtDlp }.orEmpty(),
             ytDlpUsePageUrl = ytDlpUsePageUrl,
             protectedDiagnostic = protectedDiagnostic,
         )
@@ -362,8 +362,8 @@ class MediaDownloadPlanner {
             val explicit = id?.let { wanted -> variants.firstOrNull { it.id == wanted && it.kind == kind } }
             if (explicit != null && (requiredGroup == null || explicit.groupId == requiredGroup)) return explicit.id
             return variants.firstOrNull { variant ->
-                variant.kind == kind && (requiredGroup == null || variant.groupId == requiredGroup) && variant.isDefault
-            }?.id ?: variants.firstOrNull { variant -> variant.kind == kind && (requiredGroup == null || variant.groupId == requiredGroup) }?.id
+                variant.kind == kind && (requiredGroup == null || variant.groupId == requiredGroup) && (variant.isDefault || variant.isAutoselect)
+            }?.id
         }
         return MediaTrackSelection(
             videoVariantId = videoId,

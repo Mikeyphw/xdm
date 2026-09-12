@@ -1,3 +1,65 @@
+## FF04 v7r3 — FF03 UI contract test-root discovery hotfix
+
+- Repair `Ffmpeg03RuntimeRoutingUiContractTest` so Gradle unit tests locate the Android project root whether `user.dir` is the app module, Android project root, or repository root. The v7r2 target run executed 441 app unit tests and exposed exactly two `FileNotFoundException` failures caused by the old fixed-path assumption.
+- Remove the nullable `System.getProperty("user.dir")` Kotlin warning by requiring the property explicitly before path resolution.
+- Extend the FF04 release validator so future replacement seals reject the brittle `File(System.getProperty("user.dir"))` pattern and require ancestor-aware Android-root discovery.
+- Preserve the v7r2 exact Termux strip exceptions, staged validation ordering, FFmpeg 9.0.1/OpenSSL 3.5.8 runtime profile, cache identity, NDK 29, 16 KB, HTTPS, FFprobe, licensing, APK-byte, and no-Termux guarantees.
+
+## FF04 v7r2 — Termux native-strip and staged final-validation closure
+
+- Treat `libandroidx.graphics.path.so` and `libdatastore_shared_counter.so` as exact AGP `keepDebugSymbols` exceptions on native ARM64 Termux. v7r1 proved these dependency payloads were already packaged successfully, but AGP repeatedly attempted to execute an unavailable x86_64/glibc strip helper first; the exact allowlist skips that host-incompatible strip step without broad JNI symbol retention.
+- Add `:app:verifyFfmpeg04FinalReleaseValidation` as the single final lifecycle gate covering the FF04 contract, media/unit tests, Android-test APK, exact FFmpeg APK attestation, canonical static gate, and lint.
+- Order all lint work behind the final static/runtime stages and order `media-ffmpeg` lint behind `installPinnedFfmpegRuntime` whenever both are in the graph, preventing lint-model generation from observing generated JNI/runtime inputs while parallel package tasks mutate the module.
+- Preserve every v7 FFmpeg 9.0.1/OpenSSL 3.5.8, cache-resume, NDK 29, 16 KB, licensing, HTTPS, FFprobe, no-Termux, and APK-byte guarantee.
+
+## FF04 v7 — FFmpeg 9 configure-surface compatibility hotfix
+
+- Remove obsolete `--disable-postproc` from the FFmpeg 9.0.1 production configure/attestation profile; upstream removed `libpostproc`, so 9.0.1 rejects that switch.
+- Generate the FFmpeg profile portion of the configure command directly from `ffmpeg-runtime.json` and preflight the exact profile through the verified source tree's real configure parser by appending `--help` after all profile flags, catching removed options without rejecting valid generic inverse switches that help text omits.
+- Preserve the exact v5/v6 deterministic native-cache identity with a cache-key-only legacy manifest shim, so the already-built OpenSSL cache at `build-1d480174b70d7e78` remains reusable while the real runtime lock never claims the removed postproc option.
+- Extend the native-builder regression and FF04 release validator for configure-parser preflight, obsolete-postproc rejection, manifest-driven configuration, and cache-identity compatibility.
+
+## FF04 v6 — resumable quiet native-build release seal
+
+- Preserve the FF04 v5 deterministic native cache key so an interrupted OpenSSL/FFmpeg source build can resume from `~/.cache/xdm/ffmpeg-runtime/build-1d480174b70d7e78` when inputs are unchanged.
+- Remove the redundant OpenSSL `-D__ANDROID_API__=<api>` definition; Android Clang already derives the API macro from the `aarch64-linux-android26` target, eliminating the repeated macro-redefinition warning storm.
+- Persist OpenSSL and FFmpeg configuration fingerprints immediately after successful configure, resume `make` from existing objects, serialize writers of the deterministic build cache, and use quiet `make -s` plus periodic progress heartbeats by default.
+- Build the OpenSSL library target (`build_libs`) instead of the generic default target while retaining the TLS/certificate/crypto surface required by FFmpeg HTTPS. No additional cryptographic algorithms are disabled without runtime evidence.
+- Add executable regression coverage for marker invalidation, complete-prefix detection, quiet/verbose make behavior, and configure-profile invariants.
+
+## FF04 v5 — native Termux source-build dependency closure
+
+- Bootstrap missing `perl`, `make`, and `pkg-config` through Termux `pkg` before the pinned OpenSSL/FFmpeg source build; hermetic builders can disable this with `XDM_FFMPEG_AUTO_INSTALL_HOST_TOOLS=0`.
+- Repair the final stale resolver-picker unit test so explicit adaptive video/audio/subtitle selection asserts embedded FFmpeg ownership and no yt-dlp-only state.
+- Extend the FF04 seal to reject regressions of either fix.
+
+### FF04 v4 validation repair
+- Fixed FF04 validation against AGP 9.3.1/Termux after real target execution exposed stale FF02/FF03 test expectations, a missing Developer Tools readiness branch, yt-dlp cookie staging leaking into embedded FFmpeg plans, arbitrary unmarked adaptive-track auto-selection, and an obsolete OpenSSL download URL.
+- Pinned OpenSSL 3.5.8 to its permanent official GitHub release URL while retaining SHA-256 verification.
+## 2026-09-11 — FF04 embedded FFmpeg/FFprobe full release seal
+
+## FF04 validation hotfix v3
+
+- Replace the AGP 9.2-incompatible legacy `AndroidLibrarySourceSet` asset wiring with the stable `androidComponents` variant source API.
+- Make media-ffmpeg asset/JNI merge tasks depend on the pinned runtime installer so generated binaries, licenses, and attestation lock cannot race parallel packaging.
+- Keep the v2 lazy application packaging and ARM64 Termux/NDK host-toolchain fixes intact.
+
+## FF04 validation hotfix v2
+
+- Configure `assembleDebug` lazily so AGP can register the variant before FF04 attaches the pinned-runtime dependency.
+- Make debug APK packaging depend directly on `:media-ffmpeg:installPinnedFfmpegRuntime`, removing the parallel packaging race.
+- Discover NDK 29 through `local.properties` as well as Gradle/Android environment variables.
+- Support native ARM64 Termux LLVM wrappers against the pinned NDK sysroot when the NDK ships only an x86_64 host toolchain.
+- Attest and verify the selected runtime-builder host toolchain backend.
+
+
+- Sealed the complete FF01–FF03 roadmap with runtime attestation that hashes the installed app-owned FFmpeg/FFprobe payload before readiness and verifies the pinned downloader configure profile at runtime.
+- Added NDK 29 runtime size/profile optimization by stripping unneeded native symbols, disabling unused avdevice/postproc surfaces, and enforcing binary plus APK-compressed size budgets.
+- Added deterministic video-only/audio-only Android test fixtures and a real instrumented no-Termux acceptance test that muxes the separate tracks with embedded FFmpeg and verifies both streams with embedded FFprobe.
+- Added strict debug-APK payload verification for exact binary/license equality, AArch64 PIE identity, 16 KB load alignment, provenance lock, licensing flags, and size budgets.
+- Repaired the stale execution/media semantics validator without weakening its progressive-media rule; the generic typed aria2 adapter cleanup coverage is now correctly allowed.
+- Added FFmpeg payload release-evidence truth to Developer Center, FF04 Devtool/release-gate tasks, complete roadmap audit documentation, and the final explicit validation seal.
+
 ## 2026-09-11 — FF03 runtime routing, safe Termux fallback, and media-runtime UX
 
 - Added durable `Automatic`, `Embedded FFmpeg`, and `Termux FFmpeg` runtime policy; Automatic always prefers the app-owned runtime and only falls back to a fresh verified Termux FFmpeg/FFprobe pair.
