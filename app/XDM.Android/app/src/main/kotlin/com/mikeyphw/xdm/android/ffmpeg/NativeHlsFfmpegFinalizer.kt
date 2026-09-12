@@ -34,8 +34,8 @@ class NativeHlsFfmpegFinalizer(
             orderedSegmentFiles = completedSegmentFiles,
             output = finalMediaFile,
             expectedDurationMs = plan.estimatedDurationMs.takeIf { it > 0L && plan.discontinuityCount == 0 },
-            requireVideo = true,
-            requireAudio = false,
+            requireVideo = plan.requireVideoStream,
+            requireAudio = plan.requireAudioStream,
             onProgress = onProgress,
         )
     }

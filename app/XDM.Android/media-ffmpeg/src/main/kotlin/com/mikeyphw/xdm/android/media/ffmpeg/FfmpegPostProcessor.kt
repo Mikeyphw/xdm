@@ -116,6 +116,10 @@ class FfmpegPostProcessor(
             executeStaged(
                 output,
                 FfmpegVerificationExpectation(
+                    // Native HLS must always produce actual media. When capture metadata cannot
+                    // infer a specific stream type, requireAnyStream prevents a size-only false
+                    // positive while video/audio constraints remain additive when known.
+                    requireAnyStream = true,
                     requireVideo = requireVideo,
                     requireAudio = requireAudio,
                     expectedDurationMs = expectedDurationMs,

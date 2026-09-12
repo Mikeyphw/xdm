@@ -45,6 +45,54 @@ class AdaptiveMediaExecutionMc03Test {
         assertFalse(plan.primaryUrl.endsWith(".m4s"))
     }
 
+
+
+    @Test
+    fun nativeHlsUsesARealFinalMediaContainerInsteadOfManifestFilename() {
+        val planner = MediaExecutionLibraryPlanner()
+        val videoCapture = capture(MediaSourceKind.HlsPlaylist, "https://cdn.example.test/index.m3u8")
+            .copy(fileName = "index.m3u8", codecs = "avc1.64001f,mp4a.40.2", nativeCapability = MediaNativeCapability.NativeCandidate)
+        val videoSpec = planner.queueSpec(videoCapture, emptyList(), destinationUri = "content://downloads/video")
+        assertEquals(MediaDownloadStrategy.NativeHls, videoSpec.strategy)
+        assertTrue(videoSpec.fileName.endsWith(".mkv"))
+        assertFalse(videoSpec.fileName.endsWith(".m3u8"))
+
+        val audioCapture = videoCapture.copy(id = "capture-audio-hls", fileName = "audio.m3u8", codecs = "mp4a.40.2", mimeType = "application/vnd.apple.mpegurl")
+        val audioSpec = planner.queueSpec(audioCapture, emptyList(), destinationUri = "content://downloads/audio")
+        assertEquals(MediaDownloadStrategy.NativeHls, audioSpec.strategy)
+        assertTrue(audioSpec.fileName.endsWith(".m4a"))
+
+        val opusCapture = videoCapture.copy(
+            id = "capture-opus-hls",
+            fileName = "folder\\episode.m3u8",
+            codecs = "opus",
+            mimeType = "audio/ogg",
+        )
+        val opusSpec = planner.queueSpec(opusCapture, emptyList(), destinationUri = "content://downloads/opus")
+        assertEquals(MediaDownloadStrategy.NativeHls, opusSpec.strategy)
+        assertTrue(opusSpec.fileName.endsWith(".mka"))
+        assertFalse(opusSpec.fileName.contains('\\'))
+
+        val longCapture = videoCapture.copy(
+            id = "capture-long-hls",
+            fileName = "/captured/path/" + "very-long-title-".repeat(12) + ".m3u8",
+        )
+        val longSpec = planner.queueSpec(longCapture, emptyList(), destinationUri = "content://downloads/long")
+        assertTrue(longSpec.fileName.length <= 120)
+        assertTrue(longSpec.fileName.endsWith(".mkv"))
+        assertFalse(longSpec.fileName.contains('/'))
+    }
+
+    @Test
+    fun subtitleOnlyRequestNeverUsesNativeHlsMediaRendition() {
+        val capture = capture(MediaSourceKind.HlsPlaylist, "https://cdn.example.test/audio-or-video.m3u8")
+            .copy(nativeCapability = MediaNativeCapability.NativeCandidate)
+        val plan = MediaDownloadPlanner().plan(capture, emptyList(), intent = MediaDownloadIntent.Subtitles)
+
+        assertEquals(MediaDownloadStrategy.YtDlp, plan.strategy)
+        assertFalse(plan.strategy == MediaDownloadStrategy.NativeHls)
+    }
+
     @Test
     fun siteResolverUsesPageUrlOnlyWhenPlannerMarksIt() {
         val capture = capture(

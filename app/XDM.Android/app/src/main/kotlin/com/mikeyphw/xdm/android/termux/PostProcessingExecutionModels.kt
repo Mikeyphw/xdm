@@ -84,6 +84,8 @@ data class PostProcessingJobSpec(
     val extraArguments: List<String> = emptyList(),
     /** Public, non-credential-bearing network inputs for the explicit Termux FFmpeg fallback. */
     val ffmpegFallbackInputs: List<FfmpegFallbackInputSpec> = emptyList(),
+    /** True only for the explicit FF03 external fallback. Ordinary FFmpeg/FFprobe work is Android-owned. */
+    val externalFfmpegFallback: Boolean = false,
     /** Non-secret identifiers used to recover the encrypted request/session envelope at execution time. */
     val sessionPrimaryVariantId: String? = null,
     val sessionVariantIds: List<String> = emptyList(),
@@ -146,6 +148,7 @@ data class PostProcessingJobSpec(
         .put("ffmpegFallbackInputs", JSONArray(ffmpegFallbackInputs.map { input ->
             JSONObject().put("uri", input.uri).put("kind", input.kind.name)
         }))
+        .put("externalFfmpegFallback", externalFfmpegFallback)
         .putNullable("sessionPrimaryVariantId", sessionPrimaryVariantId)
         .put("sessionVariantIds", JSONArray(sessionVariantIds.distinct()))
         .put("sessionUsePageUrl", sessionUsePageUrl)
@@ -201,6 +204,7 @@ data class PostProcessingJobSpec(
                         ))
                     }
                 },
+                externalFfmpegFallback = json.optBoolean("externalFfmpegFallback", false),
                 sessionPrimaryVariantId = json.optNullableString("sessionPrimaryVariantId"),
                 sessionVariantIds = buildList { repeat(sessionVariantIds.length()) { sessionVariantIds.getString(it).takeIf(String::isNotBlank)?.let(::add) } }.distinct(),
                 sessionUsePageUrl = json.optBoolean("sessionUsePageUrl", false),
@@ -340,13 +344,16 @@ object PostProcessingExecutionPolicy {
         return uri.queryParameterNames.any { it.lowercase(Locale.US) in SensitiveQueryKeys }
     }
 
+
+    fun usesTermux(spec: PostProcessingJobSpec): Boolean = spec.kind.requiresTermux || spec.externalFfmpegFallback
+
     fun preflightIssue(spec: PostProcessingJobSpec, bridge: TermuxBridgeStatus): String? {
         validateOutputName(spec.output.displayName)?.let { return it }
         formatCompatibilityIssue(spec)?.let { return it }
         if (spec.inputUri.startsWith("xdm://downloads/") && spec.inputUri.endsWith("/completed-artifact")) {
             return "Waiting for the redownloaded artifact to complete before cloning this post-processing action."
         }
-        if (!spec.kind.requiresTermux) return null
+        if (!usesTermux(spec)) return null
         if (!bridge.termuxInstalled) return "Termux is not installed."
         if (!bridge.runCommandPermissionGranted) return "Termux RUN_COMMAND permission is not granted."
         if (spec.kind.requiresRoot && !bridge.canRunRootAction) {
@@ -469,6 +476,7 @@ object PostProcessingExecutionPolicy {
             spec.sessionPrimaryVariantId.orEmpty(),
             spec.sessionVariantIds.sorted().joinToString(","),
             spec.sessionUsePageUrl.toString(),
+            spec.externalFfmpegFallback.toString(),
             sha256(spec.extraArguments.joinToString("\u0000")),
         ).joinToString("\u0000"),
     )

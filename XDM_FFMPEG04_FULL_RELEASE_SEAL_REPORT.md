@@ -1,3 +1,7 @@
+# v6 validation compile closure
+
+The authoritative Termux v5 run rolled back at `:media:compileDebugUnitTestKotlin` because `AdaptiveMediaExecutionMc03Test` used nonexistent `MediaNativeCapability.NativeHls`. The production capability enum is `Unknown | NativeCandidate | FallbackRequired | ProtectedUnsupported`; `NativeHls` is a `MediaDownloadStrategy`, not a capability. v6 changes the subtitle-only regression fixture to `MediaNativeCapability.NativeCandidate`, preserving the intended assertion that a native-capable HLS capture with subtitle-only intent must route to yt-dlp rather than native HLS media execution. FF02 and the post-seal gate now reject the invalid capability reference explicitly.
+
 # XDM Android FF04 embedded FFmpeg/FFprobe full release seal
 
 FF04 is the final full overlay in the embedded media-runtime roadmap. It closes FF01, FF02, and FF03 as one release-qualified capability rather than adding another partial execution path.
@@ -75,4 +79,26 @@ The v7r2 target validation reached the real `:app:testDebugUnitTest` task and ra
 v7r3 resolves the Android project root by walking upward from the canonical `user.dir` and accepting either an Android-root marker (`app/src/main`) or a repository-root marker (`app/XDM.Android/app/src/main`). It also requires non-null `user.dir`, removing the Kotlin Java-platform-type warning seen in the v7r2 log. The FF04 static seal now asserts this ancestor-aware resolver and rejects the old brittle construction.
 
 The remainder of v7r2 is preserved unchanged: exact Termux-native strip exceptions, staged final validation, embedded FFmpeg/FFprobe runtime installation and APK attestation, deterministic cache reuse, NDK 29 and 16 KB checks, HTTPS/OpenSSL profile, licensing restrictions, fixtures, FFprobe verification, and no-Termux acceptance.
+
+
+## 2026-09-12 post-seal roadmap delivery audit
+
+After v7r4 passed the target Android validation, the repository was compared again to the original FF01–FF04 handoff roadmap at the production call-site level. Packaging/attestation remained correct, but two FF02 ownership gaps were found: native-HLS finalization had no production executor calling `NativeHlsFfmpegFinalizer`, and ordinary completed-file FFmpeg/FFprobe post-processing still required the Termux pipeline.
+
+The post-seal hotfix wires `NativeHlsMediaManager` through `MainViewModel` and application startup/recovery, moves ordinary local FFmpeg/FFprobe actions embedded-first, preserves the explicit Termux fallback, and adds `verifyFfmpegRoadmapPostSealHotfix` to FF04's staged lifecycle and canonical release gate. FF04 therefore now verifies not only payload readiness but also the production execution ownership promised by FF02/FF03.
+
+## Post-seal third-pass promise audit v3
+
+FF04's post-seal gate now asserts the deeper FF02 execution invariants discovered by the third audit: embedded adaptive/live publication-journal recovery, safe commit-in-progress adoption, codec-compatible audio-only containers, and init-map byte-range-aware HLS resume. The pinned FFmpeg/OpenSSL payload, NDK 29/arm64/16-KB attestation, exact APK-byte verification, licensing and no-Termux runtime seal remain unchanged.
+
+## Post-seal fourth-pass roadmap evidence v4
+
+The fourth audit found one FF02 lifecycle/evidence gap after the successful FF04 runtime seal: failed/recovery-required `EmbeddedFfmpeg` adaptive/live generations were shown as retryable but Library Retry had no handler because these outputs intentionally do not own a normal Download row. v4 supplies and validates an embedded-only retry path that reconstructs exact request context from the encrypted handoff store, preserves destination/selection lineage, creates a new generation, and refuses to silently switch to Termux if current planning no longer resolves to an embedded FFmpeg lane. FF04's post-seal gate now requires all Library Retry surfaces and the owner-specific native-HLS retry interception.
+
+## v5 authoritative compile follow-up
+
+The v4 Termux Devtool run proved the post-seal static contract and canonical final static gate before Kotlin compilation. It then rolled back atomically on unresolved `MediaVariantKind` references in `MediaExecutionLibrary.kt`. v5 closes that compile-only defect in both affected production files and strengthens the FF02/post-seal source gates to detect missing model imports before FF04 reaches Gradle compilation.
+## v7 authoritative compile closure
+
+The v6 Termux validation reached `:app:compileDebugKotlin` and failed because `embeddedToolVersionsJson()` was a non-suspend helper calling suspend `EmbeddedFfmpegRuntime.capabilities()`. v7 makes that helper suspend; its existing callers already execute in `runEmbeddedMediaAction()`, which is suspend. FF02/post-seal validation now requires this signature explicitly. The v6 Devtool transaction rolled back successfully, so v7 remains cumulative directly over the post-v7r4 baseline.
 

@@ -113,7 +113,7 @@ for entry in fixture_entries:
 
 instrumented = text("app/src/androidTest/kotlin/com/mikeyphw/xdm/android/Ffmpeg04EmbeddedRuntimeAcceptanceInstrumentedTest.kt")
 no_termux = text("media/src/test/kotlin/com/mikeyphw/xdm/android/media/MediaRuntimeNoTermuxFf04Test.kt")
-need(has(instrumented, "EmbeddedFfmpegRuntime", "attestationVerified", "buildConfigurationVerified", "muxTracks", "runtime.probe", "probe.videoStreams", "probe.audioStreams"), "device acceptance test does not prove embedded mux + FFprobe using attested runtime")
+need(has(instrumented, "EmbeddedFfmpegRuntime", "attestationVerified", "buildConfigurationVerified", "muxTracks", "AndroidDestinationWriter", "DestinationUris.APP_PRIVATE_DOWNLOADS", "prepared.promote()", "promoted.atomic", "runtime.probe(staged.absolutePath)", "runtime.probe(committed.absolutePath)", "committedProbe.videoStreams", "committedProbe.audioStreams"), "device acceptance test does not prove attested embedded mux + atomic Android publication + committed-file FFprobe")
 need(has(no_termux, "freshInstallNeedsNoTermuxWhenEmbeddedRuntimeIsHealthy", "termuxBridgeReady = false", "MediaFfmpegRuntimeSource.Embedded"), "no-Termux routing acceptance test is missing")
 
 module_gradle = text("media-ffmpeg/build.gradle.kts")
@@ -124,7 +124,7 @@ dev_workspace = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/
 need(has(app_gradle, "XDM_FFMPEG_PAYLOAD_VERIFIED", "verifyFfmpeg04FullReleaseSeal", "verifyFfmpegDebugApkRuntime", "--require-16kb-alignment", "app-debug.apk"), "app Gradle release tasks/evidence do not enforce FF04 payload/APK gate")
 need('tasks.named("assembleDebug")' not in app_gradle, "FF04 must not eagerly resolve AGP assembleDebug during build-script evaluation")
 need(has(app_gradle, 'tasks.matching { it.name == "assembleDebug" }.configureEach', 'dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")'), "FF04 APK packaging must lazily depend on the freshly installed embedded runtime")
-need(has(app_gradle, "verifyFfmpeg04FinalReleaseValidation", ":media-ffmpeg:testDebugUnitTest", ":media:test", "assembleDebugAndroidTest", "verifyFfmpegDebugApkRuntime", "finalRemediationStaticGate", "lintDebug"), "FF04 staged final validation lifecycle task is incomplete")
+need(has(app_gradle, "verifyFfmpeg04FinalReleaseValidation", "verifyFfmpegRoadmapPostSealHotfix", ":media-ffmpeg:testDebugUnitTest", ":media:test", "assembleDebugAndroidTest", "verifyFfmpegDebugApkRuntime", "finalRemediationStaticGate", "lintDebug"), "FF04 staged final validation lifecycle task is incomplete or omits the post-seal roadmap ownership audit")
 need(has(app_gradle, 'subproject.tasks.matching { it.name.contains("lint", ignoreCase = true) }', "mustRunAfter(finalRemediationStaticGate)"), "FF04 combined validation must keep lint behind the static/runtime stages")
 for dependency_native in ("**/libandroidx.graphics.path.so", "**/libdatastore_shared_counter.so"):
     need(dependency_native in app_gradle, f"Termux-native AGP strip exception missing for {dependency_native}")
@@ -137,12 +137,15 @@ need(has(installer, "local_properties_sdk_roots", "termux-native-llvm", "--targe
 need("toolchainBackend" in verifier, "FF04 verifier does not attest the runtime host toolchain backend")
 need(has(devtool, ":app:verifyFfmpeg04FullReleaseSeal", ":app:verifyFfmpegDebugApkRuntime", ":app:assembleDebugAndroidTest"), "Devtool target does not carry FF04 contract/APK/instrumentation packaging gates")
 need("tools/validate-ffmpeg04-full-release-seal.py" in release_gate, "canonical final static gate does not include FF04")
+need("tools/validate-ffmpeg-roadmap-postseal-hotfix.py" in release_gate, "canonical final static gate does not include the post-seal FFmpeg roadmap ownership audit")
 need(has(dev_workspace, "Embedded FFmpeg payload", "XDM_FFMPEG_PAYLOAD_VERIFIED", "XDM_FFMPEG_PAYLOAD_GATE_CONFIGURED"), "Developer Center does not surface FFmpeg payload release truth")
 phase10 = text("tools/validate-bug-hunt-phase10-release-upgrade-packaging.py")
 need(has(phase10, "libaria2c.so", "libxdm_ffmpeg.so", "libxdm_ffprobe.so", "libandroidx.graphics.path.so", "libdatastore_shared_counter.so", "exact allowlist"), "historical Phase 10 packaging gate is not harmonized with the app-owned runtimes and exact Termux strip exceptions")
 
 report = text("../../XDM_FFMPEG04_FULL_RELEASE_SEAL_REPORT.md")
 need(has(report, "FF01", "FF02", "FF03", "no-Termux", "16 KB", "FFprobe", "NDK 29"), "FF04 final report does not document complete promise closure")
+hotfix_report = text("../../XDM_FFMPEG_ROADMAP_POSTSEAL_HOTFIX_REPORT.md")
+need(has(hotfix_report, "NativeHlsMediaManager", "production caller", "embedded-first", "explicit Termux fallback", "roadmap audit"), "post-seal FFmpeg roadmap audit report is missing or incomplete")
 
 if errors:
     print("FF04 full release seal FAILED", file=sys.stderr)

@@ -65,6 +65,32 @@ class FfmpegAdaptiveExecutionFf02Test {
         assertEquals(MediaVariantKind.Audio, spec.selectedInputs.single().kind)
     }
 
+
+    @Test
+    fun nonAacAudioOnlyUsesMatroskaInsteadOfForcingM4aStreamCopy() {
+        val capture = dashCapture(fileName = "manifest.mpd")
+        val audio = variant(
+            capture.id,
+            "a-opus",
+            "https://cdn.example.test/audio-opus.webm",
+            MediaVariantKind.Audio,
+            "audio/webm",
+            codecs = "opus",
+        )
+        val spec = MediaExecutionLibraryPlanner().queueSpec(
+            capture = capture,
+            variants = listOf(audio),
+            selection = MediaTrackSelection(audioVariantId = audio.id),
+            destinationUri = "content://downloads",
+            intent = MediaDownloadIntent.AudioOnly,
+        )
+
+        assertEquals(MediaDownloadStrategy.FfmpegAdaptive, spec.strategy)
+        assertEquals(MediaPostProcessingKind.AudioExtract, spec.postProcessing.kind)
+        assertTrue(spec.fileName.endsWith(".mka"))
+        assertFalse(spec.fileName.endsWith(".m4a"))
+    }
+
     @Test
     fun incompleteBestVideoSelectionKeepsResolverFallbackInsteadOfProducingSilentVideo() {
         val capture = dashCapture(fileName = "manifest.mpd")
@@ -124,7 +150,14 @@ class FfmpegAdaptiveExecutionFf02Test {
         nativeCapability = MediaNativeCapability.FallbackRequired,
     )
 
-    private fun variant(captureId: String, id: String, url: String, kind: MediaVariantKind, mimeType: String) = MediaVariant(
+    private fun variant(
+        captureId: String,
+        id: String,
+        url: String,
+        kind: MediaVariantKind,
+        mimeType: String,
+        codecs: String? = if (kind == MediaVariantKind.Audio) "mp4a.40.2" else null,
+    ) = MediaVariant(
         id = id,
         captureId = captureId,
         url = url,
@@ -132,6 +165,7 @@ class FfmpegAdaptiveExecutionFf02Test {
         mimeType = mimeType,
         height = if (kind == MediaVariantKind.Video) 1080 else null,
         bitrateBitsPerSecond = if (kind == MediaVariantKind.Audio) 192_000L else 4_000_000L,
+        codecs = codecs,
         language = if (kind == MediaVariantKind.Audio) "en" else null,
         displayLabel = id,
     )

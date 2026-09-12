@@ -16,6 +16,18 @@ interface NativeHlsDao {
     @Query("SELECT * FROM native_hls_jobs WHERE id = :jobId")
     suspend fun findJob(jobId: String): NativeHlsJobEntity?
 
+    @Query("SELECT * FROM native_hls_jobs WHERE downloadId = :downloadId LIMIT 1")
+    suspend fun findByDownloadId(downloadId: String): NativeHlsJobEntity?
+
+    @Query("SELECT * FROM native_hls_jobs WHERE admissionKey = :admissionKey ORDER BY attemptGeneration DESC LIMIT 1")
+    suspend fun findLatestByAdmissionKey(admissionKey: String): NativeHlsJobEntity?
+
+    @Query("SELECT * FROM native_hls_jobs WHERE stage IN ('Admitted','Downloading','Recovering','Finalizing','Publishing','Verifying') ORDER BY updatedAtEpochMs ASC")
+    suspend fun activeJobs(): List<NativeHlsJobEntity>
+
+    @Query("SELECT * FROM native_hls_jobs WHERE stage = 'Paused' ORDER BY updatedAtEpochMs ASC")
+    suspend fun pausedJobs(): List<NativeHlsJobEntity>
+
     @Query("SELECT * FROM native_hls_parts WHERE jobId = :jobId ORDER BY partIndex ASC")
     suspend fun partsForJob(jobId: String): List<NativeHlsPartEntity>
 

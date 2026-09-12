@@ -38,6 +38,7 @@ import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
 import com.mikeyphw.xdm.android.media.BrowserCaptureSessionRegistry
 import com.mikeyphw.xdm.android.media.ffmpeg.EmbeddedFfmpegRuntime
 import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegMediaManager
+import com.mikeyphw.xdm.android.ffmpeg.NativeHlsMediaManager
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.transfer.aria2.AndroidAria2CapabilityProbe
 import com.mikeyphw.xdm.android.transfer.aria2.AppPrivateAria2SecretProvider
@@ -127,6 +128,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val embeddedFfmpegRuntime = EmbeddedFfmpegRuntime(this)
         val embeddedFfmpegMediaManager = EmbeddedFfmpegMediaManager(repository, destinationWriter, embeddedFfmpegRuntime)
         MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))
+        val nativeHlsMediaManager = NativeHlsMediaManager(this, database, repository, destinationWriter, embeddedFfmpegRuntime)
         val sensitivePersistenceMigrator = SensitivePersistenceMigrator(this, repository)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)
         val aria2SessionStore = Aria2SessionStore(this)
@@ -139,7 +141,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 rollingDebugRecorder.setVerboseLoggingEnabled(prefs.verboseDebugLoggingEnabled)
             }
         }
-        val termuxMediaPipelineManager = TermuxMediaPipelineManager(this, database, repository, destinationWriter)
+        val termuxMediaPipelineManager = TermuxMediaPipelineManager(this, database, repository, destinationWriter, embeddedFfmpegRuntime)
         val postProcessingAutomationManager = PostProcessingAutomationManager(preferences, repository, termuxMediaPipelineManager)
         val downloadArtifactActionManager = DownloadArtifactActionManager(this)
         val mediaResolverSelectionStore = MediaResolverSelectionStore(this)
@@ -212,6 +214,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             destinationWriter = destinationWriter,
             aria2ProcessManager = aria2ProcessManager,
             embeddedFfmpegMediaManager = embeddedFfmpegMediaManager,
+            nativeHlsMediaManager = nativeHlsMediaManager,
             termuxBridgeManager = termuxBridgeManager,
             termuxAria2CockpitManager = termuxAria2CockpitManager,
             termuxMediaPipelineManager = termuxMediaPipelineManager,
@@ -228,7 +231,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             problemReporter = problemReporter,
         )
         termuxMediaPipelineManager.recoverInterruptedJobs()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { embeddedFfmpegMediaManager.recoverInterruptedJobs() }
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            embeddedFfmpegMediaManager.recoverInterruptedJobs()
+        }
         postProcessingAutomationManager.startAutomaticProcessing()
         queueConditionMonitor = QueueConditionMonitor(this) {
             QueueIntelligenceWorker.enqueueImmediate(this)
@@ -239,6 +244,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             // Admission stays fail-closed unless every critical startup phase succeeds.
             val migration = runCatching { sensitivePersistenceMigrator.migrateIfNeeded() }
             val recovery = transferRuntime.recoverForStartup()
+            // Native HLS waits for canonical publication-journal recovery so a destination that
+            // committed just before process death is adopted instead of remuxed/published twice.
+            val nativeHlsRecovery = runCatching { nativeHlsMediaManager.recoverInterruptedJobs() }
             val monitor = runCatching { queueConditionMonitor.start() }
             migration.exceptionOrNull()?.let { error ->
                 problemReporter.report(
@@ -267,7 +275,16 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                     dedupeKey = "startup-queue-condition-monitor",
                 )
             }
-            if (migration.isSuccess && recovery.admissionSafe && monitor.isSuccess) {
+            nativeHlsRecovery.exceptionOrNull()?.let { error ->
+                problemReporter.report(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.Scheduler,
+                    title = "Native HLS recovery needs attention",
+                    summary = error.message ?: error::class.java.simpleName,
+                    suggestedAction = "Open Recovery and Diagnostics & support before retrying the media download.",
+                    dedupeKey = "startup-native-hls-recovery",
+                )
+            }
+            if (migration.isSuccess && recovery.admissionSafe && nativeHlsRecovery.isSuccess && monitor.isSuccess) {
                 queueIntelligenceCoordinator.clearStartupRecoveryHold()
                 QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
             }
@@ -309,6 +326,7 @@ data class AppContainer(
     val destinationWriter: AndroidDestinationWriter,
     val aria2ProcessManager: Aria2ProcessManager,
     val embeddedFfmpegMediaManager: EmbeddedFfmpegMediaManager,
+    val nativeHlsMediaManager: NativeHlsMediaManager,
     val termuxBridgeManager: TermuxBridgeManager,
     val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     val termuxMediaPipelineManager: TermuxMediaPipelineManager,

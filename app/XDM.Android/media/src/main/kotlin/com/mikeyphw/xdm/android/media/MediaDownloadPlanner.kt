@@ -177,7 +177,9 @@ class MediaDownloadPlanner {
             shape == MediaTransferShape.ProtectedDiagnostic -> MediaDownloadStrategy.UnsupportedProtected
             capture.nativeCapability == MediaNativeCapability.ProtectedUnsupported -> MediaDownloadStrategy.UnsupportedProtected
             shape == MediaTransferShape.LiveRecording -> MediaDownloadStrategy.FfmpegLive
-            intent == MediaDownloadIntent.Subtitles -> MediaDownloadStrategy.NativeHls.takeIf { capture.kind == MediaSourceKind.HlsPlaylist && nativeHlsEligible(capture, variants) } ?: MediaDownloadStrategy.YtDlp
+            // A subtitle-only request is not the HLS media rendition. Keep it on the resolver path
+            // unless/until XDM has a dedicated native subtitle artifact executor.
+            intent == MediaDownloadIntent.Subtitles -> MediaDownloadStrategy.YtDlp
             shape == MediaTransferShape.AdaptivePlaylist && capture.kind == MediaSourceKind.HlsPlaylist && nativeHlsEligible(capture, variants) -> MediaDownloadStrategy.NativeHls
             shape == MediaTransferShape.AdaptivePlaylist && embeddedAdaptiveEligible(variants, intent, normalizedSelection) -> MediaDownloadStrategy.FfmpegAdaptive
             shape == MediaTransferShape.AdaptivePlaylist -> MediaDownloadStrategy.YtDlp

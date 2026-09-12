@@ -119,7 +119,7 @@ def validate(root: Path) -> list[str]:
     contains_all(auto, ("reconcileMissedTerminalEvents", "findDownloadsByStates", "attemptGenerationForDownload", "AutomaticCaptureStates"), "durable startup reconciliation", errors)
     contains_all(vm, ("pauseTermuxMediaJob", "resumeTermuxMediaJob", "cancelTermuxMediaJob", "forceCancelTermuxMediaJob", "recoverTermuxMediaPublication", "retryTermuxMediaJob"), "ViewModel controls", errors)
     contains_all(ui, ("Force owned process", "Publish staged output", "New attempt", "attempt", "PID"), "durable job UI", errors)
-    contains_all(contract, ("preflightRequiresFreshVerifiedToolsAndAdvertisedMuxers", "immutableSpecificationRoundTripPreservesResultModeAndInputFacts", "event.attemptGeneration", "preparePublication", "publishPrepared"), "unit contract", errors)
+    contains_all(contract, ("embeddedMediaActionsDoNotRequireTermuxButExplicitFallbackStillDoes", "immutableSpecificationRoundTripPreservesResultModeAndInputFacts", "event.attemptGeneration", "preparePublication", "publishPrepared"), "unit contract", errors)
     gap_contract = text(root, "app/src/test/kotlin/com/mikeyphw/xdm/android/PostProcessingPhase7GapClosureContractTest.kt", errors)
     contains_all(gap_contract, ("signedUrlsAreNeverPersistedAsVariantUrls", "metadataSanitizerRedactsNestedCredentials"), "gap-closure unit contract", errors)
     contains_all(migration_test, ("MigrationTestHelper", "Migration16To17", "Migration15To16", "Migration14To15", "runMigrationsAndValidate", "post_processing_jobs", "post_processing_claims"), "migration test", errors)

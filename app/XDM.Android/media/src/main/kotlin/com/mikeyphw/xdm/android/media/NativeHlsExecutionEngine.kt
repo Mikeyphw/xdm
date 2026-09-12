@@ -31,6 +31,9 @@ enum class NativeHlsUnsupportedReason {
     DrmKeyFormat,
     UnknownEncryption,
     IFrameOnly,
+    MasterPlaylist,
+    SeparateRenditionMuxRequired,
+    EncryptedInitMap,
     MissingSegments,
     InvalidPlaylist,
 }
@@ -107,6 +110,9 @@ data class NativeHlsManifestPlan(
     val selectedSubtitleVariantId: String?,
     val hasSeparateAudio: Boolean,
     val hasSubtitles: Boolean,
+    /** FFprobe expectations for the selected media rendition. Both false means require any media stream. */
+    val requireVideoStream: Boolean,
+    val requireAudioStream: Boolean,
     val aes128: Boolean,
     val keyRotation: Boolean,
     val mediaSequenceStart: Long,
@@ -206,11 +212,27 @@ class NativeHlsExecutionEngine {
         if (lines.none { it.equals("#EXT-X-ENDLIST", ignoreCase = true) }) reasons += NativeHlsUnsupportedReason.LivePlaylist
         if (lines.any { it.startsWith("#EXT-X-PART", true) || it.startsWith("#EXT-X-PRELOAD-HINT", true) || it.startsWith("#EXT-X-SERVER-CONTROL", true) }) reasons += NativeHlsUnsupportedReason.LowLatencyHls
         if (lines.any { it.startsWith("#EXT-X-I-FRAME-STREAM-INF", true) }) reasons += NativeHlsUnsupportedReason.IFrameOnly
+        // The segmented executor owns one media playlist only. A master playlist or a graph with
+        // separate audio/subtitle renditions must stay on the selected-track embedded FFmpeg lane.
+        if (lines.any { it.startsWith("#EXT-X-STREAM-INF", true) }) reasons += NativeHlsUnsupportedReason.MasterPlaylist
+        if (variants.any { it.kind == MediaVariantKind.Audio || it.kind == MediaVariantKind.Subtitle }) {
+            reasons += NativeHlsUnsupportedReason.SeparateRenditionMuxRequired
+        }
         val keyLines = lines.filter { it.startsWith("#EXT-X-KEY", true) }
         val keys = keyLines.map { parseKey(capture.sourceUrl, it) }
         if (keys.any { it.method.equals("SAMPLE-AES", true) }) reasons += NativeHlsUnsupportedReason.SampleAes
         if (keys.any { it.isProtected }) reasons += NativeHlsUnsupportedReason.DrmKeyFormat
         if (keys.any { !it.method.equals("NONE", true) && !it.isAes128 && !it.isProtected }) reasons += NativeHlsUnsupportedReason.UnknownEncryption
+        // EXT-X-KEY also applies to EXT-X-MAP. The current executor decrypts media parts but does
+        // not persist/decrypt an encrypted init-map key/IV separately, so fail closed to fallback
+        // instead of producing a corrupt fMP4 artifact.
+        var activeKey: NativeHlsKey? = null
+        for (line in lines) {
+            when {
+                line.startsWith("#EXT-X-KEY", true) -> activeKey = parseKey(capture.sourceUrl, line).takeUnless { it.method.equals("NONE", true) }
+                line.startsWith("#EXT-X-MAP", true) && activeKey?.isAes128 == true -> reasons += NativeHlsUnsupportedReason.EncryptedInitMap
+            }
+        }
         val mediaSequence = lines.firstOrNull { it.startsWith("#EXT-X-MEDIA-SEQUENCE", true) }
             ?.substringAfter(':', "0")?.trim()?.toLongOrNull() ?: 0L
         val parts = parseMediaPlaylist(capture, text)
@@ -226,6 +248,7 @@ class NativeHlsExecutionEngine {
         val selectedVideo = selection.videoVariantId ?: capture.selectedVariantId ?: variants.firstOrNull { it.kind == MediaVariantKind.Video }?.id
         val selectedAudio = selection.audioVariantId ?: variants.firstOrNull { it.kind == MediaVariantKind.Audio && it.isDefault }?.id
         val selectedSubtitle = selection.subtitleVariantId
+        val (requireVideoStream, requireAudioStream) = streamRequirements(capture, variants, selection)
         return NativeHlsManifestPlan(
             captureId = capture.id,
             manifestUrl = capture.sourceUrl,
@@ -238,6 +261,8 @@ class NativeHlsExecutionEngine {
             selectedSubtitleVariantId = selectedSubtitle,
             hasSeparateAudio = variants.any { it.kind == MediaVariantKind.Audio },
             hasSubtitles = variants.any { it.kind == MediaVariantKind.Subtitle },
+            requireVideoStream = requireVideoStream,
+            requireAudioStream = requireAudioStream,
             aes128 = keys.any { it.isAes128 } || capture.protectionKind == MediaProtectionKind.Aes128,
             keyRotation = keys.map { it.uri.orEmpty() + "|" + it.ivHex.orEmpty() }.distinct().size > 1,
             mediaSequenceStart = mediaSequence,
@@ -435,6 +460,8 @@ class NativeHlsExecutionEngine {
         selectedSubtitleVariantId = selection.subtitleVariantId,
         hasSeparateAudio = variants.any { it.kind == MediaVariantKind.Audio },
         hasSubtitles = variants.any { it.kind == MediaVariantKind.Subtitle },
+        requireVideoStream = streamRequirements(capture, variants, selection).first,
+        requireAudioStream = streamRequirements(capture, variants, selection).second,
         aes128 = capture.protectionKind == MediaProtectionKind.Aes128,
         keyRotation = false,
         mediaSequenceStart = 0L,
@@ -443,6 +470,27 @@ class NativeHlsExecutionEngine {
         requestHeaders = requestHeaders,
         executionUrl = capture.sourceUrl,
     )
+
+    private fun streamRequirements(
+        capture: MediaCaptureRecord,
+        variants: List<MediaVariant>,
+        selection: MediaTrackSelection,
+    ): Pair<Boolean, Boolean> {
+        val selectedIds = selection.selectedIds()
+        val selected = variants.filter { it.id in selectedIds }
+        val codecText = buildList {
+            capture.codecs?.let(::add)
+            selected.mapNotNullTo(this) { it.codecs }
+        }.joinToString(",").lowercase(Locale.ROOT)
+        val mime = capture.mimeType.orEmpty().lowercase(Locale.ROOT)
+        val videoCodecHints = listOf("avc1", "avc3", "h264", "hev1", "hvc1", "hevc", "vp8", "vp9", "vp09", "av01", "mpeg4")
+        val audioCodecHints = listOf("mp4a", "aac", "opus", "vorbis", "mp3", "ac-3", "ec-3", "flac")
+        val requireVideo = selected.any { it.kind == MediaVariantKind.Video } ||
+            mime.startsWith("video/") || videoCodecHints.any(codecText::contains)
+        val requireAudio = selected.any { it.kind == MediaVariantKind.Audio } ||
+            mime.startsWith("audio/") || audioCodecHints.any(codecText::contains)
+        return requireVideo to requireAudio
+    }
 
     private fun parseKey(baseUrl: String, line: String): NativeHlsKey {
         val attrs = attributeList(line.substringAfter(':', ""))

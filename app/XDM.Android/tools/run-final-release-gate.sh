@@ -42,6 +42,7 @@ validators=(
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
   tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py
   tools/validate-ffmpeg04-full-release-seal.py
+  tools/validate-ffmpeg-roadmap-postseal-hotfix.py
   tools/validate-uix-r3-downloads-add-workspace.py
   tools/validate-uix-r6-accessibility-performance-release-seal.py
   tools/validate-ux13-end-to-end-ui-ux-release-seal.py
@@ -95,7 +96,7 @@ bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
 FULL_GRADLE_GATE='bash tools/run-final-common-validation.sh && bash tools/run-bug-hunt-phase11-validation-matrix.sh --device-only && bash tools/run-bug-hunt-phase11-validation-matrix.sh --release-only'
 
 if [[ "${1:-}" == "--ci" ]]; then
-  echo "CI final static gate passed including FF04 embedded FFmpeg/FFprobe full release seal and Media Parity04 browser UX/userscripts/notification seal"
+  echo "CI final static gate passed including FF04 embedded FFmpeg/FFprobe full release seal, post-seal roadmap execution ownership, and Media Parity04 browser UX/userscripts/notification seal"
   exit 0
 fi
 

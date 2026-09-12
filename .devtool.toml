@@ -96,6 +96,7 @@ preflight = [
   ":app:verifyFfmpeg02MediaMuxHlsPostprocessingContract",
   ":app:verifyFfmpeg03RuntimeRoutingTermuxUiReliabilityContract",
   ":app:verifyFfmpeg04FullReleaseSeal",
+  ":app:verifyFfmpegRoadmapPostSealHotfix",
 ]
 
 dependencies = [

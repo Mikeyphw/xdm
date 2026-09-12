@@ -1,3 +1,48 @@
+## FFmpeg roadmap post-seal hotfix v7 — suspend compile closure
+
+- Fixes the authoritative v6 Termux `:app:compileDebugKotlin` failure: `embeddedToolVersionsJson()` now has a `suspend` signature before calling `EmbeddedFfmpegRuntime.capabilities()`.
+- FF02/post-seal validators and the Kotlin source contract now require that suspend boundary, preventing this compile regression from passing static validation again.
+- Preserves the cumulative FF01–FF04 roadmap, recovery, publication, retry, native-HLS, and embedded-first fixes from v6.
+
+## 2026-09-12 — FFmpeg roadmap post-seal unit-test compile closure v6
+
+- Fold the authoritative v5 Termux validation rollback into the cumulative roadmap hotfix: `AdaptiveMediaExecutionMc03Test` incorrectly referenced nonexistent `MediaNativeCapability.NativeHls`; use the real `NativeCandidate` capability while still asserting subtitle-only HLS routes away from `MediaDownloadStrategy.NativeHls`.
+- Preserve both v5 production import fixes (`MediaVariantKind` in `MediaExecutionLibrary` and `NativeHlsMediaManager`).
+- Strengthen FF02/post-seal validators so capability-vs-strategy enum confusion is rejected before Gradle reaches `:media:compileDebugUnitTestKotlin`.
+- v5 rollback was atomic; v6 still applies directly to the successful post-v7r4 baseline and supersedes v1-v5.
+
+## 2026-09-12 — FFmpeg roadmap post-seal fourth-pass recovery closure v4
+
+- Re-audited the FF01–FF04 handoff by runtime state transition rather than source-presence assertions.
+- Fixed a real FF02 recovery gap: `EmbeddedFfmpeg` adaptive/live output generations could enter Failed/Cancelled/RecoveryRequired and advertise Retry in Library, but every Retry surface was a dead action because those outputs intentionally have no ordinary `downloadId`.
+- Added `MainViewModel.retryEmbeddedFfmpegOutput` to rebuild the selected adaptive/live plan from durable capture/output identity plus the encrypted request-handoff store, preserve destination/name/selected tracks, and admit a new embedded-only generation without silently escaping into Termux.
+- Wired embedded FFmpeg Retry through Library list, grid, and Details surfaces while preserving native-HLS RecoveryRequired routing through `NativeHlsMediaManager.resume` and existing durable local post-processing retry generations.
+- Strengthened FF02 and the post-seal release gate so a future UI/refactor cannot render a Retry action for `EmbeddedFfmpeg` without an executable in-app recovery owner.
+
+## 2026-09-12 - FFmpeg roadmap post-seal third-pass closure v3
+
+- Added crash-safe publication reconciliation for embedded adaptive/live FFmpeg jobs, including exact-size adoption of provider commits recorded at `DestinationCommitInProgress` and non-cancellable metadata reconciliation after promotion.
+- Made audio-only embedded FFmpeg container selection codec-aware: AAC/MP4A uses M4A while other/unknown codecs use Matroska audio for stream-copy compatibility.
+- Hardened native-HLS final filename enforcement at the execution-owner boundary and included init-map BYTERANGE in durable refresh/recovery identity without a Room schema change.
+- Added publication-journal decode/read regression coverage and strengthened FF02/post-seal gates so production ownership, crash recovery, codec-safe containers, and init-map range identity cannot regress behind green source-presence checks.
+
+## 2026-09-12 — FFmpeg roadmap post-seal hotfix v2 deep re-audit
+
+- Re-run the literal FF01–FF04 handoff roadmap against the post-v7r4 repository and the v1 candidate rather than accepting the first gap list as exhaustive.
+- Harden native-HLS audio-only FFprobe expectations, job/generation-scoped part identity, refreshed-playlist part identity, unsupported master/separate-rendition/encrypted-init-map negotiation, controlled `.mkv`/`.m4a`/`.mka` final containers, and extension-preserving filename bounds.
+- Make Pause/Cancel cancel and join the worker, make OkHttp requests coroutine-cancellable, preserve coroutine cancellation through retries, isolate temp directories by the full durable job key, and atomically reserve a single non-completed worker even while it is LAZY.
+- Persist verified output digest/size before publication, order native-HLS recovery after canonical publication-journal recovery, and reconcile already committed destinations without remuxing or publishing duplicate output.
+- Upgrade FF04 device acceptance to stage through `AndroidDestinationWriter`, require atomic app-private promotion, and FFprobe the committed file as well as the staged mux.
+- Strengthen FF02/FF04/post-seal gates so these lifecycle/container/publication invariants cannot regress behind green class-presence checks.
+
+## 2026-09-12 — FFmpeg roadmap post-seal execution-ownership hotfix
+
+- Re-audit the successfully validated FF04 tree against the original FF01–FF04 handoff roadmap rather than treating green source/package seals as proof of every promised production path.
+- Wire the existing durable native-HLS model into a real `NativeHlsMediaManager`: Android-owned playlist fetch/security validation, bounded retries, byte ranges, AES-128, durable part checkpoints, pause/resume/cancel/recovery, embedded `NativeHlsFfmpegFinalizer`, FFprobe verification, and Android `DestinationWriter` publication.
+- Move normal completed-file FFprobe, fast-start, audio extraction, and remux actions onto the embedded FFmpeg/FFprobe runtime. Preserve the explicitly requested FF03 Termux FFmpeg fallback and explicitly named Termux developer/manual commands with a durable `externalFfmpegFallback` marker.
+- Strengthen FF02 and FF04 validation so a finalizer class without a production caller can no longer satisfy the roadmap seal; add `verifyFfmpegRoadmapPostSealHotfix` to Devtool preflight, the canonical static release gate, and the staged FF04 final lifecycle.
+- Rebase the retained Phase-7 post-processing contract to test embedded-default versus explicit-Termux-fallback semantics instead of assuming every FFmpeg operation requires Termux.
+
 ## FF04 v7r3 — FF03 UI contract test-root discovery hotfix
 
 - Repair `Ffmpeg03RuntimeRoutingUiContractTest` so Gradle unit tests locate the Android project root whether `user.dir` is the app module, Android project root, or repository root. The v7r2 target run executed 441 app unit tests and exposed exactly two `FileNotFoundException` failures caused by the old fixed-path assumption.
@@ -960,3 +1005,9 @@ First modern Avalonia preview from the `Mikeyphw/xdm` fork.
 - Made the signed publication entrypoint execute Overlay 13 static/common validation before release packaging and require the Android-bound Firefox capture key/SPKI/OAEP inputs for release XPI verification.
 - Harmonized current `PROJECT_MANIFEST.json` database/release state to Room schema 20, version `0.21.0`, versionCode 22, and fail-closed readiness evidence rather than historical schema/version claims.
 - Strengthened Phase-13 Python/JUnit contracts and privacy/structured-protection regression coverage for the second promise audit.
+
+## 2026-09-12 - FFmpeg roadmap post-seal hotfix v5 compile closure
+
+- Fixed the authoritative Termux validation blocker from v4: `MediaExecutionLibrary.kt` and `NativeHlsMediaManager.kt` now import `MediaVariantKind` for their codec-safe audio-container branches.
+- Strengthened FF02 and the post-seal roadmap validator so the same unresolved-symbol regression is rejected before a future Devtool Gradle run.
+- Carries forward every v4 production/recovery/publication fix unchanged.

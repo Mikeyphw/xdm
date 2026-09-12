@@ -113,7 +113,7 @@ exitCode=0
     }
 
     @Test
-    fun preflightRequiresFreshVerifiedToolsAndAdvertisedMuxers() {
+    fun embeddedMediaActionsDoNotRequireTermuxButExplicitFallbackStillDoes() {
         val now = System.currentTimeMillis()
         val ready = TermuxBridgeStatus(
             termuxInstalled = true,
@@ -130,20 +130,30 @@ exitCode=0
             lastSuccessfulToolProbeAtEpochMs = now,
             ffmpegMuxers = setOf("mp4", "m4a", "matroska", "webm"),
         )
-        assertNull(PostProcessingExecutionPolicy.preflightIssue(sampleSpec(), ready))
+
+        val embedded = sampleSpec(requiredTools = emptySet())
+        assertFalse(PostProcessingExecutionPolicy.usesTermux(embedded))
+        assertNull(PostProcessingExecutionPolicy.preflightIssue(embedded, TermuxBridgeStatus()))
+
+        val externalFallback = sampleSpec(
+            requiredTools = setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
+            externalFfmpegFallback = true,
+        )
+        assertTrue(PostProcessingExecutionPolicy.usesTermux(externalFallback))
+        assertNull(PostProcessingExecutionPolicy.preflightIssue(externalFallback, ready))
 
         val stale = ready.copy(lastSuccessfulToolProbeAtEpochMs = now - PostProcessingExecutionPolicy.ToolProbeFreshnessMs - 1L)
-        assertTrue(PostProcessingExecutionPolicy.preflightIssue(sampleSpec(), stale)?.contains("successful Termux tool") == true)
+        assertTrue(PostProcessingExecutionPolicy.preflightIssue(externalFallback, stale)?.contains("successful Termux tool") == true)
 
         val missingFfmpeg = ready.copy(
             toolRows = ready.toolRows.map { row ->
                 if (row.tool == ExternalTool.Ffmpeg) row.copy(available = false, executablePath = "", versionLine = "Missing") else row
             },
         )
-        assertTrue(PostProcessingExecutionPolicy.preflightIssue(sampleSpec(), missingFfmpeg)?.contains("FFmpeg") == true)
+        assertTrue(PostProcessingExecutionPolicy.preflightIssue(externalFallback, missingFfmpeg)?.contains("FFmpeg") == true)
 
         val missingMuxer = ready.copy(ffmpegMuxers = setOf("matroska", "webm"))
-        assertTrue(PostProcessingExecutionPolicy.preflightIssue(sampleSpec(), missingMuxer)?.contains("mp4 output muxer") == true)
+        assertTrue(PostProcessingExecutionPolicy.preflightIssue(externalFallback, missingMuxer)?.contains("mp4 output muxer") == true)
 
         val localChecksum = sampleSpec(
             kind = PostProcessingActionKind.VerifySha256,
@@ -191,7 +201,8 @@ exitCode=0
         kind: PostProcessingActionKind = PostProcessingActionKind.RemuxFastStart,
         output: PostProcessingOutputSpec = PostProcessingOutputSpec("video.faststart.mp4", "video/mp4"),
         expectedSha256: String? = null,
-        requiredTools: Set<ExternalTool> = setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
+        requiredTools: Set<ExternalTool> = emptySet(),
+        externalFfmpegFallback: Boolean = false,
         inputMimeType: String? = "video/mp4",
         inputContainer: String? = "mp4",
         inputCodecs: String? = "h264,aac",
@@ -213,6 +224,7 @@ exitCode=0
         output = output,
         expectedSha256 = expectedSha256,
         requiredTools = requiredTools,
+        externalFfmpegFallback = externalFfmpegFallback,
         formatSelector = if (kind == PostProcessingActionKind.YtDlpDownload) "bestvideo+bestaudio/best" else null,
         resultMode = resultMode,
     )

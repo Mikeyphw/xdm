@@ -195,6 +195,7 @@ dependencies {
     implementation(project(":scheduler"))
     implementation(project(":media"))
     implementation(project(":media-ffmpeg"))
+    implementation(libs.okhttp)
     implementation(project(":diagnostics"))
     implementation(project(":browser-integration"))
     implementation(project(":browser-extension"))
@@ -261,6 +262,14 @@ tasks.register<Exec>("verifyFfmpeg04FullReleaseSeal") {
     commandLine("python3", "tools/validate-ffmpeg04-full-release-seal.py")
 }
 
+
+tasks.register<Exec>("verifyFfmpegRoadmapPostSealHotfix") {
+    group = "verification"
+    description = "Verify post-seal FFmpeg roadmap execution ownership: native HLS production wiring and embedded-first local post-processing."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-ffmpeg-roadmap-postseal-hotfix.py")
+}
+
 tasks.register<Exec>("verifyFfmpegDebugApkRuntime") {
     group = "verification"
     description = "Build and verify the debug APK contains the exact attested 16 KB FFmpeg/FFprobe payload and licenses."
@@ -296,6 +305,7 @@ val verifyFfmpeg04FinalReleaseValidation = tasks.register("verifyFfmpeg04FinalRe
     description = "Run the complete staged FF04 release validation: seal, unit tests, Android-test APK, runtime APK attestation, static gate, then lint."
     dependsOn(
         "verifyFfmpeg04FullReleaseSeal",
+        "verifyFfmpegRoadmapPostSealHotfix",
         ":media-ffmpeg:testDebugUnitTest",
         ":media:test",
         "testDebugUnitTest",
@@ -309,7 +319,7 @@ val verifyFfmpeg04FinalReleaseValidation = tasks.register("verifyFfmpeg04FinalRe
 // Order the heavyweight roots. `mustRunAfter` is used in addition to dependencies because the
 // lifecycle task intentionally keeps each existing validator/test task authoritative.
 tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
-    mustRunAfter(":media-ffmpeg:testDebugUnitTest", ":media:test", "verifyFfmpeg04FullReleaseSeal")
+    mustRunAfter(":media-ffmpeg:testDebugUnitTest", ":media:test", "verifyFfmpeg04FullReleaseSeal", "verifyFfmpegRoadmapPostSealHotfix")
 }
 tasks.matching { it.name == "assembleDebugAndroidTest" }.configureEach {
     mustRunAfter("testDebugUnitTest")

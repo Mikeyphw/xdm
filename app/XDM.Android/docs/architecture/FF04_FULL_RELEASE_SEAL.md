@@ -65,3 +65,21 @@ OpenSSL uses the `build_libs` target and keeps the existing static/TLS-compatibl
 The first v6 prewarm reached FFmpeg configuration and exposed a release-profile mismatch: FFmpeg 9.0.1 has removed `libpostproc`, so its configure script rejects the old `--disable-postproc` switch. v7 removes that switch from the production manifest and derives the real configure command from the manifest after checking every profile option against the verified source tree's `./configure --help` output. This converts future removed/renamed options into an immediate focused profile error instead of a late opaque configure traceback.
 
 The deterministic native cache remains compatible with v5/v6. Cache identity alone reconstructs the previous manifest's obsolete postproc flag so the same NDK/path/host resolves to the existing cache; runtime configuration, lock attestation, and `ffmpeg -version` verification use only the corrected FFmpeg 9 profile.
+
+## Post-seal roadmap ownership gate
+
+A successful payload/APK seal is necessary but not sufficient evidence that every roadmap execution path is reachable. The post-v7r4 audit found that the native-HLS finalizer could satisfy the old source contract without any production caller.
+
+FF04 now carries `verifyFfmpegRoadmapPostSealHotfix`, and FF02 itself requires the production `NativeHlsMediaManager` call path plus embedded-first completed-file FFmpeg/FFprobe routing. The explicit Termux fallback remains separately marked and verified. This prevents future replacement seals from reporting roadmap closure when the runtime classes exist but the app never dispatches work to them.
+
+## Post-seal v2 literal roadmap acceptance
+
+The post-seal gate now carries a literal FF01–FF04 closure audit. FF04 device acceptance does not stop at producing a cache file: deterministic separate video/audio fixtures are muxed by the attested embedded runtime into `AndroidDestinationWriter` staging, FFprobe verifies staged media, app-private publication must report atomic promotion, and embedded FFprobe verifies the committed file. Native-HLS startup recovery is ordered after the canonical publication-journal scanner so a crash after destination commit cannot cause duplicate remux/publication.
+
+## Post-seal roadmap audit v3
+
+The FF04 staged lifecycle now includes the strengthened post-seal ownership gate. In addition to the pinned runtime/APK/license/16-KB/no-Termux checks, the gate proves crash-safe embedded adaptive/live publication, codec-compatible audio-only output containers, native-HLS generation/map-range-safe recovery, and explicit Termux fallback separation. Provider commits observed mid-copy are never adopted on size alone: content destinations require SHA-256 equality with preserved staged bytes.
+
+## Post-seal v4 recovery gate
+
+The FF04 carry-forward seal now treats a visible Retry action as part of FF02 lifecycle correctness. An `EmbeddedFfmpeg` generation in Failed/Cancelled/RecoveryRequired must have an executable embedded-only recovery path in every Library surface; it may not silently fall through to Termux or an unrelated ordinary Download retry. Native-HLS recovery remains owner-routed to `NativeHlsMediaManager`.

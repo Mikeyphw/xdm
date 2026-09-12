@@ -330,6 +330,7 @@ private fun XdmRouteContent(
                 },
                 onResumeOrRetryDownload = viewModel::togglePause,
                 onRetryExternalJob = viewModel::retryTermuxMediaJob,
+                onRetryEmbeddedFfmpegOutput = viewModel::retryEmbeddedFfmpegOutput,
                 onRemoveRecord = viewModel::removeMediaLibraryRecord,
                 onFindMedia = { viewModel.navigate(AppRoute.Media) },
                 onDeleteSavedFile = { item ->

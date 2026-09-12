@@ -11,6 +11,7 @@ import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaTransferShape
 import com.mikeyphw.xdm.android.model.MediaVariant
+import com.mikeyphw.xdm.android.model.MediaVariantKind
 import java.net.URI
 import java.util.Locale
 
@@ -341,7 +342,7 @@ class MediaExecutionLibraryPlanner(
             captureId = capture.id,
             sourceUrl = plan.primaryUrl,
             destinationUri = destinationUri,
-            fileName = safeMediaFileName(capture, plan),
+            fileName = safeMediaFileName(capture, plan, variants),
             requestedBackend = backend,
             transferShape = plan.transferShape,
             userLabel = "Media: ${capture.title.ifBlank { capture.fileName }}",
@@ -989,19 +990,25 @@ class MediaExecutionLibraryPlanner(
         variants.firstOrNull { it.id == capture.selectedVariantId }?.id?.let(::add)
     }
 
-    private fun safeMediaFileName(capture: MediaCaptureRecord, plan: MediaDownloadPlan): String {
+    private fun safeMediaFileName(capture: MediaCaptureRecord, plan: MediaDownloadPlan, variants: List<MediaVariant>): String {
         val raw = capture.fileName.ifBlank { capture.title.ifBlank { "xdm-media" } }
-        val leaf = raw.substringAfterLast('/', raw)
+        val leaf = raw.substringAfterLast('/').substringAfterLast('\\').ifBlank { "xdm-media" }
         val existingExtension = leaf.substringAfterLast('.', "").lowercase()
         val hasExtension = existingExtension.length in 2..5
         // FF02 intentionally gives stream-copy FFmpeg jobs a container we control. Captured names
         // such as "movie.mp4" are often guesses made before track codecs are resolved; preserving
         // that guessed extension can make a perfectly valid H.264/Opus/WebVTT selection fail at
         // the mux header. Matroska is the conservative no-transcode target; audio-only uses M4A.
-        val ffmpegNeedsContainer = plan.strategy in setOf(MediaDownloadStrategy.FfmpegLive, MediaDownloadStrategy.FfmpegAdaptive)
-        val normalizedRaw = if (ffmpegNeedsContainer && hasExtension) raw.substringBeforeLast('.') else raw
+        val ffmpegNeedsContainer = plan.strategy in setOf(
+            MediaDownloadStrategy.FfmpegLive,
+            MediaDownloadStrategy.FfmpegAdaptive,
+            MediaDownloadStrategy.NativeHls,
+        )
+        val nativeHlsAudioOnly = plan.strategy == MediaDownloadStrategy.NativeHls && nativeHlsAudioOnly(capture, plan)
+        val normalizedLeaf = if (ffmpegNeedsContainer && hasExtension) leaf.substringBeforeLast('.') else leaf
         val extension = when {
-            ffmpegNeedsContainer && plan.intent == MediaDownloadIntent.AudioOnly -> ".m4a"
+            plan.strategy == MediaDownloadStrategy.NativeHls && nativeHlsAudioOnly -> nativeHlsAudioExtension(capture, variants, plan)
+            ffmpegNeedsContainer && plan.intent == MediaDownloadIntent.AudioOnly -> embeddedAudioExtension(capture, variants, plan)
             ffmpegNeedsContainer -> ".mkv"
             hasExtension -> ""
             capture.mimeType?.contains("audio", ignoreCase = true) == true || plan.intent == MediaDownloadIntent.AudioOnly -> ".m4a"
@@ -1009,7 +1016,45 @@ class MediaExecutionLibraryPlanner(
             plan.strategy in setOf(MediaDownloadStrategy.FfmpegLive, MediaDownloadStrategy.FfmpegAdaptive) -> ".mkv"
             else -> ".media"
         }
-        return (normalizedRaw + extension).replace(Regex("[\\r\\n\\t]"), " ").take(120)
+        val cleanedBase = normalizedLeaf.replace(Regex("[\\r\\n\\t]"), " ").ifBlank { "xdm-media" }
+        val baseBudget = (120 - extension.length).coerceAtLeast(1)
+        return cleanedBase.take(baseBudget) + extension
+    }
+
+    private fun nativeHlsAudioOnly(capture: MediaCaptureRecord, plan: MediaDownloadPlan): Boolean {
+        if (plan.intent == MediaDownloadIntent.AudioOnly) return true
+        if (capture.mimeType?.startsWith("audio/", ignoreCase = true) == true) return true
+        val codecs = capture.codecs.orEmpty().lowercase()
+        val hasVideo = listOf("avc1", "avc3", "h264", "hev1", "hvc1", "hevc", "vp8", "vp9", "vp09", "av01", "mpeg4").any(codecs::contains)
+        val hasAudio = listOf("mp4a", "aac", "opus", "vorbis", "mp3", "ac-3", "ec-3", "flac").any(codecs::contains)
+        return hasAudio && !hasVideo
+    }
+
+    private fun nativeHlsAudioExtension(capture: MediaCaptureRecord, variants: List<MediaVariant>, plan: MediaDownloadPlan): String =
+        embeddedAudioExtension(capture, variants, plan)
+
+    private fun embeddedAudioExtension(capture: MediaCaptureRecord, variants: List<MediaVariant>, plan: MediaDownloadPlan): String {
+        val selectedIds = plan.trackSelection.selectedIds()
+        val codecText = buildString {
+            append(capture.codecs.orEmpty()).append(' ')
+            variants.asSequence()
+                .filter { it.id in selectedIds || (selectedIds.isEmpty() && it.kind == MediaVariantKind.Audio) }
+                .mapNotNull(MediaVariant::codecs)
+                .forEach { append(it).append(' ') }
+        }.lowercase()
+        val mimeText = buildString {
+            append(capture.mimeType.orEmpty()).append(' ')
+            variants.asSequence()
+                .filter { it.id in selectedIds || (selectedIds.isEmpty() && it.kind == MediaVariantKind.Audio) }
+                .mapNotNull(MediaVariant::mimeType)
+                .forEach { append(it).append(' ') }
+        }.lowercase()
+        // M4A is safe for AAC/MP4A stream-copy. Opus/Vorbis/FLAC/AC-3/E-AC-3/MP3 and unknown
+        // audio use Matroska so an embedded no-transcode operation cannot fail solely because XDM
+        // guessed an MP4-family container before the selected codec was known.
+        val aacCompatible = "mp4a" in codecText || Regex("(^|[^a-z])aac([^a-z]|$)").containsMatchIn(codecText) ||
+            "audio/aac" in mimeText || "audio/mp4" in mimeText
+        return if (aacCompatible) ".m4a" else ".mka"
     }
 
     private fun libraryDetail(capture: MediaCaptureRecord, download: Download?): String = when {

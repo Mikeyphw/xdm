@@ -76,10 +76,9 @@ class NativeHlsExecutionEngineTest {
         }
         val variants = listOf(
             MediaVariant("cap-hls:variant:720", capture.id, capture.selectedVariantUrl!!, MediaVariantKind.Video, "application/vnd.apple.mpegurl", height = 720, bitrateBitsPerSecond = 2_200_000, displayLabel = "720p"),
-            MediaVariant("cap-hls:audio:en", capture.id, "https://cdn.example.test/show/audio/en.m3u8", MediaVariantKind.Audio, "application/vnd.apple.mpegurl", language = "en", isDefault = true),
-            MediaVariant("cap-hls:subs:en", capture.id, "https://cdn.example.test/show/subs/en.vtt", MediaVariantKind.Subtitle, "text/vtt", language = "en"),
         )
-        val plan = engine.negotiate(capture, variants, playlist, mapOf("Referer" to "https://watch.example.test/episode/1"), MediaTrackSelection(videoVariantId = "cap-hls:variant:720", audioVariantId = "cap-hls:audio:en", subtitleVariantId = "cap-hls:subs:en"))
+        val selection = MediaTrackSelection(videoVariantId = "cap-hls:variant:720")
+        val plan = engine.negotiate(capture, variants, playlist, mapOf("Referer" to "https://watch.example.test/episode/1"), selection)
         assertEquals(NativeHlsSupportStatus.Supported, plan.supportStatus)
         assertEquals(3, plan.aggregatePartCount)
         assertTrue(plan.aes128)
@@ -88,16 +87,84 @@ class NativeHlsExecutionEngineTest {
         assertEquals("0000000000000000000000000000002c", plan.parts[2].effectiveIvHex)
         assertEquals(1880L, plan.parts[1].byteRange!!.length)
         assertTrue(plan.parts[0].initMap!!.uri.endsWith("init.mp4"))
-        assertTrue(plan.hasSeparateAudio)
-        assertTrue(plan.hasSubtitles)
-        val admission = engine.admit(capture, "content://downloads/episode-1.mp4", "episode-1.mp4", plan, selection = MediaTrackSelection(videoVariantId = "cap-hls:variant:720", audioVariantId = "cap-hls:audio:en", subtitleVariantId = "cap-hls:subs:en"), nowEpochMs = 10L)
+        assertFalse(plan.hasSeparateAudio)
+        assertFalse(plan.hasSubtitles)
+        assertTrue(plan.requireVideoStream)
+        assertTrue(plan.requireAudioStream)
+        val admission = engine.admit(capture, "content://downloads/episode-1.mp4", "episode-1.mp4", plan, selection = selection, nowEpochMs = 10L)
         assertTrue(admission.created)
         assertEquals(NativeHlsExecutionStage.Admitted, admission.job.stage)
-        val duplicate = engine.admit(capture, "content://downloads/episode-1.mp4", "episode-1.mp4", plan, existing = admission.job, selection = MediaTrackSelection(videoVariantId = "cap-hls:variant:720", audioVariantId = "cap-hls:audio:en", subtitleVariantId = "cap-hls:subs:en"), nowEpochMs = 11L)
+        val duplicate = engine.admit(capture, "content://downloads/episode-1.mp4", "episode-1.mp4", plan, existing = admission.job, selection = selection, nowEpochMs = 11L)
         assertFalse(duplicate.created)
-        val addAgain = engine.admit(capture, "content://downloads/episode-1.mp4", "episode-1.mp4", plan, existing = admission.job, selection = MediaTrackSelection(videoVariantId = "cap-hls:variant:720", audioVariantId = "cap-hls:audio:en", subtitleVariantId = "cap-hls:subs:en"), addAgain = true, nowEpochMs = 12L)
+        val addAgain = engine.admit(capture, "content://downloads/episode-1.mp4", "episode-1.mp4", plan, existing = admission.job, selection = selection, addAgain = true, nowEpochMs = 12L)
         assertTrue(addAgain.created)
         assertEquals(2L, addAgain.job.attemptGeneration)
+    }
+
+
+    @Test
+    fun masterSeparateRenditionsAndEncryptedInitMapsFailClosedToFallback() {
+        val engine = NativeHlsExecutionEngine()
+        val capture = hlsCapture().copy(protectionKind = MediaProtectionKind.None)
+
+        val master = engine.negotiate(capture, emptyList(), """
+            #EXTM3U
+            #EXT-X-STREAM-INF:BANDWIDTH=1800000,CODECS="avc1.4d401f,mp4a.40.2"
+            720p.m3u8
+            #EXT-X-ENDLIST
+        """.trimIndent())
+        assertEquals(NativeHlsSupportStatus.NativeUnsupportedFallback, master.supportStatus)
+        assertTrue(master.unsupportedReasons.contains(NativeHlsUnsupportedReason.MasterPlaylist))
+
+        val renditions = listOf(
+            MediaVariant("audio-en", capture.id, "https://cdn.example.test/show/audio-en.m3u8", MediaVariantKind.Audio, "application/vnd.apple.mpegurl", language = "en", isDefault = true),
+        )
+        val separate = engine.negotiate(capture, renditions, """
+            #EXTM3U
+            #EXTINF:5,
+            video-1.ts
+            #EXT-X-ENDLIST
+        """.trimIndent())
+        assertEquals(NativeHlsSupportStatus.NativeUnsupportedFallback, separate.supportStatus)
+        assertTrue(separate.unsupportedReasons.contains(NativeHlsUnsupportedReason.SeparateRenditionMuxRequired))
+
+        val encryptedMap = engine.negotiate(capture, emptyList(), """
+            #EXTM3U
+            #EXT-X-KEY:METHOD=AES-128,URI="key.bin",IV=0x00000000000000000000000000000001
+            #EXT-X-MAP:URI="init.mp4"
+            #EXTINF:5,
+            segment-1.m4s
+            #EXT-X-ENDLIST
+        """.trimIndent())
+        assertEquals(NativeHlsSupportStatus.NativeUnsupportedFallback, encryptedMap.supportStatus)
+        assertTrue(encryptedMap.unsupportedReasons.contains(NativeHlsUnsupportedReason.EncryptedInitMap))
+    }
+
+    @Test
+    fun audioOnlyVodHlsRequiresAudioInsteadOfHardCodingVideoVerification() {
+        val engine = NativeHlsExecutionEngine()
+        val capture = hlsCapture().copy(
+            mimeType = "audio/aac",
+            codecs = "mp4a.40.2",
+            fileName = "episode-1.m4a",
+            selectedVariantId = null,
+            selectedVariantUrl = null,
+            variantCount = 0,
+            protectionKind = MediaProtectionKind.None,
+        )
+        val plan = engine.negotiate(capture, emptyList(), """
+            #EXTM3U
+            #EXT-X-MEDIA-SEQUENCE:7
+            #EXTINF:5,
+            audio-7.aac
+            #EXTINF:5,
+            audio-8.aac
+            #EXT-X-ENDLIST
+        """.trimIndent())
+
+        assertEquals(NativeHlsSupportStatus.Supported, plan.supportStatus)
+        assertFalse(plan.requireVideoStream)
+        assertTrue(plan.requireAudioStream)
     }
 
     @Test

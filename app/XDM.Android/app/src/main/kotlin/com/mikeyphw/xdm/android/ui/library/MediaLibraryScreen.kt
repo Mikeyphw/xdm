@@ -61,6 +61,7 @@ fun MediaLibraryScreen(
     externalJobs: List<MediaExternalJobSnapshot>,
     onResumeOrRetryDownload: (Download) -> Unit,
     onRetryExternalJob: (String) -> Unit,
+    onRetryEmbeddedFfmpegOutput: (MediaOutputRecord) -> Unit,
     onRemoveRecord: (OfflineMediaLibraryItem) -> Unit,
     onFindMedia: () -> Unit,
     onDeleteSavedFile: (OfflineMediaLibraryItem) -> Unit,
@@ -163,8 +164,11 @@ fun MediaLibraryScreen(
                         consumerPlanner = consumerPlanner,
                         onPlay = { selectedPlayerItem = item },
                         onResumeOrRetry = {
-                            if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
-                            else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                            when (item.ownerKind) {
+                                MediaOutputOwnerKind.TermuxJob -> onRetryExternalJob(item.ownerId)
+                                MediaOutputOwnerKind.EmbeddedFfmpeg -> outputs.firstOrNull { it.id == item.outputId }?.let(onRetryEmbeddedFfmpegOutput)
+                                MediaOutputOwnerKind.AppDownload -> item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                            }
                         },
                         onShare = item.playbackUrl?.let { url -> { shareMediaFile(context, url, item.sidecar.mimeType, item.title) } },
                         onRemove = { pendingRemoveItem = item },
@@ -189,8 +193,11 @@ fun MediaLibraryScreen(
                         consumerPlanner = consumerPlanner,
                         onPlay = { selectedPlayerItem = item },
                         onResumeOrRetry = {
-                            if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
-                            else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                            when (item.ownerKind) {
+                                MediaOutputOwnerKind.TermuxJob -> onRetryExternalJob(item.ownerId)
+                                MediaOutputOwnerKind.EmbeddedFfmpeg -> outputs.firstOrNull { it.id == item.outputId }?.let(onRetryEmbeddedFfmpegOutput)
+                                MediaOutputOwnerKind.AppDownload -> item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                            }
                         },
                         onShare = item.playbackUrl?.let { url -> { shareMediaFile(context, url, item.sidecar.mimeType, item.title) } },
                         onRemove = { pendingRemoveItem = item },
@@ -221,8 +228,11 @@ fun MediaLibraryScreen(
             visible = true,
             onDismiss = { selectedDetailsItem = null },
             onResumeOrRetry = {
-                if (item.ownerKind == MediaOutputOwnerKind.TermuxJob) onRetryExternalJob(item.ownerId)
-                else item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                when (item.ownerKind) {
+                    MediaOutputOwnerKind.TermuxJob -> onRetryExternalJob(item.ownerId)
+                    MediaOutputOwnerKind.EmbeddedFfmpeg -> outputs.firstOrNull { it.id == item.outputId }?.let(onRetryEmbeddedFfmpegOutput)
+                    MediaOutputOwnerKind.AppDownload -> item.downloadId?.let { id -> downloads.firstOrNull { it.id == id } }?.let(onResumeOrRetryDownload)
+                }
                 selectedDetailsItem = null
             },
             onRemoveRecord = {

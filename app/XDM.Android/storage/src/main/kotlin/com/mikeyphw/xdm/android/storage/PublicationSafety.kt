@@ -83,6 +83,39 @@ object PublicationJournalCodec {
         appendLine("message=${record.message.replace('\n', ' ')}")
     }
 
+    fun decode(text: String): PublicationCommitRecord {
+        val values = text.lineSequence().mapNotNull { line ->
+            val split = line.indexOf('=')
+            if (split <= 0) null else line.substring(0, split) to line.substring(split + 1)
+        }.toMap()
+        val downloadId = values.getValue("downloadId").trim().also { require(it.isNotBlank()) }
+        val attemptGeneration = values.getValue("attemptGeneration").toLong().also { require(it > 0L) }
+        val artifactGeneration = values.getValue("artifactGeneration").toLong().also { require(it > 0L) }
+        val sourcePath = values.getValue("sourcePath").trim().also { require(it.isNotBlank()) }
+        val destinationSpec = values.getValue("destinationSpec").trim().also { require(it.isNotBlank()) }
+        val boundary = PublicationCommitBoundary.valueOf(values.getValue("boundary"))
+        val health = CompletedArtifactHealthStatus.valueOf(values.getValue("health"))
+        return PublicationCommitRecord(
+            generation = PublicationGeneration(downloadId, attemptGeneration, artifactGeneration),
+            sourcePath = sourcePath,
+            stagingPath = values["stagingPath"]?.trim()?.takeIf(String::isNotBlank),
+            destinationSpec = destinationSpec,
+            committedUri = values["committedUri"]?.trim()?.takeIf(String::isNotBlank),
+            bytesExpected = values["bytesExpected"]?.toLongOrNull()?.takeIf { it >= 0L },
+            bytesCommitted = values["bytesCommitted"]?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L,
+            checksumAlgorithm = values["checksumAlgorithm"]?.trim()?.takeIf(String::isNotBlank),
+            expectationId = values["expectationId"]?.trim()?.takeIf(String::isNotBlank),
+            expectedDigest = values["expectedDigest"]?.trim()?.takeIf(String::isNotBlank),
+            actualDigest = values["actualDigest"]?.trim()?.takeIf(String::isNotBlank),
+            verificationTimestampEpochMs = values["verificationTimestampEpochMs"]?.toLongOrNull()?.takeIf { it >= 0L },
+            boundary = boundary,
+            health = health,
+            message = values["message"].orEmpty(),
+        )
+    }
+
+    fun read(file: File): PublicationCommitRecord = decode(file.readText(Charsets.UTF_8))
+
     fun write(file: File, record: PublicationCommitRecord) {
         file.parentFile?.mkdirs()
         val bytes = encode(record).toByteArray(Charsets.UTF_8)

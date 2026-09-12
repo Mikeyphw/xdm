@@ -394,8 +394,7 @@ class PostProcessingAutomationManager(
     }
 
     private fun requiredTools(kind: PostProcessingActionKind): Set<ExternalTool> = when (kind) {
-        PostProcessingActionKind.FfprobeInspect -> setOf(ExternalTool.Ffprobe)
-        PostProcessingActionKind.RemuxFastStart, PostProcessingActionKind.ExtractAudio, PostProcessingActionKind.FfmpegRemux -> setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
+        PostProcessingActionKind.FfprobeInspect, PostProcessingActionKind.RemuxFastStart, PostProcessingActionKind.ExtractAudio, PostProcessingActionKind.FfmpegRemux -> emptySet()
         PostProcessingActionKind.YtDlpMetadata -> setOf(ExternalTool.YtDlp)
         PostProcessingActionKind.YtDlpDownload -> setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
         else -> emptySet()

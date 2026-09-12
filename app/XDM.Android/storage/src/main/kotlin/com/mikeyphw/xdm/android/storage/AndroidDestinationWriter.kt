@@ -23,6 +23,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.URLConnection
+import java.security.MessageDigest
 
 class AndroidDestinationWriter(private val context: Context) : DestinationWriter {
     private val resolver: ContentResolver = context.contentResolver
@@ -35,6 +36,66 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     fun directStorageDirectory(destinationUri: String = DestinationUris.DIRECT_DOWNLOADS): File =
         PersonalDirectStorage.directoryForDestination(destinationUri)
             ?: PersonalDirectStorage.downloadsDirectory().canonicalFile
+
+    /**
+     * Recovery-only proof for a publication journal that was fsynced before the process died.
+     * DestinationCommitted is already definitive; DestinationCommitInProgress is adopted only
+     * when the committed URI can still be re-queried at the exact expected byte length.
+     */
+    suspend fun publicationCommitMatches(record: PublicationCommitRecord): Boolean {
+        val committed = record.committedUri?.trim()?.takeIf(String::isNotBlank) ?: return false
+        val expected = record.bytesExpected?.takeIf { it >= 0L }
+        if (record.boundary in setOf(PublicationCommitBoundary.DestinationCommitted, PublicationCommitBoundary.MetadataReconciled)) {
+            val size = runCatching { committedPublicationSize(committed) }.getOrNull()
+            return size != null && size > 0L && (expected == null || size == expected)
+        }
+        if (record.boundary != PublicationCommitBoundary.DestinationCommitInProgress) return false
+        val size = runCatching { committedPublicationSize(committed) }.getOrNull() ?: return false
+        if (size <= 0L || (expected != null && size != expected)) return false
+
+        // Filesystem publication uses one atomic move, so an exact-size target at this boundary is
+        // the moved staging inode. Content providers are different: the process can die in the
+        // middle of a copy after the provider item has already been created. For content URIs,
+        // recovery therefore requires the preserved staging bytes and proves SHA-256 equality
+        // before adopting the provider item as committed.
+        if (committed.startsWith("content:", ignoreCase = true)) {
+            val staged = sequenceOf(record.stagingPath, record.sourcePath)
+                .filterNotNull()
+                .map(::File)
+                .firstOrNull(File::isFile)
+                ?: return false
+            if (staged.length() != size) return false
+            val stagedDigest = runCatching { sha256File(staged) }.getOrNull() ?: return false
+            val committedDigest = runCatching { sha256Content(Uri.parse(committed)) }.getOrNull() ?: return false
+            return stagedDigest == committedDigest
+        }
+        return true
+    }
+
+    private fun committedPublicationSize(value: String): Long? {
+        return when {
+            value.startsWith("file:", ignoreCase = true) -> File(java.net.URI(value)).takeIf(File::isFile)?.length()
+            !value.contains("://") -> File(value).takeIf(File::isFile)?.length()
+            value.startsWith("content:", ignoreCase = true) -> querySize(Uri.parse(value))
+            else -> null
+        }
+    }
+
+    private fun sha256File(file: File): String = file.inputStream().use(::sha256Stream)
+
+    private fun sha256Content(uri: Uri): String = resolver.openInputStream(uri)?.use(::sha256Stream)
+        ?: error("Committed provider item cannot be opened for recovery verification")
+
+    private fun sha256Stream(input: java.io.InputStream): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(256 * 1024)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            if (read > 0) digest.update(buffer, 0, read)
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
 
     fun runDirectStorageDoctor(destinationUri: String = DestinationUris.DIRECT_DOWNLOADS): DirectStorageDoctorReport {
         val directory = directStorageDirectory(destinationUri)

@@ -22,6 +22,11 @@ import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.storage.DestinationRequest
+import com.mikeyphw.xdm.android.storage.DestinationPromotionResult
+import com.mikeyphw.xdm.android.storage.PublicationCommitBoundary
+import com.mikeyphw.xdm.android.storage.PublicationCommitRecord
+import com.mikeyphw.xdm.android.storage.PublicationJournalCodec
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -29,6 +34,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +42,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -116,10 +123,37 @@ class EmbeddedFfmpegMediaManager(
     suspend fun recoverInterruptedJobs() {
         val now = System.currentTimeMillis()
         repository.mediaOutputs.first()
-            .filter { it.ownerKind == MediaOutputOwnerKind.EmbeddedFfmpeg && it.state in setOf(MediaOutputState.Queued, MediaOutputState.Active) }
+            .filter {
+                it.ownerKind == MediaOutputOwnerKind.EmbeddedFfmpeg &&
+                    it.state in setOf(MediaOutputState.Queued, MediaOutputState.Active, MediaOutputState.RecoveryRequired)
+            }
             .forEach { output ->
-                repository.saveMediaOutput(output.copy(state = MediaOutputState.RecoveryRequired, updatedAtEpochMs = now))
-                updateProgress(output.ownerId, EmbeddedFfmpegJobStage.RecoveryRequired, detail = "Processing was interrupted; recovery is required.")
+                val request = destinationRequest(output)
+                val artifacts = destinationWriter.artifactPaths(request)
+                val journal = artifacts.journalFile.takeIf(File::isFile)?.let { file ->
+                    runCatching { PublicationJournalCodec.read(file) }.getOrNull()
+                }
+                if (journal != null && journalMatchesOutput(journal, output) && committedPublicationProven(journal)) {
+                    val committedUri = requireNotNull(journal.committedUri)
+                    repository.saveMediaOutput(
+                        output.copy(
+                            state = MediaOutputState.Completed,
+                            completedArtifactUri = committedUri,
+                            completedArtifactGeneration = output.attemptGeneration,
+                            updatedAtEpochMs = now,
+                        ),
+                    )
+                    updateProgress(
+                        output.ownerId,
+                        EmbeddedFfmpegJobStage.Completed,
+                        percent = 100,
+                        detail = "Recovered an already committed embedded FFmpeg artifact without reprocessing or publishing a duplicate.",
+                    )
+                    cleanupPublicationArtifacts(artifacts.stagingFile, artifacts.checkpointFile, artifacts.journalFile)
+                } else {
+                    repository.saveMediaOutput(output.copy(state = MediaOutputState.RecoveryRequired, updatedAtEpochMs = now))
+                    updateProgress(output.ownerId, EmbeddedFfmpegJobStage.RecoveryRequired, detail = "Processing was interrupted; staged work is preserved for explicit retry/recovery.")
+                }
             }
     }
 
@@ -176,20 +210,14 @@ class EmbeddedFfmpegMediaManager(
         spec: MediaQueuedDownloadSpec,
         kind: ExecutionKind,
     ) {
-        val request = DestinationRequest(
-            downloadId = seed.ownerId,
-            destinationUri = seed.destinationUri,
-            fileName = seed.fileName,
-            mimeType = seed.mimeType,
-            stagingSuffix = stagingSuffix(seed.fileName),
-            attemptGeneration = seed.attemptGeneration,
-        )
+        val request = destinationRequest(seed)
         updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Preparing, percent = 0)
         val prepared = runCatching { destinationWriter.prepare(request) }.getOrElse { error ->
             fail(seed, MediaOutputState.Failed, "Destination preparation failed: ${safeMessage(error)}")
             return
         }
         repository.saveMediaOutput(seed.copy(state = MediaOutputState.Active, updatedAtEpochMs = System.currentTimeMillis()))
+        var committedPromotion: DestinationPromotionResult? = null
         try {
             prepared.artifacts.stagingFile.parentFile?.mkdirs()
             val operation = when (kind) {
@@ -228,24 +256,43 @@ class EmbeddedFfmpegMediaManager(
                 fail(seed, MediaOutputState.RecoveryRequired, "Final publication failed: ${safeMessage(error)}")
                 return
             }
-            val now = System.currentTimeMillis()
-            repository.saveMediaOutput(
-                seed.copy(
-                    state = MediaOutputState.Completed,
-                    completedArtifactUri = promotion.committedUri,
-                    completedArtifactGeneration = seed.attemptGeneration,
-                    updatedAtEpochMs = now,
-                ),
-            )
-            updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Completed, percent = 100, detail = verification.message)
+            committedPromotion = promotion
+            // Promotion is the point of no return. Once DestinationWriter has committed the final
+            // artifact, cancellation/process-shutdown must not downgrade it to Cancelled or delete
+            // the crash-recovery journal before Room completion metadata is durable.
+            withContext(NonCancellable) {
+                val now = System.currentTimeMillis()
+                repository.saveMediaOutput(
+                    seed.copy(
+                        state = MediaOutputState.Completed,
+                        completedArtifactUri = promotion.committedUri,
+                        completedArtifactGeneration = seed.attemptGeneration,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+                updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Completed, percent = 100, detail = verification.message)
+                runCatching { prepared.deleteArtifacts() }
+            }
         } catch (cancelled: CancellationException) {
-            runCatching { prepared.deleteArtifacts() }
-            repository.saveMediaOutput(seed.copy(state = MediaOutputState.Cancelled, updatedAtEpochMs = System.currentTimeMillis()))
-            updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Cancelled, detail = "Processing cancelled; staged output removed.")
+            withContext(NonCancellable) {
+                if (committedPromotion != null) {
+                    fail(seed, MediaOutputState.RecoveryRequired, "Publication committed while cancellation raced metadata reconciliation; startup recovery will adopt the committed artifact.")
+                } else {
+                    runCatching { prepared.deleteArtifacts() }
+                    repository.saveMediaOutput(seed.copy(state = MediaOutputState.Cancelled, updatedAtEpochMs = System.currentTimeMillis()))
+                    updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Cancelled, detail = "Processing cancelled; staged output removed.")
+                }
+            }
             throw cancelled
         } catch (error: Throwable) {
             val failureKind = if (error is SecurityException) FfmpegFailureKind.PermissionDenied else FfmpegFailureKind.ProcessFailed
-            val state = if (prepared.artifacts.stagingFile.length() > 0L) MediaOutputState.RecoveryRequired else MediaOutputState.Failed
+            val state = when {
+                committedPromotion != null -> MediaOutputState.RecoveryRequired
+                prepared.artifacts.stagingFile.length() > 0L -> MediaOutputState.RecoveryRequired
+                else -> MediaOutputState.Failed
+            }
+            // After destination commit the local publication journal is the authoritative recovery
+            // evidence. Never delete it merely because Room metadata reconciliation failed.
             if (state == MediaOutputState.Failed) runCatching { prepared.deleteArtifacts() }
             fail(seed, state, "$failureKind: ${safeMessage(error)}")
         }
@@ -362,10 +409,35 @@ class EmbeddedFfmpegMediaManager(
         }
     }
 
+    private fun destinationRequest(output: MediaOutputRecord): DestinationRequest = DestinationRequest(
+        downloadId = output.ownerId,
+        destinationUri = output.destinationUri,
+        fileName = output.fileName,
+        mimeType = output.mimeType,
+        stagingSuffix = stagingSuffix(output.fileName),
+        attemptGeneration = output.attemptGeneration,
+    )
+
+    private fun journalMatchesOutput(record: PublicationCommitRecord, output: MediaOutputRecord): Boolean =
+        record.generation.downloadId == output.ownerId &&
+            record.generation.attemptGeneration == output.attemptGeneration &&
+            record.destinationSpec == output.destinationUri
+
+    private suspend fun committedPublicationProven(record: PublicationCommitRecord): Boolean =
+        destinationWriter.publicationCommitMatches(record)
+
+    private fun cleanupPublicationArtifacts(staging: File, checkpoint: File, journal: File) {
+        runCatching { staging.delete() }
+        runCatching { checkpoint.delete() }
+        runCatching { journal.delete() }
+        runCatching { journal.parentFile?.takeIf { it.isDirectory && it.listFiles().isNullOrEmpty() }?.delete() }
+    }
+
     private fun outputMimeType(fileName: String, capturedMimeType: String?): String? = when (fileName.substringAfterLast('.', "").lowercase()) {
         "mkv" -> if (capturedMimeType?.contains("audio", ignoreCase = true) == true) "audio/x-matroska" else "video/x-matroska"
         "mp4", "m4v", "mov" -> "video/mp4"
         "m4a" -> "audio/mp4"
+        "mka" -> "audio/x-matroska"
         "webm" -> if (capturedMimeType?.contains("audio", ignoreCase = true) == true) "audio/webm" else "video/webm"
         else -> capturedMimeType
     }

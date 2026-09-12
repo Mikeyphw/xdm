@@ -8,6 +8,9 @@ import com.mikeyphw.xdm.android.media.MediaDownloadPlanner
 import com.mikeyphw.xdm.android.media.MediaQueuedDownloadSpec
 import com.mikeyphw.xdm.android.media.MediaSessionHeader
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
+import com.mikeyphw.xdm.android.media.ffmpeg.EmbeddedFfmpegRuntime
+import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegPostProcessor
+import com.mikeyphw.xdm.android.media.ffmpeg.FfprobeResult
 import com.mikeyphw.xdm.android.model.PrivacyDiagnosticsRedactor
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.ConversionPreset
@@ -30,18 +33,25 @@ import com.mikeyphw.xdm.android.persistence.PostProcessingJobEntity
 import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.util.sanitizeFileName
+import java.io.File
 import java.net.URI
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -50,6 +60,7 @@ class TermuxMediaPipelineManager(
     private val database: AppDatabase,
     private val repository: DownloadRepository,
     destinationWriter: AndroidDestinationWriter,
+    private val embeddedFfmpegRuntime: EmbeddedFfmpegRuntime,
 ) : TermuxResultRouter {
     data class EnqueueOutcome(
         val accepted: Boolean,
@@ -71,10 +82,12 @@ class TermuxMediaPipelineManager(
     private val dao = database.postProcessingDao()
     private val runner = TermuxCommandRunner(appContext)
     private val artifactBridge = AndroidPostProcessingArtifactBridge(appContext, destinationWriter)
+    private val embeddedPostProcessor = FfmpegPostProcessor(embeddedFfmpegRuntime, File(appContext.cacheDir, "embedded-post-processing").apply(File::mkdirs))
     private val planner = MediaDownloadPlanner()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val statusFlow = MutableStateFlow(TermuxMediaPipelineStatus(updatedAtEpochMs = System.currentTimeMillis()))
     private val monitoredJobIds = ConcurrentHashMap.newKeySet<String>()
+    private val embeddedLocalJobs = ConcurrentHashMap<String, Job>()
 
     val status: StateFlow<TermuxMediaPipelineStatus> = statusFlow
 
@@ -105,6 +118,7 @@ class TermuxMediaPipelineManager(
     fun recoverInterruptedJobs() {
         scope.launch {
             dao.activeJobs().forEach { job ->
+                val spec = runCatching { PostProcessingJobSpec.fromJson(job.immutableSpecJson) }.getOrNull()
                 when (PostProcessingJobStatus.entries.firstOrNull { it.name == job.status }) {
                     PostProcessingJobStatus.Queued,
                     PostProcessingJobStatus.WaitingForPrerequisites -> launchJob(job.id)
@@ -112,7 +126,11 @@ class TermuxMediaPipelineManager(
                     PostProcessingJobStatus.Preparing,
                     PostProcessingJobStatus.Running,
                     PostProcessingJobStatus.Paused,
-                    PostProcessingJobStatus.Cancelling -> recoverActiveJob(job)
+                    PostProcessingJobStatus.Cancelling -> if (spec != null && !PostProcessingExecutionPolicy.usesTermux(spec)) {
+                        dao.acknowledgeControl(job.id, PostProcessingJobStatus.RecoveryRequired.name, "Android-owned post-processing was interrupted; retry will rebuild from the immutable spec without a Termux process owner.", System.currentTimeMillis())
+                    } else {
+                        recoverActiveJob(job)
+                    }
                     else -> Unit
                 }
             }
@@ -184,8 +202,9 @@ class TermuxMediaPipelineManager(
             input = record.selectedVariantUrl ?: record.sourceUrl,
             outputName = "${safeBase(record)}.ffprobe.json",
             mimeType = "application/json",
-            requiredTools = setOf(ExternalTool.Ffprobe),
+            requiredTools = setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
             metadataOnly = true,
+            externalFfmpegFallback = true,
         ),
     )
 
@@ -314,6 +333,7 @@ class TermuxMediaPipelineManager(
             destinationUri = spec.destinationUri.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
             downloadId = null,
             ffmpegFallbackInputs = safeInputs,
+            externalFfmpegFallback = true,
             timeoutSeconds = if (spec.strategy == com.mikeyphw.xdm.android.media.MediaDownloadStrategy.FfmpegLive) 86_400L else 7_200L,
             expectedDurationMs = record.durationMs,
         )
@@ -372,6 +392,7 @@ class TermuxMediaPipelineManager(
                 outputName = name,
                 mimeType = mime,
                 requiredTools = setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe),
+                externalFfmpegFallback = true,
                 destinationUri = destination.takeIf { it.startsWith("content://") || it.startsWith("xdm://") },
             ),
         )
@@ -393,7 +414,7 @@ class TermuxMediaPipelineManager(
         val entity = newJobEntity(spec, jobId, jobId, null, 1, claimKey, now).let { queued ->
             when {
                 preflightIssue == null -> queued
-                spec.kind.requiresTermux && isMutablePrerequisiteIssue(preflightIssue) -> queued.copy(
+                PostProcessingExecutionPolicy.usesTermux(spec) && isMutablePrerequisiteIssue(preflightIssue) -> queued.copy(
                     status = PostProcessingJobStatus.WaitingForPrerequisites.name,
                     message = "Waiting without consuming the durable claim: $preflightIssue",
                     updatedAtEpochMs = now,
@@ -714,7 +735,7 @@ class TermuxMediaPipelineManager(
         }
         runner.refreshStatus()
         PostProcessingExecutionPolicy.preflightIssue(spec, TermuxRunStore.status.value)?.let { issue ->
-            if (spec.kind.requiresTermux && isMutablePrerequisiteIssue(issue)) {
+            if (PostProcessingExecutionPolicy.usesTermux(spec) && isMutablePrerequisiteIssue(issue)) {
                 dao.acknowledgeControl(
                     job.id,
                     PostProcessingJobStatus.WaitingForPrerequisites.name,
@@ -751,6 +772,16 @@ class TermuxMediaPipelineManager(
                 return
             }
             else -> Unit
+        }
+        if (!spec.externalFfmpegFallback && spec.kind in setOf(
+                PostProcessingActionKind.FfprobeInspect,
+                PostProcessingActionKind.RemuxFastStart,
+                PostProcessingActionKind.ExtractAudio,
+                PostProcessingActionKind.FfmpegRemux,
+            )
+        ) {
+            runEmbeddedMediaAction(reservedJob, spec)
+            return
         }
         if (spec.kind == PostProcessingActionKind.FixPermissionsWithRoot) {
             runCatching { artifactBridge.verifiedOriginalPath(spec.inputUri) }.getOrElse {
@@ -855,6 +886,133 @@ class TermuxMediaPipelineManager(
         } else {
             monitorJob(reservedJob.id)
         }
+    }
+
+    private suspend fun runEmbeddedMediaAction(job: PostProcessingJobEntity, spec: PostProcessingJobSpec) {
+        val coroutineJob = currentCoroutineContext().job
+        embeddedLocalJobs[job.id] = coroutineJob
+        val prepared = try {
+            artifactBridge.prepare(spec, job.id)
+        } catch (cancelled: CancellationException) {
+            withContext(NonCancellable) {
+                finishLocalCancellation(dao.findJob(job.id) ?: job, spec.kind.label)
+            }
+            embeddedLocalJobs.remove(job.id, coroutineJob)
+            throw cancelled
+        } catch (error: Throwable) {
+            finishFailure(job, "Embedded FFmpeg preflight failed: ${error.message}")
+            embeddedLocalJobs.remove(job.id, coroutineJob)
+            return
+        }
+        val now = System.currentTimeMillis()
+        val timeoutAt = now + spec.timeoutSeconds * 1000L
+        if (dao.attachPreparedArtifacts(
+                jobId = job.id,
+                status = PostProcessingJobStatus.Preparing.name,
+                stagedInputPath = prepared.inputPath,
+                inputBridgeUri = prepared.inputBridgeUri,
+                stagedOutputPath = prepared.outputPath,
+                outputBridgeUri = prepared.outputBridgeUri,
+                ownerBridgeUri = prepared.runtime.ownerBridgeUri,
+                progressBridgeUri = prepared.runtime.progressBridgeUri,
+                metadataBridgeUri = prepared.runtime.metadataBridgeUri,
+                payloadBridgeUri = null,
+                message = "Android embedded FFmpeg/FFprobe runtime owns this operation; Termux is not required.",
+                updatedAtEpochMs = now,
+            ) == 0
+        ) {
+            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri))
+            embeddedLocalJobs.remove(job.id, coroutineJob)
+            return
+        }
+        if (dao.startLocalJob(job.id, PostProcessingJobStatus.Running.name, timeoutAt, now, "Running with XDM's embedded FFmpeg/FFprobe runtime.") == 0) {
+            artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri))
+            embeddedLocalJobs.remove(job.id, coroutineJob)
+            return
+        }
+        try {
+            val input = File(prepared.inputPath)
+            when (spec.kind) {
+                PostProcessingActionKind.FfprobeInspect -> {
+                    val probe = embeddedFfmpegRuntime.probe(input.absolutePath).getOrThrow()
+                    val metadata = ffprobeJson(probe).toString()
+                    reconcileSuccessfulJob(dao.findJob(job.id) ?: job, spec, null, metadata, embeddedToolVersionsJson(), 0, 0)
+                }
+                PostProcessingActionKind.RemuxFastStart,
+                PostProcessingActionKind.ExtractAudio,
+                PostProcessingActionKind.FfmpegRemux -> {
+                    val outputPath = prepared.outputPath ?: error("Embedded FFmpeg output bridge is missing")
+                    val output = File(outputPath)
+                    val result = when (spec.kind) {
+                        PostProcessingActionKind.RemuxFastStart -> embeddedPostProcessor.fastStart(input, output, spec.expectedDurationMs, onProgress = { progress -> updateEmbeddedProgress(job.id, progress.percent, progress.userLabel) })
+                        PostProcessingActionKind.ExtractAudio -> embeddedPostProcessor.extractAudio(input, output, spec.expectedDurationMs, onProgress = { progress -> updateEmbeddedProgress(job.id, progress.percent, progress.userLabel) })
+                        PostProcessingActionKind.FfmpegRemux -> embeddedPostProcessor.remux(input, output, onProgress = { progress -> updateEmbeddedProgress(job.id, progress.percent, progress.userLabel) })
+                        else -> error("unreachable")
+                    }
+                    require(result.success) { result.summary }
+                    reconcileSuccessfulJob(dao.findJob(job.id) ?: job, spec, prepared.outputBridgeUri, "", embeddedToolVersionsJson(), result.execution.stdout.length, result.execution.stderr.length)
+                }
+                else -> error("Unsupported embedded post-processing action ${spec.kind}")
+            }
+        } catch (cancelled: CancellationException) {
+            withContext(NonCancellable) {
+                val current = dao.findJob(job.id) ?: job
+                finishLocalCancellation(current, spec.kind.label)
+                artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri))
+            }
+            throw cancelled
+        } catch (error: Throwable) {
+            withContext(NonCancellable) {
+                finishFailure(dao.findJob(job.id) ?: job, "Embedded ${spec.kind.label} failed: ${error.message ?: error::class.java.simpleName}")
+                artifactBridge.cleanupUris(listOf(prepared.inputBridgeUri, prepared.outputBridgeUri, prepared.runtime.ownerBridgeUri, prepared.runtime.progressBridgeUri, prepared.runtime.metadataBridgeUri))
+            }
+        } finally {
+            embeddedLocalJobs.remove(job.id, coroutineJob)
+        }
+    }
+
+    private fun updateEmbeddedProgress(jobId: String, percent: Int?, message: String) {
+        scope.launch {
+            val current = dao.findJob(jobId) ?: return@launch
+            if (current.status == PostProcessingJobStatus.Cancelling.name) return@launch
+            dao.updateProgress(jobId, PostProcessingJobStatus.Running.name, percent ?: current.progressPercent, current.progressBytes, current.progressTotalBytes, message, System.currentTimeMillis())
+        }
+    }
+
+    private suspend fun embeddedToolVersionsJson(): String {
+        val capability = embeddedFfmpegRuntime.capabilities()
+        return JSONObject()
+            .put("owner", "android-embedded")
+            .put("ffmpeg", capability.ffmpegVersion ?: capability.expectedVersion)
+            .put("ffprobe", capability.ffprobeVersion ?: capability.expectedVersion)
+            .put("attestationVerified", capability.attestationVerified)
+            .toString()
+    }
+
+    private fun ffprobeJson(probe: FfprobeResult): JSONObject = JSONObject().apply {
+        put("format", JSONObject().apply {
+            put("format_name", probe.formatName ?: "")
+            put("format_long_name", probe.formatLongName ?: "")
+            probe.durationSeconds?.let { put("duration", it.toString()) }
+            probe.sizeBytes?.let { put("size", it.toString()) }
+            probe.bitRate?.let { put("bit_rate", it.toString()) }
+        })
+        put("streams", JSONArray().apply {
+            probe.streams.forEach { stream ->
+                put(JSONObject().apply {
+                    put("index", stream.index)
+                    put("codec_type", stream.codecType ?: "")
+                    put("codec_name", stream.codecName ?: "")
+                    put("codec_long_name", stream.codecLongName ?: "")
+                    stream.profile?.let { put("profile", it) }
+                    stream.width?.let { put("width", it) }
+                    stream.height?.let { put("height", it) }
+                    stream.sampleRate?.let { put("sample_rate", it) }
+                    stream.channels?.let { put("channels", it) }
+                    stream.language?.let { put("tags", JSONObject().put("language", it)) }
+                })
+            }
+        })
     }
 
     private suspend fun runAndroidCleanup(job: PostProcessingJobEntity, spec: PostProcessingJobSpec) {
@@ -1143,9 +1301,12 @@ class TermuxMediaPipelineManager(
                     "Cancellation recorded before process ownership or local execution began; launch will abort or signal the exact owner immediately.",
                     System.currentTimeMillis(),
                 )
+                embeddedLocalJobs[job.id]?.cancel(CancellationException("Android-owned post-processing cancelled before execution ownership completed"))
                 return@launch
             }
-            val localKind = PostProcessingActionKind.entries.firstOrNull { it.name == job.kind }?.takeUnless { it.requiresTermux }
+            val localSpec = runCatching { PostProcessingJobSpec.fromJson(job.immutableSpecJson) }.getOrNull()
+            val localKind = PostProcessingActionKind.entries.firstOrNull { it.name == job.kind }
+                ?.takeIf { localSpec != null && !PostProcessingExecutionPolicy.usesTermux(localSpec) }
             if (localKind != null) {
                 if (action != TermuxProcessControlAction.Cancel && action != TermuxProcessControlAction.ForceCancel) {
                     dao.acknowledgeControl(job.id, job.status, "${localKind.label} is Android-owned and supports Cancel, not ${action.name}.", System.currentTimeMillis())
@@ -1169,6 +1330,7 @@ class TermuxMediaPipelineManager(
                     "Cancellation recorded durably; the Android-owned operation will stop before completion or publication.",
                     System.currentTimeMillis(),
                 )
+                embeddedLocalJobs[job.id]?.cancel(CancellationException("Android-owned post-processing cancelled by user"))
                 return@launch
             }
             val owner = ownerFrom(job)
@@ -1861,6 +2023,7 @@ class TermuxMediaPipelineManager(
         formatSelector: String? = null,
         extraArguments: List<String> = emptyList(),
         ffmpegFallbackInputs: List<FfmpegFallbackInputSpec> = emptyList(),
+        externalFfmpegFallback: Boolean = false,
         destinationUri: String? = null,
         downloadId: String? = record.downloadId,
         sessionPrimaryVariantId: String? = null,
@@ -1895,6 +2058,7 @@ class TermuxMediaPipelineManager(
         formatSelector = formatSelector,
         extraArguments = extraArguments,
         ffmpegFallbackInputs = ffmpegFallbackInputs,
+        externalFfmpegFallback = externalFfmpegFallback,
         sessionPrimaryVariantId = sessionPrimaryVariantId,
         sessionVariantIds = sessionVariantIds,
         sessionUsePageUrl = sessionUsePageUrl,

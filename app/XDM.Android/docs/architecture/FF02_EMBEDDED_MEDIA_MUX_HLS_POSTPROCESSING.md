@@ -77,3 +77,23 @@ Source contract: `tools/validate-ffmpeg02-media-mux-hls-postprocessing.py`
 Gradle entrypoint: `:app:verifyFfmpeg02MediaMuxHlsPostprocessingContract`
 
 The canonical release gate carries FF02 forward. FF02 is an intermediate full overlay and is applied with `--no-validate`; the final FF04 overlay owns full explicit Android validation.
+
+## Post-seal production-wiring correction
+
+The original FF02 implementation contained the native-HLS engine and `NativeHlsFfmpegFinalizer`, but the finalizer was not reached from a production app execution owner. The post-seal roadmap audit closes that integration gap with `NativeHlsMediaManager`.
+
+For supported VOD media playlists, `MainViewModel` now dispatches `NativeHlsSegmented` directly to that Android-owned manager. It reuses the encrypted request handoff and request-security guard, checkpoints parts in the existing Room native-HLS ledger, supports bounded retry/range/AES-128 execution, preserves complete parts across pause/recovery, then calls `NativeHlsFfmpegFinalizer` and publishes only after FFprobe verification.
+
+Normal completed-file FFprobe, fast-start, audio extraction and remux actions are also embedded-first. The existing Termux job database/UI remains useful orchestration infrastructure, but `PostProcessingExecutionPolicy.usesTermux()` now distinguishes the explicit FF03 fallback from ordinary app-owned FFmpeg work.
+
+## Post-seal deep recovery hardening (v2)
+
+The second roadmap audit makes the native-HLS production owner generation-safe and crash-safe: part rows are job-scoped; refreshed playlists must match media-sequence/range/map/key/discontinuity identity before bytes are reused; unsupported masters/separate renditions/encrypted init maps fail closed; final output uses controlled media containers; network/control cancellation is prompt; temp storage is full-job-key isolated; and a destination committed before process death is adopted from the canonical publication/finalization journal instead of being remuxed or published twice. Audio-only playlists carry audio FFprobe expectations and unknown shapes still require at least one real media stream.
+
+## Post-seal recovery hardening (v3)
+
+Embedded adaptive/live publication uses the same durable publication journal as the storage layer. Startup recovery adopts only proven committed destinations; a content-provider item left at `DestinationCommitInProgress` must match the preserved staging file by exact byte length and SHA-256 before it is accepted. Cancellation after promotion cannot erase the journal before Room completion metadata is durable. Audio-only stream-copy uses M4A only for AAC/MP4A and otherwise uses Matroska audio. Native-HLS part identity includes the secret-safe init-map URI plus its byte range so refreshed fMP4 playlists cannot reuse stale initialization bytes.
+
+## Post-seal v4 recovery ownership
+
+Embedded adaptive/live generations are durable `MediaOutputRecord` owners without an ordinary `Download` row. Failed, cancelled, and recovery-required generations are therefore retried by owner identity, not by pretending they are ordinary transfers. The app reconstructs the selected embedded plan from durable capture/output lineage plus encrypted request handoffs, preserves destination and filename, creates an explicit additional generation, and refuses retry if current capability negotiation no longer resolves to an embedded FFmpeg lane. Library list, grid, and Details actions all dispatch this owner-specific retry path. Native HLS and completed-file local post-processing keep their separate durable retry owners.

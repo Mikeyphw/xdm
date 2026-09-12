@@ -65,6 +65,7 @@ import com.mikeyphw.xdm.android.model.MediaProtectionKind
 import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
 import com.mikeyphw.xdm.android.model.MediaOutputAdmissionMode
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
+import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaObservationRecord
 import com.mikeyphw.xdm.android.model.MediaResolutionStatus
 import com.mikeyphw.xdm.android.model.MediaSourceKind
@@ -92,9 +93,12 @@ import com.mikeyphw.xdm.android.media.MediaFfmpegRuntimePreference
 import com.mikeyphw.xdm.android.media.MediaFfmpegRuntimeRoutingPolicy
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegRuntimeCapabilityReport
 import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegMediaManager
+import com.mikeyphw.xdm.android.ffmpeg.NativeHlsMediaManager
 import com.mikeyphw.xdm.android.ffmpeg.EmbeddedFfmpegJobProgress
 import com.mikeyphw.xdm.android.media.MediaDispatchReadiness
 import com.mikeyphw.xdm.android.media.MediaTrackSelection
+import com.mikeyphw.xdm.android.media.MediaDownloadIntent
+import com.mikeyphw.xdm.android.media.MediaDownloadStrategy
 import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.model.MediaVariantKind
 import com.mikeyphw.xdm.android.model.QueueDefinition
@@ -379,6 +383,7 @@ class MainViewModel(
     private val destinationWriter: AndroidDestinationWriter,
     private val aria2ProcessManager: Aria2ProcessManager,
     private val embeddedFfmpegMediaManager: EmbeddedFfmpegMediaManager,
+    private val nativeHlsMediaManager: NativeHlsMediaManager,
     private val termuxBridgeManager: TermuxBridgeManager,
     private val termuxAria2CockpitManager: TermuxAria2CockpitManager,
     private val termuxMediaPipelineManager: TermuxMediaPipelineManager,
@@ -1870,8 +1875,10 @@ class MainViewModel(
         val ids = downloads.filter { it.state in setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading) }.map { it.id }.toSet()
         if (ids.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            // Runtime owns backend control; never make a Room-only pause that leaves the real task writing.
-            ids.forEach { id -> runCatching { transferRuntime.pause(id) } }
+            // Runtime owners control their own work; never make a Room-only pause that leaves bytes writing.
+            ids.forEach { id ->
+                if (databaseNativeHlsOwnership(id)) nativeHlsMediaManager.pause(id) else runCatching { transferRuntime.pause(id) }
+            }
         }
     }
 
@@ -1879,7 +1886,10 @@ class MainViewModel(
         val candidates = downloads.filter { it.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower) }
         if (candidates.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            candidates.forEach { queueIntelligenceCoordinator.requestStart(it.id, userVisible = true, manual = true) }
+            candidates.forEach { download ->
+                if (databaseNativeHlsOwnership(download.id)) nativeHlsMediaManager.resume(download.id)
+                else queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
+            }
         }
     }
 
@@ -4200,6 +4210,42 @@ class MainViewModel(
                 navigate(AppRoute.Media)
                 return@launch
             }
+            if (enginePlan.lane == MediaExecutionLane.NativeHlsSegmented) {
+                val outcome = runCatching {
+                    nativeHlsMediaManager.enqueue(
+                        capture = exactRecord,
+                        variants = variants,
+                        selection = selection,
+                        spec = spec,
+                        conflictPolicy = prefs.conflictPolicy,
+                        admissionMode = admissionMode,
+                        captureHandoff = captureHandoff,
+                    )
+                }.getOrElse { error ->
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not start native HLS", error.message ?: "Native HLS enqueue failed."),
+                        navigateToMedia = false,
+                    )
+                    navigate(AppRoute.Media)
+                    return@launch
+                }
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        if (outcome.accepted) MediaIntakeFeedbackKind.Found else MediaIntakeFeedbackKind.Working,
+                        if (outcome.accepted) "Native HLS download started" else "Media already added",
+                        outcome.message,
+                    ),
+                    navigateToMedia = false,
+                )
+                debugEventRecorder.record(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                    action = "media-native-hls-enqueue",
+                    result = if (outcome.accepted) "committed" else "existing",
+                    safeDetails = mapOf("captureId" to record.id, "downloadId" to outcome.downloadId, "owner" to "NativeHls+EmbeddedFfmpeg"),
+                )
+                navigate(AppRoute.Downloads)
+                return@launch
+            }
             if (enginePlan.lane in setOf(MediaExecutionLane.EmbeddedFfmpegAdaptive, MediaExecutionLane.EmbeddedFfmpegLive)) {
                 val adaptive = enginePlan.lane == MediaExecutionLane.EmbeddedFfmpegAdaptive
                 val outcome = runCatching {
@@ -4547,6 +4593,113 @@ class MainViewModel(
         )
     }
 
+    fun retryEmbeddedFfmpegOutput(output: MediaOutputRecord) {
+        if (output.ownerKind != MediaOutputOwnerKind.EmbeddedFfmpeg) return
+        if (output.state !in setOf(MediaOutputState.Failed, MediaOutputState.Cancelled, MediaOutputState.RecoveryRequired)) {
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Media output is not retryable", "Only failed, cancelled, or recovery-required embedded FFmpeg generations can be retried."),
+                navigateToMedia = false,
+            )
+            return
+        }
+        if (!mediaOutputAdmissionClaims.add(output.captureId)) {
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Already retrying media", "This capture already has an output admission in progress."),
+                navigateToMedia = false,
+            )
+            return
+        }
+        mediaOutputAdmissionsInFlight.value = mediaOutputAdmissionClaims.toSet()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val capture = repository.findMediaCapture(output.captureId)
+                    ?: error("The source media capture no longer exists; add the media again instead of retrying this generation.")
+                val storedVariants = repository.variantsForMediaCapture(capture.id)
+                val captureHandoff = MediaRequestHandoffStore.forCapture(capture.id)
+                val exactCapture = capture.copy(
+                    sourceUrl = captureHandoff?.exactUrl ?: capture.sourceUrl,
+                    pageUrl = captureHandoff?.pageUrl ?: capture.pageUrl,
+                )
+                val variantHandoffs = storedVariants.associate { variant -> variant.id to MediaRequestHandoffStore.forVariant(variant.id) }
+                val variants = storedVariants.map { variant ->
+                    variant.copy(url = variantHandoffs[variant.id]?.exactUrl ?: variant.url)
+                }
+                val selected = variants.filter { it.id in output.selectedTrackIds }
+                val selection = MediaTrackSelection(
+                    videoVariantId = selected.firstOrNull { it.kind in setOf(MediaVariantKind.Video, MediaVariantKind.Primary) }?.id,
+                    audioVariantId = selected.firstOrNull { it.kind == MediaVariantKind.Audio }?.id,
+                    subtitleVariantId = selected.firstOrNull { it.kind == MediaVariantKind.Subtitle }?.id,
+                )
+                val intent = when {
+                    (exactCapture.manifestIsLive ?: listOfNotNull(exactCapture.container, exactCapture.mimeType)
+                        .flatMap { value -> value.uppercase().split(Regex("[^A-Z0-9]+")) }
+                        .any { token -> token == "LIVE" }) -> MediaDownloadIntent.LiveRecording
+                    selection.videoVariantId == null && selection.audioVariantId != null -> MediaDownloadIntent.AudioOnly
+                    selection.videoVariantId == null && selection.subtitleVariantId != null -> MediaDownloadIntent.Subtitles
+                    selection.videoVariantId != null && selection.audioVariantId == null && selection.subtitleVariantId == null -> MediaDownloadIntent.VideoOnly
+                    else -> MediaDownloadIntent.BestVideo
+                }
+                val captureHeaders = captureHandoff?.headers.orEmpty().map { (name, value) -> MediaSessionHeader(name, value) }
+                val variantHeaders = variantHandoffs.mapValues { (_, handoff) ->
+                    handoff?.headers.orEmpty().map { (name, value) -> MediaSessionHeader(name, value) }
+                }
+                val rebuilt = mediaExecutionPlanner.queueSpec(
+                    capture = exactCapture,
+                    variants = variants,
+                    selection = selection,
+                    destinationUri = output.destinationUri,
+                    intent = intent,
+                    sessionHeaders = captureHeaders,
+                    variantSessionHeaders = variantHeaders,
+                ).copy(fileName = output.fileName)
+
+                val outcome = when (rebuilt.strategy) {
+                    MediaDownloadStrategy.FfmpegAdaptive -> embeddedFfmpegMediaManager.enqueueAdaptiveProcessing(
+                        capture = exactCapture,
+                        spec = rebuilt,
+                        admissionMode = MediaOutputAdmissionMode.AdditionalGeneration,
+                    )
+                    MediaDownloadStrategy.FfmpegLive -> embeddedFfmpegMediaManager.enqueueLiveRecording(
+                        capture = exactCapture,
+                        spec = rebuilt,
+                        admissionMode = MediaOutputAdmissionMode.AdditionalGeneration,
+                    )
+                    else -> error("The capture no longer resolves to an embedded FFmpeg lane (${rebuilt.strategy.name}); refresh the media and add it again so XDM can negotiate a new execution owner safely.")
+                }
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        if (outcome.accepted) MediaIntakeFeedbackKind.Found else MediaIntakeFeedbackKind.Working,
+                        if (outcome.accepted) "Media retry started" else "Media retry already exists",
+                        outcome.message,
+                    ),
+                    navigateToMedia = false,
+                )
+                debugEventRecorder.record(
+                    area = com.mikeyphw.xdm.android.model.DebugArea.AddDownload,
+                    action = "media-embedded-ffmpeg-retry",
+                    result = if (outcome.accepted) "committed" else "existing",
+                    safeDetails = mapOf(
+                        "captureId" to output.captureId,
+                        "priorOwnerId" to output.ownerId,
+                        "newOwnerId" to outcome.output.ownerId,
+                        "attemptGeneration" to outcome.output.attemptGeneration.toString(),
+                    ),
+                )
+                navigate(AppRoute.Media)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not retry embedded media", mediaIntakeFailureDetail(error)),
+                    navigateToMedia = false,
+                )
+            } finally {
+                mediaOutputAdmissionClaims.remove(output.captureId)
+                mediaOutputAdmissionsInFlight.value = mediaOutputAdmissionClaims.toSet()
+            }
+        }
+    }
+
     fun removeMediaCapture(record: MediaCaptureRecord) {
         mediaResolverSelectionStore.remove(record.id)
         viewModelScope.launch(Dispatchers.IO) {
@@ -4722,15 +4875,24 @@ class MainViewModel(
         viewModelScope.launch {
             queueIntelligenceCoordinator.pauseAllDurably()
             transferRuntime.pauseAll()
+            nativeHlsMediaManager.pauseAll()
         }
     }
 
     fun resumeAll() {
-        viewModelScope.launch { queueIntelligenceCoordinator.resumeAllManual() }
+        viewModelScope.launch {
+            queueIntelligenceCoordinator.resumeAllManual()
+            nativeHlsMediaManager.resumeAll()
+        }
     }
 
     fun cancelDownload(download: Download) {
         viewModelScope.launch(Dispatchers.IO) {
+            val nativeHls = databaseNativeHlsOwnership(download.id)
+            if (nativeHls) {
+                nativeHlsMediaManager.cancel(download.id)
+                return@launch
+            }
             runCatching { transferRuntime.cancel(download.id) }
                 .onFailure { error ->
                     val current = repository.findDownload(download.id) ?: return@onFailure
@@ -4747,7 +4909,15 @@ class MainViewModel(
     }
 
     fun togglePause(download: Download) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (databaseNativeHlsOwnership(download.id)) {
+                when (download.state) {
+                    DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing, DownloadState.Verifying -> nativeHlsMediaManager.pause(download.id)
+                    DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(download.id)
+                    else -> Unit
+                }
+                return@launch
+            }
             when (download.state) {
                 DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing -> transferRuntime.pause(download.id)
                 DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> {
@@ -4758,6 +4928,8 @@ class MainViewModel(
             }
         }
     }
+
+    private suspend fun databaseNativeHlsOwnership(downloadId: String): Boolean = nativeHlsMediaManager.ownsDownload(downloadId)
 
 
     private fun persistableBrowserCaptureUrl(url: String): String {
@@ -4854,6 +5026,7 @@ class MainViewModel(
             container.destinationWriter,
             container.aria2ProcessManager,
             container.embeddedFfmpegMediaManager,
+            container.nativeHlsMediaManager,
             container.termuxBridgeManager,
             container.termuxAria2CockpitManager,
             container.termuxMediaPipelineManager,

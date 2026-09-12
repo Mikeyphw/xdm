@@ -26,14 +26,14 @@ enum class PostProcessingActionKind(val label: String, val requiresTermux: Boole
     MoveToFolder("Move to folder", requiresTermux = false),
     RenameByPattern("Rename by pattern", requiresTermux = false),
     VerifySha256("Verify SHA-256", requiresTermux = false),
-    FfprobeInspect("FFprobe inspect"),
-    RemuxFastStart("Fast-start MP4"),
-    ExtractAudio("Extract audio"),
+    FfprobeInspect("FFprobe inspect", requiresTermux = false),
+    RemuxFastStart("Fast-start MP4", requiresTermux = false),
+    ExtractAudio("Extract audio", requiresTermux = false),
     CleanupPartials("Clean partials", requiresTermux = false),
     FixPermissionsWithRoot("Fix permissions", requiresRoot = true),
     YtDlpMetadata("yt-dlp metadata"),
     YtDlpDownload("yt-dlp download"),
-    FfmpegRemux("FFmpeg remux"),
+    FfmpegRemux("FFmpeg remux", requiresTermux = false),
 }
 
 enum class PostProcessingAutomationEventStatus(val label: String) {
@@ -242,8 +242,7 @@ object PostProcessingAutomationPolicy {
     }
 
     fun requiredToolsFor(kind: PostProcessingActionKind): Set<ExternalTool> = when (kind) {
-        PostProcessingActionKind.FfprobeInspect -> setOf(ExternalTool.Ffprobe)
-        PostProcessingActionKind.RemuxFastStart, PostProcessingActionKind.ExtractAudio, PostProcessingActionKind.FfmpegRemux -> setOf(ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
+        PostProcessingActionKind.FfprobeInspect, PostProcessingActionKind.RemuxFastStart, PostProcessingActionKind.ExtractAudio, PostProcessingActionKind.FfmpegRemux -> emptySet()
         PostProcessingActionKind.YtDlpMetadata -> setOf(ExternalTool.YtDlp)
         PostProcessingActionKind.YtDlpDownload -> setOf(ExternalTool.YtDlp, ExternalTool.Ffmpeg, ExternalTool.Ffprobe)
         else -> emptySet()
