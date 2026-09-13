@@ -13,8 +13,6 @@ type = "dotnet"
 solution = "app/XDM/XDM.Modern.sln"
 run_project = "app/XDM/src/XDM.App/XDM.App.csproj"
 
-python = ""
-run_module = ""
 restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
 build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
 test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
