@@ -1,4 +1,5 @@
 using XDM.App.Services;
+using XDM.Core.Abstractions;
 using XDM.Platform;
 using Xunit;
 
@@ -61,6 +62,60 @@ public sealed class DesktopProductivityServiceTests
         center.Clear();
         Assert.Empty(center.Snapshot());
         Assert.Equal(207, changes);
+    }
+
+
+    [Fact]
+    public async Task NotificationCenterMarksDesktopShownOnlyAfterSuccessfulDelivery()
+    {
+        NotificationCenterService center = new(new DesktopNotificationService(
+            new FixedNotificationCommandFactory(new NotificationCommand("notify-send", ["title", "message"], "test")),
+            new FixedNotificationCommandExecutor(new NotificationCommandExecutionResult(0, string.Empty, string.Empty)),
+            TimeSpan.FromSeconds(1)));
+
+        DesktopNotificationDeliveryResult delivery = await center.PublishAsync(
+            "Download completed",
+            "file.zip",
+            showDesktopNotification: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        NotificationCenterEntry entry = Assert.Single(center.Snapshot());
+        Assert.True(delivery.Delivered);
+        Assert.True(entry.DesktopNotificationShown);
+        Assert.Null(entry.DesktopNotificationFailure);
+    }
+
+    [Fact]
+    public async Task NotificationCenterKeepsShownFalseWhenDesktopDeliveryFails()
+    {
+        NotificationCenterService center = new(new DesktopNotificationService(
+            new FixedNotificationCommandFactory(new NotificationCommand("notify-send", ["title", "message"], "test")),
+            new FixedNotificationCommandExecutor(new NotificationCommandExecutionResult(1, string.Empty, "notify-send missing")),
+            TimeSpan.FromSeconds(1)));
+
+        DesktopNotificationDeliveryResult delivery = await center.PublishAsync(
+            "Download completed",
+            "file.zip",
+            showDesktopNotification: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        NotificationCenterEntry entry = Assert.Single(center.Snapshot());
+        Assert.False(delivery.Delivered);
+        Assert.False(entry.DesktopNotificationShown);
+        Assert.Equal("notify-send missing", entry.DesktopNotificationFailure);
+    }
+
+    private sealed class FixedNotificationCommandFactory(NotificationCommand? command) : IDesktopNotificationCommandFactory
+    {
+        public NotificationCommand? Create(string title, string message) => command;
+    }
+
+    private sealed class FixedNotificationCommandExecutor(NotificationCommandExecutionResult result) : INotificationCommandExecutor
+    {
+        public Task<NotificationCommandExecutionResult> ExecuteAsync(
+            NotificationCommand command,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(result);
     }
 
     private sealed class TemporaryDirectory : IDisposable

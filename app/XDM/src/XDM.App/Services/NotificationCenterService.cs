@@ -18,7 +18,8 @@ public sealed record NotificationCenterEntry(
     string Message,
     NotificationCenterSeverity Severity,
     string? DownloadId = null,
-    bool DesktopNotificationShown = false);
+    bool DesktopNotificationShown = false,
+    string? DesktopNotificationFailure = null);
 
 public interface INotificationCenterService : IDesktopNotificationService
 {
@@ -26,7 +27,7 @@ public interface INotificationCenterService : IDesktopNotificationService
 
     IReadOnlyList<NotificationCenterEntry> Snapshot();
 
-    Task PublishAsync(
+    Task<DesktopNotificationDeliveryResult> PublishAsync(
         string title,
         string message,
         NotificationCenterSeverity severity = NotificationCenterSeverity.Information,
@@ -53,7 +54,7 @@ public sealed class NotificationCenterService : INotificationCenterService
 
     public event EventHandler? Changed;
 
-    public Task ShowAsync(string title, string message, CancellationToken cancellationToken = default)
+    public Task<DesktopNotificationDeliveryResult> ShowAsync(string title, string message, CancellationToken cancellationToken = default)
         => PublishAsync(
             title,
             message,
@@ -61,7 +62,7 @@ public sealed class NotificationCenterService : INotificationCenterService
             showDesktopNotification: true,
             cancellationToken: cancellationToken);
 
-    public async Task PublishAsync(
+    public async Task<DesktopNotificationDeliveryResult> PublishAsync(
         string title,
         string message,
         NotificationCenterSeverity severity = NotificationCenterSeverity.Information,
@@ -72,14 +73,15 @@ public sealed class NotificationCenterService : INotificationCenterService
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
 
+        string entryId = Guid.NewGuid().ToString("N");
         NotificationCenterEntry entry = new(
-            Guid.NewGuid().ToString("N"),
+            entryId,
             DateTimeOffset.UtcNow,
             title.Trim(),
             message.Trim(),
             severity,
             string.IsNullOrWhiteSpace(downloadId) ? null : downloadId,
-            showDesktopNotification);
+            DesktopNotificationShown: false);
 
         lock (_sync)
         {
@@ -91,10 +93,35 @@ public sealed class NotificationCenterService : INotificationCenterService
         }
 
         Changed?.Invoke(this, EventArgs.Empty);
-        if (showDesktopNotification)
+        if (!showDesktopNotification)
         {
-            await _desktopNotifications.ShowAsync(title, message, cancellationToken).ConfigureAwait(false);
+            return DesktopNotificationDeliveryResult.Suppressed("Desktop notification was disabled for this event.");
         }
+
+        DesktopNotificationDeliveryResult delivery = await _desktopNotifications
+            .ShowAsync(title, message, cancellationToken)
+            .ConfigureAwait(false);
+        UpdateDesktopDelivery(entryId, delivery);
+        return delivery;
+    }
+
+    private void UpdateDesktopDelivery(string entryId, DesktopNotificationDeliveryResult delivery)
+    {
+        lock (_sync)
+        {
+            int index = _entries.FindIndex(entry => string.Equals(entry.Id, entryId, StringComparison.Ordinal));
+            if (index >= 0)
+            {
+                NotificationCenterEntry current = _entries[index];
+                _entries[index] = current with
+                {
+                    DesktopNotificationShown = delivery.Delivered,
+                    DesktopNotificationFailure = delivery.Delivered ? null : delivery.Failure
+                };
+            }
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public IReadOnlyList<NotificationCenterEntry> Snapshot()

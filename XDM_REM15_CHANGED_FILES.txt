@@ -1,0 +1,7 @@
+app/XDM/src/XDM.Core/Abstractions/IDesktopNotificationService.cs
+app/XDM/src/XDM.Platform/DesktopNotificationService.cs
+app/XDM/src/XDM.Platform/SystemTransferEnvironmentProbe.cs
+app/XDM/src/XDM.App/Services/NotificationCenterService.cs
+app/XDM/src/XDM.Core.Tests/DesktopNotificationServiceTests.cs
+app/XDM/src/XDM.Core.Tests/SystemTransferEnvironmentProbeTests.cs
+app/XDM/src/XDM.App.Tests/DesktopProductivityServiceTests.cs
