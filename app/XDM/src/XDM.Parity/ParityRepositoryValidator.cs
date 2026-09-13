@@ -66,6 +66,11 @@ public static partial class ParityRepositoryValidator
                 }
             }
 
+            if (feature.AutomatedTests.Count == 0)
+            {
+                issues.Add($"{feature.Id}: completed parity has no executable automated-test evidence.");
+            }
+
             foreach (string testReference in feature.AutomatedTests)
             {
                 if (!TestReferenceExists(testReference, testFiles))

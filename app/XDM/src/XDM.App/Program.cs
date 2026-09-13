@@ -71,7 +71,8 @@ internal static class Program
                 numericConverter.ConvertBack(64m, typeof(string), null, System.Globalization.CultureInfo.InvariantCulture) as string,
                 "64",
                 StringComparison.Ordinal);
-        bool sectionsReady = viewModel.Sections.Count == 8;
+        string[] expectedSections = ["downloads", "recovery", "queues", "scheduler", "browser", "media", "conversion", "settings", "diagnostics"];
+        bool sectionsReady = viewModel.Sections.Select(static section => section.Id).SequenceEqual(expectedSections, StringComparer.Ordinal);
         bool sectionIconsReady = viewModel.Sections.All(static section =>
             section.IconData.Bounds.Width > 0
             && section.IconData.Bounds.Height > 0);

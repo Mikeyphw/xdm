@@ -8,6 +8,6 @@ PROJECT="$ROOT/app/XDM/src/XDM.App/XDM.App.csproj"
 cd "$ROOT"
 dotnet --version
 dotnet restore "$SOLUTION"
-dotnet build "$SOLUTION" --configuration Release --no-restore
+dotnet build "$SOLUTION" --configuration Release --no-restore -warnaserror
 dotnet test "$SOLUTION" --configuration Release --no-build
 dotnet run --project "$PROJECT" --configuration Release --no-build -- --validate-bootstrap

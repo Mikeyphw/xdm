@@ -24,18 +24,22 @@ jobs:
       - name: Restore modern solution
         run: dotnet restore app/XDM/XDM.Modern.sln
       - name: Build modern solution
-        run: dotnet build app/XDM/XDM.Modern.sln -c Release --no-restore
+        run: dotnet build app/XDM/XDM.Modern.sln -c Release --no-restore -warnaserror
       - name: Test modern solution and final-gate contracts
         run: dotnet test app/XDM/XDM.Modern.sln -c Release --no-build --logger trx --results-directory artifacts/test-results
       - name: Bootstrap smoke test
         run: dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj -c Release --no-build -- --validate-bootstrap
-      - name: Linux final-gate package smoke
+      - name: Linux final-gate package smoke matrix
         if: runner.os == 'Linux'
-        run: bash app/XDM/eng/smoke-package.sh linux-x64
-      - name: Windows final-gate package smoke
+        run: |
+          bash app/XDM/eng/smoke-package.sh linux-x64
+          bash app/XDM/eng/smoke-package.sh linux-arm64 --publish-only
+      - name: Windows final-gate package smoke matrix
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./app/XDM/eng/smoke-package.ps1 -Runtime win-x64
+        run: |
+          ./app/XDM/eng/smoke-package.ps1 -Runtime win-x64
+          ./app/XDM/eng/smoke-package.ps1 -Runtime win-arm64 -PublishOnly
       - uses: actions/upload-artifact@v4
         if: always()
         with:

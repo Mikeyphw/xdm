@@ -1,6 +1,7 @@
 param(
     [string]$Runtime = "win-x64",
-    [string]$Output = ""
+    [string]$Output = "",
+    [switch]$PublishOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,9 +51,11 @@ if (-not (Test-Path $PackagedHost)) {
     throw "Packaged native host was not found: $PackagedHost"
 }
 
-& $Executable --validate-bootstrap
-if ($LASTEXITCODE -ne 0) {
-    throw "Published bootstrap validation failed with exit code $LASTEXITCODE"
+if (-not $PublishOnly) {
+    & $Executable --validate-bootstrap
+    if ($LASTEXITCODE -ne 0) {
+        throw "Published bootstrap validation failed with exit code $LASTEXITCODE"
+    }
 }
 
 Remove-Item -Recurse -Force $HostOutput -ErrorAction SilentlyContinue
