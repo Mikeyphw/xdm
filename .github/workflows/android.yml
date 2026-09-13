@@ -4,15 +4,22 @@ on:
   push:
     paths:
       - 'app/XDM.Android/**'
+      - '.devtool.toml'
+      - 'build-release-apk.sh'
       - '.github/workflows/android.yml'
   pull_request:
     paths:
       - 'app/XDM.Android/**'
+      - '.devtool.toml'
+      - 'build-release-apk.sh'
       - '.github/workflows/android.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  XDM_ANDROID_NDK_VERSION: '29.0.14206865'
 
 jobs:
   validate:
@@ -31,13 +38,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Android SDK
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install pinned Android SDK and NDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${XDM_ANDROID_NDK_VERSION}"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.7.1'
       - name: Static release contracts
         run: |
+          python3 tools/validate-xar01-build-provenance.py
           python3 tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
           python3 tools/verify-phase10-backup-policy.py
           python3 tools/validate-uix-r6-accessibility-performance-release-seal.py
@@ -46,8 +54,6 @@ jobs:
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.7.1
-      - name: Install official ARM64 aria2 runtime
-        run: python3 tools/install-aria2-runtime.py --download-official
       - name: Post-DL03 final common validation
         run: bash tools/run-final-common-validation.sh
       - uses: actions/upload-artifact@v4
@@ -62,7 +68,7 @@ jobs:
   signed-release:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v')
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 100
     permissions:
       contents: read
       id-token: write
@@ -78,7 +84,6 @@ jobs:
       XDM_RELEASE_SIGNER_SHA256: ${{ secrets.XDM_RELEASE_SIGNER_SHA256 }}
       XDM_RELEASE_BUILD_ID: ${{ github.sha }}
       XDM_ARIA2_ARCHIVE_SHA256: ${{ secrets.XDM_ARIA2_ARCHIVE_SHA256 }}
-      BUNDLETOOL_JAR: ${{ secrets.BUNDLETOOL_JAR_PATH }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -95,17 +100,19 @@ jobs:
         run: |
           test -n "$XDM_RELEASE_KEYSTORE_BASE64"
           printf '%s' "$XDM_RELEASE_KEYSTORE_BASE64" | base64 -d > "$XDM_RELEASE_STORE_FILE"
-      - name: Install Android SDK
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install pinned Android SDK and NDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${XDM_ANDROID_NDK_VERSION}"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.7.1'
+      - name: Provision pinned bundletool
+        run: echo "BUNDLETOOL_JAR=$(python3 tools/ensure-bundletool.py --print-path)" >> "$GITHUB_ENV"
       - name: Install pinned official ARM64 aria2 runtime
         run: |
           test -n "$XDM_ARIA2_ARCHIVE_SHA256"
           python3 tools/install-aria2-runtime.py --download-official --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --require-trusted-digest
-      - name: Require bundletool input
-        run: test -n "${BUNDLETOOL_JAR:-}" || command -v bundletool
+      - name: Build pinned FFmpeg runtime
+        run: python3 tools/install-ffmpeg-runtime.py --build-pinned
       - name: Signed release gate
         run: bash tools/run-bug-hunt-phase10-release-gate.sh
       - name: Attest Android publication metadata

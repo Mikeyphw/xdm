@@ -94,13 +94,14 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
         return None
     lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
     expected_fields = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "component": MANIFEST["component"],
         "ffmpegVersion": MANIFEST["ffmpegVersion"],
         "opensslVersion": MANIFEST["opensslVersion"],
         "abi": MANIFEST["abi"],
         "androidApi": MANIFEST["androidApi"],
         "ndkVersion": MANIFEST["ndkVersion"],
+        "ndkRevision": MANIFEST["ndkVersion"],
         "ffmpegSourceSha256": MANIFEST["ffmpegSourceSha256"],
         "opensslSourceSha256": MANIFEST["opensslSourceSha256"],
         "requiredLoadAlignment": MANIFEST["requiredLoadAlignment"],
@@ -115,6 +116,24 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
     toolchain_backend = str(lock.get("toolchainBackend", ""))
     if not (toolchain_backend.startswith("ndk:") or toolchain_backend == "termux-native-llvm"):
         raise SystemExit(f"runtime lock has unsupported toolchain backend: {toolchain_backend or '<missing>'}")
+    ndk_source_hash = str(lock.get("ndkSourcePropertiesSha256", ""))
+    if not SHA256.fullmatch(ndk_source_hash):
+        raise SystemExit("runtime lock does not attest the exact NDK source.properties")
+    cache_identity_hash = str(lock.get("buildCacheIdentitySha256", ""))
+    if not SHA256.fullmatch(cache_identity_hash):
+        raise SystemExit("runtime lock does not attest the build-cache identity")
+    toolchain_identity = lock.get("toolchainIdentity")
+    if not isinstance(toolchain_identity, dict) or toolchain_identity.get("backend") != toolchain_backend:
+        raise SystemExit("runtime lock toolchain identity is missing or disagrees with toolchainBackend")
+    tools = toolchain_identity.get("tools")
+    required_tools = {"clang", "clang++", "llvm-ar", "llvm-ranlib", "llvm-strip", "llvm-nm"}
+    if not isinstance(tools, dict) or set(tools) != required_tools:
+        raise SystemExit("runtime lock does not attest the complete compiler/binutils set")
+    for name, evidence in tools.items():
+        if not isinstance(evidence, dict) or not SHA256.fullmatch(str(evidence.get("sha256", ""))):
+            raise SystemExit(f"runtime lock has invalid tool digest for {name}")
+        if not str(evidence.get("version", "")).strip():
+            raise SystemExit(f"runtime lock has no version evidence for {name}")
     license_paths = {
         "ffmpeg": ROOT / MANIFEST["ffmpegLicenseAsset"],
         "openssl": ROOT / MANIFEST["opensslLicenseAsset"],

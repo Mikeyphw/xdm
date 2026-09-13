@@ -4,17 +4,17 @@ Phase 10 turns Android release qualification from static source claims into a si
 
 ## Release signing
 
-Publishable `assembleRelease` and `bundleRelease` require `XDM_RELEASE_STORE_FILE`, `XDM_RELEASE_STORE_PASSWORD`, `XDM_RELEASE_KEY_ALIAS`, `XDM_RELEASE_KEY_PASSWORD`, and `XDM_RELEASE_SIGNER_SHA256`. The pinned signer SHA-256 is compared during artifact verification so certificate continuity is not a vibe, it is a locked door with a fingerprint scanner.
+Every publishable release packaging/signing entry point, including direct `assembleRelease`, `bundleRelease`, `packageRelease`, signing, and release-signing validation tasks, is bound to the release signing preflight. It requires `XDM_RELEASE_STORE_FILE`, `XDM_RELEASE_STORE_PASSWORD`, `XDM_RELEASE_KEY_ALIAS`, `XDM_RELEASE_KEY_PASSWORD`, and `XDM_RELEASE_SIGNER_SHA256`. The preflight loads the configured keystore certificate itself and compares its SHA-256 to the pin before packaging, then writes signer provenance consumed by later artifact verification. This prevents direct Gradle task invocation from bypassing certificate continuity.
 
 Unsigned developer handoff is deliberately named `developmentUnsigned`; CI and publication scripts never search debug output when a release artifact is required.
 
 ## Required artifact matrix
 
-The signed release gate runs `lintRelease`, `testReleaseUnitTest`, `assembleRelease`, `bundleRelease`, APK signature verification, AAB inspection, aria2 payload attestation, 16 KB native alignment checks, release inventory allow/deny checks, checksum generation, and publication metadata generation. APK-set generation must pass signing inputs to bundletool; debug-key fallback is rejected.
+The signed release gate first provisions the exact pinned aria2 and FFmpeg/OpenSSL runtime inputs, verifies their provenance, and resolves bundletool through the repository's content-addressed provisioner. It then runs `lintRelease`, `testReleaseUnitTest`, `assembleRelease`, `bundleRelease`, APK signature verification, AAB inspection, aria2/FFmpeg payload attestation, 16 KB native alignment checks, release inventory allow/deny checks, checksum generation, and publication metadata generation. APK-set generation must pass signing inputs to the verified bundletool jar; debug-key fallback and unverified/pre-existing bundletool paths are rejected.
 
 ## Packaging and native payload policy
 
-Release packaging disables legacy JNI extraction, scopes debug-symbol retention to `libaria2c.so`, pins supported ABIs, and requires strict aria2 runtime attestation. AAB/APK-set inspection must reject 4 KB alignment reports and fail if generated split APKs do not match the pinned signer.
+Release packaging disables legacy JNI extraction, scopes debug-symbol retention to the packaged native runtimes, pins supported ABIs, and requires strict aria2 plus FFmpeg/FFprobe runtime attestation. Direct release packaging never downloads/builds native payloads implicitly: it verifies already-installed attested payloads and fails closed when they are absent. The canonical release gate is the explicit provisioning path. AAB/APK-set inspection must reject 4 KB alignment reports and fail if generated split APKs do not match the pinned signer.
 
 ## Upgrade and backup policy
 

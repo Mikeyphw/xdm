@@ -101,7 +101,7 @@ def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
         assert_16kb_alignment(data)
 
     required_metadata = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "component": MANIFEST["component"],
         "version": MANIFEST["version"],
         "releaseTag": MANIFEST["releaseTag"],
@@ -122,6 +122,17 @@ def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
     if lock.get("binarySize") != len(data) or binary_hash != digest(TARGET):
         raise SystemExit("aria2 runtime bytes do not match their source attestation")
 
+    notice_paths = {
+        "license": ROOT / MANIFEST["licenseAsset"],
+        "sourceNotice": ROOT / MANIFEST["sourceNoticeAsset"],
+    }
+    for name, path in notice_paths.items():
+        if not path.is_file():
+            raise SystemExit(f"aria2 {name} asset is missing: {path}")
+        key = f"{name}Sha256"
+        if not SHA256_PATTERN.fullmatch(str(lock.get(key, ""))) or digest(path) != lock[key]:
+            raise SystemExit(f"aria2 {name} asset differs from runtime lock")
+
     trusted_hash = MANIFEST.get("archiveSha256")
     if trusted_hash and archive_hash != trusted_hash.lower():
         raise SystemExit("aria2 archive SHA-256 differs from the trusted manifest value")
@@ -141,7 +152,7 @@ def main() -> None:
 
     lock = verify_payload(args.require_payload, args.require_16kb_alignment)
     expected_archive_sha256 = args.expected_archive_sha256 or MANIFEST.get("archiveSha256")
-    if args.require_trusted_archive_digest and not expected_archive_sha256:
+    if args.require_trusted_archive_digest and (lock is not None or args.require_payload) and not expected_archive_sha256:
         raise SystemExit("strict release verification requires a pinned aria2 archive SHA-256")
     if lock is not None and expected_archive_sha256 and lock.get("archiveSha256", "").lower() != expected_archive_sha256.lower():
         raise SystemExit("aria2 runtime archive SHA-256 does not match the pinned release digest")
@@ -156,6 +167,17 @@ def main() -> None:
                 data = apk.read(member)
             except KeyError as error:
                 raise SystemExit(f"{member} is missing from {args.apk}") from error
+            notice_entries = {
+                "license": "assets/licenses/GPL-2.0.txt",
+                "sourceNotice": "assets/licenses/SOURCE-NOTICE.txt",
+            }
+            for name, notice_member in notice_entries.items():
+                try:
+                    notice_data = apk.read(notice_member)
+                except KeyError as error:
+                    raise SystemExit(f"{notice_member} is missing from {args.apk}") from error
+                if digest_bytes(notice_data) != lock[f"{name}Sha256"]:
+                    raise SystemExit(f"APK aria2 {name} differs from the attested notice asset")
         validate_elf(data)
         if args.require_16kb_alignment:
             assert_16kb_alignment(data)

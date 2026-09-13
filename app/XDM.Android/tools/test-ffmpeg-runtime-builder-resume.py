@@ -27,7 +27,8 @@ manifest = {
 with tempfile.TemporaryDirectory(prefix="xdm-ffmpeg-builder-test-") as raw:
     root = Path(raw)
     prefix = root / "openssl-prefix"
-    config = installer.openssl_configuration_payload(manifest, prefix)
+    toolchain_identity = {"backend": "test-toolchain", "sysrootOwner": "test", "tools": {}}
+    config = installer.openssl_configuration_payload(manifest, prefix, toolchain_identity)
 
     assert config["target"] == "android-arm64"
     assert all("__ANDROID_API__" not in option for option in config["options"]), config["options"]
@@ -56,7 +57,7 @@ with tempfile.TemporaryDirectory(prefix="xdm-ffmpeg-builder-test-") as raw:
     assert installer.quiet_make_prefix(False) == ["make", "-s"]
     assert installer.quiet_make_prefix(True) == ["make"]
 
-    ffmpeg_config = installer.ffmpeg_configuration_payload(["./configure", "--enable-openssl"], manifest)
+    ffmpeg_config = installer.ffmpeg_configuration_payload(["./configure", "--enable-openssl"], manifest, toolchain_identity)
     assert ffmpeg_config["configure"][-1] == "--enable-openssl"
     ff_marker = root / ".ffmpeg-configured.json"
     installer.atomic_json(ff_marker, ffmpeg_config)
@@ -92,8 +93,11 @@ with tempfile.TemporaryDirectory(prefix="xdm-ffmpeg-builder-test-") as raw:
         "buildProfile": "stream-copy-downloader-v1",
         "configureFlags": ["--enable-zlib", "--disable-avdevice"],
     }
-    legacy = installer.build_cache_manifest_payload(current)
+    cache_manifest = installer.build_cache_manifest_payload(current)
     assert current["configureFlags"] == ["--enable-zlib", "--disable-avdevice"]
-    assert legacy["configureFlags"] == ["--enable-zlib", "--disable-avdevice", "--disable-postproc"]
+    assert cache_manifest["configureFlags"] == ["--enable-zlib", "--disable-avdevice"]
+    assert cache_manifest is not current
+    assert ffmpeg_config["toolchainIdentity"] == toolchain_identity
+    assert config["toolchainIdentity"] == toolchain_identity
 
 print("FF04 v7 runtime-builder resume/configure-surface regression tests passed")

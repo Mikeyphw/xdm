@@ -12,5 +12,7 @@
   "elfData": 1,
   "elfMachine": 183,
   "minimumBinaryBytes": 500000,
-  "license": "GPL-2.0-or-later"
+  "license": "GPL-2.0-or-later",
+  "licenseAsset": "transfer-aria2/runtime/licenses/GPL-2.0.txt",
+  "sourceNoticeAsset": "transfer-aria2/runtime/licenses/SOURCE-NOTICE.txt"
 }

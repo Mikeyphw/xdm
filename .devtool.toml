@@ -55,6 +55,7 @@ args = [
 restore = ["help"]
 
 build = [
+  "clean",
   "assembleDebug",
 ]
 
@@ -80,10 +81,12 @@ clean = ["clean"]
 
 [targets.xdm_android.artifacts]
 required = true
+external_verification = "required"
 
 [validation.phases]
 preflight = [
   "verifyStableToolchainBaseline",
+  ":app:verifyXar01BuildProvenance",
   ":app:verifyGradleTaskGraphOptimization",
   ":app:verifyFfmpeg04FullReleaseSeal",
   ":app:verifyFfmpegRoadmapPostSealHotfix",

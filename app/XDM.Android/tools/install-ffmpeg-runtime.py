@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shlex
 import shutil
 import stat
@@ -114,6 +115,27 @@ def local_properties_sdk_roots() -> list[Path]:
     return roots
 
 
+def read_ndk_revision(ndk: Path) -> str:
+    source_properties = ndk / "source.properties"
+    if not source_properties.is_file():
+        raise SystemExit(f"Android NDK source.properties is missing: {source_properties}")
+    match = re.search(r"(?m)^Pkg\.Revision\s*=\s*([^\r\n]+)$", source_properties.read_text(encoding="utf-8", errors="replace"))
+    if not match:
+        raise SystemExit(f"Android NDK revision is missing from {source_properties}")
+    return match.group(1).strip()
+
+
+def ndk_provenance(ndk: Path, expected_version: str) -> dict:
+    revision = read_ndk_revision(ndk)
+    if revision != expected_version:
+        raise SystemExit(f"Android NDK revision mismatch: requested {expected_version}, found {revision} at {ndk}")
+    source_properties = ndk / "source.properties"
+    return {
+        "revision": revision,
+        "sourcePropertiesSha256": sha256(source_properties),
+    }
+
+
 def detect_ndk(version: str) -> Path:
     candidates: list[Path] = []
     for key in ("ANDROID_NDK_ROOT", "ANDROID_NDK_HOME"):
@@ -134,19 +156,29 @@ def detect_ndk(version: str) -> Path:
         Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "share/android-sdk/ndk" / version,
     ]
     seen: set[Path] = set()
+    rejected: list[str] = []
     for candidate in candidates:
         candidate = candidate.expanduser()
         if candidate in seen:
             continue
         seen.add(candidate)
-        if (candidate / "toolchains/llvm/prebuilt").is_dir():
-            return candidate.resolve()
+        if not (candidate / "toolchains/llvm/prebuilt").is_dir():
+            continue
+        try:
+            actual = read_ndk_revision(candidate)
+        except SystemExit as error:
+            rejected.append(f"{candidate}: {error}")
+            continue
+        if actual != version:
+            rejected.append(f"{candidate}: revision {actual} != {version}")
+            continue
+        return candidate.resolve()
     searched = ", ".join(str(path) for path in candidates)
+    suffix = f" Rejected candidates: {'; '.join(rejected)}." if rejected else ""
     raise SystemExit(
-        f"Android NDK {version} not found. Checked: {searched}. "
-        "Set ANDROID_NDK_ROOT/ANDROID_NDK_HOME or sdk.dir in local.properties."
+        f"Android NDK {version} not found. Checked: {searched}." + suffix +
+        " Set ANDROID_NDK_ROOT/ANDROID_NDK_HOME or sdk.dir in local.properties."
     )
-
 
 def ndk_prebuilt_toolchains(ndk: Path) -> list[Path]:
     prebuilt = ndk / "toolchains/llvm/prebuilt"
@@ -176,51 +208,103 @@ def write_exec_wrapper(path: Path, executable: Path, prefix_args: list[str]) -> 
     path.chmod(0o755)
 
 
-def resolve_toolchain(ndk: Path, api: int, build_root: Path) -> tuple[Path, Path, str]:
-    options = ndk_prebuilt_toolchains(ndk)
-    # Prefer an NDK-hosted compiler when that binary is actually runnable on this host.
-    preferred = sorted(options, key=lambda p: (not p.name.startswith("linux-"), p.name))
-    for toolchain in preferred:
-        cc = toolchain / "bin" / f"aarch64-linux-android{api}-clang"
-        if cc.is_file() and command_runs(cc):
-            return toolchain, toolchain / "bin", f"ndk:{toolchain.name}"
+def tool_fingerprint(path: Path) -> dict:
+    resolved = path.resolve()
+    if not resolved.is_file():
+        raise SystemExit(f"required tool is missing: {resolved}")
+    try:
+        result = subprocess.run(
+            [str(resolved), "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise SystemExit(f"could not fingerprint tool {resolved}: {error}") from error
+    if result.returncode != 0:
+        raise SystemExit(f"tool does not execute successfully: {resolved}")
+    version_line = next((line.strip() for line in result.stdout.splitlines() if line.strip()), "<no-version-output>")
+    return {
+        "name": resolved.name,
+        "sha256": sha256(resolved),
+        "version": version_line,
+    }
 
-    # Official Linux NDK archives commonly contain x86_64 host tools only. Native
-    # ARM64 Termux can still cross-build correctly by using its LLVM executables
-    # against the pinned NDK sysroot and target libraries.
+
+def select_toolchain_identity(ndk: Path, api: int) -> dict:
+    options = ndk_prebuilt_toolchains(ndk)
+    preferred = sorted(options, key=lambda p: (not p.name.startswith("linux-"), p.name))
+    target = f"aarch64-linux-android{api}"
+    for toolchain in preferred:
+        cc = toolchain / "bin" / f"{target}-clang"
+        if cc.is_file() and command_runs(cc):
+            tools = {
+                "clang": cc,
+                "clang++": toolchain / "bin" / f"{target}-clang++",
+                "llvm-ar": toolchain / "bin/llvm-ar",
+                "llvm-ranlib": toolchain / "bin/llvm-ranlib",
+                "llvm-strip": toolchain / "bin/llvm-strip",
+                "llvm-nm": toolchain / "bin/llvm-nm",
+            }
+            return {
+                "backend": f"ndk:{toolchain.name}",
+                "sysrootOwner": toolchain.name,
+                "tools": {name: tool_fingerprint(path) for name, path in tools.items()},
+            }
+
     machine = platform.machine().lower()
     if machine not in {"aarch64", "arm64"}:
-        raise SystemExit(
-            "No runnable Android NDK clang was found for this host. "
-            + ", ".join(str(p / "bin") for p in options)
-        )
+        raise SystemExit("No runnable Android NDK clang was found for this host")
+    paths = {}
+    for name in ("clang", "clang++", "llvm-ar", "llvm-ranlib", "llvm-strip", "llvm-nm"):
+        resolved = shutil.which(name)
+        if not resolved:
+            raise SystemExit(f"ARM64 Termux fallback requires {name} in PATH")
+        paths[name] = Path(resolved).resolve()
+    return {
+        "backend": "termux-native-llvm",
+        "sysrootOwner": options[0].name,
+        "tools": {name: tool_fingerprint(path) for name, path in paths.items()},
+    }
+
+
+def resolve_toolchain(ndk: Path, api: int, build_root: Path, identity: dict) -> tuple[Path, Path, str]:
+    options = ndk_prebuilt_toolchains(ndk)
+    backend = str(identity["backend"])
+    if backend.startswith("ndk:"):
+        name = backend.split(":", 1)[1]
+        toolchain = next((item for item in options if item.name == name), None)
+        if toolchain is None:
+            raise SystemExit(f"attested NDK toolchain disappeared: {name}")
+        return toolchain, toolchain / "bin", backend
+
+    if backend != "termux-native-llvm":
+        raise SystemExit(f"unsupported toolchain backend: {backend}")
     termux_tools: dict[str, Path] = {}
     for name in ("clang", "clang++", "llvm-ar", "llvm-ranlib", "llvm-strip", "llvm-nm"):
         resolved = shutil.which(name)
         if not resolved:
             raise SystemExit(f"ARM64 Termux fallback requires {name} in PATH")
-        termux_tools[name] = Path(resolved).resolve()
-    sysroot_owner = options[0]
+        path = Path(resolved).resolve()
+        if tool_fingerprint(path) != identity["tools"][name]:
+            raise SystemExit(f"Termux tool changed after provenance was measured: {name}")
+        termux_tools[name] = path
+    sysroot_owner = next((item for item in options if item.name == identity["sysrootOwner"]), None)
+    if sysroot_owner is None:
+        raise SystemExit("attested NDK sysroot owner disappeared")
     sysroot = sysroot_owner / "sysroot"
     if not sysroot.is_dir():
         raise SystemExit(f"NDK sysroot missing: {sysroot}")
     wrapper_bin = build_root / "termux-llvm-bin"
     wrapper_bin.mkdir(parents=True, exist_ok=True)
     target = f"aarch64-linux-android{api}"
-    write_exec_wrapper(
-        wrapper_bin / f"{target}-clang",
-        termux_tools["clang"],
-        [f"--target={target}", f"--sysroot={sysroot}", "-fuse-ld=lld"],
-    )
-    write_exec_wrapper(
-        wrapper_bin / f"{target}-clang++",
-        termux_tools["clang++"],
-        [f"--target={target}", f"--sysroot={sysroot}", "-fuse-ld=lld"],
-    )
+    write_exec_wrapper(wrapper_bin / f"{target}-clang", termux_tools["clang"], [f"--target={target}", f"--sysroot={sysroot}", "-fuse-ld=lld"])
+    write_exec_wrapper(wrapper_bin / f"{target}-clang++", termux_tools["clang++"], [f"--target={target}", f"--sysroot={sysroot}", "-fuse-ld=lld"])
     for name in ("llvm-ar", "llvm-ranlib", "llvm-strip", "llvm-nm"):
         write_exec_wrapper(wrapper_bin / name, termux_tools[name], [])
-    return sysroot_owner, wrapper_bin, "termux-native-llvm"
-
+    return sysroot_owner, wrapper_bin, backend
 
 def run(
     command: list[str],
@@ -347,7 +431,7 @@ def ensure_pie(path: Path) -> None:
         raise SystemExit(f"{path.name} is not an AArch64 PIE/ET_DYN executable (type={elf_type}, machine={machine})")
 
 
-def openssl_configuration_payload(manifest: dict, openssl_prefix: Path) -> dict:
+def openssl_configuration_payload(manifest: dict, openssl_prefix: Path, toolchain_identity: dict) -> dict:
     # Do NOT pass -D__ANDROID_API__. The NDK clang driver already defines it from
     # aarch64-linux-android<api>, and redefining it caused one warning per translation unit.
     options = [
@@ -371,14 +455,22 @@ def openssl_configuration_payload(manifest: dict, openssl_prefix: Path) -> dict:
         "androidApi": int(manifest["androidApi"]),
         "target": "android-arm64",
         "options": options,
+        "toolchainIdentity": toolchain_identity,
     }
 
 
-def openssl_install_payload(configuration: dict) -> dict:
+def openssl_install_payload(configuration: dict, openssl_prefix: Path) -> dict:
+    artifacts = {
+        "lib/libssl.a": openssl_prefix / "lib/libssl.a",
+        "lib/libcrypto.a": openssl_prefix / "lib/libcrypto.a",
+        "include/openssl/ssl.h": openssl_prefix / "include/openssl/ssl.h",
+        "lib/pkgconfig/libssl.pc": openssl_prefix / "lib/pkgconfig/libssl.pc",
+    }
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "component": "openssl-install",
         "configuration": configuration,
+        "artifactSha256": {name: sha256(path) for name, path in artifacts.items()},
     }
 
 
@@ -392,7 +484,7 @@ def openssl_install_complete(openssl_prefix: Path) -> bool:
     return all(path.is_file() and path.stat().st_size > 0 for path in required)
 
 
-def ffmpeg_configuration_payload(configure: list[str], manifest: dict) -> dict:
+def ffmpeg_configuration_payload(configure: list[str], manifest: dict, toolchain_identity: dict) -> dict:
     return {
         "schemaVersion": 1,
         "component": "ffmpeg-configure",
@@ -400,6 +492,7 @@ def ffmpeg_configuration_payload(configure: list[str], manifest: dict) -> dict:
         "ffmpegSourceSha256": manifest["ffmpegSourceSha256"],
         "androidApi": int(manifest["androidApi"]),
         "configure": configure,
+        "toolchainIdentity": toolchain_identity,
     }
 
 
@@ -435,21 +528,55 @@ def manifest_version_from_source(ff_src: Path) -> str:
 
 
 def build_cache_manifest_payload(manifest: dict) -> dict:
-    """Preserve the v5/v6 cache identity while correcting FFmpeg 9's removed postproc option.
+    """Return the exact pinned manifest; provenance changes intentionally invalidate old caches."""
+    return json.loads(json.dumps(manifest))
 
-    v6 hashed the entire manifest, which still listed --disable-postproc. FFmpeg 9.0.1 no
-    longer ships libpostproc and rejects that option before compilation. Re-add the obsolete
-    flag only to the *cache identity* payload so the user's already-built OpenSSL objects stay
-    at build-1d480174b70d7e78. The actual configure command, runtime lock, and attestation never
-    contain the removed option.
-    """
-    payload = json.loads(json.dumps(manifest))
-    if payload.get("ffmpegVersion") == "9.0.1" and payload.get("buildProfile") == "stream-copy-downloader-v1":
-        cache_flags = payload.get("configureFlags")
-        if isinstance(cache_flags, list) and "--disable-postproc" not in cache_flags:
-            cache_flags.append("--disable-postproc")
-    return payload
 
+def archive_tree_matches(archive: Path, destination: Path) -> bool:
+    root = destination.resolve()
+    try:
+        with tarfile.open(archive, "r:*") as source:
+            for member in source.getmembers():
+                if not member.isfile():
+                    continue
+                target = (destination / member.name).resolve()
+                if root != target and root not in target.parents:
+                    return False
+                if not target.is_file() or target.stat().st_size != member.size:
+                    return False
+                extracted = source.extractfile(member)
+                if extracted is None:
+                    return False
+                expected = hashlib.sha256()
+                for chunk in iter(lambda: extracted.read(1024 * 1024), b""):
+                    expected.update(chunk)
+                if sha256(target) != expected.hexdigest():
+                    return False
+    except (OSError, tarfile.TarError):
+        return False
+    return True
+
+
+def ensure_verified_source_tree(archive: Path, source_root: Path, expected_dir: Path, required_file: str) -> None:
+    if expected_dir.is_dir() and not archive_tree_matches(archive, source_root):
+        print(f"Discarding modified extracted source tree: {expected_dir}", flush=True)
+        shutil.rmtree(expected_dir, ignore_errors=True)
+    if not expected_dir.is_dir():
+        safe_extract(archive, source_root)
+    if not archive_tree_matches(archive, source_root):
+        raise SystemExit(f"extracted source tree does not match pinned archive: {expected_dir}")
+    if not (expected_dir / required_file).is_file():
+        raise SystemExit(f"pinned source tree is incomplete: {expected_dir / required_file}")
+
+
+def ffmpeg_build_payload(configuration: dict, ffmpeg_bin: Path, ffprobe_bin: Path) -> dict:
+    return {
+        "schemaVersion": 2,
+        "component": "ffmpeg-build",
+        "configuration": configuration,
+        "ffmpegSha256": sha256(ffmpeg_bin),
+        "ffprobeSha256": sha256(ffprobe_bin),
+    }
 
 def quiet_make_prefix(verbose_make: bool) -> list[str]:
     # GNU make -s suppresses echoing every compiler command but leaves compiler/linker
@@ -466,23 +593,23 @@ def build_openssl(
     jobs: int,
     heartbeat_seconds: int,
     verbose_make: bool,
+    toolchain_identity: dict,
 ) -> None:
-    configuration = openssl_configuration_payload(manifest, openssl_prefix)
+    configuration = openssl_configuration_payload(manifest, openssl_prefix, toolchain_identity)
     configured_marker = ssl_src / ".xdm-openssl-configured.json"
     installed_marker = ssl_src / ".xdm-openssl-installed.json"
-    installed = openssl_install_payload(configuration)
 
     if openssl_install_complete(openssl_prefix):
-        # A complete v5 cache predates the marker. It is byte-compatible because the
-        # removed __ANDROID_API__ definition duplicated the clang driver's same value.
-        if not marker_matches(configured_marker, configuration):
-            atomic_json(configured_marker, configuration)
-        if not marker_matches(installed_marker, installed):
-            atomic_json(installed_marker, installed)
-        print("OpenSSL: reusing complete deterministic cache.", flush=True)
-        return
+        current_install = openssl_install_payload(configuration, openssl_prefix)
+        if marker_matches(configured_marker, configuration) and marker_matches(installed_marker, current_install):
+            print("OpenSSL: reusing provenance-verified deterministic cache.", flush=True)
+            return
+        print("OpenSSL cache provenance mismatch; rebuilding instead of self-attesting existing bytes.", flush=True)
+        shutil.rmtree(openssl_prefix, ignore_errors=True)
 
     if not marker_matches(configured_marker, configuration):
+        if (ssl_src / "Makefile").is_file():
+            subprocess.run(["make", "clean"], cwd=ssl_src, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         print("OpenSSL: configuring pinned Android profile.", flush=True)
         run(["perl", "./Configure", *configuration["options"]], ssl_src, env)
         # Persist immediately after Configure succeeds. An interrupted compile therefore
@@ -510,7 +637,7 @@ def build_openssl(
     )
     if not openssl_install_complete(openssl_prefix):
         raise SystemExit("OpenSSL install_sw completed but required static libraries/headers/pkg-config metadata are missing")
-    atomic_json(installed_marker, installed)
+    atomic_json(installed_marker, openssl_install_payload(configuration, openssl_prefix))
 
 
 def build_ffmpeg(
@@ -526,12 +653,10 @@ def build_ffmpeg(
     jobs: int,
     heartbeat_seconds: int,
     verbose_make: bool,
+    toolchain_identity: dict,
 ) -> tuple[Path, Path]:
     ffmpeg_bin = ff_src / "ffmpeg"
     ffprobe_bin = ff_src / "ffprobe"
-    if ffmpeg_bin.is_file() and ffprobe_bin.is_file():
-        print("FFmpeg/FFprobe: reusing complete deterministic cache.", flush=True)
-        return ffmpeg_bin, ffprobe_bin
 
     pkg = openssl_prefix / "lib/pkgconfig"
     env["PKG_CONFIG_PATH"] = str(pkg)
@@ -552,9 +677,21 @@ def build_ffmpeg(
         f"--extra-ldflags=-L{openssl_prefix / 'lib'} {common_ld}",
         "--extra-libs=-ldl -lm -lz",
     ]
-    configuration = ffmpeg_configuration_payload(configure, manifest)
+    configuration = ffmpeg_configuration_payload(configure, manifest, toolchain_identity)
     configured_marker = ff_src / ".xdm-ffmpeg-configured.json"
+    built_marker = ff_src / ".xdm-ffmpeg-built.json"
+    if ffmpeg_bin.is_file() and ffprobe_bin.is_file():
+        current_build = ffmpeg_build_payload(configuration, ffmpeg_bin, ffprobe_bin)
+        if marker_matches(configured_marker, configuration) and marker_matches(built_marker, current_build):
+            print("FFmpeg/FFprobe: reusing provenance-verified deterministic cache.", flush=True)
+            return ffmpeg_bin, ffprobe_bin
+        print("FFmpeg cache provenance mismatch; relinking instead of self-attesting existing bytes.", flush=True)
+        ffmpeg_bin.unlink(missing_ok=True)
+        ffprobe_bin.unlink(missing_ok=True)
+
     if not marker_matches(configured_marker, configuration):
+        if (ff_src / "Makefile").is_file():
+            subprocess.run(["make", "clean"], cwd=ff_src, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         print("FFmpeg: configuring pinned Android profile.", flush=True)
         run(configure, ff_src, env)
         atomic_json(configured_marker, configuration)
@@ -571,6 +708,7 @@ def build_ffmpeg(
     )
     if not ffmpeg_bin.is_file() or not ffprobe_bin.is_file():
         raise SystemExit("FFmpeg build finished without producing both ffmpeg and ffprobe")
+    atomic_json(built_marker, ffmpeg_build_payload(configuration, ffmpeg_bin, ffprobe_bin))
     return ffmpeg_bin, ffprobe_bin
 
 
@@ -602,14 +740,18 @@ def main() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     ndk = detect_ndk(manifest["ndkVersion"])
     api = int(manifest["androidApi"])
+    measured_ndk = ndk_provenance(ndk, manifest["ndkVersion"])
+    toolchain_identity = select_toolchain_identity(ndk, api)
 
     CACHE_ROOT.mkdir(parents=True, exist_ok=True)
-    # Keep this key formula unchanged from FF04 v5 so the partial native build already
-    # present under ~/.cache/xdm/ffmpeg-runtime/build-1d480174b70d7e78 can be resumed.
-    cache_manifest = build_cache_manifest_payload(manifest)
-    build_key = hashlib.sha256(
-        (json.dumps(cache_manifest, sort_keys=True) + str(ndk) + platform.machine()).encode()
-    ).hexdigest()[:16]
+    cache_identity = {
+        "schemaVersion": 2,
+        "manifest": build_cache_manifest_payload(manifest),
+        "ndk": measured_ndk,
+        "toolchain": toolchain_identity,
+        "hostMachine": platform.machine().lower(),
+    }
+    build_key = hashlib.sha256(json.dumps(cache_identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
     build_root = CACHE_ROOT / f"build-{build_key}"
     lock_path = CACHE_ROOT / f"build-{build_key}.lock"
 
@@ -617,7 +759,7 @@ def main() -> None:
         if args.force:
             shutil.rmtree(build_root, ignore_errors=True)
 
-        toolchain, bin_dir, toolchain_backend = resolve_toolchain(ndk, api, build_root)
+        toolchain, bin_dir, toolchain_backend = resolve_toolchain(ndk, api, build_root, toolchain_identity)
         cc = bin_dir / f"aarch64-linux-android{api}-clang"
         cxx = bin_dir / f"aarch64-linux-android{api}-clang++"
         if not cc.is_file() or not cxx.is_file():
@@ -634,16 +776,10 @@ def main() -> None:
         openssl_prefix = build_root / "openssl-prefix"
         ff_src = source_root / f"ffmpeg-{manifest['ffmpegVersion']}"
         ssl_src = source_root / f"openssl-{manifest['opensslVersion']}"
-        # Preserve the historical deterministic cache. A v5 partial build already has
-        # these verified trees; only extract a source when its expected top-level tree is absent.
-        if not ff_src.is_dir():
-            safe_extract(ff_archive, source_root)
-        if not ssl_src.is_dir():
-            safe_extract(ssl_archive, source_root)
-        if not (ff_src / "configure").is_file():
-            raise SystemExit(f"FFmpeg source tree is incomplete: {ff_src}")
-        if not (ssl_src / "Configure").is_file():
-            raise SystemExit(f"OpenSSL source tree is incomplete: {ssl_src}")
+        # Reuse only source trees whose original archive members still match the pinned
+        # source archives. Generated build products are allowed, modified source inputs are not.
+        ensure_verified_source_tree(ff_archive, source_root, ff_src, "configure")
+        ensure_verified_source_tree(ssl_archive, source_root, ssl_src, "Configure")
 
         env = os.environ.copy()
         env.update({
@@ -664,6 +800,7 @@ def main() -> None:
             jobs=args.jobs,
             heartbeat_seconds=args.heartbeat_seconds,
             verbose_make=args.verbose_make,
+            toolchain_identity=toolchain_identity,
         )
         ffmpeg_bin, ffprobe_bin = build_ffmpeg(
             manifest=manifest,
@@ -677,6 +814,7 @@ def main() -> None:
             jobs=args.jobs,
             heartbeat_seconds=args.heartbeat_seconds,
             verbose_make=args.verbose_make,
+            toolchain_identity=toolchain_identity,
         )
 
         targets = {
@@ -711,14 +849,18 @@ def main() -> None:
             shutil.copy2(source, target)
 
         lock = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "component": manifest["component"],
             "ffmpegVersion": manifest["ffmpegVersion"],
             "opensslVersion": manifest["opensslVersion"],
             "abi": manifest["abi"],
             "androidApi": api,
             "ndkVersion": manifest["ndkVersion"],
+            "ndkRevision": measured_ndk["revision"],
+            "ndkSourcePropertiesSha256": measured_ndk["sourcePropertiesSha256"],
             "toolchainBackend": toolchain_backend,
+            "toolchainIdentity": toolchain_identity,
+            "buildCacheIdentitySha256": hashlib.sha256(json.dumps(cache_identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
             "ffmpegSourceSha256": manifest["ffmpegSourceSha256"],
             "opensslSourceSha256": manifest["opensslSourceSha256"],
             "ffmpegBinarySha256": sha256(targets["ffmpeg"]),

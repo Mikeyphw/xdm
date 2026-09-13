@@ -21,8 +21,13 @@ val verifyStableToolchainBaseline = tasks.register("verifyStableToolchainBaselin
         layout.projectDirectory.file("gradle/libs.versions.toml").asFile
     val wrapperFile =
         layout.projectDirectory.file("gradle/wrapper/gradle-wrapper.properties").asFile
+    val repositoryRoot = layout.projectDirectory.asFile.parentFile.parentFile
     val ciWorkflowFile =
-        layout.projectDirectory.file(".github/workflows/android.yml").asFile
+        File(repositoryRoot, ".github/workflows/android.yml")
+    val releaseHelperFile =
+        File(repositoryRoot, "build-release-apk.sh")
+    val devtoolConfigFile =
+        File(repositoryRoot, ".devtool.toml")
     val appBuildFile =
         layout.projectDirectory.file("app/build.gradle.kts").asFile
     val rootDirectory =
@@ -45,6 +50,8 @@ val verifyStableToolchainBaseline = tasks.register("verifyStableToolchainBaselin
         catalogFile,
         wrapperFile,
         ciWorkflowFile,
+        releaseHelperFile,
+        devtoolConfigFile,
         appBuildFile,
     )
     inputs.files(subprojectBuildFiles)
@@ -96,6 +103,22 @@ val verifyStableToolchainBaseline = tasks.register("verifyStableToolchainBaselin
 
         require(ciWorkflow.contains("gradle-version: '9.7.1'")) {
             "Android CI must use Gradle 9.7.1."
+        }
+
+        require(ciWorkflow.contains("ndk;\${XDM_ANDROID_NDK_VERSION}")) {
+            "Android CI must provision the pinned NDK through XDM_ANDROID_NDK_VERSION."
+        }
+        require(ciWorkflow.contains("XDM_ANDROID_NDK_VERSION: '29.0.14206865'")) {
+            "Android CI must pin NDK 29.0.14206865."
+        }
+        require(ciWorkflow.contains("- '.devtool.toml'") && ciWorkflow.contains("- 'build-release-apk.sh'")) {
+            "Android CI path filters must include Devtool and the canonical release helper."
+        }
+        require(releaseHelperFile.readText().contains("run-bug-hunt-phase10-release-gate.sh")) {
+            "The advertised release helper must execute the canonical signed-release gate."
+        }
+        require(devtoolConfigFile.readText().contains("external_verification = \"required\"")) {
+            "XDM Android Devtool artifact collection must require external verification."
         }
 
         require(

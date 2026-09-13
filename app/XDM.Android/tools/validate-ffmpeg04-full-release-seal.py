@@ -78,7 +78,7 @@ need(has(installer, "ensure_host_build_tools", "XDM_FFMPEG_AUTO_INSTALL_HOST_TOO
 need('-D__ANDROID_API__={api}' not in installer, "OpenSSL builder must not redundantly redefine __ANDROID_API__; Android clang owns that API macro")
 need(has(installer, ".xdm-openssl-configured.json", ".xdm-openssl-installed.json", ".xdm-ffmpeg-configured.json", "marker_matches", "atomic_json(configured_marker"), "native builder lacks persistent configure/install markers for interrupted-build resume")
 need(has(installer, "build_cache_lock", "LOCK_EX", "build_libs", 'return ["make"] if verbose_make else ["make", "-s"]', "XDM_FFMPEG_VERBOSE_MAKE", "XDM_FFMPEG_BUILD_HEARTBEAT_SECONDS"), "native builder lacks serialized quiet/resumable compilation with visible heartbeat and verbose escape hatch")
-need(has(installer, "build_cache_manifest_payload", 'cache_flags.append("--disable-postproc")', "json.dumps(cache_manifest, sort_keys=True) + str(ndk) + platform.machine()"), "FF04 v7 must preserve the v5/v6 deterministic build-cache identity while removing postproc from the real configure profile")
+need(has(installer, "build_cache_manifest_payload", "cache_identity", "toolchain_identity", "buildCacheIdentitySha256", "archive_tree_matches"), "FF04/XAR01 must invalidate native build caches when pinned sources, measured NDK, or compiler/binutils provenance changes")
 need(has(installer, "validate_ffmpeg_profile_flags", '["./configure", *flags, "--help"]', "rejected the pinned configure ", "profile before native compilation"), "FF04 v7 must preflight the exact pinned profile through the real FFmpeg configure parser before compiling")
 
 builder_regression = ROOT / "tools/test-ffmpeg-runtime-builder-resume.py"
@@ -129,7 +129,7 @@ release_gate = text("tools/run-final-release-gate.sh")
 dev_workspace = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsWorkspace.kt")
 need(has(app_gradle, "XDM_FFMPEG_PAYLOAD_VERIFIED", "verifyFfmpeg04FullReleaseSeal", "verifyFfmpegDebugApkRuntime", "--require-16kb-alignment", "app-debug.apk"), "app Gradle release tasks/evidence do not enforce FF04 payload/APK gate")
 need('tasks.named("assembleDebug")' not in app_gradle, "FF04 must not eagerly resolve AGP assembleDebug during build-script evaluation")
-need(has(app_gradle, 'tasks.matching { it.name == "assembleDebug" }.configureEach', 'dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")'), "FF04 APK packaging must lazily depend on the freshly installed embedded runtime")
+need(has(app_gradle, 'tasks.matching { it.name == "assembleDebug" }.configureEach', 'mustRunAfter(":media-ffmpeg:installPinnedFfmpegRuntime")', 'dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime", "assembleDebug")'), "FF04 strict APK verification must install before packaging without forcing FFmpeg into ordinary debug builds")
 need(has(app_gradle, "verifyFfmpeg04FinalReleaseValidation", "verifyFfmpegRoadmapPostSealHotfix", ":media-ffmpeg:testDebugUnitTest", ":media:test", "assembleDebugAndroidTest", "verifyFfmpegDebugApkRuntime", "finalRemediationStaticGate", "lintDebug"), "FF04 staged final validation lifecycle task is incomplete or omits the post-seal roadmap ownership audit")
 need(has(app_gradle, 'subproject.tasks.matching { it.name.contains("lint", ignoreCase = true) }', "mustRunAfter(finalRemediationStaticGate)"), "FF04 combined validation must keep lint behind the static/runtime stages")
 for dependency_native in ("**/libandroidx.graphics.path.so", "**/libdatastore_shared_counter.so"):

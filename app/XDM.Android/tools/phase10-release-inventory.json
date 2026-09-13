@@ -8,7 +8,13 @@
   "requiredApkEntries": [
     "AndroidManifest.xml",
     "classes.dex",
-    "lib/arm64-v8a/libaria2c.so"
+    "lib/arm64-v8a/libaria2c.so",
+    "lib/arm64-v8a/libxdm_ffmpeg.so",
+    "lib/arm64-v8a/libxdm_ffprobe.so",
+    "assets/licenses/FFmpeg-LGPL-2.1.txt",
+    "assets/licenses/OpenSSL-Apache-2.0.txt",
+    "assets/licenses/GPL-2.0.txt",
+    "assets/licenses/SOURCE-NOTICE.txt"
   ],
   "forbiddenNameFragments": [
     "/debug/",

@@ -63,7 +63,7 @@ for rules_name,rules in [('backup_rules', backup_rules),('data_extraction_rules'
         require(marker in rules, f'{rules_name} missing explicit {marker}')
 require('<cloud-backup' in data_rules and '<device-transfer>' in data_rules, 'data extraction rules must split cloud backup and device transfer')
 
-for needle in ['lintRelease','testReleaseUnitTest',':app:assembleRelease',':app:bundleRelease','bundletool build-apks','BUNDLETOOL_JAR','--ks-key-alias','debug-key fallback is forbidden','XDM_ARIA2_ARCHIVE_SHA256','--expected-archive-sha256','--require-trusted-digest','verify-aria2-runtime.py --require-payload --require-16kb-alignment','--require-trusted-archive-digest','verify-phase10-release-artifacts.py --require-16kb','--inventory tools/phase10-release-inventory.json','--apks','generate-phase10-publication-bundle.sh']:
+for needle in ['lintRelease','testReleaseUnitTest',':app:assembleRelease',':app:bundleRelease','build-apks','BUNDLETOOL_JAR','ensure-bundletool.py','--ks-key-alias','XDM_ARIA2_ARCHIVE_SHA256','--expected-archive-sha256','--require-trusted-digest','verify-aria2-runtime.py --require-payload --require-16kb-alignment','--require-trusted-archive-digest','install-ffmpeg-runtime.py --build-pinned','verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment','-Pxdm.requireFfmpegRuntime=true','verify-phase10-release-artifacts.py --require-16kb','--inventory tools/phase10-release-inventory.json','--apks','generate-phase10-publication-bundle.sh']:
     require(needle in gate, f'Phase10 release gate missing {needle}')
 for needle in ['apksigner','jarsigner','aapt2 or aapt','splitApksVerified','signer SHA-256','forbidden release APK payload','required inventory entry','unsupported native ABI','AAB missing BundleConfig.pb','PAGE_ALIGNMENT_16K','16 KB zip-aligned','debug.keystore','phase10-release-attestation.json']:
     require(needle in release_verifier, f'release verifier missing {needle}')
@@ -73,7 +73,7 @@ for needle in ['adb install -r "$PREVIOUS_APK"','adb install -r "$CANDIDATE_APK"
     require(needle in upgrade, f'upgrade matrix missing {needle}')
 for needle in ['SHA256SUMS','SHA512SUMS','release-metadata.json','publicationRequires','phase10-sbom.json','phase10-provenance.json','CHECKSUM_ATTESTATION_REQUIRED']:
     require(needle in pub, f'publication bundle missing {needle}')
-for needle in ['signed-release:', 'XDM_RELEASE_KEYSTORE_BASE64', 'XDM_RELEASE_SIGNER_SHA256', 'BUNDLETOOL_JAR', 'bash tools/run-bug-hunt-phase10-release-gate.sh', 'actions/attest', 'xdm-android-signed-release']:
+for needle in ['signed-release:', 'XDM_RELEASE_KEYSTORE_BASE64', 'XDM_RELEASE_SIGNER_SHA256', 'BUNDLETOOL_JAR=', 'ensure-bundletool.py', 'ndk;${XDM_ANDROID_NDK_VERSION}', 'bash tools/run-bug-hunt-phase10-release-gate.sh', 'actions/attest', 'xdm-android-signed-release']:
     require(needle in workflow, f'Android workflow missing {needle}')
 require('app/build/outputs/apk/release/*.apk' not in workflow.split('xdm-android-debug-artifacts',1)[0], 'debug validation job must not search release APK output')
 for needle in ['versionCode 22','versionName 0.21.0','APK-set','16 KB native alignment','device-to-device transfer','SBOM','provenance','checksum attestation','Phase 10 r2 gap closure','Room schema 17','XDM_ARIA2_ARCHIVE_SHA256']:
@@ -94,7 +94,11 @@ require(phase.get('signed_checksums_required') is True, 'manifest must require s
 
 
 main_vm=text('app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt')
-for needle in ['CurrentRoomSchemaVersion = 23','BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED','BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256','releaseSigningAttestationConfigured()']:
+database_source=text('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt')
+db_match=re.search(r'\bversion\s*=\s*(\d+)', database_source)
+require(db_match is not None, 'could not derive current Room schema from AppDatabase')
+current_room_schema=int(db_match.group(1)) if db_match else -1
+for needle in [f'CurrentRoomSchemaVersion = {current_room_schema}','BuildConfig.XDM_RELEASE_SIGNING_CONFIGURED','BuildConfig.XDM_PINNED_RELEASE_SIGNER_SHA256','releaseSigningAttestationConfigured()']:
     require(needle in main_vm, f'MainViewModel release readiness missing {needle}')
 require('releaseSigningConfigured = !BuildConfig.DEBUG' not in main_vm, 'MainViewModel must not derive release signing from !BuildConfig.DEBUG')
 require('schemaVersion = 14' not in main_vm, 'MainViewModel must not hardcode old schema 14')

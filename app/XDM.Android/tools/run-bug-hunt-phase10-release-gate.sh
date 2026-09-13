@@ -10,13 +10,21 @@ python3 tools/verify-phase10-backup-policy.py
 : "${XDM_ARIA2_ARCHIVE_SHA256:?XDM_ARIA2_ARCHIVE_SHA256 pins the trusted aria2 official archive digest}"
 python3 tools/install-aria2-runtime.py --download-official --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --require-trusted-digest
 python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256"
+python3 tools/install-ffmpeg-runtime.py --build-pinned
+python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment
+if [[ -z "${BUNDLETOOL_JAR:-}" ]]; then
+  BUNDLETOOL_JAR="$(python3 tools/ensure-bundletool.py --print-path)"
+  export BUNDLETOOL_JAR
+else
+  python3 tools/ensure-bundletool.py --path "$BUNDLETOOL_JAR" --verify-only
+fi
 # Run the complete Overlay-13 common matrix before release artifacts are assembled.
 bash tools/run-final-common-validation.sh
 
 # Only after the common matrix is green do we compile/package the signed release. Static/full
 # evidence is therefore earned by an earlier invocation rather than asserted optimistically.
-./gradlew -Pxdm.requireAria2Runtime=true \
-  -Pxdm.validation.staticPassed=true -Pxdm.validation.fullPassed=true -Pxdm.validation.aria2PayloadVerified=true \
+./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.requireFfmpegRuntime=true \
+  -Pxdm.validation.staticPassed=true -Pxdm.validation.fullPassed=true -Pxdm.validation.aria2PayloadVerified=true -Pxdm.validation.ffmpegPayloadVerified=true \
   -Pxdm.validation.diagnosticExportPassed=true -Pxdm.validation.releaseDocsPassed=true \
   -Pxdm.validation.routeTopologyPassed=true -Pxdm.validation.lintPassed=true -Pxdm.validation.nativeSymbolsPassed=true \
   :browser-extension:validateFirefoxExtension :browser-extension:packageFirefoxExtensionDark \
@@ -27,16 +35,16 @@ AAB="$(find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -
 test -n "$APK"
 test -n "$AAB"
 python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --apk "$APK"
+python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment --apk "$APK"
 APKS="build/outputs/apks/release/xdm-release.apks"
 mkdir -p "$(dirname "$APKS")"
-if [[ -n "${BUNDLETOOL_JAR:-}" ]]; then
-  java -jar "$BUNDLETOOL_JAR" build-apks     --bundle "$AAB"     --output "$APKS"     --ks "$XDM_RELEASE_STORE_FILE"     --ks-pass "pass:$XDM_RELEASE_STORE_PASSWORD"     --ks-key-alias "$XDM_RELEASE_KEY_ALIAS"     --key-pass "pass:$XDM_RELEASE_KEY_PASSWORD"
-elif command -v bundletool >/dev/null 2>&1; then
-  bundletool build-apks     --bundle "$AAB"     --output "$APKS"     --ks "$XDM_RELEASE_STORE_FILE"     --ks-pass "pass:$XDM_RELEASE_STORE_PASSWORD"     --ks-key-alias "$XDM_RELEASE_KEY_ALIAS"     --key-pass "pass:$XDM_RELEASE_KEY_PASSWORD"
-else
-  echo "bundletool or BUNDLETOOL_JAR is required; debug-key fallback is forbidden" >&2
-  exit 1
-fi
+java -jar "$BUNDLETOOL_JAR" build-apks \
+  --bundle "$AAB" \
+  --output "$APKS" \
+  --ks "$XDM_RELEASE_STORE_FILE" \
+  --ks-pass "pass:$XDM_RELEASE_STORE_PASSWORD" \
+  --ks-key-alias "$XDM_RELEASE_KEY_ALIAS" \
+  --key-pass "pass:$XDM_RELEASE_KEY_PASSWORD"
 python3 tools/verify-phase10-release-artifacts.py --require-16kb --bundletool-jar "${BUNDLETOOL_JAR:-}" --inventory tools/phase10-release-inventory.json --apk "$APK" --aab "$AAB" --apks "$APKS"
 bash tools/generate-phase10-publication-bundle.sh "$APK" "$AAB" "$APKS"
 if [[ -n "${XDM_PHASE10_PREVIOUS_RELEASE_APK:-}" && -n "${XDM_PHASE10_RUN_DEVICE_MATRIX:-}" ]]; then

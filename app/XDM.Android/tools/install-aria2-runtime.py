@@ -74,7 +74,7 @@ def default_cache_dir() -> Path:
     return base / "xdm" / "aria2-runtime"
 
 
-def cached_download_path(manifest: dict, cache_dir: Path) -> Path:
+def cached_download_path(manifest: dict, cache_dir: Path, expected_hash: str | None = None) -> Path:
     archive_name = manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])
     identity = "\n".join(
         [
@@ -83,18 +83,19 @@ def cached_download_path(manifest: dict, cache_dir: Path) -> Path:
             str(manifest.get("releaseTag", "")),
             str(manifest["officialUrl"]),
             archive_name,
+            (expected_hash or manifest.get("archiveSha256") or "UNPINNED").lower(),
         ]
     )
     key = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
     return cache_dir / f"{archive_name}.{key}"
 
 
-def cached_payload_usable(path: Path, manifest: dict) -> bool:
+def cached_payload_usable(path: Path, manifest: dict, expected_hash: str | None = None) -> bool:
     if not path.is_file() or path.stat().st_size < manifest["minimumBinaryBytes"]:
         return False
-    expected_hash = manifest.get("archiveSha256")
-    if expected_hash:
-        return sha256(path).lower() == str(expected_hash).lower()
+    trusted_hash = expected_hash or manifest.get("archiveSha256")
+    if trusted_hash:
+        return sha256(path).lower() == str(trusted_hash).lower()
 
     archive_name = str(manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])).lower()
     if archive_name.endswith(".zip"):
@@ -115,7 +116,7 @@ def cached_payload_usable(path: Path, manifest: dict) -> bool:
     return True
 
 
-def download_official(manifest: dict, cache_dir: Path, use_cache: bool) -> Path:
+def download_official(manifest: dict, cache_dir: Path, use_cache: bool, expected_hash: str | None = None) -> Path:
     archive_name = manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])
     if not use_cache:
         directory = Path(tempfile.mkdtemp(prefix="xdm-aria2-download-"))
@@ -125,8 +126,8 @@ def download_official(manifest: dict, cache_dir: Path, use_cache: bool) -> Path:
             copy_stream_to_path(response, target)
         return target
 
-    target = cached_download_path(manifest, cache_dir)
-    if cached_payload_usable(target, manifest):
+    target = cached_download_path(manifest, cache_dir, expected_hash)
+    if cached_payload_usable(target, manifest, expected_hash):
         print(f"Reusing cached aria2 payload: {target}")
         return target
     if target.exists():
@@ -210,12 +211,15 @@ def main() -> None:
     args = parser.parse_args()
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    expected_hash = args.expected_archive_sha256 or manifest.get("archiveSha256")
+    if args.require_trusted_digest and not expected_hash:
+        raise SystemExit("a pinned aria2 archive SHA-256 is required for strict release installation")
     download_directory: Path | None = None
     extracted: Path | None = None
     try:
         archive = args.archive
         if args.download_official:
-            archive = download_official(manifest, args.cache_dir.expanduser(), not args.no_download_cache)
+            archive = download_official(manifest, args.cache_dir.expanduser(), not args.no_download_cache, expected_hash)
             if args.no_download_cache:
                 download_directory = archive.parent
 
@@ -225,9 +229,6 @@ def main() -> None:
             raise SystemExit(f"archive not found: {archive}")
 
         archive_hash = sha256(archive)
-        expected_hash = args.expected_archive_sha256 or manifest.get("archiveSha256")
-        if args.require_trusted_digest and not expected_hash:
-            raise SystemExit("a pinned aria2 archive SHA-256 is required for strict release installation")
         if expected_hash and archive_hash.lower() != expected_hash.lower():
             raise SystemExit("official archive SHA-256 does not match the trusted value")
 
@@ -246,8 +247,13 @@ def main() -> None:
         target.chmod(0o755)
         extracted = None
 
+        license_path = ROOT / manifest["licenseAsset"]
+        source_notice_path = ROOT / manifest["sourceNoticeAsset"]
+        if not license_path.is_file() or not source_notice_path.is_file():
+            raise SystemExit("aria2 license/source notice assets are required before runtime installation")
+
         lock = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "component": manifest["component"],
             "version": manifest["version"],
             "releaseTag": manifest["releaseTag"],
@@ -259,6 +265,8 @@ def main() -> None:
             "binarySize": binary_size,
             "sourceUrl": manifest["officialUrl"],
             "sourceKind": "zip" if installed_member else "raw-elf",
+            "licenseSha256": sha256(license_path),
+            "sourceNoticeSha256": sha256(source_notice_path),
         }
         atomic_json_write(LOCK_PATH, lock)
         print(f"Installed {target.relative_to(ROOT)}")

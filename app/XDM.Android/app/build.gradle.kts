@@ -1,5 +1,8 @@
+import org.gradle.api.GradleException
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Exec
+import java.security.KeyStore
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.application)
@@ -168,20 +171,72 @@ android {
     }
 }
 
+fun certificateSha256(store: File, storePassword: String, alias: String): String {
+    val failures = mutableListOf<String>()
+    for (type in listOf("PKCS12", "JKS", KeyStore.getDefaultType()).distinct()) {
+        try {
+            val keyStore = KeyStore.getInstance(type)
+            store.inputStream().use { keyStore.load(it, storePassword.toCharArray()) }
+            val certificate = keyStore.getCertificate(alias)
+                ?: throw GradleException("alias '$alias' has no certificate")
+            return MessageDigest.getInstance("SHA-256")
+                .digest(certificate.encoded)
+                .joinToString("") { "%02x".format(it) }
+        } catch (error: Exception) {
+            failures += "$type: ${error.message ?: error.javaClass.simpleName}"
+        }
+    }
+    throw GradleException("Unable to load release signing certificate from ${store.absolutePath}: ${failures.joinToString("; ")}")
+}
+
+val releaseSignerEvidence = layout.buildDirectory.file("release/provenance/release-signer-attestation.json")
 val xdmAssertReleaseSigningInputs = tasks.register("xdmAssertReleaseSigningInputs") {
     group = "verification"
-    description = "Fails publishable release builds unless release keystore inputs and signer pin metadata are present."
+    description = "Binds every publishable release package to the configured keystore certificate and pinned SHA-256 fingerprint."
+    releaseStoreFile?.let { inputs.file(file(it)) }
+    inputs.property("releaseKeyAlias", releaseKeyAlias ?: "<missing>")
+    inputs.property("expectedReleaseSignerSha256", pinnedReleaseSignerSha256 ?: "<missing>")
+    outputs.file(releaseSignerEvidence)
     doLast {
-        require(hasReleaseSigning) { "Release signing inputs are required for assembleRelease/bundleRelease. Use assembleDevelopmentUnsigned for unsigned local handoff builds." }
+        require(hasReleaseSigning) { "Release signing inputs are required for publishable release packaging. Use assembleDevelopmentUnsigned for unsigned local handoff builds." }
         val storePath = requireNotNull(releaseStoreFile) { "xdm.release.storeFile or XDM_RELEASE_STORE_FILE is required" }
-        require(file(storePath).isFile) { "Release keystore does not exist: $storePath" }
-        require(!pinnedReleaseSignerSha256.isNullOrBlank()) { "xdm.release.signerSha256 or XDM_RELEASE_SIGNER_SHA256 is required for signer continuity" }
-        require(Regex("^[0-9A-Fa-f]{64}$").matches(pinnedReleaseSignerSha256!!)) { "Pinned release signer SHA-256 must be 64 hex characters" }
+        val store = file(storePath)
+        require(store.isFile) { "Release keystore does not exist: $storePath" }
+        val alias = requireNotNull(releaseKeyAlias)
+        val password = requireNotNull(releaseStorePassword)
+        val expected = requireNotNull(pinnedReleaseSignerSha256) { "xdm.release.signerSha256 or XDM_RELEASE_SIGNER_SHA256 is required for signer continuity" }
+            .lowercase()
+        require(Regex("^[0-9a-f]{64}$").matches(expected)) { "Pinned release signer SHA-256 must be 64 hex characters" }
+        val actual = certificateSha256(store, password, alias)
+        require(actual == expected) { "Configured release keystore certificate SHA-256 $actual does not match pinned signer $expected" }
+        val output = releaseSignerEvidence.get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(
+            """{
+  "schemaVersion": 1,
+  "keyAlias": "${alias.replace("\\", "\\\\").replace("\"", "\\\"")}",
+  "certificateSha256": "$actual",
+  "verified": true
+}
+"""
+        )
     }
 }
 
-tasks.matching { it.name in setOf("assembleRelease", "bundleRelease") }.configureEach {
-    dependsOn(xdmAssertReleaseSigningInputs)
+// Direct AGP packaging/signing tasks are release entry points too. Binding the preflight to
+// all of them prevents callers from bypassing signer continuity by invoking packageRelease,
+// signReleaseBundle, validateSigningRelease, or another publishable release packaging task.
+tasks.matching { task ->
+    val name = task.name
+    name.contains("Release") && (
+        name.startsWith("assemble") ||
+        name.startsWith("bundle") ||
+        name.startsWith("package") ||
+        name.startsWith("sign") ||
+        name.startsWith("validateSigning")
+    )
+}.configureEach {
+    if (name != "xdmAssertReleaseSigningInputs") dependsOn(xdmAssertReleaseSigningInputs)
 }
 
 dependencies {
@@ -315,6 +370,14 @@ val verifyFfmpegRoadmapPostSealHotfix = tasks.register<Exec>("verifyFfmpegRoadma
     trackStaticValidation("ffmpeg-postseal")
 }
 
+val verifyXar01BuildProvenance = tasks.register<Exec>("verifyXar01BuildProvenance") {
+    group = "verification"
+    description = "Verify XAR01 reproducible build, signing, native-runtime provenance, and release-entrypoint contracts."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar01-build-provenance.py")
+    trackStaticValidation("xar01-build-provenance")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -326,7 +389,7 @@ val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGr
 tasks.register<Exec>("verifyFfmpegDebugApkRuntime") {
     group = "verification"
     description = "Build and verify the debug APK contains the exact attested 16 KB FFmpeg/FFprobe payload and licenses."
-    dependsOn("assembleDebug")
+    dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime", "assembleDebug")
     workingDir(rootProject.projectDir)
     inputs.files(
         layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"),
@@ -352,18 +415,18 @@ tasks.register<Exec>("verifyFfmpegDebugApkRuntime") {
     }
 }
 
-// AGP registers assembleDebug after this build script body is evaluated. Configure the
-// variant task lazily so project configuration never assumes it already exists, and make
-// packaging depend on the freshly installed attested runtime rather than merely ordering it.
+// Ordinary debug builds keep the embedded FFmpeg runtime optional. When the explicit strict
+// APK-runtime verifier is in the graph, this ordering ensures installation finishes before
+// assembleDebug without forcing a native source build for normal developer compilation.
 tasks.matching { it.name == "assembleDebug" }.configureEach {
-    dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")
+    mustRunAfter(":media-ffmpeg:installPinnedFfmpegRuntime")
 }
 
 
 val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."
-    dependsOn(verifyFfmpeg04FullReleaseSeal, verifyFfmpegRoadmapPostSealHotfix, verifyGradleTaskGraphOptimization)
+    dependsOn(verifyXar01BuildProvenance, verifyFfmpeg04FullReleaseSeal, verifyFfmpegRoadmapPostSealHotfix, verifyGradleTaskGraphOptimization)
     workingDir(rootProject.projectDir)
     // Preserve the historical command line for retained source-contract tests. The environment
     // tells the shell gate that Gradle already executed the FFmpeg/execution DAG exactly once.

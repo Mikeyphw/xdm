@@ -236,7 +236,7 @@ data class FfmpegDiagnosticsUi(
     val httpsSupported: Boolean = false,
 )
 
-private const val CurrentRoomSchemaVersion = 23
+private const val CurrentRoomSchemaVersion = 24
 private const val UnpinnedReleaseSigner = "UNPINNED"
 
 private fun releaseSigningAttestationConfigured(): Boolean =

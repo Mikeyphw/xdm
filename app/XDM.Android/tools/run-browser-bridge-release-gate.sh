@@ -20,17 +20,30 @@ find_node() {
   fi
 }
 
+extension_version() {
+  sed -n 's/^[[:space:]]*val extensionVersion = "\([^"]*\)"/\1/p' browser-extension/build.gradle.kts | head -n 1
+}
+
+app_version() {
+  sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts | head -n 1
+}
+
 verify_artifacts() {
   command -v unzip >/dev/null
   command -v sha256sum >/dev/null
+  local ext_version app_ver dark_xpi amoled_xpi
+  ext_version="$(extension_version)"
+  app_ver="$(app_version)"
+  test -n "$ext_version" && test -n "$app_ver"
+  dark_xpi="browser-extension/build/outputs/xpi/XDM-Android-Firefox-${ext_version}-release-dark.xpi"
+  amoled_xpi="browser-extension/build/outputs/xpi/XDM-Android-Firefox-${ext_version}-release-amoled.xpi"
   python3 browser-extension/tools/verify_release_artifacts.py \
     --output-dir browser-extension/build/outputs/xpi \
-    --metadata browser-extension/build/outputs/xpi/release-artifacts.json
-  unzip -t browser-extension/build/outputs/xpi/XDM-Android-Firefox-1.1.0-release-dark.xpi
-  unzip -t browser-extension/build/outputs/xpi/XDM-Android-Firefox-1.1.0-release-amoled.xpi
-  sha256sum \
-    browser-extension/build/outputs/xpi/XDM-Android-Firefox-1.1.0-release-dark.xpi \
-    browser-extension/build/outputs/xpi/XDM-Android-Firefox-1.1.0-release-amoled.xpi
+    --metadata browser-extension/build/outputs/xpi/release-artifacts.json \
+    --extension-version "$ext_version" --app-version "$app_ver"
+  unzip -t "$dark_xpi"
+  unzip -t "$amoled_xpi"
+  sha256sum "$dark_xpi" "$amoled_xpi"
 }
 
 if [[ "$MODE" == "verify-artifacts" ]]; then
@@ -75,7 +88,7 @@ if [[ "$MODE" == "static" ]]; then
   exit 0
 fi
 
-./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.cleanKotlinValidation=true \
+./gradlew -Pxdm.cleanKotlinValidation=true \
   -Pkotlin.incremental=false \
   -Pkotlin.compiler.execution.strategy=in-process \
   --no-daemon --max-workers=1 --no-parallel --no-build-cache --no-configuration-cache --stacktrace \
