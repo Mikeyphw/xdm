@@ -28,6 +28,9 @@ public partial class MainWindowViewModel
     private string updateStatus = $"Current version: {ProductVersion.Current}";
 
     [ObservableProperty]
+    private bool mandatoryUpdatePending;
+
+    [ObservableProperty]
     private double updateProgress;
 
     [ObservableProperty]
@@ -58,10 +61,14 @@ public partial class MainWindowViewModel
         try
         {
             _availableUpdate = await _updateService.CheckAsync(SelectedUpdateChannel, cancellation.Token);
-            UpdateStatus = _availableUpdate.Message;
+            MandatoryUpdatePending = _availableUpdate.IsMandatory && _availableUpdate.UpdateAvailable;
+            UpdateStatus = MandatoryUpdatePending
+                ? $"Mandatory update: {_availableUpdate.Message}"
+                : _availableUpdate.Message;
         }
         catch (OperationCanceledException)
         {
+            MandatoryUpdatePending = false;
             UpdateStatus = "Update check cancelled.";
         }
         catch (HttpRequestException exception)
@@ -109,7 +116,9 @@ public partial class MainWindowViewModel
             _stagedUpdate = result;
             _stagedUpdatePath = result.PackagePath;
             UpdateProgress = 1;
-            UpdateStatus = $"Verified XDM {result.Version} package staged. Receipt: {result.ReceiptPath}. Rollback transaction: {result.TransactionPath}.";
+            UpdateStatus = MandatoryUpdatePending
+                ? $"Mandatory XDM {result.Version} package verified and staged. Apply it to continue receiving safe update support. Receipt: {result.ReceiptPath}. Rollback transaction: {result.TransactionPath}."
+                : $"Verified XDM {result.Version} package staged. Receipt: {result.ReceiptPath}. Rollback transaction: {result.TransactionPath}.";
             if (NotifyWhenUpdateStaged)
             {
                 _ = _desktopNotifications.ShowAsync(
@@ -159,7 +168,9 @@ public partial class MainWindowViewModel
         try
         {
             await _updateService.LaunchStagedUpdateAsync(_stagedUpdate, Environment.ProcessId);
-            UpdateStatus = "Updater launched. XDM will close and restart after the verified directory swap.";
+            UpdateStatus = MandatoryUpdatePending
+                ? "Mandatory updater launched. XDM will close, perform the verified directory swap, and retain rollback until the new version passes the observation window."
+                : "Updater launched. XDM will close and restart after the verified directory swap.";
             await _applicationLifetimeService.RequestShutdownAsync();
         }
         catch (FileNotFoundException exception)

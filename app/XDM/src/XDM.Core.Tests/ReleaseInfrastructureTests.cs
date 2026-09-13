@@ -50,8 +50,36 @@ public sealed class ReleaseInfrastructureTests
         Assert.Contains("SHA256SUMS", script, StringComparison.Ordinal);
         Assert.Contains("SHA512SUMS", script, StringComparison.Ordinal);
         Assert.Contains("minimumSupportedVersion", script, StringComparison.Ordinal);
+        Assert.Contains("--commit-sha", script, StringComparison.Ordinal);
+        Assert.Contains("--release-tag", script, StringComparison.Ordinal);
+        Assert.Contains("releaseCommitSha", script, StringComparison.Ordinal);
     }
 
+
+
+    [Fact]
+    public void ReleaseWorkflowBindsMetadataToCommitAndRequiresStableWindowsSigning()
+    {
+        string root = FindRepositoryRoot(AppContext.BaseDirectory);
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "modern-release.yml"));
+
+        Assert.Contains("--commit-sha '${{ github.sha }}'", workflow, StringComparison.Ordinal);
+        Assert.Contains("--release-tag '${{ needs.resolve.outputs.tag }}'", workflow, StringComparison.Ordinal);
+        Assert.Contains("Stable Windows releases require WINDOWS_SIGNING_CERTIFICATE", workflow, StringComparison.Ordinal);
+        Assert.Contains("verify-windows-signatures.ps1", workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DebianPackageDeclaresNativeAvaloniaAndDesktopDependencies()
+    {
+        string root = FindRepositoryRoot(AppContext.BaseDirectory);
+        string script = File.ReadAllText(Path.Combine(root, "app", "XDM", "eng", "publish-one.sh"));
+
+        Assert.Contains("Depends:", script, StringComparison.Ordinal);
+        Assert.Contains("libgtk-3-0", script, StringComparison.Ordinal);
+        Assert.Contains("libx11-6", script, StringComparison.Ordinal);
+        Assert.Contains("xdg-utils", script, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void PortablePublishScriptsIncludeNativeHostAndExternalUpdater()

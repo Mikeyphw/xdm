@@ -127,14 +127,17 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./app/XDM/eng/publish-one.ps1 -Runtime ${{ matrix.rid }} -Version ${{ needs.resolve.outputs.version }}
-      - name: Authenticode-sign Windows executables
+      - name: Require official Windows signing secrets
+        if: runner.os == 'Windows' && needs.resolve.outputs.channel == 'stable' && env.WINDOWS_SIGNING_CERTIFICATE == ''
+        shell: pwsh
+        run: throw 'Stable Windows releases require WINDOWS_SIGNING_CERTIFICATE and WINDOWS_SIGNING_PASSWORD.'
+      - name: Authenticode-sign and verify Windows executables
         if: runner.os == 'Windows' && env.WINDOWS_SIGNING_CERTIFICATE != ''
         shell: pwsh
-        run: ./app/XDM/eng/sign-windows.ps1 -PublishDirectory artifacts/publish/${{ matrix.rid }} -CertificateBase64 $env:WINDOWS_SIGNING_CERTIFICATE -CertificatePassword $env:WINDOWS_SIGNING_PASSWORD
-      - name: Repackage signed Windows build
-        if: runner.os == 'Windows' && env.WINDOWS_SIGNING_CERTIFICATE != ''
-        shell: pwsh
-        run: python app/XDM/eng/package-portable.py --source artifacts/publish/${{ matrix.rid }} --output artifacts/packages --name xdm-modern-${{ needs.resolve.outputs.version }}-${{ matrix.rid }}
+        run: |
+          ./app/XDM/eng/sign-windows.ps1 -PublishDirectory artifacts/publish/${{ matrix.rid }} -CertificateBase64 $env:WINDOWS_SIGNING_CERTIFICATE -CertificatePassword $env:WINDOWS_SIGNING_PASSWORD
+          ./app/XDM/eng/verify-windows-signatures.ps1 -PublishDirectory artifacts/publish/${{ matrix.rid }}
+          python app/XDM/eng/package-portable.py --source artifacts/publish/${{ matrix.rid }} --output artifacts/packages --name xdm-modern-${{ needs.resolve.outputs.version }}-${{ matrix.rid }}
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@v0
         with:
@@ -180,6 +183,8 @@ jobs:
             --release-notes-url 'https://github.com/${{ github.repository }}/releases/tag/${{ needs.resolve.outputs.tag }}' \
             --published-at '${{ needs.resolve.outputs.published_at }}' \
             --minimum-supported-version '${{ needs.resolve.outputs.minimum_supported }}' \
+            --commit-sha '${{ github.sha }}' \
+            --release-tag '${{ needs.resolve.outputs.tag }}' \
             --output artifacts/packages
       - name: Attest release metadata
         uses: actions/attest@v4

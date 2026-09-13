@@ -7,7 +7,9 @@ public sealed record UpdateManifestDocument(
     IReadOnlyList<UpdatePackageDescriptor>? Packages,
     string? Channel = null,
     DateTimeOffset? PublishedAtUtc = null,
-    string? MinimumSupportedVersion = null);
+    string? MinimumSupportedVersion = null,
+    string? ReleaseCommitSha = null,
+    string? ReleaseTag = null);
 
 public sealed record UpdatePackageDescriptor(
     string RuntimeIdentifier,
@@ -17,4 +19,9 @@ public sealed record UpdatePackageDescriptor(
     string FileName,
     string? Sha512 = null,
     string? SbomUrl = null,
-    string? ProvenanceUrl = null);
+    string? ProvenanceUrl = null,
+    string? CommitSha = null,
+    string? SignatureUrl = null,
+    string? SignatureSha256 = null,
+    bool OfficialWindowsRelease = false,
+    string? InstallModel = null);

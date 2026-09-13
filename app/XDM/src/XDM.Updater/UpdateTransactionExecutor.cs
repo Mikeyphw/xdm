@@ -13,6 +13,9 @@ public sealed class UpdateTransactionExecutor
     private const int MaximumEntries = 100_000;
     private const long MaximumPackageBytes = 2L * 1024 * 1024 * 1024;
     private const long MaximumExpandedBytes = 4L * 1024 * 1024 * 1024;
+    private static readonly TimeSpan OldProcessExitTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan HealthObservationWindow = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan PostObservationGraceWindow = TimeSpan.FromSeconds(20);
     private static readonly StringComparison PathComparison = OperatingSystem.IsWindows()
         ? StringComparison.OrdinalIgnoreCase
         : StringComparison.Ordinal;
@@ -33,14 +36,21 @@ public sealed class UpdateTransactionExecutor
     {
         UpdateTransactionDocument transaction = await ReadAsync(transactionPath, cancellationToken)
             .ConfigureAwait(false);
+        await RecoverInterruptedTransactionAsync(transactionPath, transaction, cancellationToken)
+            .ConfigureAwait(false);
+        transaction = await ReadAsync(transactionPath, cancellationToken).ConfigureAwait(false);
         ValidateTransactionPaths(transaction);
         if (transaction.State is not (UpdateTransactionState.Staged or UpdateTransactionState.Failed))
         {
             throw new InvalidOperationException($"Transaction state {transaction.State} cannot be applied.");
         }
+        if (!string.Equals(transaction.InstallModel ?? "portable-self-update", "portable-self-update", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Only portable self-update transactions may be applied by XDM.Updater.");
+        }
         if (waitProcessId is int pid)
         {
-            await WaitForProcessExitAsync(pid, cancellationToken).ConfigureAwait(false);
+            await WaitForProcessExitAsync(pid, OldProcessExitTimeout, cancellationToken).ConfigureAwait(false);
         }
 
         await VerifyPackageAsync(transaction, cancellationToken).ConfigureAwait(false);
@@ -59,9 +69,16 @@ public sealed class UpdateTransactionExecutor
             {
                 State = UpdateTransactionState.Applying,
                 UpdatedAtUtc = DateTimeOffset.UtcNow,
-                FailureMessage = null
+                FailureMessage = null,
+                RecoveryMarkerPath = transaction.RecoveryMarkerPath ?? Path.Combine(
+                    Directory.GetParent(transaction.InstallRoot)?.FullName ?? Path.GetTempPath(),
+                    $".xdm-update-{transaction.TransactionId}.json")
             };
             await WriteAsync(transactionPath, transaction, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(transaction.RecoveryMarkerPath))
+            {
+                await WriteAsync(transaction.RecoveryMarkerPath, transaction, cancellationToken).ConfigureAwait(false);
+            }
 
             DeleteDirectoryIfPresent(transaction.BackupPath);
             Directory.Move(transaction.InstallRoot, transaction.BackupPath);
@@ -80,12 +97,18 @@ public sealed class UpdateTransactionExecutor
                 throw;
             }
 
+            DateTimeOffset appliedAt = DateTimeOffset.UtcNow;
             transaction = transaction with
             {
                 State = UpdateTransactionState.AppliedPendingHealth,
-                UpdatedAtUtc = DateTimeOffset.UtcNow
+                UpdatedAtUtc = appliedAt,
+                HealthyAfterUtc = appliedAt.Add(HealthObservationWindow)
             };
             await WriteAsync(transactionPath, transaction, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(transaction.RecoveryMarkerPath))
+            {
+                await WriteAsync(transaction.RecoveryMarkerPath, transaction, cancellationToken).ConfigureAwait(false);
+            }
             if (_launchApplication)
             {
                 await MonitorNewApplicationAsync(transactionPath, transaction, cancellationToken).ConfigureAwait(false);
@@ -114,6 +137,10 @@ public sealed class UpdateTransactionExecutor
                 FailureMessage = failureMessage
             };
             await WriteAsync(transactionPath, failed, CancellationToken.None).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(failed.RecoveryMarkerPath))
+            {
+                await WriteAsync(failed.RecoveryMarkerPath, failed, CancellationToken.None).ConfigureAwait(false);
+            }
             throw;
         }
         finally
@@ -126,7 +153,10 @@ public sealed class UpdateTransactionExecutor
     {
         UpdateTransactionDocument transaction = await ReadAsync(transactionPath, cancellationToken)
             .ConfigureAwait(false);
-        ValidateTransactionPaths(transaction);
+        await RecoverInterruptedTransactionAsync(transactionPath, transaction, cancellationToken)
+            .ConfigureAwait(false);
+        transaction = await ReadAsync(transactionPath, cancellationToken).ConfigureAwait(false);
+        ValidateTransactionPaths(transaction, requireInstallRoot: false);
         if (!Directory.Exists(transaction.BackupPath))
         {
             throw new DirectoryNotFoundException("The rollback backup is missing.");
@@ -163,6 +193,10 @@ public sealed class UpdateTransactionExecutor
             FailureMessage = null
         };
         await WriteAsync(transactionPath, transaction, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(transaction.RecoveryMarkerPath))
+        {
+            DeleteFileIfPresent(transaction.RecoveryMarkerPath);
+        }
         if (_launchApplication)
         {
             LaunchApplication(transaction).Dispose();
@@ -177,17 +211,68 @@ public sealed class UpdateTransactionExecutor
         {
             return;
         }
-        transaction = transaction with
+        if (transaction.HealthyAfterUtc is DateTimeOffset readyAt)
+        {
+            TimeSpan remaining = readyAt - DateTimeOffset.UtcNow;
+            if (remaining > TimeSpan.Zero)
+            {
+                await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        UpdateTransactionDocument latest = await ReadAsync(transactionPath, cancellationToken)
+            .ConfigureAwait(false);
+        if (latest.State != UpdateTransactionState.AppliedPendingHealth
+            || !string.Equals(latest.TransactionId, transaction.TransactionId, StringComparison.Ordinal))
+        {
+            return;
+        }
+        latest = latest with
         {
             State = UpdateTransactionState.Healthy,
             UpdatedAtUtc = DateTimeOffset.UtcNow,
             FailureMessage = null
         };
-        await WriteAsync(transactionPath, transaction, cancellationToken).ConfigureAwait(false);
-        DeleteDirectoryIfPresent(transaction.BackupPath);
-        DeleteDirectoryIfPresent(transaction.CandidatePath);
+        await WriteAsync(transactionPath, latest, cancellationToken).ConfigureAwait(false);
+        DeleteDirectoryIfPresent(latest.BackupPath);
+        DeleteDirectoryIfPresent(latest.CandidatePath);
+        if (!string.IsNullOrWhiteSpace(latest.RecoveryMarkerPath))
+        {
+            DeleteFileIfPresent(latest.RecoveryMarkerPath);
+        }
     }
 
+    private static async Task RecoverInterruptedTransactionAsync(
+        string transactionPath,
+        UpdateTransactionDocument transaction,
+        CancellationToken cancellationToken)
+    {
+        if (transaction.State is not (UpdateTransactionState.Applying or UpdateTransactionState.AppliedPendingHealth or UpdateTransactionState.RollingBack))
+        {
+            return;
+        }
+        if (Directory.Exists(transaction.InstallRoot))
+        {
+            return;
+        }
+        if (!Directory.Exists(transaction.BackupPath))
+        {
+            return;
+        }
+
+        Directory.Move(transaction.BackupPath, transaction.InstallRoot);
+        UpdateTransactionDocument recovered = transaction with
+        {
+            State = UpdateTransactionState.Failed,
+            UpdatedAtUtc = DateTimeOffset.UtcNow,
+            FailureMessage = "An interrupted update left the install root absent; the previous installation was restored before continuing."
+        };
+        await WriteAsync(transactionPath, recovered, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(recovered.RecoveryMarkerPath))
+        {
+            await WriteAsync(recovered.RecoveryMarkerPath, recovered, cancellationToken).ConfigureAwait(false);
+        }
+        throw new InvalidOperationException("A previous update apply was interrupted and the previous installation was restored. Re-stage the update before applying again.");
+    }
 
     private static bool IsRecoverableApplyFailure(Exception exception)
     {
@@ -195,7 +280,8 @@ public sealed class UpdateTransactionExecutor
             or InvalidDataException
             or UnauthorizedAccessException
             or InvalidOperationException
-            or Win32Exception;
+            or Win32Exception
+            or TimeoutException;
     }
 
     private static bool TryLaunchApplication(
@@ -248,7 +334,8 @@ public sealed class UpdateTransactionExecutor
         CancellationToken cancellationToken)
     {
         using Process process = LaunchApplication(transaction);
-        DateTimeOffset deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+        DateTimeOffset deadline = (transaction.HealthyAfterUtc ?? DateTimeOffset.UtcNow.Add(HealthObservationWindow))
+            .Add(PostObservationGraceWindow);
         while (DateTimeOffset.UtcNow < deadline)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
@@ -256,6 +343,10 @@ public sealed class UpdateTransactionExecutor
                 .ConfigureAwait(false);
             if (current.State == UpdateTransactionState.Healthy)
             {
+                if (!string.IsNullOrWhiteSpace(current.RecoveryMarkerPath))
+                {
+                    DeleteFileIfPresent(current.RecoveryMarkerPath);
+                }
                 return;
             }
             if (process.HasExited)
@@ -281,9 +372,12 @@ public sealed class UpdateTransactionExecutor
             catch (InvalidOperationException)
             {
             }
-            if (!process.HasExited)
+            try
             {
                 await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException)
+            {
             }
         }
         UpdateTransactionExecutor rollbackExecutor = new();
@@ -428,9 +522,9 @@ public sealed class UpdateTransactionExecutor
         }
     }
 
-    private static void ValidateTransactionPaths(UpdateTransactionDocument transaction)
+    private static void ValidateTransactionPaths(UpdateTransactionDocument transaction, bool requireInstallRoot = true)
     {
-        if (transaction.SchemaVersion != 1
+        if (transaction.SchemaVersion is not (1 or 2)
             || string.IsNullOrWhiteSpace(transaction.TransactionId)
             || string.IsNullOrWhiteSpace(transaction.TargetVersion)
             || string.IsNullOrWhiteSpace(transaction.PackagePath)
@@ -448,7 +542,7 @@ public sealed class UpdateTransactionExecutor
 
         string install = Path.TrimEndingDirectorySeparator(Path.GetFullPath(transaction.InstallRoot));
         string root = Path.GetPathRoot(install) ?? string.Empty;
-        if (install.Length <= root.Length || !Directory.Exists(install))
+        if (install.Length <= root.Length || (requireInstallRoot && !Directory.Exists(install)))
         {
             throw new InvalidDataException("The transaction installation path is unsafe or missing.");
         }
@@ -470,14 +564,37 @@ public sealed class UpdateTransactionExecutor
                 throw new InvalidDataException("Rollback and candidate paths must be siblings of the installation directory.");
             }
         }
+        if (!string.IsNullOrWhiteSpace(transaction.RecoveryMarkerPath))
+        {
+            string recoveryParent = Directory.GetParent(Path.GetFullPath(transaction.RecoveryMarkerPath))?.FullName ?? string.Empty;
+            if (!string.Equals(recoveryParent, parent, PathComparison))
+            {
+                throw new InvalidDataException("The update recovery marker must be beside the installation directory.");
+            }
+        }
     }
 
-    private static async Task WaitForProcessExitAsync(int processId, CancellationToken cancellationToken)
+    private static async Task WaitForProcessExitAsync(
+        int processId,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
     {
         try
         {
             using Process process = Process.GetProcessById(processId);
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
+            while (!process.HasExited)
+            {
+                if (DateTimeOffset.UtcNow >= deadline)
+                {
+                    throw new TimeoutException("The previous XDM process did not exit before the updater deadline.");
+                }
+                TimeSpan remaining = deadline - DateTimeOffset.UtcNow;
+                TimeSpan delay = remaining < TimeSpan.FromMilliseconds(250)
+                    ? remaining
+                    : TimeSpan.FromMilliseconds(250);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (ArgumentException)
         {
@@ -502,6 +619,7 @@ public sealed class UpdateTransactionExecutor
         CancellationToken cancellationToken)
     {
         string temporary = $"{path}.tmp";
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await using (FileStream stream = new(
             temporary,
             FileMode.Create,
@@ -523,6 +641,14 @@ public sealed class UpdateTransactionExecutor
         if (Directory.Exists(path))
         {
             Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private static void DeleteFileIfPresent(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
         }
     }
 }

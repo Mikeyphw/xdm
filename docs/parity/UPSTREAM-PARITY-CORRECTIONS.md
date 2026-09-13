@@ -41,11 +41,13 @@ they cannot inject commands or arbitrary switches.
 ### Verified in-application updates
 
 The settings workflow can check the official HTTPS release manifest and stage a
-package for the current Linux or Windows runtime identifier. Manifest and
-package sizes are bounded, download hosts and extensions are allowlisted, and
-the exact declared size and SHA-256 must match before an atomic rename. XDM does
-not execute the package automatically; the user opens the staged package folder
-and retains control of installation.
+portable package for the current Linux or Windows runtime identifier. Manifest
+and package sizes are bounded, download hosts and extensions are allowlisted,
+and the exact declared size and SHA-256 must match before an atomic rename. A
+portable installation can apply a staged package only through the external
+updater transaction runner, which keeps rollback until the restarted app survives
+the observation window. Package-manager installs do not self-mutate; users apply
+.deb/.rpm updates through the OS package manager.
 
 ## Explicitly out of scope
 

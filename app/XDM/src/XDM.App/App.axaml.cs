@@ -138,10 +138,7 @@ public partial class App : Application
             _trayViewModel = services.GetRequiredService<MainWindowViewModel>();
             _trayViewModel.PropertyChanged += TrayViewModel_PropertyChanged;
             UpdateTrayStatus();
-            InitializeService(
-                "XDM-STARTUP-UPDATE-HEALTH",
-                () => services.GetRequiredService<IUpdateService>().MarkCurrentVersionHealthyAsync(),
-                diagnostics);
+            RunObservedUpdateHealthAsync(services, diagnostics);
             _ = services.GetRequiredService<MainWindowViewModel>().InitializeAutomaticUpdateCheckAsync();
             if (InstanceCoordinator is not null)
             {
@@ -161,6 +158,33 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+
+    private static void RunObservedUpdateHealthAsync(
+        ServiceProvider services,
+        IDiagnosticEventStore diagnostics)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await services.GetRequiredService<IUpdateService>()
+                    .MarkCurrentVersionHealthyAsync()
+                    .ConfigureAwait(false);
+                diagnostics.Record(
+                    DiagnosticSeverity.Information,
+                    "XDM-STARTUP-UPDATE-HEALTH",
+                    "Observed update health task completed.");
+            }
+            catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+            {
+                diagnostics.Record(
+                    DiagnosticSeverity.Error,
+                    "XDM-STARTUP-UPDATE-HEALTH",
+                    $"Observed update health task failed: {exception.Message}");
+            }
+        });
     }
 
 #pragma warning disable CA1031 // Startup diagnostics must capture arbitrary service initialization failures.

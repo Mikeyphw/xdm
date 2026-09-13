@@ -607,5 +607,6 @@
   "choice_duplicateurl_allow": "Allow duplicate URL",
   "ui_previous_session_unclean_recovery_prompt": "The previous session did not shut down cleanly. Review recovered downloads before resuming them.",
   "ui_no_recovery_action_required": "No recovery action is currently required.",
-  "ui_progress": "Progress"
+  "ui_progress": "Progress",
+  "ui_mandatory_update_policy_notice": "This update is mandatory for the current installation. The verified package remains rollback-protected until the restarted app survives the observation window."
 }

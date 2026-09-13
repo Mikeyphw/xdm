@@ -436,6 +436,9 @@
                 <CheckBox Content="{Binding Localization[ui_automatic_update_checks]}" IsChecked="{Binding AutomaticUpdateChecks}" AutomationProperties.AutomationId="Settings_AutomaticUpdateChecks"/>
                 <CheckBox Content="{Binding Localization[ui_notify_when_update_staged]}" IsChecked="{Binding NotifyWhenUpdateStaged}" AutomationProperties.AutomationId="Settings_NotifyWhenUpdateStaged"/>
                 <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}" AutomationProperties.LiveSetting="Polite"/>
+                <Border IsVisible="{Binding MandatoryUpdatePending}" Background="{DynamicResource XdmDangerSoftBrush}" BorderBrush="{DynamicResource XdmDangerBrush}" BorderThickness="1" CornerRadius="8" Padding="10" AutomationProperties.AutomationId="Settings_MandatoryUpdateNotice" AutomationProperties.LiveSetting="Assertive">
+                  <TextBlock Text="{Binding Localization[ui_mandatory_update_policy_notice]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmErrorForeground}"/>
+                </Border>
                 <ProgressBar Minimum="0" Maximum="1" Value="{Binding UpdateProgress}" Height="8"/>
                 <WrapPanel Orientation="Horizontal">
                   <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_check_for_updates]}" Command="{Binding CheckForUpdatesCommand}"/>

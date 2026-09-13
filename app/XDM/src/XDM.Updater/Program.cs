@@ -63,6 +63,11 @@ internal static class Program
             Console.Error.WriteLine(exception.Message);
             return 7;
         }
+        catch (TimeoutException exception)
+        {
+            Console.Error.WriteLine(exception.Message);
+            return 8;
+        }
     }
 
     private static int LaunchExternalRunner(Arguments parsed, string[] originalArguments)

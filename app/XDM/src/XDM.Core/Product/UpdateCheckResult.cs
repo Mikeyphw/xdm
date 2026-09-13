@@ -9,7 +9,9 @@ public sealed record UpdateCheckResult(
     string Message,
     UpdateChannel Channel = UpdateChannel.Stable,
     bool IsMandatory = false,
-    DateTimeOffset? PublishedAtUtc = null);
+    DateTimeOffset? PublishedAtUtc = null,
+    string? ReleaseCommitSha = null,
+    string? ReleaseTag = null);
 
 public sealed record StagedUpdateResult(
     string Version,

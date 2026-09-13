@@ -39,6 +39,7 @@ Version: $version
 Section: net
 Priority: optional
 Architecture: $deb_arch
+Depends: libc6, libstdc++6, libgcc-s1, libx11-6, libxext6, libxrender1, libxrandr2, libxi6, libxcursor1, libxfixes3, libxinerama1, libfontconfig1, libfreetype6, libglib2.0-0, libgtk-3-0, libnotify-bin, xdg-utils
 Maintainer: XDM Modern contributors
 Description: Avalonia-based Xtreme Download Manager
 CONTROL

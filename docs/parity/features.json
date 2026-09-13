@@ -1078,19 +1078,25 @@
         "app/XDM/XDM.Core/Updater.cs"
       ],
       "implementationPaths": [
+        ".github/workflows/modern-release.yml",
+        "app/XDM/eng/verify-windows-signatures.ps1",
+        "app/XDM/src/XDM.App/MainWindow.axaml",
+        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.UpdateParity.cs",
         "app/XDM/src/XDM.Core/Abstractions/IUpdateService.cs",
         "app/XDM/src/XDM.Platform/VerifiedUpdateService.cs",
-        "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.UpdateParity.cs",
-        "app/XDM/src/XDM.App/MainWindow.axaml"
+        "app/XDM/src/XDM.Updater/UpdateTransactionExecutor.cs"
       ],
       "automatedTests": [
+        "XDM.Core.Tests.ModernFeaturePolicyTests.UpdatesUseInApplicationVerifiedPackageChannel",
+        "XDM.Core.Tests.ReleaseInfrastructureTests.ReleaseWorkflowBindsMetadataToCommitAndRequiresStableWindowsSigning",
+        "XDM.Core.Tests.UpdateTransactionExecutorTests.MarkHealthyWaitsUntilObservedHealthWindowExpires",
+        "XDM.Core.Tests.UpdateTransactionExecutorTests.RestoresBackupWhenInterruptedApplyLeftInstallRootAbsent",
         "XDM.Core.Tests.VerifiedUpdateServiceTests.ChecksAndStagesMatchingVerifiedPackage",
         "XDM.Core.Tests.VerifiedUpdateServiceTests.RejectsPackageHashMismatchAndDeletesTemporaryFile",
-        "XDM.Core.Tests.VerifiedUpdateServiceTests.RejectsUntrustedPackageHost",
-        "XDM.Core.Tests.ModernFeaturePolicyTests.UpdatesUseInApplicationVerifiedPackageChannel"
+        "XDM.Core.Tests.VerifiedUpdateServiceTests.RejectsUntrustedPackageHost"
       ],
       "targetOverlay": "22",
-      "notes": "XDM checks a bounded HTTPS manifest, selects the current RID, streams and verifies the declared size and SHA-256, stages atomically, and never executes the package automatically."
+      "notes": "XDM checks a bounded HTTPS manifest, selects the current portable RID package, verifies size and hashes, rejects package-manager self-mutation, applies only through an external transaction runner, and retains rollback until the restarted app survives the observed health window."
     },
     {
       "id": "browser.protocol-security",
@@ -1511,7 +1517,7 @@
         "XDM.Core.Tests.LocaleFormatterTests.AccessibilitySettingsClampUiScale"
       ],
       "targetOverlay": "20",
-      "notes": "Persisted 75\u2013175% scaling, high-contrast styles, and optional polite operation announcements update the active window."
+      "notes": "Persisted 75–175% scaling, high-contrast styles, and optional polite operation announcements update the active window."
     },
     {
       "id": "quality.final-parity-gate",

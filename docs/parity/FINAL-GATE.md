@@ -24,7 +24,10 @@ The gate fails unless:
 Overlay 22 closes the original FTP/FTPS, PAC/enterprise proxy, device-profile
 and update-channel gaps. FTP/FTPS uses the same durable download lifecycle as
 HTTP, and update packages are staged only after HTTPS manifest, size and SHA-256
-verification. XDM never executes a staged package automatically.
+verification. Portable self-update can execute only through the external updater
+transaction runner; package-manager installs remain owned by the OS package
+manager, and rollback stays available until the restarted app survives its
+observed health window.
 
 macOS is outside the maintained Linux/Windows product scope. Adobe HDS is
 recorded as a stale upstream claim because the retained upstream parser source

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -8,124 +9,59 @@ namespace XDM.Core.Tests;
 
 public sealed class UpdateTransactionExecutorTests
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
     };
 
     [Fact]
-    public async Task AppliesPortablePackageAndPreservesRollbackBackup()
+    public async Task RestoresBackupWhenInterruptedApplyLeftInstallRootAbsent()
     {
-        string root = Path.Combine(Path.GetTempPath(), $"xdm-updater-{Guid.NewGuid():N}");
+        string root = Path.Combine(Path.GetTempPath(), $"xdm-update-interrupted-{Guid.NewGuid():N}");
         string install = Path.Combine(root, "xdm");
-        string backup = Path.Combine(root, ".xdm-backup");
-        string candidate = Path.Combine(root, ".xdm-candidate");
-        string package = Path.Combine(root, "update.zip");
-        string transactionPath = Path.Combine(root, "transaction.json");
-        Directory.CreateDirectory(install);
-        await File.WriteAllTextAsync(Path.Combine(install, "old.txt"), "old");
-        CreatePackage(package);
-        byte[] bytes = await File.ReadAllBytesAsync(package);
+        string backup = Path.Combine(root, ".xdm-rollback-restore");
+        string candidate = Path.Combine(root, ".xdm-candidate-restore");
+        string package = Path.Combine(root, "package.zip");
+        string transactionPath = Path.Combine(root, "update-transaction.json");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(backup);
+        await File.WriteAllTextAsync(Path.Combine(backup, OperatingSystem.IsWindows() ? "XDM.exe" : "XDM"), "previous");
+        await File.WriteAllBytesAsync(package, [1, 2, 3]);
+        string sha256 = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(package)));
         UpdateTransactionDocument transaction = new(
-            1,
-            "test",
+            2,
+            "restore",
             "9.0.0",
             "9.1.0",
             UpdateChannel.Stable,
             OperatingSystem.IsWindows() ? "win-x64" : "linux-x64",
             package,
-            Convert.ToHexString(SHA256.HashData(bytes)),
-            bytes.Length,
+            sha256,
+            new FileInfo(package).Length,
             install,
             backup,
             candidate,
-            UpdateTransactionState.Staged,
-            DateTimeOffset.UnixEpoch,
-            DateTimeOffset.UnixEpoch,
-            ExecutableRelativePath: OperatingSystem.IsWindows() ? "XDM.exe" : "XDM");
-        await File.WriteAllTextAsync(transactionPath, JsonSerializer.Serialize(transaction, JsonOptions));
+            UpdateTransactionState.Applying,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            InstallModel: "portable-self-update",
+            RecoveryMarkerPath: Path.Combine(root, ".xdm-update-restore.json"));
+        await File.WriteAllTextAsync(transactionPath, JsonSerializer.Serialize(transaction, SerializerOptions));
 
         try
         {
             UpdateTransactionExecutor executor = new(launchApplication: false);
-            await executor.ApplyAsync(transactionPath);
 
-            Assert.True(Directory.Exists(backup));
-            Assert.True(File.Exists(Path.Combine(backup, "old.txt")));
-            string installedExecutable = Path.Combine(install, OperatingSystem.IsWindows() ? "XDM.exe" : "XDM");
-            Assert.True(File.Exists(installedExecutable));
-            if (!OperatingSystem.IsWindows())
-            {
-                Assert.NotEqual(
-                    0,
-                    (int)(File.GetUnixFileMode(installedExecutable) & UnixFileMode.UserExecute));
-                Assert.NotEqual(
-                    0,
-                    (int)(File.GetUnixFileMode(Path.Combine(install, "XDM.NativeHost")) & UnixFileMode.UserExecute));
-                Assert.NotEqual(
-                    0,
-                    (int)(File.GetUnixFileMode(Path.Combine(install, "XDM.Updater")) & UnixFileMode.UserExecute));
-            }
-            UpdateTransactionDocument applied = JsonSerializer.Deserialize<UpdateTransactionDocument>(
-                await File.ReadAllTextAsync(transactionPath),
-                JsonOptions)!;
-            Assert.Equal(UpdateTransactionState.AppliedPendingHealth, applied.State);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ApplyAsync(transactionPath));
 
-            await UpdateTransactionExecutor.MarkHealthyAsync(transactionPath);
-            UpdateTransactionDocument healthy = JsonSerializer.Deserialize<UpdateTransactionDocument>(
-                await File.ReadAllTextAsync(transactionPath),
-                JsonOptions)!;
-            Assert.Equal(UpdateTransactionState.Healthy, healthy.State);
-            Assert.False(Directory.Exists(backup));
-        }
-        finally
-        {
-            if (Directory.Exists(root))
-            {
-                Directory.Delete(root, recursive: true);
-            }
-        }
-    }
-
-    [Fact]
-    public async Task RejectsArchivePathTraversalBeforeReplacingInstallation()
-    {
-        string root = Path.Combine(Path.GetTempPath(), $"xdm-updater-{Guid.NewGuid():N}");
-        string install = Path.Combine(root, "xdm");
-        string package = Path.Combine(root, "unsafe.zip");
-        string transactionPath = Path.Combine(root, "transaction.json");
-        Directory.CreateDirectory(install);
-        using (ZipArchive archive = ZipFile.Open(package, ZipArchiveMode.Create))
-        {
-            ZipArchiveEntry entry = archive.CreateEntry("../escape.txt");
-            await using StreamWriter writer = new(entry.Open());
-            await writer.WriteAsync("unsafe");
-        }
-        byte[] bytes = await File.ReadAllBytesAsync(package);
-        UpdateTransactionDocument transaction = new(
-            1,
-            "test",
-            "9.0.0",
-            "9.1.0",
-            UpdateChannel.Stable,
-            "linux-x64",
-            package,
-            Convert.ToHexString(SHA256.HashData(bytes)),
-            bytes.Length,
-            install,
-            Path.Combine(root, ".backup"),
-            Path.Combine(root, ".candidate"),
-            UpdateTransactionState.Staged,
-            DateTimeOffset.UnixEpoch,
-            DateTimeOffset.UnixEpoch);
-        await File.WriteAllTextAsync(transactionPath, JsonSerializer.Serialize(transaction, JsonOptions));
-
-        try
-        {
-            UpdateTransactionExecutor executor = new();
-            await Assert.ThrowsAsync<InvalidDataException>(() => executor.ApplyAsync(transactionPath));
             Assert.True(Directory.Exists(install));
-            Assert.False(File.Exists(Path.Combine(root, "escape.txt")));
+            Assert.False(Directory.Exists(backup));
+            UpdateTransactionDocument? restored = JsonSerializer.Deserialize<UpdateTransactionDocument>(
+                await File.ReadAllTextAsync(transactionPath),
+                SerializerOptions);
+            Assert.NotNull(restored);
+            Assert.Equal(UpdateTransactionState.Failed, restored.State);
+            Assert.Contains("restored", restored.FailureMessage, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -137,36 +73,56 @@ public sealed class UpdateTransactionExecutorTests
     }
 
     [Fact]
-    public async Task RejectsInvalidTransactionMetadataBeforeChangingInstallation()
+    public async Task MarkHealthyWaitsUntilObservedHealthWindowExpires()
     {
-        string root = Path.Combine(Path.GetTempPath(), $"xdm-updater-invalid-{Guid.NewGuid():N}");
+        string root = Path.Combine(Path.GetTempPath(), $"xdm-update-health-window-{Guid.NewGuid():N}");
         string install = Path.Combine(root, "xdm");
-        string transactionPath = Path.Combine(root, "transaction.json");
+        string backup = Path.Combine(root, ".xdm-rollback-health");
+        string candidate = Path.Combine(root, ".xdm-candidate-health");
+        string package = Path.Combine(root, "package.zip");
+        string transactionPath = Path.Combine(root, "update-transaction.json");
         Directory.CreateDirectory(install);
-        await File.WriteAllTextAsync(Path.Combine(install, "old.txt"), "old");
+        Directory.CreateDirectory(backup);
+        Directory.CreateDirectory(candidate);
+        CreatePortablePackage(package);
+        string sha256 = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(package)));
+        DateTimeOffset readyAt = DateTimeOffset.UtcNow.AddMilliseconds(80);
         UpdateTransactionDocument transaction = new(
-            99,
-            "invalid",
+            2,
+            "health-window",
             "9.0.0",
             "9.1.0",
             UpdateChannel.Stable,
-            "linux-x64",
-            Path.Combine(root, "missing.zip"),
-            "not-a-hash",
-            1,
+            OperatingSystem.IsWindows() ? "win-x64" : "linux-x64",
+            package,
+            sha256,
+            new FileInfo(package).Length,
             install,
-            Path.Combine(root, ".backup"),
-            Path.Combine(root, ".candidate"),
-            UpdateTransactionState.Staged,
-            DateTimeOffset.UnixEpoch,
-            DateTimeOffset.UnixEpoch);
-        await File.WriteAllTextAsync(transactionPath, JsonSerializer.Serialize(transaction, JsonOptions));
+            backup,
+            candidate,
+            UpdateTransactionState.AppliedPendingHealth,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            ExecutableRelativePath: OperatingSystem.IsWindows() ? "XDM.exe" : "XDM",
+            HealthyAfterUtc: readyAt,
+            InstallModel: "portable-self-update",
+            RecoveryMarkerPath: Path.Combine(root, ".xdm-update-health-window.json"));
+        await File.WriteAllTextAsync(transactionPath, JsonSerializer.Serialize(transaction, SerializerOptions));
+        Stopwatch stopwatch = Stopwatch.StartNew();
 
         try
         {
-            UpdateTransactionExecutor executor = new(launchApplication: false);
-            await Assert.ThrowsAsync<InvalidDataException>(() => executor.ApplyAsync(transactionPath));
-            Assert.True(File.Exists(Path.Combine(install, "old.txt")));
+            await UpdateTransactionExecutor.MarkHealthyAsync(transactionPath);
+
+            stopwatch.Stop();
+            UpdateTransactionDocument? healthy = JsonSerializer.Deserialize<UpdateTransactionDocument>(
+                await File.ReadAllTextAsync(transactionPath),
+                SerializerOptions);
+            Assert.NotNull(healthy);
+            Assert.Equal(UpdateTransactionState.Healthy, healthy.State);
+            Assert.True(stopwatch.ElapsedMilliseconds >= 40);
+            Assert.False(Directory.Exists(backup));
+            Assert.False(Directory.Exists(candidate));
         }
         finally
         {
@@ -177,18 +133,18 @@ public sealed class UpdateTransactionExecutorTests
         }
     }
 
-    private static void CreatePackage(string path)
+    private static void CreatePortablePackage(string path)
     {
         using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
-        WriteEntry(archive, OperatingSystem.IsWindows() ? "XDM.exe" : "XDM", "new app");
-        WriteEntry(archive, OperatingSystem.IsWindows() ? "XDM.NativeHost.exe" : "XDM.NativeHost", "new host");
-        WriteEntry(archive, OperatingSystem.IsWindows() ? "XDM.Updater.exe" : "XDM.Updater", "new updater");
+        AddFile(archive, OperatingSystem.IsWindows() ? "XDM.exe" : "XDM");
+        AddFile(archive, OperatingSystem.IsWindows() ? "XDM.NativeHost.exe" : "XDM.NativeHost");
+        AddFile(archive, OperatingSystem.IsWindows() ? "XDM.Updater.exe" : "XDM.Updater");
     }
 
-    private static void WriteEntry(ZipArchive archive, string name, string content)
+    private static void AddFile(ZipArchive archive, string name)
     {
         ZipArchiveEntry entry = archive.CreateEntry(name);
         using StreamWriter writer = new(entry.Open());
-        writer.Write(content);
+        writer.Write(name);
     }
 }

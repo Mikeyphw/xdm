@@ -338,6 +338,115 @@ public sealed class VerifiedUpdateServiceTests
         }
     }
 
+
+    [Fact]
+    public async Task SelectsPortableSelfUpdatePackageWhenPackageManagerArtifactIsAlsoPublished()
+    {
+        byte[] packageBytes = Encoding.UTF8.GetBytes("portable payload");
+        string sha256 = Convert.ToHexString(SHA256.HashData(packageBytes));
+        UpdateManifestDocument manifest = new(
+            2,
+            "9.4.0",
+            null,
+            [
+                new UpdatePackageDescriptor(
+                    "linux-x64",
+                    "https://github.com/Mikeyphw/xdm/releases/download/v9.4.0/xdm-modern_9.4.0_amd64.deb",
+                    new string('A', 64),
+                    123,
+                    "xdm-modern_9.4.0_amd64.deb",
+                    CommitSha: new string('B', 40),
+                    InstallModel: "package-manager"),
+                new UpdatePackageDescriptor(
+                    "linux-x64",
+                    "https://github.com/Mikeyphw/xdm/releases/download/v9.4.0/xdm-modern-9.4.0-linux-x64.zip",
+                    sha256,
+                    packageBytes.Length,
+                    "xdm-modern-9.4.0-linux-x64.zip",
+                    CommitSha: new string('B', 40),
+                    InstallModel: "portable-self-update")
+            ],
+            "stable",
+            DateTimeOffset.UtcNow,
+            ReleaseCommitSha: new string('B', 40),
+            ReleaseTag: "v9.4.0");
+        byte[] manifestBytes = JsonSerializer.SerializeToUtf8Bytes(manifest, SerializerOptions);
+        using HttpClient client = new(new UpdateRoutingHandler(manifestBytes, packageBytes));
+        VerifiedUpdateService service = new(
+            client,
+            new TestPlatformInfo("Linux", "X64"),
+            Path.GetTempPath(),
+            new Uri("https://github.com/Mikeyphw/xdm/releases/latest/download/xdm-update-stable.json"));
+
+        UpdateCheckResult check = await service.CheckAsync(UpdateChannel.Stable);
+
+        Assert.NotNull(check.Package);
+        Assert.Equal("xdm-modern-9.4.0-linux-x64.zip", check.Package.FileName);
+    }
+
+    [Fact]
+    public async Task RejectsPackageManagedInstallRootForAutomaticApply()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"xdm-update-managed-{Guid.NewGuid():N}");
+        string package = Path.Combine(root, "package.zip");
+        string transaction = Path.Combine(root, "update-transaction.json");
+        Directory.CreateDirectory(root);
+        await File.WriteAllBytesAsync(package, [1]);
+        await File.WriteAllTextAsync(transaction, "{}");
+        string? old = Environment.GetEnvironmentVariable("XDM_PACKAGE_MANAGED");
+        Environment.SetEnvironmentVariable("XDM_PACKAGE_MANAGED", "1");
+        try
+        {
+            using HttpClient client = new(new UpdateRoutingHandler([], []));
+            VerifiedUpdateService service = new(
+                client,
+                new TestPlatformInfo("Linux", "X64"),
+                root,
+                new Uri("https://github.com/Mikeyphw/xdm/releases/latest/download/xdm-update-stable.json"));
+            StagedUpdateResult staged = new("9.4.0", package, new string('A', 64), 1, TransactionPath: transaction);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.LaunchStagedUpdateAsync(staged, Environment.ProcessId));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("XDM_PACKAGE_MANAGED", old);
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RejectsOfficialWindowsPackageWithoutReleaseTrustMetadata()
+    {
+        UpdateManifestDocument manifest = new(
+            2,
+            "9.4.0",
+            null,
+            [new UpdatePackageDescriptor(
+                "win-x64",
+                "https://github.com/Mikeyphw/xdm/releases/download/v9.4.0/xdm-modern-9.4.0-win-x64.zip",
+                new string('A', 64),
+                1,
+                "xdm-modern-9.4.0-win-x64.zip",
+                CommitSha: new string('B', 40),
+                OfficialWindowsRelease: true)],
+            "stable",
+            DateTimeOffset.UtcNow,
+            ReleaseCommitSha: new string('B', 40),
+            ReleaseTag: "v9.4.0");
+        byte[] manifestBytes = JsonSerializer.SerializeToUtf8Bytes(manifest, SerializerOptions);
+        using HttpClient client = new(new UpdateRoutingHandler(manifestBytes, [1]));
+        VerifiedUpdateService service = new(
+            client,
+            new TestPlatformInfo("Windows 11", "X64"),
+            Path.GetTempPath(),
+            new Uri("https://github.com/Mikeyphw/xdm/releases/latest/download/xdm-update-stable.json"));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.CheckAsync(UpdateChannel.Stable));
+    }
+
     private sealed class UpdateRoutingHandler(byte[] manifest, byte[] package) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

@@ -22,7 +22,12 @@ public sealed record UpdateVerificationReceipt(
     long SizeBytes,
     DateTimeOffset VerifiedAtUtc,
     string? SbomUrl,
-    string? ProvenanceUrl);
+    string? ProvenanceUrl,
+    string? CommitSha = null,
+    string? ReleaseTag = null,
+    string? SignatureUrl = null,
+    string? SignatureSha256 = null,
+    string? InstallModel = null);
 
 public sealed record UpdateTransactionDocument(
     int SchemaVersion,
@@ -41,4 +46,7 @@ public sealed record UpdateTransactionDocument(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc,
     string? FailureMessage = null,
-    string? ExecutableRelativePath = null);
+    string? ExecutableRelativePath = null,
+    DateTimeOffset? HealthyAfterUtc = null,
+    string? InstallModel = null,
+    string? RecoveryMarkerPath = null);

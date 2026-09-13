@@ -5,11 +5,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
 from pathlib import Path
 from urllib.parse import quote
 
 RID_MARKERS = ("linux-x64", "linux-arm64", "win-x64", "win-arm64")
 PACKAGE_SUFFIXES = (".zip", ".tar.gz", ".deb", ".rpm", ".AppImage", ".appimage")
+SEMVER_PATTERN = re.compile(r"^[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z][0-9A-Za-z.-]*)?$")
+FULL_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
 def digest(path: Path, algorithm: str) -> str:
@@ -24,6 +28,16 @@ def runtime_id(name: str) -> str | None:
     return next((rid for rid in RID_MARKERS if rid in name), None)
 
 
+def require_semver(value: str, field: str) -> None:
+    if not SEMVER_PATTERN.match(value):
+        raise SystemExit(f"{field} must be a semantic version: {value}")
+
+
+def require_commit_sha(value: str, field: str) -> None:
+    if not FULL_SHA_PATTERN.match(value):
+        raise SystemExit(f"{field} must be a full 40-character commit SHA: {value}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--packages", type=Path, required=True)
@@ -33,8 +47,21 @@ def main() -> int:
     parser.add_argument("--release-notes-url", required=True)
     parser.add_argument("--published-at", required=True)
     parser.add_argument("--minimum-supported-version", default="")
+    parser.add_argument("--commit-sha", default=os.environ.get("GITHUB_SHA", ""))
+    parser.add_argument("--release-tag", default=os.environ.get("GITHUB_REF_NAME", ""))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+
+    require_semver(args.version, "--version")
+    if args.minimum_supported_version:
+        require_semver(args.minimum_supported_version, "--minimum-supported-version")
+    if args.channel == "stable":
+        require_commit_sha(args.commit_sha, "--commit-sha")
+        expected_tag = f"v{args.version}"
+        if args.release_tag != expected_tag:
+            raise SystemExit(f"stable release metadata must be generated from tag {expected_tag}; got {args.release_tag!r}")
+    elif args.commit_sha:
+        require_commit_sha(args.commit_sha, "--commit-sha")
 
     excluded_metadata = {
         "SHA256SUMS",
@@ -74,6 +101,9 @@ def main() -> int:
             "sha512": sha512,
             "sbomUrl": f"{args.base_url.rstrip('/')}/{quote(artifact.name + '.spdx.json')}",
             "provenanceUrl": "https://github.com/Mikeyphw/xdm/attestations",
+            "commitSha": args.commit_sha or None,
+            "installModel": "portable-self-update",
+            "officialWindowsRelease": args.channel == "stable" and rid.startswith("win-"),
         })
 
     if not packages:
@@ -87,6 +117,8 @@ def main() -> int:
         "channel": args.channel,
         "publishedAtUtc": args.published_at,
         "minimumSupportedVersion": args.minimum_supported_version or None,
+        "releaseCommitSha": args.commit_sha or None,
+        "releaseTag": args.release_tag or None,
     }
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "SHA256SUMS").write_text("\n".join(sha256_lines) + "\n", encoding="utf-8")
@@ -103,6 +135,8 @@ def main() -> int:
         "artifactCount": len(artifacts),
         "portablePackageCount": len(packages),
         "updateManifest": manifest_name,
+        "releaseCommitSha": args.commit_sha or None,
+        "releaseTag": args.release_tag or None,
     }
     (args.output / "release-metadata.json").write_text(
         json.dumps(release_metadata, indent=2, sort_keys=True) + "\n",

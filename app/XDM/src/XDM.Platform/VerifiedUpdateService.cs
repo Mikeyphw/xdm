@@ -11,8 +11,13 @@ public sealed class VerifiedUpdateService : IUpdateService
 {
     private const long MaximumPackageBytes = 2L * 1024 * 1024 * 1024;
     private const int MaximumManifestBytes = 1024 * 1024;
+    private const int MaximumRetainedUpdateVersions = 3;
+    private static readonly TimeSpan UpdateArtifactRetention = TimeSpan.FromDays(14);
     private static readonly HashSet<string> AllowedPackageExtensions = new(
         [".zip", ".msi", ".exe", ".deb", ".rpm", ".appimage", ".gz"],
+        StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> PortableSelfUpdateExtensions = new(
+        [".zip"],
         StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> AllowedHosts = new(
         ["github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com", "raw.githubusercontent.com"],
@@ -83,10 +88,14 @@ public sealed class VerifiedUpdateService : IUpdateService
 
         string runtimeIdentifier = ResolveRuntimeIdentifier(_platformInfo);
         UpdatePackageDescriptor? package = manifest.Packages!
+            .Where(IsPortableSelfUpdatePackage)
             .FirstOrDefault(item => string.Equals(
                 item.RuntimeIdentifier,
                 runtimeIdentifier,
                 StringComparison.OrdinalIgnoreCase));
+        bool managedPackageAvailable = manifest.Packages!.Any(item =>
+            string.Equals(item.RuntimeIdentifier, runtimeIdentifier, StringComparison.OrdinalIgnoreCase)
+            && !IsPortableSelfUpdatePackage(item));
         bool updateAvailable = SemanticVersion.IsUpdateAvailable(
             manifest.Version,
             ProductVersion.Current,
@@ -98,9 +107,11 @@ public sealed class VerifiedUpdateService : IUpdateService
         string channelName = channel.ToManifestName();
         string message = updateAvailable
             ? package is null
-                ? $"XDM {manifest.Version} is available on {channelName}, but this platform has no package."
+                ? managedPackageAvailable
+                    ? $"XDM {manifest.Version} is available on {channelName} for {runtimeIdentifier}; update through the OS package manager for this installation."
+                    : $"XDM {manifest.Version} is available on {channelName}, but this platform has no portable self-update package."
                 : mandatory
-                    ? $"XDM {manifest.Version} is required because this installation is below {manifest.MinimumSupportedVersion}."
+                    ? $"XDM {manifest.Version} is required because this installation is below {manifest.MinimumSupportedVersion}. Download and apply the verified update before continuing optional update deferrals."
                     : $"XDM {manifest.Version} is available on {channelName} for {runtimeIdentifier}."
             : $"XDM {ProductVersion.Current} is current on {channelName}.";
         return new UpdateCheckResult(
@@ -112,7 +123,9 @@ public sealed class VerifiedUpdateService : IUpdateService
             message,
             channel,
             mandatory,
-            manifest.PublishedAtUtc);
+            manifest.PublishedAtUtc,
+            manifest.ReleaseCommitSha,
+            manifest.ReleaseTag);
     }
 
     public async Task<StagedUpdateResult> StageAsync(
@@ -122,8 +135,12 @@ public sealed class VerifiedUpdateService : IUpdateService
     {
         ArgumentNullException.ThrowIfNull(update);
         UpdatePackageDescriptor package = update.Package
-            ?? throw new InvalidOperationException("No compatible update package is available.");
+            ?? throw new InvalidOperationException("No compatible portable update package is available for this runtime.");
         ValidatePackage(package);
+        if (!IsPortableSelfUpdatePackage(package))
+        {
+            throw new InvalidOperationException("Automatic application requires a portable ZIP package. Package-manager artifacts must be installed through the OS package manager.");
+        }
         Uri packageUri = new(package.Url, UriKind.Absolute);
         ValidatePackageUri(packageUri);
 
@@ -204,7 +221,7 @@ public sealed class VerifiedUpdateService : IUpdateService
             File.Move(temporaryPath, destinationPath, overwrite: true);
             string receiptPath = Path.Combine(versionDirectory, "verification-receipt.json");
             UpdateVerificationReceipt receipt = new(
-                1,
+                2,
                 update.AvailableVersion,
                 update.Channel,
                 package.RuntimeIdentifier,
@@ -214,7 +231,12 @@ public sealed class VerifiedUpdateService : IUpdateService
                 downloaded,
                 DateTimeOffset.UtcNow,
                 package.SbomUrl,
-                package.ProvenanceUrl);
+                package.ProvenanceUrl,
+                package.CommitSha ?? update.ReleaseCommitSha,
+                update.ReleaseTag,
+                package.SignatureUrl,
+                package.SignatureSha256,
+                package.InstallModel ?? "portable-self-update");
             await WriteAtomicJsonAsync(receiptPath, receipt, cancellationToken).ConfigureAwait(false);
 
             string transactionId = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}";
@@ -223,7 +245,7 @@ public sealed class VerifiedUpdateService : IUpdateService
                 ?? throw new InvalidOperationException("The installation directory has no writable parent.");
             string transactionPath = Path.Combine(versionDirectory, "update-transaction.json");
             UpdateTransactionDocument transaction = new(
-                1,
+                2,
                 transactionId,
                 ProductVersion.Current,
                 update.AvailableVersion,
@@ -238,8 +260,11 @@ public sealed class VerifiedUpdateService : IUpdateService
                 UpdateTransactionState.Staged,
                 DateTimeOffset.UtcNow,
                 DateTimeOffset.UtcNow,
-                ExecutableRelativePath: OperatingSystem.IsWindows() ? "XDM.exe" : "XDM");
+                ExecutableRelativePath: OperatingSystem.IsWindows() ? "XDM.exe" : "XDM",
+                InstallModel: package.InstallModel ?? "portable-self-update",
+                RecoveryMarkerPath: Path.Combine(installParent, $".xdm-update-{transactionId}.json"));
             await WriteAtomicJsonAsync(transactionPath, transaction, cancellationToken).ConfigureAwait(false);
+            PruneStagingTrees(channelDirectory, versionDirectory);
 
             return new StagedUpdateResult(
                 update.AvailableVersion,
@@ -275,6 +300,10 @@ public sealed class VerifiedUpdateService : IUpdateService
             || !File.Exists(stagedUpdate.TransactionPath))
         {
             throw new FileNotFoundException("The staged update transaction is missing.", stagedUpdate.TransactionPath);
+        }
+        if (IsPackageManagedInstallRoot(AppContext.BaseDirectory))
+        {
+            throw new InvalidOperationException("This XDM installation is package-managed. Apply .deb/.rpm updates through the OS package manager instead of mutating the installation directory with portable self-update.");
         }
 
         string updaterName = OperatingSystem.IsWindows() ? "XDM.Updater.exe" : "XDM.Updater";
@@ -329,24 +358,9 @@ public sealed class VerifiedUpdateService : IUpdateService
         foreach (string transactionPath in transactions.OrderByDescending(File.GetLastWriteTimeUtc))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            UpdateTransactionDocument? transaction;
-            try
-            {
-                await using FileStream source = File.OpenRead(transactionPath);
-                transaction = await JsonSerializer.DeserializeAsync<UpdateTransactionDocument>(
-                    source,
-                    ManifestJsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-            }
-            catch (JsonException)
-            {
-                continue;
-            }
-            catch (IOException)
-            {
-                continue;
-            }
-
+            UpdateTransactionDocument? transaction = await TryReadTransactionAsync(
+                transactionPath,
+                cancellationToken).ConfigureAwait(false);
             if (transaction is null
                 || transaction.State != UpdateTransactionState.AppliedPendingHealth
                 || !string.Equals(transaction.TargetVersion, ProductVersion.Current, StringComparison.OrdinalIgnoreCase))
@@ -354,16 +368,67 @@ public sealed class VerifiedUpdateService : IUpdateService
                 continue;
             }
 
-            UpdateTransactionDocument healthy = transaction with
+            if (transaction.HealthyAfterUtc is DateTimeOffset readyAt)
+            {
+                TimeSpan remaining = readyAt - DateTimeOffset.UtcNow;
+                if (remaining > TimeSpan.Zero)
+                {
+                    await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            UpdateTransactionDocument? latest = await TryReadTransactionAsync(
+                transactionPath,
+                cancellationToken).ConfigureAwait(false);
+            if (latest is null
+                || latest.State != UpdateTransactionState.AppliedPendingHealth
+                || !string.Equals(latest.TransactionId, transaction.TransactionId, StringComparison.Ordinal)
+                || !string.Equals(latest.TargetVersion, ProductVersion.Current, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            UpdateTransactionDocument healthy = latest with
             {
                 State = UpdateTransactionState.Healthy,
                 UpdatedAtUtc = DateTimeOffset.UtcNow,
                 FailureMessage = null
             };
             await WriteAtomicJsonAsync(transactionPath, healthy, cancellationToken).ConfigureAwait(false);
-            TryDeleteDirectory(transaction.BackupPath);
-            TryDeleteDirectory(transaction.CandidatePath);
+            TryDeleteDirectory(latest.BackupPath);
+            TryDeleteDirectory(latest.CandidatePath);
+            if (!string.IsNullOrWhiteSpace(latest.RecoveryMarkerPath))
+            {
+                TryDeleteFile(latest.RecoveryMarkerPath);
+            }
+            PruneStagingTrees(Path.GetDirectoryName(Path.GetDirectoryName(transactionPath)!)!, Path.GetDirectoryName(transactionPath)!);
             return;
+        }
+    }
+
+    private static async Task<UpdateTransactionDocument?> TryReadTransactionAsync(
+        string transactionPath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using FileStream source = File.OpenRead(transactionPath);
+            return await JsonSerializer.DeserializeAsync<UpdateTransactionDocument>(
+                source,
+                ManifestJsonOptions,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
         }
     }
 
@@ -374,6 +439,23 @@ public sealed class VerifiedUpdateService : IUpdateService
             if (Directory.Exists(path))
             {
                 Directory.Delete(path, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
             }
         }
         catch (IOException)
@@ -410,6 +492,16 @@ public sealed class VerifiedUpdateService : IUpdateService
             {
                 throw new InvalidDataException("The minimum supported version is invalid.");
             }
+            if (!string.IsNullOrWhiteSpace(manifest.ReleaseCommitSha)
+                && !IsHexDigest(manifest.ReleaseCommitSha, 40))
+            {
+                throw new InvalidDataException("The release commit SHA is invalid.");
+            }
+            if (!string.IsNullOrWhiteSpace(manifest.ReleaseTag)
+                && manifest.ReleaseTag.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                throw new InvalidDataException("The release tag is invalid.");
+            }
         }
         else if (requestedChannel != UpdateChannel.Stable)
         {
@@ -422,6 +514,11 @@ public sealed class VerifiedUpdateService : IUpdateService
         foreach (UpdatePackageDescriptor package in manifest.Packages)
         {
             ValidatePackage(package);
+            if (!string.IsNullOrWhiteSpace(manifest.ReleaseCommitSha)
+                && !string.Equals(package.CommitSha, manifest.ReleaseCommitSha, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("The update package commit does not match the release manifest commit.");
+            }
         }
     }
 
@@ -434,6 +531,8 @@ public sealed class VerifiedUpdateService : IUpdateService
             || package.SizeBytes is <= 0 or > MaximumPackageBytes
             || !IsHexDigest(package.Sha256, 64)
             || (!string.IsNullOrWhiteSpace(package.Sha512) && !IsHexDigest(package.Sha512, 128))
+            || (!string.IsNullOrWhiteSpace(package.CommitSha) && !IsHexDigest(package.CommitSha, 40))
+            || (!string.IsNullOrWhiteSpace(package.SignatureSha256) && !IsHexDigest(package.SignatureSha256, 64))
             || !Uri.TryCreate(package.Url, UriKind.Absolute, out Uri? packageUri))
         {
             throw new InvalidDataException("The update package metadata is invalid.");
@@ -441,6 +540,15 @@ public sealed class VerifiedUpdateService : IUpdateService
         ValidatePackageUri(packageUri);
         ValidateOptionalTrustedUri(package.SbomUrl, "SBOM");
         ValidateOptionalTrustedUri(package.ProvenanceUrl, "provenance");
+        ValidateOptionalTrustedUri(package.SignatureUrl, "signature");
+        if (package.OfficialWindowsRelease
+            && package.RuntimeIdentifier.StartsWith("win-", StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(package.CommitSha)
+                || string.IsNullOrWhiteSpace(package.Sha512)
+                || string.IsNullOrWhiteSpace(package.ProvenanceUrl)))
+        {
+            throw new InvalidDataException("Official Windows update packages must publish commit, SHA-512, and provenance metadata after Authenticode verification.");
+        }
         string extension = Path.GetExtension(package.FileName);
         if (!AllowedPackageExtensions.Contains(extension)
             && !package.FileName.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
@@ -448,6 +556,10 @@ public sealed class VerifiedUpdateService : IUpdateService
             throw new InvalidDataException("The update package file type is not allowed.");
         }
     }
+
+    private static bool IsPortableSelfUpdatePackage(UpdatePackageDescriptor package)
+        => PortableSelfUpdateExtensions.Contains(Path.GetExtension(package.FileName))
+            && string.Equals(package.InstallModel ?? "portable-self-update", "portable-self-update", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsHexDigest(string value, int expectedLength)
         => value.Length == expectedLength && value.All(Uri.IsHexDigit);
@@ -578,6 +690,59 @@ public sealed class VerifiedUpdateService : IUpdateService
         char[] invalid = Path.GetInvalidFileNameChars();
         string result = new(value.Select(character => Array.IndexOf(invalid, character) >= 0 ? '_' : character).ToArray());
         return string.IsNullOrWhiteSpace(result) ? "update" : result;
+    }
+
+    private static bool IsPackageManagedInstallRoot(string installRoot)
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("XDM_PACKAGE_MANAGED"), "1", StringComparison.Ordinal))
+        {
+            return true;
+        }
+        if (!OperatingSystem.IsLinux())
+        {
+            return false;
+        }
+        string normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installRoot));
+        return normalized.StartsWith("/opt/xdm", StringComparison.Ordinal)
+            || normalized.StartsWith("/usr/lib/xdm", StringComparison.Ordinal)
+            || normalized.StartsWith("/usr/share/xdm", StringComparison.Ordinal);
+    }
+
+    private static void PruneStagingTrees(string channelDirectory, string protectedVersionDirectory)
+    {
+        if (!Directory.Exists(channelDirectory))
+        {
+            return;
+        }
+        DateTimeOffset cutoff = DateTimeOffset.UtcNow.Subtract(UpdateArtifactRetention);
+        foreach (string temporary in Directory.EnumerateFiles(channelDirectory, "*.downloading", SearchOption.AllDirectories))
+        {
+            TryDeleteFile(temporary);
+        }
+        foreach (string runner in Directory.EnumerateDirectories(channelDirectory, "runner", SearchOption.AllDirectories))
+        {
+            if (Directory.GetLastWriteTimeUtc(runner) < cutoff.UtcDateTime)
+            {
+                TryDeleteDirectory(runner);
+            }
+        }
+
+        string protectedFullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(protectedVersionDirectory));
+        DirectoryInfo[] versions = new DirectoryInfo(channelDirectory)
+            .EnumerateDirectories()
+            .Where(directory => !string.Equals(
+                Path.TrimEndingDirectorySeparator(directory.FullName),
+                protectedFullPath,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            .OrderByDescending(directory => directory.LastWriteTimeUtc)
+            .ToArray();
+        foreach (DirectoryInfo stale in versions.Skip(MaximumRetainedUpdateVersions - 1))
+        {
+            if (stale.LastWriteTimeUtc < cutoff.UtcDateTime)
+            {
+                TryDeleteDirectory(stale.FullName);
+            }
+        }
     }
 
     private static class SemanticVersion

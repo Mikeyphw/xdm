@@ -1,4 +1,4 @@
-param([string]$Version = "")
+param([string]$Version = "", [switch]$OfficialRelease)
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
 if ([string]::IsNullOrWhiteSpace($Version)) {
@@ -6,7 +6,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 }
 
 & (Join-Path $PSScriptRoot "validate-modern.ps1")
-& (Join-Path $PSScriptRoot "package-windows.ps1") -Version $Version
+& (Join-Path $PSScriptRoot "package-windows.ps1") -Version $Version -OfficialRelease:$OfficialRelease
 
 $Archive = Join-Path $RepoRoot "artifacts/packages/xdm-modern-$Version-win-x64.zip"
 if (-not (Test-Path $Archive)) { throw "Package not found: $Archive" }

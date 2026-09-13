@@ -22,7 +22,7 @@
 - [ ] Capture a browser download and repair the native host
 - [ ] Probe direct media, HLS, and DASH fixtures
 - [ ] Verify the device-profile catalog exposes at least 100 fixed presets
-- [ ] Check and stage a HTTPS-manifest update package without automatic execution
+- [ ] Check, stage, and apply a HTTPS-manifest portable update through the external updater while preserving rollback until the observed health window passes
 - [ ] Verify tray restore, explicit exit, notification, and second-instance activation
 - [ ] Export a diagnostic bundle and inspect it for secrets
 - [ ] Recover from an interrupted finalization marker
@@ -32,12 +32,13 @@
 - [ ] Linux x64 self-contained package launches on a clean supported system
 - [ ] Linux ARM64 self-contained package launches on a clean supported system
 - [ ] Windows x64 self-contained package launches on a clean supported system
+- [ ] Official Windows packages are Authenticode-signed and signature-verified before upload
 - [ ] `XDM.NativeHost` is beside the application executable
 - [ ] Browser manifests point to the packaged native-host path
 - [ ] Recorded XML/JSON settings, history, and scheduler migration fixtures pass
 - [ ] Upgrade preserves settings and history
 - [ ] Uninstall leaves user data unless explicitly requested
-- [ ] Package hashes are published
+- [ ] Package hashes, release commit SHA, release tag, SBOM links, provenance links, and minimum-supported-version metadata are published
 
 ## Performance
 
