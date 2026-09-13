@@ -11,6 +11,7 @@ import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.FinalizationJournal
 import com.mikeyphw.xdm.android.model.FinalizationJournalStage
 import com.mikeyphw.xdm.android.model.VerificationRecord
+import com.mikeyphw.xdm.android.storage.PublicationJournalCodec
 import com.mikeyphw.xdm.android.transfer.BackendCoordinator
 import com.mikeyphw.xdm.android.transfer.BackendMigrationStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
@@ -1017,7 +1018,11 @@ class TransferExecutionRuntime(
         val journal = path?.trim()?.takeIf(String::isNotBlank)?.let(::File) ?: return
         if (!journal.name.endsWith(".finalization.json")) return
         runCatching {
+            val record = if (journal.isFile) runCatching { PublicationJournalCodec.read(journal) }.getOrNull() else null
             if (journal.isFile) journal.delete()
+            record?.stagingPath?.trim()?.takeIf(String::isNotBlank)?.let { stagingPath ->
+                File(stagingPath).takeIf(File::isFile)?.delete()
+            }
             journal.parentFile?.takeIf { it.isDirectory && it.listFiles().isNullOrEmpty() }?.delete()
         }
     }

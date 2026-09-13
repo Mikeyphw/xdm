@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import java.io.File
 
 /** Resolves only completed artifacts that are either Android content URIs or canonical files inside
@@ -34,6 +35,7 @@ object CompletedFileGrantPolicy {
         val roots = buildList {
             add(File(context.filesDir, "downloads"))
             context.getExternalFilesDir(null)?.let { add(File(it, "Download")) }
+            add(PersonalDirectStorage.downloadsDirectory())
         }.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
         if (roots.none { root -> file.path == root.path || file.path.startsWith(root.path + File.separator) }) return null
         return runCatching {

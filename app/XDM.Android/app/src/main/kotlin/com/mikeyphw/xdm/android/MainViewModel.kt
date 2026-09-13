@@ -2108,8 +2108,28 @@ class MainViewModel(
                 onResult("This download entry no longer exists.")
                 return@launch
             }
+            val prepared = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                if (currentForAction.state == DownloadState.Completed) {
+                    repository.transitionDownloadStateIfCurrent(
+                        observed = currentForAction,
+                        state = DownloadState.RecoveryRequired,
+                        errorMessage = "Saved artifact deletion pending durable metadata reconciliation.",
+                        allowedStates = setOf(DownloadState.Completed),
+                    )
+                } else true
+            }
+            if (!prepared) {
+                onResult("The download changed before deletion could be prepared. The saved file was not touched.")
+                return@launch
+            }
             val outcome = downloadArtifactActionManager.delete(currentForAction)
             if (!outcome.success) {
+                kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    val afterPrepare = repository.findDownload(download.id)
+                    if (afterPrepare != null && afterPrepare.state == DownloadState.RecoveryRequired && currentForAction.state == DownloadState.Completed) {
+                        repository.save(afterPrepare.copy(state = DownloadState.Completed, errorMessage = null, updatedAtEpochMs = maxOf(System.currentTimeMillis(), afterPrepare.updatedAtEpochMs + 1L)))
+                    }
+                }
                 onResult(outcome.message)
                 return@launch
             }
@@ -2131,7 +2151,7 @@ class MainViewModel(
                         current.copy(
                             state = DownloadState.RecoveryRequired,
                             speedBytesPerSecond = 0L,
-                            errorMessage = "Saved artifact deleted; the download entry was retained.",
+                            errorMessage = "Saved artifact deleted after durable metadata reconciliation; the download entry was retained.",
                             completedArtifactUri = null,
                             completedArtifactGeneration = null,
                             completedArtifactBytes = null,
@@ -2152,17 +2172,45 @@ class MainViewModel(
                 onResult("This download entry no longer exists.")
                 return@launch
             }
+            val prepared = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                if (currentForAction.state == DownloadState.Completed) {
+                    repository.transitionDownloadStateIfCurrent(
+                        observed = currentForAction,
+                        state = DownloadState.RecoveryRequired,
+                        errorMessage = "Saved artifact rename pending durable metadata reconciliation.",
+                        allowedStates = setOf(DownloadState.Completed),
+                    )
+                } else true
+            }
+            if (!prepared) {
+                onResult("The download changed before rename could be prepared. The saved file was not touched.")
+                return@launch
+            }
             val outcome = downloadArtifactActionManager.rename(currentForAction, requestedName)
             if (outcome.success) {
                 kotlinx.coroutines.withContext(Dispatchers.IO) {
                     val current = repository.findDownload(download.id) ?: currentForAction
-                    repository.save(
+                    val saved = repository.save(
                         current.copy(
+                            state = DownloadState.Completed,
                             fileName = outcome.displayName ?: current.fileName,
                             completedArtifactUri = outcome.canonicalUri ?: current.completedArtifactUri,
+                            completedArtifactGeneration = currentForAction.completedArtifactGeneration,
+                            completedArtifactBytes = currentForAction.completedArtifactBytes,
+                            errorMessage = null,
                             updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.updatedAtEpochMs + 1L),
                         ),
                     )
+                    if (!saved) {
+                        repository.save(current.copy(errorMessage = "Saved artifact was renamed, but metadata commit was rejected; inspect Recovery before acting again.", updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.updatedAtEpochMs + 1L)))
+                    }
+                }
+            } else {
+                kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    val afterPrepare = repository.findDownload(download.id)
+                    if (afterPrepare != null && afterPrepare.state == DownloadState.RecoveryRequired && currentForAction.state == DownloadState.Completed) {
+                        repository.save(afterPrepare.copy(state = DownloadState.Completed, errorMessage = null, updatedAtEpochMs = maxOf(System.currentTimeMillis(), afterPrepare.updatedAtEpochMs + 1L)))
+                    }
                 }
             }
             onResult(outcome.message)

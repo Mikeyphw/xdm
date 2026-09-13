@@ -2,20 +2,21 @@ package com.mikeyphw.xdm.android.storage
 
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.channels.FileChannel
-import java.nio.file.StandardOpenOption
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Phase 3: explicit publication and completed-artifact safety contracts.
+ * Explicit publication and completed-artifact safety contracts.
  *
- * These types keep storage commits from being a smoky back alley where bytes
- * disappear between staging, publication, verification, and recovery. They are
- * intentionally platform-light so file, SAF, and MediaStore writers can share
- * one contract and tests can inspect the same invariants on the JVM.
+ * XAR06 upgrades the Phase-3 primitives into a transaction model that is owned by
+ * downloadId + attemptGeneration + artifactGeneration.  The artifact generation is a
+ * monotonic token selected before staging/publication begins; it is never inferred from
+ * staging file mtime, provider timestamps, or the existence of an old partial file.
  */
 enum class PublicationCommitBoundary {
     BeforeDestinationCommit,
@@ -39,7 +40,40 @@ data class PublicationGeneration(
     val attemptGeneration: Long,
     val artifactGeneration: Long,
 ) {
+    init {
+        require(downloadId.isNotBlank()) { "Publication generation requires a download id" }
+        require(attemptGeneration > 0L) { "Publication generation requires a positive attempt generation" }
+        require(artifactGeneration > 0L) { "Publication generation requires a positive artifact generation" }
+    }
+
     val journalIdentity: String = "finalize-$downloadId-attempt-$attemptGeneration-artifact-$artifactGeneration"
+}
+
+/** Process-local monotonic token factory. Room/backend attempt generation remains the owner; this
+ * token prevents new publication evidence from being confused with stale mtime-derived evidence. */
+object PublicationArtifactToken {
+    private val counter = AtomicLong(System.currentTimeMillis().coerceAtLeast(1L))
+
+    fun next(downloadId: String, attemptGeneration: Long): Long {
+        require(downloadId.isNotBlank()) { "downloadId required for artifact generation" }
+        require(attemptGeneration > 0L) { "attemptGeneration required for artifact generation" }
+        while (true) {
+            val now = System.currentTimeMillis().coerceAtLeast(attemptGeneration)
+            val previous = counter.get()
+            val candidate = maxOf(previous + 1L, now)
+            if (counter.compareAndSet(previous, candidate)) return candidate
+        }
+    }
+}
+
+object PublicationStagingNames {
+    fun stagingFileName(finalName: String, attemptGeneration: Long, artifactGeneration: Long, suffix: String): String {
+        val safe = androidProviderSafeFileName(finalName)
+        return "$safe.attempt-$attemptGeneration.artifact-$artifactGeneration$suffix"
+    }
+
+    fun attemptDirectory(downloadId: String, attemptGeneration: Long): String =
+        "${collisionResistantComponent(downloadId)}-attempt-$attemptGeneration"
 }
 
 data class PublicationCommitRecord(
@@ -60,10 +94,70 @@ data class PublicationCommitRecord(
     val message: String,
 )
 
+data class PublicationTransaction(
+    val generation: PublicationGeneration,
+    val stagingPath: String,
+    val destinationSpec: String,
+    val intendedFinalLocator: String,
+    val expectedBytes: Long?,
+) {
+    val ownerKey: String = generation.journalIdentity
+
+    fun beforeCommit(): PublicationCommitRecord = record(
+        committedUri = null,
+        bytesCommitted = 0L,
+        boundary = PublicationCommitBoundary.BeforeDestinationCommit,
+        health = CompletedArtifactHealthStatus.PendingPublication,
+        message = "Publication transaction prepared before destination commit.",
+    )
+
+    fun inProgress(committedUri: String, bytesCommitted: Long = 0L): PublicationCommitRecord = record(
+        committedUri = committedUri,
+        bytesCommitted = bytesCommitted,
+        boundary = PublicationCommitBoundary.DestinationCommitInProgress,
+        health = CompletedArtifactHealthStatus.PendingPublication,
+        message = "Destination identity recorded before/crossing the physical commit boundary.",
+    )
+
+    fun committed(committedUri: String, bytesCommitted: Long, actualDisplayName: String? = null): PublicationCommitRecord = record(
+        committedUri = committedUri,
+        bytesCommitted = bytesCommitted,
+        boundary = PublicationCommitBoundary.DestinationCommitted,
+        health = CompletedArtifactHealthStatus.Present,
+        message = "Destination committed; staging evidence is retained until Room metadata reconciliation. actualDisplayName=${actualDisplayName.orEmpty()}",
+    )
+
+    private fun record(
+        committedUri: String?,
+        bytesCommitted: Long,
+        boundary: PublicationCommitBoundary,
+        health: CompletedArtifactHealthStatus,
+        message: String,
+    ) = PublicationCommitRecord(
+        generation = generation,
+        sourcePath = stagingPath,
+        stagingPath = stagingPath,
+        destinationSpec = destinationSpec,
+        committedUri = committedUri,
+        bytesExpected = expectedBytes,
+        bytesCommitted = bytesCommitted,
+        checksumAlgorithm = null,
+        expectationId = null,
+        expectedDigest = null,
+        actualDigest = null,
+        verificationTimestampEpochMs = if (boundary == PublicationCommitBoundary.DestinationCommitted) System.currentTimeMillis() else null,
+        boundary = boundary,
+        health = health,
+        message = message,
+    )
+}
+
 object PublicationJournalCodec {
     fun encode(record: PublicationCommitRecord): String = buildString {
-        appendLine("phase=bug-hunt-phase-3")
+        appendLine("phase=xar06-publication-transaction")
+        appendLine("contract=attempt-generation-owned-publication")
         appendLine("journalIdentity=${record.generation.journalIdentity}")
+        appendLine("artifactOwnerKey=${record.generation.downloadId}:${record.generation.attemptGeneration}:${record.generation.artifactGeneration}")
         appendLine("downloadId=${record.generation.downloadId}")
         appendLine("attemptGeneration=${record.generation.attemptGeneration}")
         appendLine("artifactGeneration=${record.generation.artifactGeneration}")
@@ -145,9 +239,13 @@ object DestinationCapacityPlanner {
     ): Long? {
         val total = expectedTotalBytes ?: return null
         val remaining = (total - resumedBytes.coerceAtLeast(0)).coerceAtLeast(0)
-        val publicationCopy = if (contentDestination) total.coerceAtLeast(existingBytes) else 0L
-        return remaining + publicationCopy + PUBLICATION_OVERHEAD_BYTES
+        val providerCommitCopy = if (contentDestination) total.coerceAtLeast(0L) else 0L
+        val existingSafety = if (contentDestination) existingBytes.coerceAtLeast(0L) else 0L
+        return remaining + providerCommitCopy + existingSafety + PUBLICATION_OVERHEAD_BYTES
     }
+
+    fun fits(availableBytes: Long?, requiredBytes: Long?): Boolean =
+        availableBytes == null || requiredBytes == null || requiredBytes <= availableBytes
 }
 
 object CompletedArtifactHealthProbe {
@@ -156,6 +254,12 @@ object CompletedArtifactHealthProbe {
         !file.isFile -> CompletedArtifactHealthStatus.ProviderChanged
         expectedBytes != null && file.length() != expectedBytes -> CompletedArtifactHealthStatus.SizeMismatch
         else -> CompletedArtifactHealthStatus.Present
+    }
+
+    fun sizeMatches(observedBytes: Long?, expectedBytes: Long?): Boolean = when {
+        observedBytes == null -> false
+        expectedBytes != null -> observedBytes == expectedBytes
+        else -> observedBytes >= 0L
     }
 }
 

@@ -23,11 +23,12 @@ class FileDestinationWriterTest {
     }
 
     @Test
-    fun appPrivateArtifactsUseDurablePartialAndCheckpointNames() {
+    fun appPrivateArtifactsUseAttemptOwnedDurablePartialAndCheckpointNames() {
         val root = Files.createTempDirectory("xdm-private-test").toFile()
         val writer = FileDestinationWriter(root)
         val artifacts = writer.artifactPaths(DestinationRequest("id", DestinationUris.APP_PRIVATE_DOWNLOADS, "video.mp4"))
-        assertEquals("video.mp4.xdm.part", artifacts.stagingFile.name)
+        assertTrue(artifacts.stagingFile.name.startsWith("video.mp4.attempt-1.artifact-"))
+        assertTrue(artifacts.stagingFile.name.endsWith(".xdm.part"))
         assertTrue(artifacts.checkpointFile.name.endsWith(".checkpoint.json"))
         assertFalse(artifacts.stagingFile.exists())
     }

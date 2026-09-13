@@ -411,6 +411,14 @@ val verifyXar05ExternalIntakeAdmission = tasks.register<Exec>("verifyXar05Extern
     trackStaticValidation("xar05-external-intake-admission")
 }
 
+val verifyXar06StoragePublication = tasks.register<Exec>("verifyXar06StoragePublication") {
+    group = "verification"
+    description = "Verify XAR06 transactional storage publication, resume, provider recovery, and S06 coverage."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar06-storage-publication.py")
+    trackStaticValidation("xar06-storage-publication")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."

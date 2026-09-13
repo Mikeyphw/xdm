@@ -14,6 +14,7 @@ import com.mikeyphw.xdm.android.model.CompletedArtifactHealth
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.scheduler.CompletedFileGrantPolicy
+import com.mikeyphw.xdm.android.storage.PersonalDirectStorage
 import com.mikeyphw.xdm.android.util.sanitizeFileName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -172,6 +173,7 @@ class DownloadArtifactActionManager(private val context: Context) {
         val roots = buildList {
             add(File(context.filesDir, "downloads"))
             context.getExternalFilesDir(null)?.let { add(File(it, "Download")) }
+            add(PersonalDirectStorage.downloadsDirectory())
         }.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
         return file.takeIf { candidateFile -> roots.any { root -> candidateFile.path == root.path || candidateFile.path.startsWith(root.path + File.separator) } }
     }

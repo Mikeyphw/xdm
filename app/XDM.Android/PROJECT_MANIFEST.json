@@ -1733,7 +1733,7 @@
   },
   "current_experience_polish_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_hotfix": "xdm_media_parity04_validation_hotfix_v1.zip",
-  "current_overlay": "xdm_android_xar04_navigation_session_ownership_v1.tar.gz",
+  "current_overlay": "xdm_android_xar06_storage_publication_v1.tar.gz",
   "current_release_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_runtime_quality_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
@@ -1879,7 +1879,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1887,7 +1887,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
+    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -4929,5 +4929,33 @@
       "XAR04",
       "XAR05"
     ]
-  }
+  },
+  "xar06_storage_publication": {
+    "overlay": "XAR06",
+    "order": "6 of 17",
+    "source_section": "S06 Storage / Publication",
+    "canonical_findings_closed": 22,
+    "depends_on": [
+      "XAR03",
+      "XAR05"
+    ],
+    "report": "XDM_ANDROID_XAR06_STORAGE_PUBLICATION_REPORT.md",
+    "validator": "tools/validate-xar06-storage-publication.py",
+    "validation_task": "verifyXar06StoragePublication",
+    "principles": [
+      "publication identity is download + attempt generation + artifact generation",
+      "artifact generation is never inferred from file mtime",
+      "provider staging/journal evidence is retained until Room metadata reconciliation",
+      "provider overwrite/resume fails closed unless crash-safe replacement is proven",
+      "rename/delete are protected by a durable RecoveryRequired mutation guard"
+    ]
+  },
+  "xar_applied_overlay_archives": [
+    "xdm_android_xar01_build_signing_native_provenance_v1.tar.gz",
+    "xdm_android_xar02_concurrency_cas_ownership_v2.tar.gz",
+    "xdm_android_xar03_persistence_generation_integrity_v1.tar.gz",
+    "xdm_android_xar04_navigation_session_ownership_v1.tar.gz",
+    "xdm_android_xar05_external_intake_admission_v1.tar.gz",
+    "xdm_android_xar06_storage_publication_v1.tar.gz"
+  ]
 }

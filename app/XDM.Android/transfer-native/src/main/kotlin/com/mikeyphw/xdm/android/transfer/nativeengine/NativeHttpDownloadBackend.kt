@@ -1092,6 +1092,8 @@ class NativeHttpDownloadBackend(
         mimeType = mimeType,
         conflictPolicy = conflictPolicy,
         attemptGeneration = attemptGeneration,
+        artifactGeneration = attemptGeneration,
+        expectedTotalBytes = expectedLength,
     )
 
     private fun requireTask(taskId: String): TaskControl = requireNotNull(tasks[taskId]) { "Unknown task $taskId" }

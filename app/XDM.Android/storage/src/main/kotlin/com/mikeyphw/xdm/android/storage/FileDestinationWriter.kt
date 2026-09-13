@@ -17,7 +17,9 @@ class FileDestinationWriter(
 
     override fun artifactPaths(request: DestinationRequest): DestinationArtifacts {
         val destination = resolveDestination(request)
-        val partial = destination.resolveSibling(destination.fileName.toString() + request.stagingSuffix).toFile()
+        val partial = destination.resolveSibling(
+            PublicationStagingNames.stagingFileName(destination.fileName.toString(), request.attemptGeneration, request.artifactGeneration, request.stagingSuffix),
+        ).toFile()
         return DestinationArtifacts(
             stagingFile = partial,
             checkpointFile = File(partial.parentFile, partial.name + ".checkpoint.json"),
@@ -34,7 +36,10 @@ class FileDestinationWriter(
             conflict == null -> destination
             safeRequest.conflictPolicy == FilenameConflictPolicy.Overwrite -> destination
             safeRequest.conflictPolicy == FilenameConflictPolicy.Rename -> uniqueFile(destination)
-            safeRequest.conflictPolicy == FilenameConflictPolicy.Resume && artifactPaths(safeRequest).stagingFile.exists() -> destination
+            safeRequest.conflictPolicy == FilenameConflictPolicy.Resume -> throw DestinationConflictException(
+                "Resume cannot replace an existing final file based only on stale staging-file existence; choose Rename or explicit Overwrite after review",
+                conflict,
+            )
             else -> throw DestinationConflictException("Destination already exists and requires a conflict decision", conflict)
         }
         val resolvedRequest = safeRequest.copy(destinationUri = resolved.toURI().toString(), fileName = resolved.name)
@@ -48,27 +53,18 @@ class FileDestinationWriter(
             override suspend fun promote(): DestinationPromotionResult {
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
                 resolved.parentFile?.mkdirs()
-                val generation = PublicationGeneration(request.downloadId, attemptGeneration = request.attemptGeneration, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
+                val generation = PublicationGeneration(request.downloadId, attemptGeneration = request.attemptGeneration, artifactGeneration = request.artifactGeneration)
+                val transaction = PublicationTransaction(
+                    generation = generation,
+                    stagingPath = artifacts.stagingFile.absolutePath,
+                    destinationSpec = request.destinationUri,
+                    intendedFinalLocator = resolved.toURI().toString(),
+                    expectedBytes = request.expectedTotalBytes ?: artifacts.stagingFile.length(),
+                )
                 try {
                     PublicationJournalCodec.write(
                         artifacts.journalFile,
-                        PublicationCommitRecord(
-                            generation = generation,
-                            sourcePath = artifacts.stagingFile.absolutePath,
-                            stagingPath = artifacts.stagingFile.absolutePath,
-                            destinationSpec = request.destinationUri,
-                            committedUri = null,
-                            bytesExpected = artifacts.stagingFile.length(),
-                            bytesCommitted = 0L,
-                            checksumAlgorithm = null,
-                            expectationId = null,
-                            expectedDigest = null,
-                            actualDigest = null,
-                            verificationTimestampEpochMs = null,
-                            boundary = PublicationCommitBoundary.BeforeDestinationCommit,
-                            health = CompletedArtifactHealthStatus.PendingPublication,
-                            message = "Filesystem publication prepared before destination commit.",
-                        ),
+                        transaction.beforeCommit(),
                     )
                 } catch (error: Throwable) {
                     throw DestinationPublicationException(
@@ -81,31 +77,20 @@ class FileDestinationWriter(
                 }
                 val source = artifacts.stagingFile.toPath()
                 val target = resolved.toPath()
-                val expectedBytes = artifacts.stagingFile.length()
+                val expectedBytes = request.expectedTotalBytes ?: artifacts.stagingFile.length()
                 val targetExistedBeforePromotion = resolved.exists()
                 val atomic = try {
                     PublicationJournalCodec.write(
                         artifacts.journalFile,
-                        PublicationCommitRecord(
-                            generation = generation,
-                            sourcePath = artifacts.stagingFile.absolutePath,
-                            stagingPath = artifacts.stagingFile.absolutePath,
-                            destinationSpec = request.destinationUri,
-                            committedUri = resolved.toURI().toString(),
-                            bytesExpected = expectedBytes,
-                            bytesCommitted = 0L,
-                            checksumAlgorithm = null,
-                            expectationId = null,
-                            expectedDigest = null,
-                            actualDigest = null,
-                            verificationTimestampEpochMs = null,
-                            boundary = PublicationCommitBoundary.DestinationCommitInProgress,
-                            health = CompletedArtifactHealthStatus.PendingPublication,
-                            message = "Filesystem atomic replacement target recorded before the commit operation.",
-                        ),
+                        transaction.inProgress(resolved.toURI().toString()),
                     )
                     try {
-                        Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                        val moveOptions = if (targetExistedBeforePromotion && safeRequest.conflictPolicy == FilenameConflictPolicy.Overwrite) {
+                            arrayOf(StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                        } else {
+                            arrayOf(StandardCopyOption.ATOMIC_MOVE)
+                        }
+                        Files.move(source, target, *moveOptions)
                     } catch (unsupported: java.nio.file.AtomicMoveNotSupportedException) {
                         // Never move an existing destination aside as a fallback. Without an atomic
                         // replace guarantee, preserve both the old target and completed staging data.
@@ -150,27 +135,10 @@ class FileDestinationWriter(
                         cause = error,
                     )
                 }
-                val health = CompletedArtifactHealthProbe.fileHealth(resolved, expectedBytes)
                 runCatching {
                     PublicationJournalCodec.write(
                         artifacts.journalFile,
-                        PublicationCommitRecord(
-                            generation = generation,
-                            sourcePath = resolved.absolutePath,
-                            stagingPath = null,
-                            destinationSpec = request.destinationUri,
-                            committedUri = resolved.toURI().toString(),
-                            bytesExpected = expectedBytes,
-                            bytesCommitted = resolved.length(),
-                            checksumAlgorithm = null,
-                            expectationId = null,
-                            expectedDigest = null,
-                            actualDigest = null,
-                            verificationTimestampEpochMs = System.currentTimeMillis(),
-                            boundary = PublicationCommitBoundary.DestinationCommitted,
-                            health = health,
-                            message = "Filesystem destination committed; journal retained until Room completion metadata is durable.",
-                        ),
+                        transaction.committed(resolved.toURI().toString(), resolved.length(), resolved.name),
                     )
                 }
                 artifacts.checkpointFile.delete()
@@ -179,7 +147,10 @@ class FileDestinationWriter(
                     displayName = resolved.name,
                     bytesCommitted = resolved.length(),
                     atomic = atomic,
+                    attemptGeneration = request.attemptGeneration,
+                    artifactGeneration = request.artifactGeneration,
                     publicationJournalPath = artifacts.journalFile.absolutePath,
+                    stagingPathRetained = null,
                 )
             }
 
@@ -202,13 +173,15 @@ class FileDestinationWriter(
             val request = DestinationRequest("health", destinationUri, "probe.bin")
             val destination = resolveDestination(request).toFile()
             val parent = destination.parentFile ?: destination
-            val writable = (parent.exists() || parent.mkdirs()) && parent.canWrite()
+            val existing = firstExistingAncestor(parent)
+            val writable = parent.exists() && parent.isDirectory && parent.canWrite()
             DestinationHealth(
                 uri = destinationUri,
                 type = if (destinationUri == DestinationUris.APP_PRIVATE_DOWNLOADS) DestinationType.AppPrivate else DestinationType.FileSystem,
                 status = if (writable) DestinationHealthStatus.Healthy else DestinationHealthStatus.ReadOnly,
                 displayName = parent.name.ifBlank { parent.absolutePath },
-                availableBytes = usableSpace(parent),
+                availableBytes = existing?.let(::usableSpace),
+                message = if (!parent.exists()) "Destination parent does not exist; health probe is side-effect-free and did not create it." else null,
             )
         }.getOrElse {
             DestinationHealth(destinationUri, DestinationType.FileSystem, DestinationHealthStatus.Unavailable, destinationUri, message = it.message)
@@ -233,6 +206,15 @@ class FileDestinationWriter(
             }
         }
     }.toAbsolutePath().normalize()
+
+    private fun firstExistingAncestor(file: File): File? {
+        var cursor: File? = file
+        while (cursor != null) {
+            if (cursor.exists()) return cursor
+            cursor = cursor.parentFile
+        }
+        return null
+    }
 
     private fun uniqueFile(file: File): File {
         val dot = file.name.lastIndexOf('.').takeIf { it > 0 } ?: file.name.length

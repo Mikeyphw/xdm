@@ -24,6 +24,10 @@ data class DestinationRequest(
     val stagingSuffix: String = ".xdm.part",
     /** Durable backend-attempt generation owning the staged and committed artifact. */
     val attemptGeneration: Long = 1L,
+    /** Monotonic artifact token chosen by the owning attempt; never derived from file mtime. */
+    val artifactGeneration: Long = PublicationArtifactToken.next(downloadId, attemptGeneration),
+    /** Expected full final artifact size, when known before publication. Used for destination preflight. */
+    val expectedTotalBytes: Long? = null,
 )
 
 data class DestinationArtifacts(
@@ -37,8 +41,14 @@ data class DestinationPromotionResult(
     val displayName: String,
     val bytesCommitted: Long,
     val atomic: Boolean,
+    /** Attempt generation whose publication transaction produced this artifact. */
+    val attemptGeneration: Long? = null,
+    /** Monotonic artifact generation whose journal owns this committed artifact. */
+    val artifactGeneration: Long? = null,
     /** Local crash-recovery journal retained until Room completion metadata is durable. */
     val publicationJournalPath: String? = null,
+    /** Provider/file staging bytes are retained until metadata reconciliation retires them. */
+    val stagingPathRetained: String? = null,
 )
 
 data class DestinationConflict(

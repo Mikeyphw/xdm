@@ -686,6 +686,8 @@ class EmbeddedAria2Backend(
         conflictPolicy = conflictPolicy,
         stagingSuffix = ARIA2_STAGING_SUFFIX,
         attemptGeneration = attemptGeneration,
+        artifactGeneration = attemptGeneration,
+        expectedTotalBytes = expectedLength,
     )
 
     private fun Aria2TaskMapping.files(): Aria2TaskFiles {

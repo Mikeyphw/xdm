@@ -47,11 +47,11 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         val expected = record.bytesExpected?.takeIf { it >= 0L }
         if (record.boundary in setOf(PublicationCommitBoundary.DestinationCommitted, PublicationCommitBoundary.MetadataReconciled)) {
             val size = runCatching { committedPublicationSize(committed) }.getOrNull()
-            return size != null && size > 0L && (expected == null || size == expected)
+            return CompletedArtifactHealthProbe.sizeMatches(size, expected)
         }
         if (record.boundary != PublicationCommitBoundary.DestinationCommitInProgress) return false
         val size = runCatching { committedPublicationSize(committed) }.getOrNull() ?: return false
-        if (size <= 0L || (expected != null && size != expected)) return false
+        if (!CompletedArtifactHealthProbe.sizeMatches(size, expected)) return false
 
         // Filesystem publication uses one atomic move, so an exact-size target at this boundary is
         // the moved staging inode. Content providers are different: the process can die in the
@@ -111,8 +111,8 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             ensureDirectAccessIfNeeded(request.destinationUri)
             return fileWriter.artifactPaths(request)
         }
-        val directory = File(context.filesDir, "transfer-staging/${collisionResistantComponent(request.downloadId)}").apply(File::mkdirs)
-        val partial = File(directory, safeFileName(request.fileName) + request.stagingSuffix)
+        val directory = File(context.filesDir, "transfer-staging/${PublicationStagingNames.attemptDirectory(request.downloadId, request.attemptGeneration)}").apply(File::mkdirs)
+        val partial = File(directory, PublicationStagingNames.stagingFileName(safeFileName(request.fileName), request.attemptGeneration, request.artifactGeneration, request.stagingSuffix))
         return DestinationArtifacts(
             stagingFile = partial,
             checkpointFile = File(directory, partial.name + ".checkpoint.json"),
@@ -135,32 +135,23 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             override val artifacts: DestinationArtifacts = artifacts
             override val requiresPublicationCopy: Boolean = true
 
-            override suspend fun availableSpace(): Long? = availableBytesForUri(target.rootUri)
+            override suspend fun availableSpace(): Long? = availableBytesForRoot(target.root)
 
             override suspend fun promote(): DestinationPromotionResult {
                 check(artifacts.stagingFile.isFile) { "Staging file is missing" }
-                val generation = PublicationGeneration(request.downloadId, attemptGeneration = request.attemptGeneration, artifactGeneration = artifacts.stagingFile.lastModified().coerceAtLeast(1L))
-                val expectedBytes = artifacts.stagingFile.length()
+                val generation = PublicationGeneration(request.downloadId, attemptGeneration = request.attemptGeneration, artifactGeneration = request.artifactGeneration)
+                val expectedBytes = request.expectedTotalBytes ?: artifacts.stagingFile.length()
+                val transaction = PublicationTransaction(
+                    generation = generation,
+                    stagingPath = artifacts.stagingFile.absolutePath,
+                    destinationSpec = request.destinationUri,
+                    intendedFinalLocator = target.destinationKey,
+                    expectedBytes = expectedBytes,
+                )
                 try {
                     PublicationJournalCodec.write(
                         artifacts.journalFile,
-                        PublicationCommitRecord(
-                            generation = generation,
-                            sourcePath = artifacts.stagingFile.absolutePath,
-                            stagingPath = artifacts.stagingFile.absolutePath,
-                            destinationSpec = request.destinationUri,
-                            committedUri = null,
-                            bytesExpected = expectedBytes,
-                            bytesCommitted = 0L,
-                            checksumAlgorithm = null,
-                            expectationId = null,
-                            expectedDigest = null,
-                            actualDigest = null,
-                            verificationTimestampEpochMs = null,
-                            boundary = PublicationCommitBoundary.BeforeDestinationCommit,
-                            health = CompletedArtifactHealthStatus.PendingPublication,
-                            message = "Content destination publication prepared before provider commit.",
-                        ),
+                        transaction.beforeCommit(),
                     )
                 } catch (error: Throwable) {
                     throw DestinationPublicationException(
@@ -177,23 +168,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                     runCatching {
                         PublicationJournalCodec.write(
                             artifacts.journalFile,
-                            PublicationCommitRecord(
-                                generation = generation,
-                                sourcePath = artifacts.stagingFile.absolutePath,
-                                stagingPath = artifacts.stagingFile.absolutePath,
-                                destinationSpec = request.destinationUri,
-                                committedUri = null,
-                                bytesExpected = expectedBytes,
-                                bytesCommitted = 0L,
-                                checksumAlgorithm = null,
-                                expectationId = null,
-                                expectedDigest = null,
-                                actualDigest = null,
-                                verificationTimestampEpochMs = null,
-                                boundary = PublicationCommitBoundary.BeforeDestinationCommit,
-                                health = CompletedArtifactHealthStatus.PendingPublication,
-                                message = "Content destination could not be opened or created; completed staging bytes retained for retry.",
-                            ),
+                                transaction.beforeCommit().copy(message = "Content destination could not be opened or created; completed staging bytes retained for retry."),
                         )
                     }
                     throw DestinationPublicationException(
@@ -207,27 +182,11 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                 val bytes = try {
                     PublicationJournalCodec.write(
                         artifacts.journalFile,
-                        PublicationCommitRecord(
-                            generation = generation,
-                            sourcePath = artifacts.stagingFile.absolutePath,
-                            stagingPath = artifacts.stagingFile.absolutePath,
-                            destinationSpec = request.destinationUri,
-                            committedUri = committed.uri.toString(),
-                            bytesExpected = expectedBytes,
-                            bytesCommitted = 0L,
-                            checksumAlgorithm = null,
-                            expectationId = null,
-                            expectedDigest = null,
-                            actualDigest = null,
-                            verificationTimestampEpochMs = null,
-                            boundary = PublicationCommitBoundary.DestinationCommitInProgress,
-                            health = CompletedArtifactHealthStatus.PendingPublication,
-                            message = "Provider item identity recorded before copying the committed bytes.",
-                        ),
+                        transaction.inProgress(committed.uri.toString()),
                     )
                     copyAndSync(artifacts.stagingFile, committed.uri)
                     committed.finish(true)
-                    val publishedBytes = querySize(committed.uri) ?: expectedBytes
+                    val publishedBytes = requireNotNull(querySize(committed.uri)) { "Published provider item did not expose committed size metadata" }
                     check(publishedBytes == expectedBytes) { "Published provider item reports $publishedBytes bytes, expected $expectedBytes" }
                     publishedBytes
                 } catch (error: Throwable) {
@@ -265,33 +224,20 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                 runCatching {
                     PublicationJournalCodec.write(
                         artifacts.journalFile,
-                        PublicationCommitRecord(
-                            generation = generation,
-                            sourcePath = artifacts.stagingFile.absolutePath,
-                            stagingPath = null,
-                            destinationSpec = request.destinationUri,
-                            committedUri = committed.uri.toString(),
-                            bytesExpected = expectedBytes,
-                            bytesCommitted = bytes,
-                            checksumAlgorithm = null,
-                            expectationId = null,
-                            expectedDigest = null,
-                            actualDigest = null,
-                            verificationTimestampEpochMs = System.currentTimeMillis(),
-                            boundary = PublicationCommitBoundary.DestinationCommitted,
-                            health = CompletedArtifactHealthStatus.Present,
-                            message = "Content destination committed and re-queried; journal retained until Room completion metadata is durable.",
-                        ),
+                        transaction.committed(committed.uri.toString(), bytes, queryDisplayName(committed.uri) ?: committed.displayName),
                     )
                 }
-                artifacts.stagingFile.delete()
                 artifacts.checkpointFile.delete()
+                val actualDisplayName = queryDisplayName(committed.uri) ?: committed.displayName
                 return DestinationPromotionResult(
                     committedUri = committed.uri.toString(),
-                    displayName = committed.displayName,
+                    displayName = actualDisplayName,
                     bytesCommitted = bytes,
                     atomic = false,
+                    attemptGeneration = request.attemptGeneration,
+                    artifactGeneration = request.artifactGeneration,
                     publicationJournalPath = artifacts.journalFile.absolutePath,
+                    stagingPathRetained = artifacts.stagingFile.absolutePath,
                 )
             }
 
@@ -342,8 +288,8 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
             val root = destinationRoot(destinationUri)
             val permission = if (root.type == DestinationType.SafTree || root.type == DestinationType.DirectDocument) persistedPermission(root.uri) else Pair(true, true)
             val writable = when (root.type) {
-                DestinationType.SafTree -> permission.second && canQueryTree(root.uri)
-                DestinationType.DirectDocument -> permission.second && queryDisplayName(root.uri) != null
+                DestinationType.SafTree -> permission.second && canQueryTree(root.uri) && canCreateWritableTreeProbe(root.uri)
+                DestinationType.DirectDocument -> permission.second && canOpenDirectDocumentForWriteProbe(root.uri)
                 else -> true
             }
             DestinationHealth(
@@ -355,7 +301,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                     else -> DestinationHealthStatus.Healthy
                 },
                 displayName = root.displayName,
-                availableBytes = availableBytesForUri(root.uri),
+                availableBytes = availableBytesForRoot(root),
                 message = if (!permission.second) "Write permission is no longer persisted" else null,
             )
         }.getOrElse { error ->
@@ -377,9 +323,11 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         val conflict = previewConflict(request)
         val displayName = when {
             conflict == null -> safeFileName(request.fileName)
-            request.conflictPolicy == FilenameConflictPolicy.Overwrite -> conflict.requestedName
             request.conflictPolicy == FilenameConflictPolicy.Rename -> conflict.suggestedName
-            request.conflictPolicy == FilenameConflictPolicy.Resume && artifactPaths(request).stagingFile.exists() -> conflict.requestedName
+            request.conflictPolicy == FilenameConflictPolicy.Overwrite || request.conflictPolicy == FilenameConflictPolicy.Resume -> throw DestinationConflictException(
+                "Android provider destinations cannot replace an existing final artifact crash-safely in place; choose Rename so both artifacts are preserved",
+                conflict,
+            )
             else -> throw DestinationConflictException("Destination already exists and cannot be replaced without confirmation", conflict)
         }
         val destinationKey = when (root.type) {
@@ -463,8 +411,8 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
     @SuppressLint("NewApi")
     private fun openMediaItem(root: DestinationRoot, name: String, mimeType: String?, policy: FilenameConflictPolicy): CommitTarget {
         val existing = findMediaItem(root, name)
-        if (existing != null && policy != FilenameConflictPolicy.Overwrite && policy != FilenameConflictPolicy.Resume) {
-            throw DestinationConflictException("A media item named $name already exists")
+        if (existing != null) {
+            throw DestinationConflictException("A media item named $name already exists; resolve the conflict before opening a provider commit target")
         }
         val createdAtSeconds = System.currentTimeMillis() / 1000
         val temporaryName = ".xdm-${System.nanoTime()}-${name}"
@@ -480,10 +428,6 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         return CommitTarget(uri, name) { success ->
             if (success) {
                 publishMediaItem(uri, root, name, mimeType ?: guessMimeType(name))
-                if (existing != null && existing != uri) {
-                    val deleted = resolver.delete(existing, null, null)
-                    check(deleted > 0) { "New media item was published but the previous item could not be retired safely" }
-                }
             } else {
                 resolver.delete(uri, null, null)
             }
@@ -607,9 +551,34 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use { true } ?: false
     }.getOrDefault(false)
 
-    private fun availableBytesForUri(uri: Uri): Long? {
-        return when (uri.authority) {
-            MediaStore.AUTHORITY -> runCatching { StatFs((context.getExternalFilesDir(null) ?: context.filesDir).absolutePath).availableBytes }.getOrNull()
+    private fun canCreateWritableTreeProbe(uri: Uri): Boolean = runCatching {
+        val parent = DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
+        val probeName = ".xdm-write-probe-${System.nanoTime()}.tmp"
+        val probe = DocumentsContract.createDocument(resolver, parent, "application/octet-stream", probeName) ?: return@runCatching false
+        try {
+            resolver.openFileDescriptor(probe, "rwt")?.use { pfd ->
+                FileOutputStream(pfd.fileDescriptor).use { output ->
+                    output.write(byteArrayOf(0x58))
+                    output.flush()
+                    pfd.fileDescriptor.sync()
+                }
+            } == true
+        } finally {
+            runCatching { DocumentsContract.deleteDocument(resolver, probe) }
+        }
+    }.getOrDefault(false)
+
+    private fun canOpenDirectDocumentForWriteProbe(uri: Uri): Boolean = runCatching {
+        resolver.openFileDescriptor(uri, "rw")?.use { true } == true
+    }.getOrDefault(false)
+
+    private fun availableBytesForRoot(root: DestinationRoot): Long? {
+        return when {
+            root.uri.authority == MediaStore.AUTHORITY -> {
+                val path = root.relativePath?.let { Environment.getExternalStoragePublicDirectory(it).absolutePath }
+                    ?: (context.getExternalFilesDir(null) ?: context.filesDir).absolutePath
+                runCatching { StatFs(path).availableBytes }.getOrNull()
+            }
             else -> null
         }
     }
