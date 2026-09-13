@@ -12,7 +12,11 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,6 +28,7 @@ class NativeSelectiveRepairService(
         throw IllegalStateException("Selective repair requires the app request-security validator")
     },
 ) {
+    private val repairLocks = ConcurrentHashMap<String, Mutex>()
     /**
      * Legacy callers do not carry enough representation or trusted-block proof for safe repair.
      * They must re-enter through the generation-bound overload below.
@@ -39,6 +44,22 @@ class NativeSelectiveRepairService(
         manifest: TrustedBlockManifest,
         validator: ResumeValidator,
     ): RepairOutcome = withContext(Dispatchers.IO) {
+        val lockKey = target.canonicalFile.absolutePath
+        val lock = repairLocks.computeIfAbsent(lockKey) { Mutex() }
+        try {
+            lock.withLock { repairLocked(request, target, plan, manifest, validator) }
+        } finally {
+            if (!lock.isLocked) repairLocks.remove(lockKey, lock)
+        }
+    }
+
+    private suspend fun repairLocked(
+        request: DownloadRequest,
+        target: File,
+        plan: SelectiveRepairPlan,
+        manifest: TrustedBlockManifest,
+        validator: ResumeValidator,
+    ): RepairOutcome {
         require(plan.requiresNetwork) { "Repair plan contains no corrupt or missing ranges" }
         require(plan.downloadId == request.id && manifest.downloadId == request.id) { "Repair evidence belongs to another download" }
         require(manifest.attemptGeneration == request.attemptGeneration) { "Trusted blocks belong to a stale attempt generation" }
@@ -50,7 +71,7 @@ class NativeSelectiveRepairService(
         val originalLength = target.length()
         require(originalLength == plan.fileLength) { "Repair target length does not match trusted manifest" }
         val originalDigest = fileSha256(target)
-        val suffix = System.currentTimeMillis()
+        val suffix = UUID.randomUUID().toString()
         val temp = File(target.parentFile, target.name + ".repair-$suffix.tmp")
         val backup = File(target.parentFile, target.name + ".repair-backup-$suffix.bak")
         Files.copy(target.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -102,7 +123,7 @@ class NativeSelectiveRepairService(
                 }
                 file.channel.force(true)
             }
-            verifyRepairedBlocks(temp, plan, manifest)
+            verifyAllTrustedBlocks(temp, plan, manifest)
             check(temp.length() == plan.fileLength) { "Repaired temporary artifact length changed before commit" }
             try {
                 // Same-filesystem atomic replacement is required. The verified backup remains
@@ -120,7 +141,7 @@ class NativeSelectiveRepairService(
             }
             target.fsyncParentDirectoryIfSupported()
             check(target.isFile && target.length() == plan.fileLength) { "Repaired artifact length changed during atomic commit" }
-            verifyRepairedBlocks(target, plan, manifest)
+            verifyAllTrustedBlocks(target, plan, manifest)
             repairCommitted = true
             backup.delete()
             target.fsyncParentDirectoryIfSupported()
@@ -156,24 +177,31 @@ class NativeSelectiveRepairService(
         RepairOutcome(plan.downloadId, repairedRanges = plan.ranges.size, repairedBytes = plan.ranges.sumOf { it.endByteInclusive - it.startByte + 1 })
     }
 
-    private fun verifyRepairedBlocks(file: File, plan: SelectiveRepairPlan, manifest: TrustedBlockManifest) {
-        val byIndex = manifest.blocks.associateBy { it.index }
+    private fun verifyAllTrustedBlocks(file: File, plan: SelectiveRepairPlan, manifest: TrustedBlockManifest) {
+        val rangesByIndex = plan.ranges.associateBy { it.blockIndex }
+        require(file.length() == manifest.fileLength) { "Selective repair target length changed before trusted-block verification" }
         RandomAccessFile(file, "r").use { input ->
-            for (range in plan.ranges) {
-                val block = requireNotNull(byIndex[range.blockIndex]) { "Trusted manifest is missing repair block ${range.blockIndex}" }
-                require(block.startByte == range.startByte && block.endByteInclusive == range.endByteInclusive) { "Repair range does not match trusted block boundaries" }
+            for (block in manifest.blocks) {
+                rangesByIndex[block.index]?.let { range ->
+                    require(block.startByte == range.startByte && block.endByteInclusive == range.endByteInclusive) {
+                        "Repair range does not match trusted block boundaries"
+                    }
+                }
                 val digest = MessageDigest.getInstance(if (manifest.algorithm == ChecksumAlgorithm.Sha512) "SHA-512" else "SHA-256")
                 input.seek(block.startByte)
                 var remaining = block.endByteInclusive - block.startByte + 1
                 val buffer = ByteArray(BUFFER_SIZE)
                 while (remaining > 0L) {
                     val read = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
-                    if (read < 0) throw IOException("Repaired block ended before its trusted boundary")
+                    if (read < 0) throw IOException("Trusted block ended before its boundary")
                     digest.update(buffer, 0, read)
                     remaining -= read
                 }
                 val actual = digest.digest().joinToString("") { "%02x".format(it) }
-                if (!actual.equals(block.checksumHex, ignoreCase = true)) throw IOException("Repaired block ${block.index} failed trusted checksum verification")
+                if (!actual.equals(block.checksumHex, ignoreCase = true)) {
+                    val kind = if (block.index in rangesByIndex) "repaired" else "untouched trusted"
+                    throw IOException("Selective repair $kind block ${block.index} failed trusted checksum verification")
+                }
             }
         }
     }

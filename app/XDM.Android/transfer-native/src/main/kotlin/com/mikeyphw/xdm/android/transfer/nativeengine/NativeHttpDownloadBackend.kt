@@ -41,6 +41,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.UUID
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
@@ -95,7 +96,7 @@ class NativeHttpDownloadBackend(
         protocols = setOf("http", "https"),
         supportsSegmentation = true,
         supportsMirrors = false,
-        supportsSelectiveRepair = true,
+        supportsSelectiveRepair = false,
         supportsSafDestination = destinationWriter.supportsContentDestinations,
         supportsAuthentication = true,
         supportsProxy = false,
@@ -186,11 +187,12 @@ class NativeHttpDownloadBackend(
 
     override suspend fun pause(taskId: String) {
         val control = requireTask(taskId)
-        if (control.state.value.state in TERMINAL_STATES) return
+        if (control.state.value.state in NON_DOWNGRADABLE_STATES) return
         control.pauseRequested = true
         val checkpointFlusher = control.checkpointFlusher
         control.activeCalls.forEach(Call::cancel)
         control.job?.cancelAndJoin()
+        if (control.state.value.state in NON_DOWNGRADABLE_STATES) return
         try {
             checkpointFlusher?.invoke()
         } catch (error: Throwable) {
@@ -201,6 +203,7 @@ class NativeHttpDownloadBackend(
             )
             throw IOException("Native checkpoint flush failed; transfer was quarantined", error)
         }
+        if (control.state.value.state in NON_DOWNGRADABLE_STATES) return
         control.state.value = control.state.value.copy(state = DownloadState.Paused, speedBytesPerSecond = 0, errorMessage = null)
     }
 
@@ -234,9 +237,11 @@ class NativeHttpDownloadBackend(
 
     override suspend fun cancel(taskId: String) {
         val control = requireTask(taskId)
+        if (control.state.value.state in COMMIT_PROTECTED_STATES) return
         control.cancelRequested = true
         control.activeCalls.forEach(Call::cancel)
         control.job?.cancelAndJoin()
+        if (control.state.value.state in COMMIT_PROTECTED_STATES) return
         control.state.value = control.state.value.copy(state = DownloadState.Cancelled, speedBytesPerSecond = 0)
     }
 
@@ -467,6 +472,13 @@ class NativeHttpDownloadBackend(
                     speedBytesPerSecond = 0,
                     errorMessage = null,
                 )
+                val paths = NativeArtifactPaths(
+                    destinationIdentity = control.preparedDestination.destinationKey,
+                    partial = control.preparedDestination.artifacts.stagingFile.toPath(),
+                    checkpoint = control.preparedDestination.artifacts.checkpointFile.toPath(),
+                )
+                val checkpoint = checkpointStore.load(paths.checkpoint)
+                verifyCheckpointBeforePromotion(control.request, paths, checkpoint, checkpoint.expectedLength)
                 val promotion = control.preparedDestination.promote()
                 runCatching { checkpointStore.delete(control.preparedDestination.artifacts.checkpointFile.toPath()) }
                 control.state.value = control.state.value.copy(
@@ -579,6 +591,8 @@ class NativeHttpDownloadBackend(
         trustedLength?.let { expected ->
             check(Files.size(paths.partial) == expected) { "Downloaded file length does not match the trusted length" }
         }
+        saveCheckpoint(control.request, paths, metadata, mutableSegments, checkpointMutex, checkpointSaveMutex, checkpointIntegrity, includeTail = true)
+        verifyCheckpointBeforePromotion(control.request, paths, checkpointStore.load(paths.checkpoint), trustedLength)
         control.state.value = control.state.value.copy(
             state = DownloadState.Finalizing,
             progressStage = TransferProgressStage.Finalizing,
@@ -635,21 +649,25 @@ class NativeHttpDownloadBackend(
             val hostSemaphore = hostConnections.computeIfAbsent(host) { Semaphore(config.maximumConnectionsPerHost.coerceAtLeast(1)) }
             globalConnections.withPermit {
                 hostSemaphore.withPermit {
-                    execute(control, builder.build()).use { response ->
+                    executeTracked(control, builder.build()) { response ->
                         validateResponse(response, useRange, requestStart, requestEnd, trustedLength, metadata.resumeValidator)
                         rejectUnexpectedHtmlOrCompressedResponse(response, control.request)
                         val body = requireNotNull(response.body) { "Server returned no response body" }
+                        val expectedBodyBytes = expectedResponseBodyBytes(useRange, requestStart, requestEnd, trustedLength)
                         RandomAccessFile(paths.partial.toFile(), "rw").use { file ->
                             if (!metadata.rangeSupported) file.setLength(0)
                             file.seek(requestStart)
                             body.byteStream().use { input ->
                                 val buffer = ByteArray(config.bufferBytes)
                                 var bytesSinceCheckpoint = 0L
-                                while (true) {
-                                    val read = input.read(buffer)
+                                var remainingExpected = expectedBodyBytes
+                                while (remainingExpected == null || remainingExpected > 0L) {
+                                    val limit = remainingExpected?.let { minOf(buffer.size.toLong(), it).toInt() } ?: buffer.size
+                                    val read = input.read(buffer, 0, limit)
                                     if (read < 0) break
                                     file.write(buffer, 0, read)
                                     bytesSinceCheckpoint += read
+                                    remainingExpected = remainingExpected?.minus(read.toLong())
                                     checkpointMutex.withLock {
                                         val current = segments[segmentIndex]
                                         segment = current.copy(completedBytes = current.completedBytes + read)
@@ -668,6 +686,12 @@ class NativeHttpDownloadBackend(
                                         )
                                         bytesSinceCheckpoint = 0
                                     }
+                                }
+                                if (remainingExpected != null && remainingExpected != 0L) {
+                                    throw IOException("Response body ended before the declared native segment boundary; ${remainingExpected} bytes missing")
+                                }
+                                if (expectedBodyBytes != null && input.read() >= 0) {
+                                    throw IOException("Response body exceeded the declared native segment boundary")
                                 }
                             }
                             file.channel.force(false)
@@ -724,7 +748,7 @@ class NativeHttpDownloadBackend(
                 resumeValidatorValue = metadata.resumeValidator?.value,
                 destinationPath = paths.destinationIdentity,
                 partialPath = paths.partial.toString(),
-                expectedLength = metadata.totalLength,
+                expectedLength = metadata.totalLength ?: request.expectedLength,
                 etag = metadata.etag,
                 lastModified = metadata.lastModified,
                 rangeSupported = metadata.rangeSupported,
@@ -800,28 +824,40 @@ class NativeHttpDownloadBackend(
         metadata.totalLength?.let { if (actualLength > it) throw RemoteObjectChangedException("Partial file is longer than the remote object") }
     }
 
-    private fun probe(control: TaskControl, request: DownloadRequest): RemoteMetadata {
-        val headBuilder = newTransferRequestBuilder(request, request.sourceUrl).head()
-        val head = execute(control, headBuilder.build())
-        head.use { response ->
-            if (response.isSuccessful) {
-                val length = response.header("Content-Length")?.toLongOrNull()
-                if (length != null && response.code !in setOf(405, 501)) {
-                    val range = rangeProbe(control, request, response.request.url.toString())
-                    return range.copy(totalLength = range.totalLength ?: length)
+    private suspend fun probe(control: TaskControl, request: DownloadRequest): RemoteMetadata {
+        return retrying(hostKey(request.sourceUrl)) {
+            val headBuilder = newTransferRequestBuilder(request, request.sourceUrl).head()
+            executeTracked(control, headBuilder.build()) { response ->
+                if (response.isSuccessful) {
+                    val length = response.header("Content-Length")?.toLongOrNull()
+                    if (length != null && response.code !in setOf(405, 501)) {
+                        val range = rangeProbe(control, request, response.request.url.toString())
+                        // If the server returned a valid 206 with unknown total (Content-Range */*),
+                        // the HEAD length is not authoritative for resumable ranged execution.
+                        return@executeTracked range.copy(totalLength = range.totalLength ?: if (range.rangeSupported) null else length)
+                    }
                 }
+                rangeProbe(control, request, request.sourceUrl)
             }
         }
-        return rangeProbe(control, request, request.sourceUrl)
     }
 
-    private fun rangeProbe(control: TaskControl, request: DownloadRequest, url: String): RemoteMetadata {
-        val builder = newTransferRequestBuilder(request, url)
-        builder.header("Range", "bytes=0-0")
-        execute(control, builder.build()).use { response ->
-            if (!response.isSuccessful) throw HttpTransferException(response.code, metadataProbeFailureMessage(response.code, request))
-            val total = if (response.code == 206) parseContentRange(response.header("Content-Range")).third else response.header("Content-Length")?.toLongOrNull()
-            return metadataFrom(response, total, response.code == 206)
+    private suspend fun rangeProbe(control: TaskControl, request: DownloadRequest, url: String): RemoteMetadata {
+        return retrying(hostKey(url)) {
+            val builder = newTransferRequestBuilder(request, url)
+            builder.header("Range", "bytes=0-0")
+            executeTracked(control, builder.build()) { response ->
+                if (!response.isSuccessful) {
+                    throw HttpTransferException(
+                        response.code,
+                        metadataProbeFailureMessage(response.code, request),
+                        response.retryAfterMillis(),
+                        response.request.url.host.lowercase(Locale.US),
+                    )
+                }
+                val total = if (response.code == 206) parseContentRange(response.header("Content-Range")).third else response.header("Content-Length")?.toLongOrNull()
+                metadataFrom(response, total, response.code == 206)
+            }
         }
     }
 
@@ -867,7 +903,8 @@ class NativeHttpDownloadBackend(
             privateNetworkApprovalScopes = request.privateNetworkApprovalScopes,
             cleartextCredentialApprovalScopes = request.cleartextCredentialApprovalScopes,
             privateApprovedHosts = approvedPrivateHosts,
-            lastObservedScheme = AtomicReference(URI(request.sourceUrl).scheme.orEmpty().lowercase()),
+            sourceOrigin = nativeOriginKey(request.sourceUrl),
+            lastObservedScheme = AtomicReference(URI(request.sourceUrl).scheme.orEmpty().lowercase(Locale.US)),
         )
     }
 
@@ -903,11 +940,16 @@ class NativeHttpDownloadBackend(
         }
     }
 
-    private fun execute(control: TaskControl, request: Request): Response {
+    private suspend fun <T> executeTracked(control: TaskControl, request: Request, block: suspend (Response) -> T): T {
         val call = control.networkClient.newCall(request)
         control.activeCalls += call
         try {
-            return call.execute()
+            val response = call.execute()
+            try {
+                return block(response)
+            } finally {
+                response.close()
+            }
         } finally {
             control.activeCalls.remove(call)
         }
@@ -934,10 +976,21 @@ class NativeHttpDownloadBackend(
         expectedTotal: Long?,
         validator: ResumeValidator?,
     ) {
-        if (response.code == 429 || response.code in 500..599) throw HttpTransferException(response.code, "Retryable HTTP ${response.code}", response.retryAfterMillis())
+        if (response.code == 429 || response.code in 500..599) {
+            throw HttpTransferException(response.code, "Retryable HTTP ${response.code}", response.retryAfterMillis(), response.request.url.host.lowercase(Locale.US))
+        }
         if (!response.isSuccessful) throw HttpTransferException(response.code, "HTTP ${response.code}")
         if (!rangeExpected) {
             if (response.code != 200) throw InvalidRangeResponseException("Expected a complete response but received HTTP ${response.code}")
+            validator?.let { expectedValidator ->
+                val observedValidator = when (expectedValidator.kind) {
+                    ResumeValidatorKind.StrongEtag -> response.header("ETag")
+                    ResumeValidatorKind.StrongLastModified -> response.header("Last-Modified")
+                }
+                if (observedValidator != expectedValidator.value) {
+                    throw RemoteObjectChangedException("Complete response does not match the probed representation validator")
+                }
+            }
             return
         }
         if (response.code != 206) throw InvalidRangeResponseException("Server ignored the requested byte range")
@@ -953,8 +1006,14 @@ class NativeHttpDownloadBackend(
         if (start != expectedStart || (expectedEnd != null && end != expectedEnd)) {
             throw InvalidRangeResponseException("Content-Range does not match the requested segment")
         }
+        if (expectedTotal != null && total == null) {
+            throw InvalidRangeResponseException("Content-Range total is unknown while the expected remote length is known")
+        }
         if (expectedTotal != null && total != null && total != expectedTotal) {
             throw InvalidRangeResponseException("Content-Range total does not match the remote length")
+        }
+        if (total != null && end >= total) {
+            throw InvalidRangeResponseException("Content-Range end exceeds or equals the declared total length")
         }
     }
 
@@ -967,8 +1026,8 @@ class NativeHttpDownloadBackend(
         val expectsBinary = request.mimeType?.startsWith("video/", true) == true ||
             request.mimeType?.startsWith("audio/", true) == true ||
             request.fileName.substringAfterLast('.', "").lowercase() in setOf("mp4", "mkv", "webm", "zip", "iso", "apk", "exe", "7z", "rar")
-        if (expectsBinary && (contentType.startsWith("text/html") || contentType.startsWith("application/json") || contentType.startsWith("text/xml") || contentType.startsWith("application/xml"))) {
-            throw IOException("Server returned an HTML/XML/JSON error page instead of the requested file")
+        if (expectsBinary && isTextualOrStructuredErrorContentType(contentType)) {
+            throw IOException("Server returned a textual/structured error payload instead of the requested binary file")
         }
     }
 
@@ -976,7 +1035,8 @@ class NativeHttpDownloadBackend(
         val raw = header("Retry-After")?.trim().orEmpty()
         if (raw.isBlank()) return null
         raw.toLongOrNull()?.let { return it.coerceAtLeast(0L) * 1000L }
-        return null
+        val retryAt = parseHttpDate(raw)?.toInstant()?.toEpochMilli() ?: return null
+        return (retryAt - clock()).coerceAtLeast(0L)
     }
 
     private fun destinationIdentityMatches(checkpointDestination: String, currentDestination: String): Boolean {
@@ -1066,9 +1126,54 @@ class NativeHttpDownloadBackend(
     }
 
     private fun parseContentRange(value: String?): Triple<Long, Long, Long?> {
-        val match = CONTENT_RANGE.matchEntire(value.orEmpty()) ?: throw InvalidRangeResponseException("Missing or malformed Content-Range")
-        return Triple(match.groupValues[1].toLong(), match.groupValues[2].toLong(), match.groupValues[3].takeIf { it.isNotEmpty() && it != "*" }?.toLong())
+        val match = CONTENT_RANGE.matchEntire(value.orEmpty().trim()) ?: throw InvalidRangeResponseException("Missing or malformed Content-Range")
+        val start = match.groupValues[1].toLong()
+        val end = match.groupValues[2].toLong()
+        val total = match.groupValues[3].takeIf { it != "*" }?.toLong()
+        if (end < start) throw InvalidRangeResponseException("Content-Range start is greater than the end byte")
+        if (total != null && total <= end) throw InvalidRangeResponseException("Content-Range total is not greater than the end byte")
+        return Triple(start, end, total)
     }
+
+    private fun expectedResponseBodyBytes(rangeExpected: Boolean, requestStart: Long, requestEnd: Long?, expectedTotal: Long?): Long? {
+        return if (rangeExpected) {
+            (requestEnd ?: expectedTotal?.minus(1L))?.let { it - requestStart + 1L }
+        } else {
+            expectedTotal?.minus(requestStart)
+        }?.also { if (it < 0L) throw InvalidRangeResponseException("Response body boundary is negative") }
+    }
+
+    private fun verifyCheckpointBeforePromotion(request: DownloadRequest, paths: NativeArtifactPaths, checkpoint: NativeCheckpoint?, expectedLength: Long?) {
+        requireNotNull(checkpoint) { "Native finalization requires a persisted checkpoint integrity graph" }
+        require(checkpoint.downloadId == request.id) { "Native finalization checkpoint belongs to another download" }
+        require(checkpoint.attemptGeneration == request.attemptGeneration) { "Native finalization checkpoint belongs to a stale attempt generation" }
+        require(checkpoint.backendInstanceId == runtimeIdentity.instanceId) { "Native finalization checkpoint belongs to another installation" }
+        require(checkpoint.partialPath == paths.partial.toString()) { "Native finalization checkpoint points to a different staging artifact" }
+        validateSegmentGraph(checkpoint.segments, checkpoint.expectedLength ?: expectedLength)
+        require(Files.exists(paths.partial)) { "Native finalization staging file is missing" }
+        val fileLength = Files.size(paths.partial)
+        expectedLength?.let { require(fileLength == it) { "Native finalization file length changed before promotion" } }
+        require(checkpoint.segments.all { it.complete }) { "Native finalization requires all checkpoint segments to be complete" }
+        val completedBytes = checkpoint.segments.sumOf(NativeSegmentCheckpoint::completedBytes)
+        require(completedBytes == fileLength) { "Native finalization checkpoint bytes do not match the staging file length" }
+        checkpoint.segments.filter { it.completedBytes > 0L }.forEach { segment ->
+            require(verifyPersistedSegment(paths.partial, segment)) { "Native finalization checkpoint integrity failed for segment ${segment.index}" }
+        }
+    }
+
+    private fun isTextualOrStructuredErrorContentType(contentType: String): Boolean {
+        val normalized = contentType.substringBefore(';').trim().lowercase(Locale.US)
+        if (normalized.isBlank()) return false
+        return normalized.startsWith("text/") ||
+            normalized == "application/json" ||
+            normalized.endsWith("+json") ||
+            normalized == "application/xml" ||
+            normalized.endsWith("+xml") ||
+            normalized == "application/xhtml+xml" ||
+            normalized == "application/problem+json"
+    }
+
+    private fun hostKey(url: String): String = runCatching { URI(url).host.orEmpty().lowercase(Locale.US) }.getOrDefault("")
 
     private suspend fun <T> retrying(host: String, block: suspend () -> T): T {
         var attempt = 0
@@ -1079,7 +1184,8 @@ class NativeHttpDownloadBackend(
                 if (error is CancellationException) throw error
                 val retryable = error is IOException && (error !is HttpTransferException || error.statusCode == 429 || error.statusCode >= 500)
                 if (!retryable || attempt >= config.maximumRetries) throw error
-                delay(hostRetryBackoff.delayMillis(host, error, attempt, config.baseRetryDelayMillis))
+                val chargedHost = (error as? HttpTransferException)?.retryHost?.takeIf(String::isNotBlank) ?: host
+                delay(hostRetryBackoff.delayMillis(chargedHost, error, attempt, config.baseRetryDelayMillis))
                 attempt++
             }
         }
@@ -1155,6 +1261,8 @@ class NativeHttpDownloadBackend(
         const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Android 16; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0 Mobile Safari/537.36"
         val CONTENT_RANGE = Regex("bytes (\\d+)-(\\d+)/(\\d+|\\*)")
         val TERMINAL_STATES = setOf(DownloadState.Completed, DownloadState.Cancelled)
+        val NON_DOWNGRADABLE_STATES = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.RecoveryRequired, DownloadState.Cancelled)
+        val COMMIT_PROTECTED_STATES = setOf(DownloadState.Completed, DownloadState.RecoveryRequired)
     }
 }
 
@@ -1185,6 +1293,7 @@ private data class NativeRequestSecurityContext(
     val privateNetworkApprovalScopes: Set<String>,
     val cleartextCredentialApprovalScopes: Set<String>,
     val privateApprovedHosts: Set<String>,
+    val sourceOrigin: String,
     val lastObservedScheme: AtomicReference<String>,
 )
 
@@ -1209,11 +1318,12 @@ private class NativeRequestSecurityDns(
 
 private class NativeRequestSecurityInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request()
-        val context = request.tag(NativeRequestSecurityContext::class.java)
+        val incoming = chain.request()
+        val context = incoming.tag(NativeRequestSecurityContext::class.java)
             ?: throw IOException("Missing XDM request security context")
+        val request = sanitizeRedirectCredentials(incoming, context)
         val host = request.url.host
-        val scheme = request.url.scheme.lowercase()
+        val scheme = request.url.scheme.lowercase(Locale.US)
         val targetScope = DownloadRequestApprovalScope.forUrl(request.url.toString())
             ?: throw IOException("Request target cannot be bound to an approval scope")
         val previousScheme = context.lastObservedScheme.getAndSet(scheme)
@@ -1240,6 +1350,14 @@ private class NativeRequestSecurityInterceptor : Interceptor {
         return chain.proceed(request)
     }
 
+    private fun sanitizeRedirectCredentials(request: Request, context: NativeRequestSecurityContext): Request {
+        if (nativeOriginKey(request.url.toString()) == context.sourceOrigin) return request
+        val builder = request.newBuilder()
+        listOf("Authorization", "Cookie", "Proxy-Authorization", "Referer", "Origin").forEach(builder::removeHeader)
+        request.headers.names().filter(::isSensitiveRequestHeader).forEach(builder::removeHeader)
+        return builder.build()
+    }
+
     private fun isSensitiveRequestHeader(name: String): Boolean {
         val normalized = name.trim().lowercase()
         return normalized in setOf(
@@ -1248,6 +1366,19 @@ private class NativeRequestSecurityInterceptor : Interceptor {
         ) || normalized.contains("token") || normalized.endsWith("-key")
     }
 
+}
+
+private fun nativeOriginKey(url: String): String {
+    val uri = URI(url)
+    val scheme = uri.scheme.orEmpty().lowercase(Locale.US)
+    val host = uri.host.orEmpty().lowercase(Locale.US)
+    val port = when {
+        uri.port >= 0 -> uri.port
+        scheme == "http" -> 80
+        scheme == "https" -> 443
+        else -> -1
+    }
+    return "$scheme|$host|$port"
 }
 
 private fun isPrivateOrSpecialAddress(address: InetAddress): Boolean {

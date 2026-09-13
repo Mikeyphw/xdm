@@ -1733,7 +1733,7 @@
   },
   "current_experience_polish_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_hotfix": "xdm_media_parity04_validation_hotfix_v1.zip",
-  "current_overlay": "xdm_android_xar06_storage_publication_v1.tar.gz",
+  "current_overlay": "XAR07 native HTTP protocol correctness",
   "current_release_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_runtime_quality_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
@@ -1879,7 +1879,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1887,7 +1887,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
+    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -4921,34 +4921,68 @@
     "validation_task": "verifyXar05ExternalIntakeAdmission",
     "validator": "tools/validate-xar05-external-intake-admission.py"
   },
-  "xar_roadmap": {
-    "applied_overlays": [
-      "XAR01",
-      "XAR02",
-      "XAR03",
-      "XAR04",
-      "XAR05"
-    ]
-  },
   "xar06_storage_publication": {
-    "overlay": "XAR06",
-    "order": "6 of 17",
-    "source_section": "S06 Storage / Publication",
     "canonical_findings_closed": 22,
     "depends_on": [
       "XAR03",
       "XAR05"
     ],
-    "report": "XDM_ANDROID_XAR06_STORAGE_PUBLICATION_REPORT.md",
-    "validator": "tools/validate-xar06-storage-publication.py",
-    "validation_task": "verifyXar06StoragePublication",
+    "order": "6 of 17",
+    "overlay": "XAR06",
     "principles": [
       "publication identity is download + attempt generation + artifact generation",
       "artifact generation is never inferred from file mtime",
       "provider staging/journal evidence is retained until Room metadata reconciliation",
       "provider overwrite/resume fails closed unless crash-safe replacement is proven",
       "rename/delete are protected by a durable RecoveryRequired mutation guard"
-    ]
+    ],
+    "report": "XDM_ANDROID_XAR06_STORAGE_PUBLICATION_REPORT.md",
+    "source_section": "S06 Storage / Publication",
+    "validation_task": "verifyXar06StoragePublication",
+    "validator": "tools/validate-xar06-storage-publication.py"
+  },
+  "xar07_native_http_protocol": {
+    "body_read_calls_remain_cancellable": true,
+    "canonical_findings_closed": 21,
+    "canonical_ids": [
+      "S07-01",
+      "S07-02",
+      "S07-03",
+      "S07-04",
+      "S07-05",
+      "S07-06",
+      "S07-07",
+      "S07-08",
+      "S07-09",
+      "S07-10",
+      "S07-11",
+      "S07-12",
+      "S07-13",
+      "S07-14",
+      "S07-15",
+      "DS4-S07-01",
+      "DS4-S07-02",
+      "DS4-S07-03",
+      "DS4-S07-04",
+      "DS4-S07-05",
+      "RERUN34-S07-01"
+    ],
+    "canonical_section": "S07",
+    "cold_get_validator_revalidation": true,
+    "contract_test": "transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/Xar07NativeHttpProtocolContractTest.kt",
+    "docs": "docs/remediation/XAR07-NATIVE-HTTP-PROTOCOL.md",
+    "finalization_checkpoint_reverification": true,
+    "overlay": "XAR07",
+    "post_redirect_retry_host_charging": true,
+    "range_and_full_body_write_bounds": true,
+    "redirect_sensitive_header_stripping": true,
+    "report": "XDM_ANDROID_XAR07_NATIVE_HTTP_PROTOCOL_REPORT.md",
+    "retry_after_http_date_supported": true,
+    "roadmap_position": "7 of 17",
+    "selective_repair_fail_closed_and_single_flight": true,
+    "supports_selective_repair_advertised": false,
+    "validation_mode": "intermediate_no_validate",
+    "validator": "tools/validate-xar07-native-http-protocol.py"
   },
   "xar_applied_overlay_archives": [
     "xdm_android_xar01_build_signing_native_provenance_v1.tar.gz",
@@ -4957,5 +4991,16 @@
     "xdm_android_xar04_navigation_session_ownership_v1.tar.gz",
     "xdm_android_xar05_external_intake_admission_v1.tar.gz",
     "xdm_android_xar06_storage_publication_v1.tar.gz"
-  ]
+  ],
+  "xar_roadmap": {
+    "applied_overlays": [
+      "XAR01",
+      "XAR02",
+      "XAR03",
+      "XAR04",
+      "XAR05"
+    ],
+    "current_overlay": "XAR07",
+    "last_completed_overlay": "XAR07"
+  }
 }

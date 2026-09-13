@@ -45,6 +45,7 @@ validators=(
   tools/validate-xar04-navigation-session-ownership.py
   tools/validate-xar05-external-intake-admission.py
   tools/validate-xar06-storage-publication.py
+  tools/validate-xar07-native-http-protocol.py
   tools/validate-gradle-task-graph-optimization.py
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
   tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py

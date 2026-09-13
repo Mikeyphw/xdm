@@ -419,6 +419,15 @@ val verifyXar06StoragePublication = tasks.register<Exec>("verifyXar06StoragePubl
     trackStaticValidation("xar06-storage-publication")
 }
 
+
+val verifyXar07NativeHttpProtocol = tasks.register<Exec>("verifyXar07NativeHttpProtocol") {
+    group = "verification"
+    description = "Verify XAR07 native HTTP redirect, retry, range, cancellation, selective repair, and S07 coverage contracts."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar07-native-http-protocol.py")
+    trackStaticValidation("xar07-native-http-protocol")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -467,7 +476,18 @@ tasks.matching { it.name == "assembleDebug" }.configureEach {
 val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."
-    dependsOn(verifyXar01BuildProvenance, verifyXar02ConcurrencyCas, verifyXar03PersistenceGenerationIntegrity, verifyFfmpeg04FullReleaseSeal, verifyFfmpegRoadmapPostSealHotfix, verifyGradleTaskGraphOptimization)
+    dependsOn(
+        verifyXar01BuildProvenance,
+        verifyXar02ConcurrencyCas,
+        verifyXar03PersistenceGenerationIntegrity,
+        verifyXar04NavigationSessionOwnership,
+        verifyXar05ExternalIntakeAdmission,
+        verifyXar06StoragePublication,
+        verifyXar07NativeHttpProtocol,
+        verifyFfmpeg04FullReleaseSeal,
+        verifyFfmpegRoadmapPostSealHotfix,
+        verifyGradleTaskGraphOptimization,
+    )
     workingDir(rootProject.projectDir)
     // Preserve the historical command line for retained source-contract tests. The environment
     // tells the shell gate that Gradle already executed the FFmpeg/execution DAG exactly once.
