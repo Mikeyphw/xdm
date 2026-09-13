@@ -105,6 +105,13 @@ public partial class ScheduleEditorViewModel : ObservableObject
     [ObservableProperty]
     private BandwidthProfile? bandwidthProfile;
 
+
+    public WeekDays ToSelectedDays()
+    {
+        WeekDays selectedDays = ToSelectedDays();
+        return selectedDays;
+    }
+
     public QueueScheduleDefinition ToDefinition()
     {
         TimeOnly parsedStart = TimeOnly.TryParseExact(
@@ -137,14 +144,7 @@ public partial class ScheduleEditorViewModel : ObservableObject
             countdown,
             string.IsNullOrWhiteSpace(CommandPath) ? null : CommandPath.Trim(),
             arguments);
-        WeekDays selectedDays = WeekDays.None;
-        selectedDays |= MondayEnabled ? WeekDays.Monday : WeekDays.None;
-        selectedDays |= TuesdayEnabled ? WeekDays.Tuesday : WeekDays.None;
-        selectedDays |= WednesdayEnabled ? WeekDays.Wednesday : WeekDays.None;
-        selectedDays |= ThursdayEnabled ? WeekDays.Thursday : WeekDays.None;
-        selectedDays |= FridayEnabled ? WeekDays.Friday : WeekDays.None;
-        selectedDays |= SaturdayEnabled ? WeekDays.Saturday : WeekDays.None;
-        selectedDays |= SundayEnabled ? WeekDays.Sunday : WeekDays.None;
+        WeekDays selectedDays = ToSelectedDays();
         return new QueueScheduleDefinition(
             Id,
             string.IsNullOrWhiteSpace(Name) ? "Schedule" : Name.Trim(),

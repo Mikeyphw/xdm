@@ -13,7 +13,7 @@ public sealed record ScheduleCompletionAction(
         {
             CountdownSeconds = Kind == ScheduleCompletionActionKind.None
                 ? 0
-                : Math.Clamp(CountdownSeconds, 0, 300),
+                : Math.Clamp(CountdownSeconds, 0, 86_400),
             ExecutablePath = string.IsNullOrWhiteSpace(ExecutablePath) ? null : ExecutablePath.Trim(),
             Arguments = Arguments?
                 .Where(static argument => !string.IsNullOrWhiteSpace(argument))

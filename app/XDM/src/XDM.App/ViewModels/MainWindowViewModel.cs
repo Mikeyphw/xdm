@@ -1455,6 +1455,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (Schedules.Count >= 64)
+        {
+            OperationMessage = "XDM supports up to 64 schedules. Remove an existing schedule before adding another.";
+            return;
+        }
+
         string name = string.IsNullOrWhiteSpace(NewScheduleName)
             ? $"Schedule {Schedules.Count + 1}"
             : NewScheduleName.Trim();

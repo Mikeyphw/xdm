@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using XDM.Core.Abstractions;
 
@@ -57,6 +58,21 @@ public sealed class DesktopPlatformService : IPlatformService
             FileName = target,
             UseShellExecute = true
         };
-        using Process? process = Process.Start(startInfo);
+
+        try
+        {
+            using Process? process = Process.Start(startInfo);
+            if (process is null)
+            {
+                throw new InvalidOperationException("The platform shell did not accept the open request.");
+            }
+        }
+        catch (Exception exception) when (exception is Win32Exception
+            or InvalidOperationException
+            or UnauthorizedAccessException
+            or IOException)
+        {
+            throw new InvalidOperationException($"The platform shell could not open the target: {exception.Message}", exception);
+        }
     }
 }

@@ -48,7 +48,7 @@ public sealed class PlatformCompletionActionService : ICompletionActionService
             capabilities.Add(new CompletionActionCapability(
                 kind,
                 supported,
-                supported ? "Supported by this platform." : "No compatible system command was found."));
+                supported ? "Supported by this platform and current session." : _catalog.GetUnsupportedReason(kind)));
         }
 
         return capabilities;
@@ -91,18 +91,33 @@ public sealed class PlatformCompletionActionService : ICompletionActionService
         }
         else
         {
-            return new CompletionActionResult(normalized.Kind, false, "This completion action is not supported on the current platform.");
+            return new CompletionActionResult(normalized.Kind, false, _catalog.GetUnsupportedReason(normalized.Kind));
         }
 
-        PlatformCommandResult result = await _runner
-            .RunAsync(executable, arguments, CommandTimeout, cancellationToken)
-            .ConfigureAwait(false);
-        bool succeeded = !result.TimedOut && result.ExitCode == 0;
-        string message = result.TimedOut
-            ? "The completion command timed out."
-            : succeeded
-                ? "The completion command finished successfully."
-                : $"The completion command exited with code {result.ExitCode}.";
+        PlatformCommandResult result;
+        try
+        {
+            result = await _runner
+                .RunAsync(executable, arguments, CommandTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is FileNotFoundException
+            or InvalidOperationException
+            or System.ComponentModel.Win32Exception
+            or UnauthorizedAccessException
+            or IOException)
+        {
+            return new CompletionActionResult(normalized.Kind, false, $"The completion command could not be started: {exception.Message}");
+        }
+
+        bool succeeded = !result.TimedOut && !result.KillFailed && result.ExitCode == 0;
+        string message = result.KillFailed
+            ? "The completion command timed out and XDM could not confirm process-tree termination."
+            : result.TimedOut
+                ? "The completion command timed out."
+                : succeeded
+                    ? "The completion command finished successfully."
+                    : $"The completion command exited with code {result.ExitCode}.";
         return new CompletionActionResult(normalized.Kind, succeeded, message);
     }
 }

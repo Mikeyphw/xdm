@@ -26,33 +26,14 @@ public sealed class JsonSchedulerStateStore : ISchedulerStateStore
 
     public async Task<SchedulerRuntimeState> LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(_statePath))
+        SchedulerRuntimeState? primary = await TryLoadAsync(_statePath, cancellationToken).ConfigureAwait(false);
+        if (primary is not null)
         {
-            return SchedulerRuntimeState.Empty;
+            return primary.Normalize();
         }
 
-        try
-        {
-            await using FileStream stream = new(
-                _statePath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                16 * 1024,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
-            SchedulerRuntimeState? state = await JsonSerializer
-                .DeserializeAsync<SchedulerRuntimeState>(stream, SerializerOptions, cancellationToken)
-                .ConfigureAwait(false);
-            return state ?? SchedulerRuntimeState.Empty;
-        }
-        catch (JsonException)
-        {
-            return SchedulerRuntimeState.Empty;
-        }
-        catch (IOException)
-        {
-            return SchedulerRuntimeState.Empty;
-        }
+        SchedulerRuntimeState? backup = await TryLoadAsync(_statePath + ".bak", cancellationToken).ConfigureAwait(false);
+        return (backup ?? SchedulerRuntimeState.Empty).Normalize();
     }
 
     public Task SaveAsync(SchedulerRuntimeState state, CancellationToken cancellationToken = default)
@@ -62,11 +43,48 @@ public sealed class JsonSchedulerStateStore : ISchedulerStateStore
             _statePath,
             stream => JsonSerializer.SerializeAsync(
                 stream,
-                state,
+                state.Normalize(),
                 SerializerOptions,
                 cancellationToken),
             createBackup: true,
             cancellationToken);
+    }
+
+    private static async Task<SchedulerRuntimeState?> TryLoadAsync(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            await using FileStream stream = new(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                16 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            return await JsonSerializer
+                .DeserializeAsync<SchedulerRuntimeState>(stream, SerializerOptions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (JsonException)
+        {
+            AtomicFile.Quarantine(path, "scheduler-json");
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private static string GetDefaultStatePath()

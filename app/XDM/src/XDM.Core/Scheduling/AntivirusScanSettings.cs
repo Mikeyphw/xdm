@@ -17,6 +17,6 @@ public sealed record AntivirusScanSettings(
                 .Select(static argument => argument.Trim())
                 .Take(64)
                 .ToArray() ?? [],
-            TimeoutSeconds = Math.Clamp(TimeoutSeconds, 5, 3600)
+            TimeoutSeconds = Math.Clamp(TimeoutSeconds, 1, 86_400)
         };
 }

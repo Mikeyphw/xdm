@@ -1,10 +1,13 @@
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace XDM.Platform;
 
 public sealed class PlatformCommandRunner : IPlatformCommandRunner
 {
     private const int MaximumCapturedCharacters = 4096;
+    private static readonly TimeSpan KillWaitTimeout = TimeSpan.FromSeconds(5);
 
     public async Task<PlatformCommandResult> RunAsync(
         string executablePath,
@@ -34,19 +37,31 @@ public sealed class PlatformCommandRunner : IPlatformCommandRunner
             startInfo.ArgumentList.Add(argument);
         }
 
-        using Process process = new() { StartInfo = startInfo };
-        if (!process.Start())
+        BoundedCapture output = new(MaximumCapturedCharacters);
+        BoundedCapture error = new(MaximumCapturedCharacters);
+        using Process process = new() { StartInfo = startInfo, EnableRaisingEvents = true };
+        process.OutputDataReceived += (_, eventArgs) => output.AppendLine(eventArgs.Data);
+        process.ErrorDataReceived += (_, eventArgs) => error.AppendLine(eventArgs.Data);
+        try
         {
-            throw new InvalidOperationException("The configured process could not be started.");
+            if (!process.Start())
+            {
+                return new PlatformCommandResult(-1, string.Empty, "The configured process could not be started.", false);
+            }
+        }
+        catch (Exception exception) when (exception is Win32Exception or InvalidOperationException or UnauthorizedAccessException)
+        {
+            return new PlatformCommandResult(-1, string.Empty, exception.Message, false);
         }
 
-        Task<string> outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        Task<string> errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         using CancellationTokenSource timeoutCancellation = new(timeout);
         using CancellationTokenSource linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             timeoutCancellation.Token);
         bool timedOut = false;
+        bool killFailed = false;
         try
         {
             await process.WaitForExitAsync(linkedCancellation.Token).ConfigureAwait(false);
@@ -54,21 +69,44 @@ public sealed class PlatformCommandRunner : IPlatformCommandRunner
         catch (OperationCanceledException) when (timeoutCancellation.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
             timedOut = true;
-            TryKill(process);
-            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            killFailed = !TryKill(process);
+            if (!killFailed)
+            {
+                using CancellationTokenSource killWait = new(KillWaitTimeout);
+                try
+                {
+                    await process.WaitForExitAsync(killWait.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    killFailed = true;
+                }
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            TryKill(process);
+            _ = TryKill(process);
             throw;
         }
 
-        string output = Limit(await outputTask.ConfigureAwait(false));
-        string error = Limit(await errorTask.ConfigureAwait(false));
-        return new PlatformCommandResult(process.ExitCode, output, error, timedOut);
+        if (process.HasExited)
+        {
+            process.WaitForExit();
+        }
+
+        string stderr = error.ToString();
+        if (timedOut && killFailed)
+        {
+            stderr = string.IsNullOrWhiteSpace(stderr)
+                ? "The command timed out and XDM could not confirm process-tree termination."
+                : stderr + Environment.NewLine + "The command timed out and XDM could not confirm process-tree termination.";
+        }
+
+        int exitCode = process.HasExited ? process.ExitCode : -1;
+        return new PlatformCommandResult(exitCode, output.ToString(), stderr, timedOut, killFailed);
     }
 
-    private static void TryKill(Process process)
+    private static bool TryKill(Process process)
     {
         try
         {
@@ -76,17 +114,64 @@ public sealed class PlatformCommandRunner : IPlatformCommandRunner
             {
                 process.Kill(entireProcessTree: true);
             }
+
+            return true;
         }
         catch (InvalidOperationException)
         {
+            return process.HasExited;
         }
-        catch (System.ComponentModel.Win32Exception)
+        catch (Win32Exception)
         {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
         }
     }
 
-    private static string Limit(string value)
-        => value.Length <= MaximumCapturedCharacters
-            ? value
-            : value[..MaximumCapturedCharacters];
+    private sealed class BoundedCapture(int maximumCharacters)
+    {
+        private readonly object _sync = new();
+        private readonly StringBuilder _builder = new(Math.Min(maximumCharacters, 1024));
+        private bool _truncated;
+
+        public void AppendLine(string? value)
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            lock (_sync)
+            {
+                if (_builder.Length >= maximumCharacters)
+                {
+                    _truncated = true;
+                    return;
+                }
+
+                int remaining = maximumCharacters - _builder.Length;
+                string line = value.Length + Environment.NewLine.Length <= remaining
+                    ? value + Environment.NewLine
+                    : value[..Math.Max(0, remaining)];
+                _builder.Append(line);
+                if (line.Length < value.Length + Environment.NewLine.Length)
+                {
+                    _truncated = true;
+                }
+            }
+        }
+
+        public override string ToString()
+        {
+            lock (_sync)
+            {
+                return _truncated
+                    ? _builder.ToString() + Environment.NewLine + "[output truncated]"
+                    : _builder.ToString();
+            }
+        }
+    }
 }

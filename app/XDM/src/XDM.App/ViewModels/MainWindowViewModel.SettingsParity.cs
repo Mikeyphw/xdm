@@ -3,6 +3,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.Core.Settings;
+using XDM.Core.Scheduling;
 using XDM.Core.Downloads;
 
 namespace XDM.App.ViewModels;
@@ -281,6 +282,64 @@ public partial class MainWindowViewModel
             && string.IsNullOrWhiteSpace(Aria2ExecutablePath))
         {
             message = _localization["settings_validation_aria2_executable"];
+            return false;
+        }
+        if (Schedules.Count > 64)
+        {
+            message = "XDM supports up to 64 schedules. Remove extra schedules before saving.";
+            return false;
+        }
+
+        foreach (ScheduleEditorViewModel schedule in Schedules)
+        {
+            if (!TimeOnly.TryParseExact(
+                    schedule.StartTime,
+                    "HH:mm",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out _ )
+                || !TimeOnly.TryParseExact(
+                    schedule.EndTime,
+                    "HH:mm",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out _))
+            {
+                message = $"Schedule '{schedule.Name}' has an invalid time. Use strict HH:mm format.";
+                return false;
+            }
+
+            if (schedule.ToSelectedDays() == WeekDays.None)
+            {
+                message = $"Schedule '{schedule.Name}' must select at least one weekday.";
+                return false;
+            }
+
+            int countdown = ParseInteger(schedule.CountdownSeconds, -1);
+            if (countdown is < 0 or > 86400)
+            {
+                message = $"Schedule '{schedule.Name}' countdown must be between 0 and 86400 seconds.";
+                return false;
+            }
+
+            if (schedule.CompletionAction == ScheduleCompletionActionKind.RunCommand
+                && string.IsNullOrWhiteSpace(schedule.CommandPath))
+            {
+                message = $"Schedule '{schedule.Name}' needs an absolute executable path for Run command.";
+                return false;
+            }
+        }
+
+        int antivirusTimeout = ParseInteger(AntivirusTimeoutSeconds, -1);
+        if (antivirusTimeout is < 1 or > 86400)
+        {
+            message = "Antivirus timeout must be between 1 and 86400 seconds.";
+            return false;
+        }
+
+        if (AntivirusEnabled && string.IsNullOrWhiteSpace(AntivirusExecutablePath))
+        {
+            message = "Antivirus scanning requires an absolute executable path.";
             return false;
         }
 

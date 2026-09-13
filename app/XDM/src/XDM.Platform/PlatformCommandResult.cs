@@ -4,4 +4,5 @@ public sealed record PlatformCommandResult(
     int ExitCode,
     string StandardOutput,
     string StandardError,
-    bool TimedOut);
+    bool TimedOut,
+    bool KillFailed = false);

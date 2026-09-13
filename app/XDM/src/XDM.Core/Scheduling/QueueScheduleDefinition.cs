@@ -13,13 +13,17 @@ public sealed record QueueScheduleDefinition(
     string? BandwidthProfileId = null)
 {
     public QueueScheduleDefinition Normalize(string fallbackQueueId)
-        => this with
+    {
+        WeekDays normalizedDays = Days & WeekDays.EveryDay;
+        return this with
         {
             Id = string.IsNullOrWhiteSpace(Id) ? Guid.NewGuid().ToString("N") : Id.Trim(),
             Name = string.IsNullOrWhiteSpace(Name) ? "Schedule" : Name.Trim(),
+            Enabled = Enabled && normalizedDays != WeekDays.None,
             QueueId = string.IsNullOrWhiteSpace(QueueId) ? fallbackQueueId : QueueId.Trim(),
-            Days = Days == WeekDays.None ? WeekDays.EveryDay : Days,
+            Days = normalizedDays,
             CompletionAction = (CompletionAction ?? ScheduleCompletionAction.None).Normalize(),
             BandwidthProfileId = string.IsNullOrWhiteSpace(BandwidthProfileId) ? null : BandwidthProfileId.Trim()
         };
+    }
 }

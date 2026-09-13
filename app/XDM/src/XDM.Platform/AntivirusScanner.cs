@@ -56,19 +56,38 @@ public sealed class AntivirusScanner(IPlatformCommandRunner runner) : IAntivirus
             arguments.Add(filePath);
         }
 
-        PlatformCommandResult result = await runner
-            .RunAsync(
-                normalized.ExecutablePath,
-                arguments,
-                TimeSpan.FromSeconds(normalized.TimeoutSeconds),
-                cancellationToken)
-            .ConfigureAwait(false);
-        bool succeeded = !result.TimedOut && result.ExitCode == 0;
-        string message = result.TimedOut
-            ? "Antivirus scan timed out."
-            : succeeded
-                ? "Antivirus scan completed successfully."
-                : $"Antivirus scan exited with code {result.ExitCode}.";
+        PlatformCommandResult result;
+        try
+        {
+            result = await runner
+                .RunAsync(
+                    normalized.ExecutablePath,
+                    arguments,
+                    TimeSpan.FromSeconds(normalized.TimeoutSeconds),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is FileNotFoundException
+            or InvalidOperationException
+            or System.ComponentModel.Win32Exception
+            or UnauthorizedAccessException
+            or IOException)
+        {
+            return new AntivirusScanResult(filePath, false, null, $"Antivirus scan could not be started: {exception.Message}");
+        }
+
+        bool succeeded = !result.TimedOut && !result.KillFailed && result.ExitCode == 0;
+        string message = result.KillFailed
+            ? "Antivirus scan timed out and XDM could not confirm process-tree termination."
+            : result.TimedOut
+                ? "Antivirus scan timed out."
+                : succeeded
+                    ? "Antivirus scan completed successfully."
+                    : $"Antivirus scan exited with code {result.ExitCode}.";
         return new AntivirusScanResult(filePath, succeeded, result.ExitCode, message);
     }
 }

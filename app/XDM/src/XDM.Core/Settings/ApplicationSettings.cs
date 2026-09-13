@@ -117,7 +117,6 @@ public sealed record ApplicationSettings(
                         : null
             })
             .DistinctBy(static schedule => schedule.Id, StringComparer.Ordinal)
-            .Take(64)
             .ToArray() ?? [];
         if (schedules.Length == 0)
         {
