@@ -110,6 +110,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                 Migrations.Migration21To22,
                 Migrations.Migration22To23,
                 Migrations.Migration23To24,
+                Migrations.Migration24To25,
             )
             .build()
         val repository = DownloadRepository(database)
@@ -234,7 +235,6 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             embeddedFfmpegMediaManager.recoverInterruptedJobs()
         }
-        postProcessingAutomationManager.startAutomaticProcessing()
         queueConditionMonitor = QueueConditionMonitor(this) {
             QueueIntelligenceWorker.enqueueImmediate(this)
         }
@@ -243,6 +243,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             // Each phase is isolated so one failure cannot silently suppress later reconciliation.
             // Admission stays fail-closed unless every critical startup phase succeeds.
             val migration = runCatching { sensitivePersistenceMigrator.migrateIfNeeded() }
+            if (migration.isSuccess) {
+                postProcessingAutomationManager.startAutomaticProcessing()
+            }
             val recovery = transferRuntime.recoverForStartup()
             // Native HLS waits for canonical publication-journal recovery so a destination that
             // committed just before process death is adopted instead of remuxed/published twice.

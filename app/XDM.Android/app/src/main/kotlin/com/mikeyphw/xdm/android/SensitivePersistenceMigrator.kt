@@ -26,7 +26,9 @@ internal class SensitivePersistenceMigrator(
     private val marker = File(appContext.noBackupFilesDir, "sensitive-persistence-v2.complete")
 
     suspend fun migrateIfNeeded() {
-        if (marker.isFile) return
+        // XAR03: the marker is an optimization only. A failed, restored, or newly imported
+        // legacy payload must not be permanently skipped just because an old marker exists.
+        if (marker.isFile && !hasSensitivePersistenceToMigrate()) return
 
         repository.downloads.first().forEach { download ->
             if (needsRedaction(download.sourceUrl)) {
@@ -98,6 +100,19 @@ internal class SensitivePersistenceMigrator(
         repository.clipboardInbox.first().forEach { item -> repository.saveClipboardItem(item) }
         scrubJsonSidecars(listOf(appContext.filesDir, appContext.cacheDir))
         writeMarkerAtomically()
+    }
+
+
+    private suspend fun hasSensitivePersistenceToMigrate(): Boolean {
+        if (repository.downloads.first().any { needsRedaction(it.sourceUrl) }) return true
+        if (repository.mediaCaptures.first().any { needsRedaction(it.sourceUrl) || needsRedaction(it.pageUrl) }) return true
+        if (repository.mediaVariants.first().any { needsRedaction(it.url) }) return true
+        if (repository.automationCommands.first().any { needsRedaction(it.url) || needsRedaction(it.pageUrl) || it.privateNetworkApproved || it.cleartextCredentialsApproved }) return true
+        return listOf(appContext.filesDir, appContext.cacheDir).filter(File::exists).any { root ->
+            root.walkTopDown()
+                .onEnter { directory -> directory.name != "secure-request-envelopes-v1" }
+                .any { file -> file.isFile && file.extension.equals("json", true) && file.length() <= MAX_JSON_BYTES && runCatching { containsSensitiveUrlMaterial(file.readText(Charsets.UTF_8)) }.getOrDefault(false) }
+        }
     }
 
     private suspend fun captureOrVariantGeneration(captureId: String): Long =

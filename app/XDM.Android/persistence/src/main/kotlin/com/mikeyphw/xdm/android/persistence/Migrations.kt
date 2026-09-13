@@ -851,4 +851,29 @@ object Migrations {
         }
     }
 
+
+
+    /** XAR03: attempt-owned durable evidence and Room invariant repair. */
+    val Migration24To25 = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF EXISTS index_checksum_expectations_downloadId_algorithm")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_checksum_expectations_downloadId_attemptGeneration_algorithm ON checksum_expectations(downloadId, attemptGeneration, algorithm)")
+            db.execSQL("DROP INDEX IF EXISTS index_checksum_results_downloadId_algorithm")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_checksum_results_downloadId_attemptGeneration_algorithm ON checksum_results(downloadId, attemptGeneration, algorithm)")
+            db.execSQL("DROP INDEX IF EXISTS index_trusted_block_manifests_downloadId")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_trusted_block_manifests_downloadId ON trusted_block_manifests(downloadId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_trusted_block_manifests_downloadId_attemptGeneration ON trusted_block_manifests(downloadId, attemptGeneration)")
+            db.execSQL("DROP INDEX IF EXISTS index_finalization_journals_downloadId")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finalization_journals_downloadId ON finalization_journals(downloadId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_finalization_journals_downloadId_attemptGeneration ON finalization_journals(downloadId, attemptGeneration)")
+            db.execSQL("ALTER TABLE recovery_records ADD COLUMN artifactIdentity TEXT NOT NULL DEFAULT ''")
+            db.execSQL("UPDATE recovery_records SET artifactIdentity = CASE WHEN length(trim(artifactPath)) > 0 THEN artifactPath ELSE 'download:' || COALESCE(downloadId, id) || ':attempt:' || attemptGeneration END WHERE artifactIdentity = ''")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_recovery_records_artifactIdentity ON recovery_records(artifactIdentity)")
+            db.execSQL("DELETE FROM recovery_records WHERE rowid NOT IN (SELECT MIN(rowid) FROM recovery_records GROUP BY downloadId, attemptGeneration, artifactIdentity, classification)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_recovery_records_downloadId_attemptGeneration_artifactIdentity_classification ON recovery_records(downloadId, attemptGeneration, artifactIdentity, classification)")
+            db.execSQL("ALTER TABLE native_hls_jobs ADD COLUMN rowRevision INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("UPDATE native_hls_jobs SET rowRevision = updatedAtEpochMs WHERE rowRevision = 0")
+        }
+    }
+
 }

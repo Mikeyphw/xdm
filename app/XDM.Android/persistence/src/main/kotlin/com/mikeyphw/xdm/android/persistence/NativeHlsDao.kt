@@ -37,12 +37,34 @@ interface NativeHlsDao {
     @Upsert
     suspend fun upsertParts(parts: List<NativeHlsPartEntity>)
 
-    @Query("UPDATE native_hls_jobs SET stage = :stage, finalizationState = :finalizationState, progressPercent = :progressPercent, message = :message, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :jobId")
+    @Query("UPDATE native_hls_jobs SET stage = :stage, finalizationState = :finalizationState, progressPercent = :progressPercent, message = :message, updatedAtEpochMs = :updatedAtEpochMs, rowRevision = :updatedAtEpochMs WHERE id = :jobId")
     suspend fun updateStage(jobId: String, stage: String, finalizationState: String, progressPercent: Int, message: String, updatedAtEpochMs: Long): Int
+
+    @Query("""UPDATE native_hls_jobs
+        SET stage = :stage,
+            finalizationState = :finalizationState,
+            progressPercent = :progressPercent,
+            message = :message,
+            updatedAtEpochMs = :updatedAtEpochMs,
+            rowRevision = :updatedAtEpochMs
+        WHERE id = :jobId
+          AND attemptGeneration = :expectedAttemptGeneration
+          AND rowRevision = :observedRowRevision
+          AND stage NOT IN ('Completed', 'Failed', 'Cancelled')""")
+    suspend fun updateStageOwned(
+        jobId: String,
+        expectedAttemptGeneration: Long,
+        observedRowRevision: Long,
+        stage: String,
+        finalizationState: String,
+        progressPercent: Int,
+        message: String,
+        updatedAtEpochMs: Long,
+    ): Int
 
     @Query("UPDATE native_hls_parts SET state = :state, bytesReceived = :bytesReceived, expectedBytes = :expectedBytes, sha256Hex = :sha256Hex, retryCount = :retryCount, lastError = :lastError, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :partId")
     suspend fun updatePart(partId: String, state: String, bytesReceived: Long, expectedBytes: Long?, sha256Hex: String?, retryCount: Int, lastError: String?, updatedAtEpochMs: Long): Int
 
-    @Query("DELETE FROM native_hls_jobs WHERE stage IN ('Completed','Cancelled') AND updatedAtEpochMs < :olderThanEpochMs")
+    @Query("DELETE FROM native_hls_jobs WHERE stage IN ('Completed','Failed','Cancelled') AND updatedAtEpochMs < :olderThanEpochMs")
     suspend fun pruneTerminalJobs(olderThanEpochMs: Long): Int
 }

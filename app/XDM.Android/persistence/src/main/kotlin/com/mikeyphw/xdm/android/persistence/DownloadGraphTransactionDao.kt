@@ -405,7 +405,9 @@ interface DownloadGraphTransactionDao {
             sanitizedHeaders = :sanitizedHeaders,
             rejectionReason = :rejectionReason,
             metadataJson = :metadataJson
-        WHERE id = :id""")
+        WHERE id = :id
+          AND updatedAtEpochMs <= :updatedAtEpochMs
+          AND (status NOT IN ('Applied', 'Failed', 'Rejected', 'Duplicate') OR status = :status)""")
     suspend fun updateAutomationCommandFields(
         id: String,
         url: String?,

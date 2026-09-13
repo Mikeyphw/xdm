@@ -2,7 +2,6 @@ package com.mikeyphw.xdm.android.persistence
 
 import androidx.room.Dao
 import androidx.room.Query
-import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,6 +21,7 @@ interface AutomationCommandDao {
         ORDER BY createdAtEpochMs ASC LIMIT :limit""")
     suspend fun findPending(limit: Int): List<AutomationCommandEntity>
 
-    @Upsert
-    suspend fun upsert(entity: AutomationCommandEntity)
+    // XAR03: direct blind upserts are intentionally absent. Mutations must flow through
+    // DownloadGraphTransactionDao.upsertAutomationCommandStatefully/transitionAutomationCommand
+    // so a replayed automation command cannot regress a newer durable status.
 }

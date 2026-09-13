@@ -167,6 +167,12 @@ interface RecoveryDao {
 
     @Query("DELETE FROM recovery_records WHERE downloadId = :downloadId")
     suspend fun deleteByDownload(downloadId: String)
+
+    @Query("DELETE FROM recovery_records WHERE downloadId = :downloadId AND attemptGeneration = :attemptGeneration AND classification = :classification")
+    suspend fun deleteByDownloadAttemptClassification(downloadId: String, attemptGeneration: Long, classification: String): Int
+
+    @Query("SELECT * FROM recovery_records WHERE downloadId = :downloadId AND attemptGeneration = :attemptGeneration AND artifactIdentity = :artifactIdentity AND classification = :classification LIMIT 1")
+    suspend fun findAttemptRecord(downloadId: String, attemptGeneration: Long, artifactIdentity: String, classification: String): RecoveryRecordEntity?
 }
 
 @Dao

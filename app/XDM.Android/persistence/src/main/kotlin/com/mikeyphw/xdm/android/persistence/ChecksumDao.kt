@@ -10,6 +10,9 @@ interface ChecksumDao {
     @Query("SELECT * FROM checksum_expectations WHERE downloadId = :downloadId ORDER BY algorithm")
     suspend fun expectations(downloadId: String): List<ChecksumExpectationEntity>
 
+    @Query("SELECT * FROM checksum_expectations WHERE downloadId = :downloadId AND attemptGeneration = :attemptGeneration ORDER BY algorithm")
+    suspend fun expectationsForAttempt(downloadId: String, attemptGeneration: Long): List<ChecksumExpectationEntity>
+
     @Query("SELECT * FROM checksum_expectations ORDER BY downloadId, algorithm")
     fun observeExpectations(): Flow<List<ChecksumExpectationEntity>>
 
@@ -18,6 +21,9 @@ interface ChecksumDao {
 
     @Query("SELECT * FROM checksum_results WHERE downloadId = :downloadId ORDER BY verifiedAtEpochMs DESC")
     suspend fun results(downloadId: String): List<ChecksumResultEntity>
+
+    @Query("SELECT * FROM checksum_results WHERE downloadId = :downloadId AND attemptGeneration = :attemptGeneration ORDER BY verifiedAtEpochMs DESC")
+    suspend fun resultsForAttempt(downloadId: String, attemptGeneration: Long): List<ChecksumResultEntity>
 
     @Query("SELECT * FROM checksum_results ORDER BY verifiedAtEpochMs DESC")
     fun observeResults(): Flow<List<ChecksumResultEntity>>
@@ -37,6 +43,9 @@ interface ChecksumDao {
     @Upsert
     suspend fun upsertTrustedManifest(entity: TrustedBlockManifestEntity)
 
-    @Query("SELECT * FROM trusted_block_manifests WHERE downloadId = :downloadId LIMIT 1")
+    @Query("SELECT * FROM trusted_block_manifests WHERE downloadId = :downloadId ORDER BY attemptGeneration DESC LIMIT 1")
     suspend fun trustedManifest(downloadId: String): TrustedBlockManifestEntity?
+
+    @Query("SELECT * FROM trusted_block_manifests WHERE downloadId = :downloadId AND attemptGeneration = :attemptGeneration LIMIT 1")
+    suspend fun trustedManifestForAttempt(downloadId: String, attemptGeneration: Long): TrustedBlockManifestEntity?
 }

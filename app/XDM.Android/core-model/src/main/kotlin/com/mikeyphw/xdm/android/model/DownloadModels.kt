@@ -494,6 +494,8 @@ data class RecoveryRecord(
     val recommendedAction: RecoveryAction = RecoveryAction.Validate,
     val safeToResume: Boolean = false,
     val attemptGeneration: Long = 1L,
+    /** Attempt-local artifact identity; recovery records must never be keyed by download alone. */
+    val artifactIdentity: String = artifactPath,
 )
 
 data class FinalizationJournal(

@@ -94,8 +94,25 @@ interface MediaCaptureDao {
     @Query("UPDATE media_outputs SET state = 'Hidden', updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
     suspend fun hideOutput(id: String, updatedAtEpochMs: Long): Int
 
-    @Query("UPDATE media_captures SET selectedVariantId = :variantId, selectedVariantUrl = :variantUrl, resolutionStatus = :resolutionStatus, lastResolvedAtEpochMs = :updatedAtEpochMs, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :captureId")
+    @Query("""UPDATE media_captures
+        SET selectedVariantId = :variantId,
+            selectedVariantUrl = :variantUrl,
+            resolutionStatus = :resolutionStatus,
+            lastResolvedAtEpochMs = :updatedAtEpochMs,
+            updatedAtEpochMs = :updatedAtEpochMs
+        WHERE id = :captureId
+          AND EXISTS(SELECT 1 FROM media_variants WHERE id = :variantId AND captureId = :captureId)""")
     suspend fun selectVariant(captureId: String, variantId: String, variantUrl: String, resolutionStatus: String, updatedAtEpochMs: Long)
+
+    @Query("""UPDATE media_captures
+        SET selectedVariantId = :variantId,
+            selectedVariantUrl = :variantUrl,
+            resolutionStatus = :resolutionStatus,
+            lastResolvedAtEpochMs = :updatedAtEpochMs,
+            updatedAtEpochMs = :updatedAtEpochMs
+        WHERE id = :captureId
+          AND (:variantId IS NULL OR EXISTS(SELECT 1 FROM media_variants WHERE id = :variantId AND captureId = :captureId))""")
+    suspend fun selectVariantIfVariantExists(captureId: String, variantId: String?, variantUrl: String?, resolutionStatus: String, updatedAtEpochMs: Long): Int
 
     @Query("UPDATE media_captures SET status = :status, downloadId = :downloadId, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
     suspend fun markDownloadCreated(id: String, status: String, downloadId: String, updatedAtEpochMs: Long): Int

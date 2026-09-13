@@ -48,10 +48,10 @@ data class TransferSegmentEntity(@PrimaryKey val id: String, val downloadId: Str
 @Entity(tableName = "checkpoints", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId", unique = true)])
 data class CheckpointEntity(@PrimaryKey val id: String, val downloadId: String, val checkpointJson: String, val persistedAtEpochMs: Long, @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L)
 
-@Entity(tableName = "checksum_expectations", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
+@Entity(tableName = "checksum_expectations", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "attemptGeneration", "algorithm"], unique = true)])
 data class ChecksumExpectationEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val expectedHex: String, val source: String, @ColumnInfo(defaultValue = "0") val createdAtEpochMs: Long = 0L, @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L)
 
-@Entity(tableName = "checksum_results", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "algorithm"], unique = true)])
+@Entity(tableName = "checksum_results", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "attemptGeneration", "algorithm"], unique = true)])
 data class ChecksumResultEntity(@PrimaryKey val id: String, val downloadId: String, val algorithm: String, val calculatedHex: String, val matchesExpectation: Boolean?, val verifiedAtEpochMs: Long, @ColumnInfo(defaultValue = "0") val bytesVerified: Long, val expectedHex: String?, @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L)
 
 @Entity(tableName = "verification_records", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index("status"), Index("updatedAtEpochMs")])
@@ -68,7 +68,7 @@ data class VerificationRecordEntity(
     @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
 )
 
-@Entity(tableName = "trusted_block_manifests", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId", unique = true), Index("createdAtEpochMs")])
+@Entity(tableName = "trusted_block_manifests", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "attemptGeneration"], unique = true), Index("createdAtEpochMs")])
 data class TrustedBlockManifestEntity(
     @PrimaryKey val id: String,
     val downloadId: String,
@@ -106,7 +106,16 @@ data class BackendTaskEntity(
     val lastSynchronizedAtEpochMs: Long,
 )
 
-@Entity(tableName = "recovery_records", indices = [Index("downloadId"), Index("classification"), Index("recommendedAction")])
+@Entity(
+    tableName = "recovery_records",
+    indices = [
+        Index("downloadId"),
+        Index("classification"),
+        Index("recommendedAction"),
+        Index("artifactIdentity"),
+        Index(value = ["downloadId", "attemptGeneration", "artifactIdentity", "classification"], unique = true),
+    ],
+)
 data class RecoveryRecordEntity(
     @PrimaryKey val id: String,
     val downloadId: String?,
@@ -117,9 +126,10 @@ data class RecoveryRecordEntity(
     @ColumnInfo(defaultValue = "'Validate'") val recommendedAction: String,
     @ColumnInfo(defaultValue = "0") val safeToResume: Boolean,
     @ColumnInfo(defaultValue = "1") val attemptGeneration: Long = 1L,
+    @ColumnInfo(defaultValue = "''") val artifactIdentity: String = "",
 )
 
-@Entity(tableName = "finalization_journals", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId", unique = true), Index("stage"), Index("updatedAtEpochMs")])
+@Entity(tableName = "finalization_journals", foreignKeys = [ForeignKey(entity = DownloadEntity::class, parentColumns = ["id"], childColumns = ["downloadId"], onDelete = ForeignKey.CASCADE)], indices = [Index("downloadId"), Index(value = ["downloadId", "attemptGeneration"], unique = true), Index("stage"), Index("updatedAtEpochMs")])
 data class FinalizationJournalEntity(
     @PrimaryKey val id: String,
     val downloadId: String,
@@ -578,6 +588,8 @@ data class NativeHlsJobEntity(
     val message: String,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    /** Monotonic DB revision for Native-HLS durable stale-writer protection. */
+    @ColumnInfo(defaultValue = "0") val rowRevision: Long = 0L,
 )
 
 @Entity(

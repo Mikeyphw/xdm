@@ -48,6 +48,7 @@ import com.mikeyphw.xdm.android.model.DestinationHealthStatus
 import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationType
 import com.mikeyphw.xdm.android.model.QueueDefinition
+import com.mikeyphw.xdm.android.model.RecoveryClassification
 import com.mikeyphw.xdm.android.model.RecoveryRecord
 import com.mikeyphw.xdm.android.model.ScheduleRule
 import com.mikeyphw.xdm.android.model.SavedSearch
@@ -248,18 +249,25 @@ class DownloadRepository(private val database: AppDatabase) {
             updated.queueId, updated.name, updated.enabled, updated.constraintsJson,
         ) == 1
     suspend fun deleteSchedule(id: String) = database.scheduleDao().delete(id)
-    suspend fun saveRecovery(records: List<RecoveryRecord>) = database.recoveryDao().upsertAll(records.map { it.toEntity() })
-    suspend fun saveRecovery(record: RecoveryRecord) = database.recoveryDao().upsert(record.toEntity())
+    suspend fun saveRecovery(records: List<RecoveryRecord>) = database.recoveryDao().upsertAll(records.map { it.normalizedEvidenceIdentity().toEntity() })
+    suspend fun saveRecovery(record: RecoveryRecord) = database.recoveryDao().upsert(record.normalizedEvidenceIdentity().toEntity())
     suspend fun deleteRecovery(id: String) = database.recoveryDao().delete(id)
     suspend fun deleteRecoveryForDownload(downloadId: String) = database.recoveryDao().deleteByDownload(downloadId)
+    suspend fun deleteRecoveryForAttempt(downloadId: String, attemptGeneration: Long, classification: RecoveryClassification): Int =
+        database.recoveryDao().deleteByDownloadAttemptClassification(downloadId, attemptGeneration, classification.name)
     suspend fun saveFinalizationJournal(journal: FinalizationJournal) = database.finalizationDao().upsert(journal.toEntity())
     suspend fun finalizationForDownload(downloadId: String): FinalizationJournal? = database.finalizationDao().findByDownload(downloadId)?.toModel()
+    suspend fun finalizationForDownloadAttempt(downloadId: String, attemptGeneration: Long): FinalizationJournal? = database.finalizationDao().findByDownloadAttempt(downloadId, attemptGeneration)?.toModel()
     suspend fun deleteFinalizationForDownload(downloadId: String) = database.finalizationDao().deleteByDownload(downloadId)
+    suspend fun deleteFinalizationForDownloadAttempt(downloadId: String, attemptGeneration: Long): Int = database.finalizationDao().deleteByDownloadAttempt(downloadId, attemptGeneration)
     suspend fun saveChecksumExpectation(expectation: ChecksumExpectation) = database.checksumDao().upsertExpectation(expectation.toEntity())
     suspend fun checksumExpectations(downloadId: String): List<ChecksumExpectation> = database.checksumDao().expectations(downloadId).map(ChecksumExpectationEntity::toModel)
+    suspend fun checksumExpectationsForAttempt(downloadId: String, attemptGeneration: Long): List<ChecksumExpectation> = database.checksumDao().expectationsForAttempt(downloadId, attemptGeneration).map(ChecksumExpectationEntity::toModel)
     suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
+    suspend fun checksumResultsForAttempt(downloadId: String, attemptGeneration: Long): List<ChecksumResult> = database.checksumDao().resultsForAttempt(downloadId, attemptGeneration).map(ChecksumResultEntity::toModel)
     suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
     suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
+    suspend fun trustedManifestForAttempt(downloadId: String, attemptGeneration: Long): TrustedBlockManifest? = database.checksumDao().trustedManifestForAttempt(downloadId, attemptGeneration)?.toModel()
     suspend fun saveMediaCapture(record: MediaCaptureRecord): Boolean = database.withTransaction {
         val current = database.mediaCaptureDao().findById(record.id)
         if (current != null && current.updatedAtEpochMs != record.rowRevision) return@withTransaction false

@@ -41,7 +41,7 @@ import androidx.room.RoomDatabase
         PostProcessingJobEntity::class,
         PostProcessingClaimEntity::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

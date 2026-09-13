@@ -8,9 +8,9 @@ import com.mikeyphw.xdm.android.transfer.RecoveryWorkflowStore
 class RoomRecoveryWorkflowStore(private val database: AppDatabase) : RecoveryWorkflowStore {
     private val dao get() = database.recoveryDao()
 
-    override suspend fun saveRecovery(record: RecoveryRecord) = dao.upsert(record.toEntity())
+    override suspend fun saveRecovery(record: RecoveryRecord) = dao.upsert(record.normalizedEvidenceIdentity().toEntity())
 
-    override suspend fun saveRecovery(records: List<RecoveryRecord>) = dao.upsertAll(records.map(RecoveryRecord::toEntity))
+    override suspend fun saveRecovery(records: List<RecoveryRecord>) = dao.upsertAll(records.map { it.normalizedEvidenceIdentity().toEntity() })
 
     override suspend fun listRecovery(): List<RecoveryRecord> = dao.listAll().map(RecoveryRecordEntity::toModel)
 
@@ -27,7 +27,11 @@ fun RecoveryRecordEntity.toModel() = RecoveryRecord(
     recommendedAction = runCatching { RecoveryAction.valueOf(recommendedAction) }.getOrDefault(RecoveryAction.Validate),
     safeToResume = safeToResume,
     attemptGeneration = attemptGeneration,
+    artifactIdentity = artifactIdentity.ifBlank { artifactPath },
 )
+
+fun RecoveryRecord.normalizedEvidenceIdentity(): RecoveryRecord =
+    if (artifactIdentity.isNotBlank()) this else copy(artifactIdentity = artifactPath.ifBlank { "download:$downloadId:attempt:$attemptGeneration:${classification.name}" })
 
 fun RecoveryRecord.toEntity() = RecoveryRecordEntity(
     id = id,
@@ -39,4 +43,5 @@ fun RecoveryRecord.toEntity() = RecoveryRecordEntity(
     recommendedAction = recommendedAction.name,
     safeToResume = safeToResume,
     attemptGeneration = attemptGeneration,
+    artifactIdentity = artifactIdentity.ifBlank { artifactPath },
 )

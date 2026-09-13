@@ -386,6 +386,14 @@ val verifyXar02ConcurrencyCas = tasks.register<Exec>("verifyXar02ConcurrencyCas"
     trackStaticValidation("xar02-concurrency-cas")
 }
 
+val verifyXar03PersistenceGenerationIntegrity = tasks.register<Exec>("verifyXar03PersistenceGenerationIntegrity") {
+    group = "verification"
+    description = "Verify XAR03 Room migrations, attempt-owned durable evidence, and recovery/finalization invariants."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar03-persistence-generation-integrity.py")
+    trackStaticValidation("xar03-persistence-generation-integrity")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -434,7 +442,7 @@ tasks.matching { it.name == "assembleDebug" }.configureEach {
 val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."
-    dependsOn(verifyXar01BuildProvenance, verifyXar02ConcurrencyCas, verifyFfmpeg04FullReleaseSeal, verifyFfmpegRoadmapPostSealHotfix, verifyGradleTaskGraphOptimization)
+    dependsOn(verifyXar01BuildProvenance, verifyXar02ConcurrencyCas, verifyXar03PersistenceGenerationIntegrity, verifyFfmpeg04FullReleaseSeal, verifyFfmpegRoadmapPostSealHotfix, verifyGradleTaskGraphOptimization)
     workingDir(rootProject.projectDir)
     // Preserve the historical command line for retained source-contract tests. The environment
     // tells the shell gate that Gradle already executed the FFmpeg/execution DAG exactly once.

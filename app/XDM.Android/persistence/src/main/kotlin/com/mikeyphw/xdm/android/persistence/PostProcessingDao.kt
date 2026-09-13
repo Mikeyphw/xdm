@@ -90,6 +90,18 @@ interface PostProcessingDao {
         return true
     }
 
+    /**
+     * XAR03 redownload clone guard: a regenerated post-processing job is durable only if its
+     * target-generation idempotency claim is inserted in the same Room transaction.
+     */
+    @Transaction
+    suspend fun claimAndInsertRedownloadClone(claim: PostProcessingClaimEntity, job: PostProcessingJobEntity): Boolean {
+        require(job.subjectGeneration == claim.subjectGeneration) { "clone job generation must match claim generation" }
+        require(job.attemptGeneration.toLong() == claim.subjectGeneration || job.downloadId == null) { "download clone attempt must bind to target generation" }
+        require(job.claimKey == claim.claimKey) { "clone job must reference its idempotency claim" }
+        return claimAndInsert(claim, job)
+    }
+
     @Query("""UPDATE post_processing_jobs
         SET status = :status,
             stagedInputPath = :stagedInputPath,
