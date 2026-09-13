@@ -154,6 +154,7 @@ fun DownloadsScreen(
     var includeArchived by rememberSaveable { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
     var detailDownloadId by rememberSaveable { mutableStateOf<String?>(requestedDetailDownloadId) }
+    var detailSelectionUserOwned by rememberSaveable { mutableStateOf(requestedDetailDownloadId != null) }
     var organizeVisible by rememberSaveable { mutableStateOf(false) }
     var actionDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmationDownloadId by remember { mutableStateOf<String?>(null) }
@@ -261,11 +262,14 @@ fun DownloadsScreen(
     LaunchedEffect(requestedDetailDownloadId, downloads) {
         requestedDetailDownloadId
             ?.takeIf { requested -> downloads.any { it.id == requested } }
-            ?.let { detailDownloadId = it }
+            ?.let {
+                detailSelectionUserOwned = true
+                detailDownloadId = it
+            }
     }
 
-    LaunchedEffect(detailDownloadId) {
-        onDetailSelectionChanged(detailDownloadId)
+    LaunchedEffect(detailDownloadId, detailSelectionUserOwned, twoPaneLayoutActive) {
+        onDetailSelectionChanged(detailDownloadId.takeIf { detailSelectionUserOwned || !twoPaneLayoutActive })
     }
 
     val completedInspectionInputs = remember(downloads) {
@@ -319,8 +323,10 @@ fun DownloadsScreen(
         selectedIds = selectedIds.intersect(visibleIds)
         if (detailDownloadId != null && detailDownloadId !in visibleIds) {
             detailDownloadId = if (twoPaneLayoutActive) visibleDownloads.firstOrNull()?.id else null
+            detailSelectionUserOwned = false
         } else if (twoPaneLayoutActive && detailDownloadId == null) {
             detailDownloadId = visibleDownloads.firstOrNull()?.id
+            detailSelectionUserOwned = false
         }
     }
 
@@ -428,6 +434,7 @@ fun DownloadsScreen(
                             if (selectionMode) {
                                 selectedIds = selectedIds.toggle(download.id)
                             } else {
+                                detailSelectionUserOwned = true
                                 detailDownloadId = download.id
                             }
                         },
@@ -661,6 +668,7 @@ fun DownloadsScreen(
                     searchVisible = search.query.isNotBlank()
                     selectedIds = emptySet()
                     detailDownloadId = null
+                    detailSelectionUserOwned = false
                     organizeVisible = false
                 },
                 onDeleteSavedSearch = onDeleteSavedSearch,
@@ -675,7 +683,7 @@ fun DownloadsScreen(
     XdmAdaptiveSheet(
         visible = !twoPaneLayoutActive && detailDownload != null,
         windowClass = windowClass,
-        onDismissRequest = { detailDownloadId = null },
+        onDismissRequest = { detailSelectionUserOwned = false; detailDownloadId = null },
         title = "Download details",
         scrollContent = false,
     ) {

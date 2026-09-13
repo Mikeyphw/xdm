@@ -28,6 +28,7 @@ import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.BrowserSessionHealthPlanner
 import com.mikeyphw.xdm.android.model.EngineEscalationPlanner
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.OperationalActivityActionId
 import com.mikeyphw.xdm.android.model.OperationalActivityEvent
 import com.mikeyphw.xdm.android.model.NotificationPermissionState
 import com.mikeyphw.xdm.android.media.MediaExternalJobSnapshot
@@ -45,22 +46,17 @@ fun XdmApp(
     openNotificationSettings: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val addDownloadSession by viewModel.addDownloadSessionState.collectAsStateWithLifecycle()
     val downloadAdmission by viewModel.downloadAdmissionState.collectAsStateWithLifecycle()
     val destinationPreflight by viewModel.destinationPreflightState.collectAsStateWithLifecycle()
     val downloadUrlPreflight by viewModel.downloadUrlPreflightState.collectAsStateWithLifecycle()
-    var lastPrimaryRouteName by rememberSaveable { mutableStateOf(AppRoute.Downloads.name) }
-
-    LaunchedEffect(state.route) {
-        if (state.route in primaryRoutes) lastPrimaryRouteName = state.route.name
-    }
-
-    val previousPrimaryRoute = AppRoute.restore(lastPrimaryRouteName).takeIf { it in primaryRoutes } ?: AppRoute.Downloads
-    val visibleRoute = if (state.route == AppRoute.Add) previousPrimaryRoute else state.route
+    val previousPrimaryRoute = AddDownloadNavigationPolicy.sanitizeReturnRoute(addDownloadSession?.returnRoute)
+    val visibleRoute = AddDownloadNavigationPolicy.visibleRoute(state.route, addDownloadSession)
+    val activeExternalDraft = state.externalAddDraft?.takeIf { draft -> addDownloadSession?.ownsDraft(draft.id) == true }
 
     BackHandler(enabled = state.route == AppRoute.Add) {
         if (!downloadAdmission.inFlight) {
-            viewModel.dismissExternalAddDraft()
-            viewModel.navigate(previousPrimaryRoute)
+            viewModel.dismissAddDownloadSession()
         }
     }
     BackHandler(enabled = state.route != AppRoute.Downloads && state.route != AppRoute.Add) {
@@ -103,7 +99,7 @@ fun XdmApp(
                     if (state.activeTransfers.activeCount > 0) "Active" else "Idle"
                 },
                 onNavigate = viewModel::navigate,
-                onAddDownload = { viewModel.navigate(AppRoute.Add) },
+                onAddDownload = viewModel::beginManualAddDownload,
             ) {
                 Column(Modifier.fillMaxSize()) {
                     notificationPermissionState?.takeIf { it.needsInAppControlWarning }?.let { permission ->
@@ -126,16 +122,13 @@ fun XdmApp(
                 visible = state.route == AppRoute.Add,
                 windowClass = windowClass,
                 onDismissRequest = {
-                    if (!downloadAdmission.inFlight) {
-                        viewModel.dismissExternalAddDraft()
-                        viewModel.navigate(previousPrimaryRoute)
-                    }
+                    if (!downloadAdmission.inFlight) viewModel.dismissAddDownloadSession()
                 },
                 title = "New download",
                 scrollContent = false,
             ) {
-                val externalSessionHealth = BrowserSessionHealthPlanner.evaluate(state.externalAddDraft)
-                val externalEngineEscalation = state.externalAddDraft?.let { draft ->
+                val externalSessionHealth = BrowserSessionHealthPlanner.evaluate(activeExternalDraft)
+                val externalEngineEscalation = activeExternalDraft?.let { draft ->
                     EngineEscalationPlanner.evaluate(
                         draft = draft,
                         recommendation = viewModel.backendRecommendation(
@@ -153,27 +146,24 @@ fun XdmApp(
                     destinationUri = state.destinationUri,
                     conflictPolicy = state.conflictPolicy,
                     savedDestinations = state.destinationPermissions,
-                    externalDraftId = state.externalAddDraft?.id,
-                    initialUrl = state.externalAddDraft?.url,
-                    initialFileName = state.externalAddDraft?.fileName,
-                    externalSourceLabel = state.externalAddDraft?.sourceLabel,
-                    externalKind = state.externalAddDraft?.kind,
-                    externalOrigin = state.externalAddDraft?.origin,
-                    externalPageTitle = state.externalAddDraft?.pageTitle,
-                    externalPageUrl = state.externalAddDraft?.pageUrl,
-                    externalMimeType = state.externalAddDraft?.mimeType,
-                    externalContentLength = state.externalAddDraft?.contentLength,
-                    externalCanInspectMedia = state.externalAddDraft?.canInspectAsMedia == true,
+                    externalDraftId = activeExternalDraft?.id,
+                    initialUrl = activeExternalDraft?.url,
+                    initialFileName = activeExternalDraft?.fileName,
+                    externalSourceLabel = activeExternalDraft?.sourceLabel,
+                    externalKind = activeExternalDraft?.kind,
+                    externalOrigin = activeExternalDraft?.origin,
+                    externalPageTitle = activeExternalDraft?.pageTitle,
+                    externalPageUrl = activeExternalDraft?.pageUrl,
+                    externalMimeType = activeExternalDraft?.mimeType,
+                    externalContentLength = activeExternalDraft?.contentLength,
+                    externalCanInspectMedia = activeExternalDraft?.canInspectAsMedia == true,
                     externalSessionHealth = externalSessionHealth,
                     externalEngineEscalationPlan = externalEngineEscalation,
                     onInspectMedia = { url, fileName ->
-                        state.externalAddDraft?.let(viewModel::inspectExternalMedia)
+                        activeExternalDraft?.takeIf { it.url == url.trim() }?.let(viewModel::inspectExternalMedia)
                             ?: viewModel.inspectManualMedia(url, fileName)
                     },
-                    onCancel = {
-                        viewModel.dismissExternalAddDraft()
-                        viewModel.navigate(previousPrimaryRoute)
-                    },
+                    onCancel = viewModel::dismissAddDownloadSession,
                     onDestinationChanged = viewModel::setDestination,
                     onSafDestinationSelected = viewModel::registerSafDestination,
                     onConflictPolicyChanged = viewModel::setConflictPolicy,
@@ -363,13 +353,17 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
 
     val onActivityAction: (OperationalActivityEvent) -> Unit = { event ->
         val download = event.downloadId?.let { id -> state.downloads.firstOrNull { it.id == id } }
-        when (event.actionLabel) {
-            "Start anyway" -> download?.let(viewModel::startIgnoringQueuePolicy)
-            "Retry now", "Review transfer", "Verify or redownload" -> download?.let(viewModel::togglePause)
-            "Retry storage check" -> viewModel.runQueueIntelligenceNow()
-            "Open recovery", "Validate", "Verify and repair", "Resume", "Restart", "Adopt file", "Locate file", "Remove record" -> viewModel.selectActivityPanel(ActivityPanel.Recovery)
-            "Review request context", "Review intake", "Change destination", "Repair permission" -> viewModel.navigate(AppRoute.Add)
-            "Open resolver diagnostics" -> viewModel.navigate(AppRoute.Media)
+        when (event.actionId ?: OperationalActivityActionId.fromLegacyLabel(event.actionLabel)) {
+            OperationalActivityActionId.StartIgnoringQueuePolicy -> download?.let(viewModel::startIgnoringQueuePolicy)
+            OperationalActivityActionId.RetryDownload,
+            OperationalActivityActionId.ReviewTransfer,
+            OperationalActivityActionId.VerifyOrRedownload -> download?.let(viewModel::togglePause)
+            OperationalActivityActionId.RetryStorageCheck -> viewModel.runQueueIntelligenceNow()
+            OperationalActivityActionId.OpenRecovery -> viewModel.selectActivityPanel(ActivityPanel.Recovery)
+            OperationalActivityActionId.OpenRequestContext -> viewModel.beginManualAddDownload()
+            OperationalActivityActionId.OpenResolverDiagnostics -> viewModel.navigate(AppRoute.Media)
+            OperationalActivityActionId.OpenExistingDownload -> event.downloadId?.let(viewModel::openDownloadFromNotification)
+            null -> Unit
         }
     }
 

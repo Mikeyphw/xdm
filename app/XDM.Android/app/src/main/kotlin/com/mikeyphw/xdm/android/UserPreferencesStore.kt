@@ -32,6 +32,7 @@ data class UserPreferences(
     val selectedDownloadDetailId: String? = null,
     val selectedRecoveryDownloadId: String? = null,
     val selectedRecoveryAction: String? = null,
+    val selectedProblemId: String? = null,
     val compactDensity: Boolean = false,
     val themeMode: XdmThemeMode = XdmThemeMode.Dark,
     val developerOptionsEnabled: Boolean = false,
@@ -53,6 +54,7 @@ class UserPreferencesStore(private val context: Context) {
         val SelectedDownloadDetailId = stringPreferencesKey("selected_download_detail_id")
         val SelectedRecoveryDownloadId = stringPreferencesKey("selected_recovery_download_id")
         val SelectedRecoveryAction = stringPreferencesKey("selected_recovery_action")
+        val SelectedProblemId = stringPreferencesKey("selected_problem_id")
         val CompactDensity = booleanPreferencesKey("compact_density")
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DeveloperOptionsEnabled = booleanPreferencesKey("developer_options_enabled")
@@ -106,6 +108,7 @@ class UserPreferencesStore(private val context: Context) {
             selectedDownloadDetailId = preferences[Keys.SelectedDownloadDetailId]?.takeIf(String::isNotBlank),
             selectedRecoveryDownloadId = preferences[Keys.SelectedRecoveryDownloadId]?.takeIf(String::isNotBlank),
             selectedRecoveryAction = preferences[Keys.SelectedRecoveryAction]?.takeIf(String::isNotBlank),
+            selectedProblemId = preferences[Keys.SelectedProblemId]?.takeIf(String::isNotBlank),
             compactDensity = preferences[Keys.CompactDensity] ?: false,
             themeMode = preferences[Keys.ThemeMode]
                 ?.let { runCatching { XdmThemeMode.valueOf(it) }.getOrNull() }
@@ -177,11 +180,15 @@ class UserPreferencesStore(private val context: Context) {
                     prefs.remove(Keys.SelectedRecoveryDownloadId)
                     prefs.remove(Keys.SelectedRecoveryAction)
                 }
-                AppRoute.Activity -> prefs.remove(Keys.SelectedDownloadDetailId)
+                AppRoute.Activity -> {
+                    prefs.remove(Keys.SelectedDownloadDetailId)
+                    prefs.remove(Keys.SelectedProblemId)
+                }
                 else -> {
                     prefs.remove(Keys.SelectedDownloadDetailId)
                     prefs.remove(Keys.SelectedRecoveryDownloadId)
                     prefs.remove(Keys.SelectedRecoveryAction)
+                    prefs.remove(Keys.SelectedProblemId)
                 }
             }
         }
@@ -202,6 +209,7 @@ class UserPreferencesStore(private val context: Context) {
             prefs[Keys.LastRoute] = AppRoute.Activity.name
             prefs[Keys.LastActivityPanel] = panel.name
             prefs.remove(Keys.SelectedDownloadDetailId)
+            prefs.remove(Keys.SelectedProblemId)
             if (panel == ActivityPanel.Recovery) {
                 downloadId?.trim()?.takeIf(String::isNotBlank)?.let { prefs[Keys.SelectedRecoveryDownloadId] = it }
                     ?: prefs.remove(Keys.SelectedRecoveryDownloadId)
@@ -218,6 +226,19 @@ class UserPreferencesStore(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[Keys.LastRoute] = AppRoute.Settings.name
             prefs[Keys.LastSettingsPanel] = panel.name
+            prefs.remove(Keys.SelectedDownloadDetailId)
+            prefs.remove(Keys.SelectedRecoveryDownloadId)
+            prefs.remove(Keys.SelectedRecoveryAction)
+            if (panel != SettingsPanel.DebugWorkbench) prefs.remove(Keys.SelectedProblemId)
+        }
+    }
+
+    suspend fun setProblemNavigation(problemId: String) {
+        val normalized = problemId.trim().takeIf(String::isNotBlank) ?: return
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LastRoute] = AppRoute.Settings.name
+            prefs[Keys.LastSettingsPanel] = SettingsPanel.DebugWorkbench.name
+            prefs[Keys.SelectedProblemId] = normalized
             prefs.remove(Keys.SelectedDownloadDetailId)
             prefs.remove(Keys.SelectedRecoveryDownloadId)
             prefs.remove(Keys.SelectedRecoveryAction)

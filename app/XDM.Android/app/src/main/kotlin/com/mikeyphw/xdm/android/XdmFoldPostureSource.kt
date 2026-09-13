@@ -35,7 +35,7 @@ fun rememberXdmFoldLayoutInfo(): XdmFoldLayoutInfo {
         WindowInfoTracker.getOrCreate(owner)
             .windowLayoutInfo(owner)
             .collect { info ->
-                val feature = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+                val feature = selectAuthoritativeFoldingFeature(info.displayFeatures.filterIsInstance<FoldingFeature>())
                 value = if (feature == null) {
                     XdmFoldLayoutInfo()
                 } else {
@@ -59,6 +59,14 @@ fun rememberXdmFoldLayoutInfo(): XdmFoldLayoutInfo {
 
 @Composable
 fun rememberXdmFoldPosture(): XdmFoldPosture = rememberXdmFoldLayoutInfo().posture
+
+internal fun selectAuthoritativeFoldingFeature(features: List<FoldingFeature>): FoldingFeature? = features
+    .sortedWith(
+        compareByDescending<FoldingFeature> { it.isSeparating }
+            .thenByDescending { it.state == FoldingFeature.State.HALF_OPENED }
+            .thenByDescending { it.bounds.width() * it.bounds.height() }
+    )
+    .firstOrNull()
 
 internal fun FoldingFeature.toXdmFoldPosture(): XdmFoldPosture = when {
     orientation == FoldingFeature.Orientation.VERTICAL && state == FoldingFeature.State.HALF_OPENED -> XdmFoldPosture.Book

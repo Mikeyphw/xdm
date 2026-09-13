@@ -105,12 +105,22 @@ fun XdmAdaptiveShell(
             }
         }
     } else {
+        val fallbackShellTag = when {
+            windowClass == XdmWindowClass.Compact -> XdmScreenTags.ShellCompact
+            windowProfile.windowClass == XdmWindowClass.Expanded -> XdmScreenTags.ShellExpanded
+            else -> XdmScreenTags.ShellMedium
+        }
+        val fallbackShellDescription = when {
+            windowClass == XdmWindowClass.Compact -> "Compact XDM shell"
+            windowProfile.windowClass == XdmWindowClass.Expanded -> "Expanded XDM shell with bottom navigation fallback"
+            else -> "Medium XDM shell"
+        }
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .xdmScreen(
-                    if (windowClass == XdmWindowClass.Compact) XdmScreenTags.ShellCompact else XdmScreenTags.ShellMedium,
-                    if (windowClass == XdmWindowClass.Compact) "Compact XDM shell" else "Medium XDM shell",
+                    fallbackShellTag,
+                    fallbackShellDescription,
                 ),
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onBackground,

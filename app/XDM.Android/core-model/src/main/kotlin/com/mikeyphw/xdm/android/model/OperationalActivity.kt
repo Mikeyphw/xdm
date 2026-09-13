@@ -32,6 +32,32 @@ enum class OperationalActivityTimeRange(val label: String, val durationMs: Long?
     All("All", null),
 }
 
+enum class OperationalActivityActionId {
+    StartIgnoringQueuePolicy,
+    RetryDownload,
+    RetryStorageCheck,
+    OpenRecovery,
+    OpenRequestContext,
+    OpenResolverDiagnostics,
+    OpenExistingDownload,
+    ReviewTransfer,
+    VerifyOrRedownload;
+
+    companion object {
+        fun fromLegacyLabel(label: String?): OperationalActivityActionId? = when (label?.trim()) {
+            "Start anyway" -> StartIgnoringQueuePolicy
+            "Retry now" -> RetryDownload
+            "Review transfer" -> ReviewTransfer
+            "Verify or redownload" -> VerifyOrRedownload
+            "Retry storage check" -> RetryStorageCheck
+            "Open recovery", "Validate", "Verify and repair", "Resume", "Restart", "Adopt file", "Locate file", "Remove record" -> OpenRecovery
+            "Review request context", "Review intake", "Change destination", "Repair permission" -> OpenRequestContext
+            "Open resolver diagnostics" -> OpenResolverDiagnostics
+            else -> null
+        }
+    }
+}
+
 data class OperationalActivityEvent(
     val id: String,
     val downloadId: String? = null,
@@ -42,6 +68,7 @@ data class OperationalActivityEvent(
     val detail: String,
     val engine: String? = null,
     val actionLabel: String? = null,
+    val actionId: OperationalActivityActionId? = OperationalActivityActionId.fromLegacyLabel(actionLabel),
     val createdAtEpochMs: Long,
     val unresolved: Boolean = false,
     val source: String = "runtime",

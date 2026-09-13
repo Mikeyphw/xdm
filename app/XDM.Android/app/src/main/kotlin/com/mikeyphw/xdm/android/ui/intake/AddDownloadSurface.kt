@@ -75,6 +75,7 @@ fun AddDownloadScreen(
     externalCanInspectMedia: Boolean = false,
     externalSessionHealth: BrowserSessionHealthReport? = null,
     externalEngineEscalationPlan: EngineEscalationPlan? = null,
+    addDownloadSessionId: String? = null,
     onInspectMedia: (String, String) -> Unit = { _, _ -> },
     onCancel: () -> Unit,
     onDestinationChanged: (String) -> Unit,
@@ -91,20 +92,21 @@ fun AddDownloadScreen(
     recommend: (String, String, BackendType, String, FilenameConflictPolicy, Boolean) -> BackendRecommendation,
 ) {
     val context = LocalContext.current
-    var url by rememberSaveable { mutableStateOf(initialUrl.orEmpty()) }
-    var name by rememberSaveable { mutableStateOf(initialFileName.orEmpty()) }
-    var nameEditedByUser by rememberSaveable { mutableStateOf(false) }
-    var backend by rememberSaveable { mutableStateOf(BackendType.Automatic) }
-    var allowFallback by rememberSaveable { mutableStateOf(true) }
-    var expectedChecksum by rememberSaveable { mutableStateOf("") }
-    var checksumAlgorithm by rememberSaveable { mutableStateOf(ChecksumAlgorithm.Sha256) }
-    var advancedExpanded by rememberSaveable { mutableStateOf(false) }
-    var destinationPickerVisible by rememberSaveable { mutableStateOf(false) }
-    var showAllConflictOptions by rememberSaveable { mutableStateOf(false) }
-    var clipboardMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    val formSessionKey = addDownloadSessionId ?: externalDraftId ?: "manual-add-session"
+    var url by rememberSaveable(formSessionKey) { mutableStateOf(initialUrl.orEmpty()) }
+    var name by rememberSaveable(formSessionKey) { mutableStateOf(initialFileName.orEmpty()) }
+    var nameEditedByUser by rememberSaveable(formSessionKey) { mutableStateOf(false) }
+    var backend by rememberSaveable(formSessionKey) { mutableStateOf(BackendType.Automatic) }
+    var allowFallback by rememberSaveable(formSessionKey) { mutableStateOf(true) }
+    var expectedChecksum by rememberSaveable(formSessionKey) { mutableStateOf("") }
+    var checksumAlgorithm by rememberSaveable(formSessionKey) { mutableStateOf(ChecksumAlgorithm.Sha256) }
+    var advancedExpanded by rememberSaveable(formSessionKey) { mutableStateOf(false) }
+    var destinationPickerVisible by rememberSaveable(formSessionKey) { mutableStateOf(false) }
+    var showAllConflictOptions by rememberSaveable(formSessionKey) { mutableStateOf(false) }
+    var clipboardMessage by rememberSaveable(formSessionKey) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(externalDraftId) {
-        if (externalDraftId != null) {
+    LaunchedEffect(formSessionKey, externalDraftId) {
+        if (externalDraftId != null || addDownloadSessionId != null) {
             url = initialUrl.orEmpty()
             name = initialFileName.orEmpty()
             nameEditedByUser = false

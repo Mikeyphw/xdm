@@ -211,6 +211,8 @@ private data class PendingDownloadAdmission(
     val transferShape: MediaTransferShape,
     val privateNetworkApproved: Boolean,
     val cleartextCredentialsApproved: Boolean,
+    val addSessionId: String?,
+    val owningDraftId: String?,
 )
 
 data class StorageDoctorUi(
@@ -461,6 +463,8 @@ class MainViewModel(
     }
     private val capabilitySnapshot = MutableStateFlow<Map<BackendType, BackendCapabilities>>(emptyMap())
     private val externalAddDraft = MutableStateFlow<DownloadIntakeDraft?>(null)
+    private val addDownloadNavigationSession = MutableStateFlow<AddDownloadNavigationSession?>(null)
+    val addDownloadSessionState: StateFlow<AddDownloadNavigationSession?> = addDownloadNavigationSession
     private val _downloadAdmissionState = MutableStateFlow(DownloadAdmissionUiState())
     val downloadAdmissionState: StateFlow<DownloadAdmissionUiState> = _downloadAdmissionState
     private val _destinationPreflightState = MutableStateFlow(DestinationPreflightUi())
@@ -923,7 +927,7 @@ class MainViewModel(
             selectedDownloadDetailId = navigation.selectedDownloadDetailId ?: prefs.selectedDownloadDetailId,
             selectedRecoveryDownloadId = navigation.selectedRecoveryDownloadId ?: prefs.selectedRecoveryDownloadId,
             selectedRecoveryAction = navigation.selectedRecoveryAction ?: prefs.selectedRecoveryAction,
-            selectedProblemId = navigation.selectedProblemId,
+            selectedProblemId = navigation.selectedProblemId ?: prefs.selectedProblemId,
             settingsPanel = navigation.settingsPanel ?: prefs.lastSettingsPanel,
             activityEvents = activityEvents,
             activitySummary = activitySummary,
@@ -1081,10 +1085,49 @@ class MainViewModel(
         }
     }
 
+    private fun currentPrimaryRouteForAddReturn(): AppRoute {
+        val candidate = navigationOverride.value.route ?: uiState.value.route
+        return AddDownloadNavigationPolicy.sanitizeReturnRoute(candidate)
+    }
+
+    private fun showAddDownloadSession(session: AddDownloadNavigationSession) {
+        addDownloadNavigationSession.value = session
+        navigationOverride.value = NavigationOverride(route = AppRoute.Add)
+    }
+
+    fun beginManualAddDownload() {
+        if (_downloadAdmissionState.value.inFlight || _downloadAdmissionState.value.awaitingDuplicateDecision) {
+            navigationOverride.value = navigationOverride.value.copy(route = AppRoute.Add)
+            return
+        }
+        val currentSession = addDownloadNavigationSession.value
+        if (navigationOverride.value.route == AppRoute.Add && currentSession != null) {
+            navigationOverride.value = navigationOverride.value.copy(route = AppRoute.Add)
+            return
+        }
+        pendingDownloadAdmission = null
+        _downloadAdmissionState.value = DownloadAdmissionUiState()
+        externalAddDraft.value = null
+        showAddDownloadSession(AddDownloadNavigationPolicy.manualSession(currentPrimaryRouteForAddReturn()))
+    }
+
+    fun dismissAddDownloadSession() {
+        if (_downloadAdmissionState.value.inFlight) return
+        val returnRoute = AddDownloadNavigationPolicy.sanitizeReturnRoute(addDownloadNavigationSession.value?.returnRoute)
+        dismissExternalAddDraft()
+        pendingDownloadAdmission = null
+        _downloadAdmissionState.value = DownloadAdmissionUiState()
+        addDownloadNavigationSession.value = null
+        navigate(returnRoute)
+    }
+
     fun navigate(route: AppRoute) {
         if (route == AppRoute.Add) {
-            pendingDownloadAdmission = null
-            _downloadAdmissionState.value = DownloadAdmissionUiState()
+            beginManualAddDownload()
+            return
+        }
+        if (navigationOverride.value.route == AppRoute.Add && !_downloadAdmissionState.value.inFlight) {
+            addDownloadNavigationSession.value = null
         }
         val current = navigationOverride.value
         navigationOverride.value = when (route) {
@@ -1099,7 +1142,7 @@ class MainViewModel(
             AppRoute.Settings -> NavigationOverride(route = route, settingsPanel = current.settingsPanel, selectedProblemId = current.selectedProblemId)
             else -> NavigationOverride(route = route)
         }
-        if (route != AppRoute.Add) viewModelScope.launch { preferences.setRoute(route) }
+        viewModelScope.launch { preferences.setRoute(route) }
     }
 
     fun navigateActivity(panel: ActivityPanel) {
@@ -1177,7 +1220,7 @@ class MainViewModel(
             settingsPanel = SettingsPanel.DebugWorkbench,
             selectedProblemId = normalized,
         )
-        viewModelScope.launch { preferences.setSettingsNavigation(SettingsPanel.DebugWorkbench) }
+        viewModelScope.launch { preferences.setProblemNavigation(normalized) }
     }
 
     fun selectSettingsPanel(panel: SettingsPanel) {
@@ -2301,7 +2344,10 @@ class MainViewModel(
         viewModelScope.launch {
             try {
                 val now = System.currentTimeMillis()
-                val consumedExternalDraft = externalAddDraft.value
+                val activeAddSession = addDownloadNavigationSession.value
+                val consumedExternalDraft = externalAddDraft.value?.takeIf { draft ->
+                    activeAddSession?.ownsDraft(draft.id) == true && draft.url == url.trim()
+                }
                 val externalCommand = consumedExternalDraft?.let { repository.findAutomationCommand(it.id) }
                 val externalSessionHeaders = consumedExternalDraft?.requestHeaders.orEmpty()
                 val mediaCandidate = mediaCaptureService.candidateFor(url)
@@ -2371,6 +2417,8 @@ class MainViewModel(
                     transferShape = transferShape,
                     privateNetworkApproved = externalCommand?.privateNetworkApproved == true,
                     cleartextCredentialsApproved = externalCommand?.cleartextCredentialsApproved == true,
+                    addSessionId = activeAddSession?.sessionId,
+                    owningDraftId = consumedExternalDraft?.id,
                 )
                 completeDownloadAdmission(pending)
             } catch (cancelled: CancellationException) {
@@ -2384,6 +2432,12 @@ class MainViewModel(
 
     fun resolveDuplicateDownload(action: DuplicateUrlAction) {
         val pending = pendingDownloadAdmission ?: return
+        val session = addDownloadNavigationSession.value
+        if (pending.addSessionId != null && session?.sessionId != pending.addSessionId) {
+            pendingDownloadAdmission = null
+            _downloadAdmissionState.value = DownloadAdmissionUiState(message = "Add Download session changed. Review the request again before choosing a duplicate action.")
+            return
+        }
         val existingId = _downloadAdmissionState.value.duplicateDownloadId
         when (action) {
             DuplicateUrlAction.AddAgain -> {
@@ -2408,6 +2462,7 @@ class MainViewModel(
                     }
                 }
                 externalAddDraft.value = null
+                addDownloadNavigationSession.value = null
                 existingId?.let(::openDownloadFromNotification) ?: navigate(AppRoute.Downloads)
             }
             DuplicateUrlAction.Skip -> {
@@ -2419,6 +2474,7 @@ class MainViewModel(
                     }
                 }
                 externalAddDraft.value = null
+                addDownloadNavigationSession.value = null
                 navigate(AppRoute.Downloads)
             }
             DuplicateUrlAction.Ask -> Unit
@@ -2428,6 +2484,7 @@ class MainViewModel(
     fun dismissDuplicateAddPrompt() {
         if (_downloadAdmissionState.value.inFlight) return
         pendingDownloadAdmission = null
+        addDownloadNavigationSession.value = addDownloadNavigationSession.value?.copy(duplicateDecisionUrl = null, formRevision = (addDownloadNavigationSession.value?.formRevision ?: 0L) + 1L)
         _downloadAdmissionState.value = DownloadAdmissionUiState()
     }
 
@@ -2458,11 +2515,13 @@ class MainViewModel(
                 pending.externalDraft?.let { markExternalDraftDownloadCreated(it, pending.download.id) }
                 queueIntelligenceCoordinator.requestStart(pending.download.id, userVisible = true, manual = true)
                 externalAddDraft.value = null
+                addDownloadNavigationSession.value = null
                 _downloadAdmissionState.value = DownloadAdmissionUiState()
                 navigate(AppRoute.Downloads)
             }
             is DownloadAdmissionResult.NeedsConfirmation -> {
                 pendingDownloadAdmission = pending
+                addDownloadNavigationSession.value = addDownloadNavigationSession.value?.recordDuplicateDecision(pending.requestedUrl)
                 _downloadAdmissionState.value = DownloadAdmissionUiState(
                     duplicateDownloadId = result.existing.id,
                     duplicateFileName = result.existing.fileName,
@@ -2473,6 +2532,7 @@ class MainViewModel(
                 pendingDownloadAdmission = null
                 pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, result.existing.id, "Opened the existing matching download") }
                 externalAddDraft.value = null
+                addDownloadNavigationSession.value = null
                 _downloadAdmissionState.value = DownloadAdmissionUiState()
                 openDownloadFromNotification(result.existing.id)
             }
@@ -2480,6 +2540,7 @@ class MainViewModel(
                 pendingDownloadAdmission = null
                 pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, result.existing.id, "Skipped duplicate download") }
                 externalAddDraft.value = null
+                addDownloadNavigationSession.value = null
                 _downloadAdmissionState.value = DownloadAdmissionUiState(message = "Duplicate skipped")
                 navigate(AppRoute.Downloads)
             }
@@ -3054,6 +3115,7 @@ class MainViewModel(
             return
         }
         externalAddDraft.value = intakeDraft
+        showAddDownloadSession(AddDownloadNavigationPolicy.externalSession(intakeDraft.id, currentPrimaryRouteForAddReturn()))
         repository.saveAutomationCommand(
             command.copy(
                 status = AutomationCommandStatus.Executing,
@@ -3062,7 +3124,7 @@ class MainViewModel(
                 updatedAtEpochMs = System.currentTimeMillis(),
             ),
         )
-        navigate(AppRoute.Add)
+        navigationOverride.value = navigationOverride.value.copy(route = AppRoute.Add)
     }
 
     private suspend fun markExternalDraftDownloadCreated(draft: DownloadIntakeDraft, downloadId: String) {
@@ -3099,6 +3161,7 @@ class MainViewModel(
         dismissDuplicateAddPrompt()
         val draft = externalAddDraft.value ?: return
         externalAddDraft.value = null
+        if (addDownloadNavigationSession.value?.ownsDraft(draft.id) == true) addDownloadNavigationSession.value = null
         viewModelScope.launch(Dispatchers.IO) {
             repository.findAutomationCommand(draft.id)?.let { command ->
                 if (command.status == AutomationCommandStatus.Executing || command.status == AutomationCommandStatus.Claimed) {
@@ -4056,7 +4119,7 @@ class MainViewModel(
 
     fun openDownloadReview(draft: DownloadIntakeDraft) {
         externalAddDraft.value = draft
-        navigate(AppRoute.Add)
+        showAddDownloadSession(AddDownloadNavigationPolicy.externalSession(draft.id, currentPrimaryRouteForAddReturn()))
     }
 
     fun inspectManualMedia(url: String, fileName: String) {

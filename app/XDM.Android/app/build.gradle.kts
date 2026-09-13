@@ -394,6 +394,14 @@ val verifyXar03PersistenceGenerationIntegrity = tasks.register<Exec>("verifyXar0
     trackStaticValidation("xar03-persistence-generation-integrity")
 }
 
+val verifyXar04NavigationSessionOwnership = tasks.register<Exec>("verifyXar04NavigationSessionOwnership") {
+    group = "verification"
+    description = "Verify XAR04 navigation truth, Add Download session ownership, and adaptive shell behavior."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar04-navigation-session-ownership.py")
+    trackStaticValidation("xar04-navigation-session-ownership")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
