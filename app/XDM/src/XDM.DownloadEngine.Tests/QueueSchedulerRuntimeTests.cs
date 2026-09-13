@@ -133,6 +133,8 @@ public sealed class QueueSchedulerRuntimeTests
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+        public void FreezeAdmission() { }
+
         public Task<DownloadShutdownReport> PrepareForShutdownAsync(
             CancellationToken cancellationToken = default)
         {

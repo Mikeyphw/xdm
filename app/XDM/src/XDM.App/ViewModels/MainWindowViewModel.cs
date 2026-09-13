@@ -1437,6 +1437,30 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OperationMessage = "Schedule removed; save settings to persist the change.";
     }
 
+    public bool TryCancelContextualOperation()
+    {
+        if (MediaDownloadActive)
+        {
+            _mediaDownloadCancellation?.Cancel();
+            return true;
+        }
+
+        if (SelectedConversionJob?.State is ConversionJobState.Queued
+            or ConversionJobState.Inspecting
+            or ConversionJobState.Converting
+            or ConversionJobState.Finalizing)
+        {
+            return _conversionQueueService.Cancel(SelectedConversionJob.Id);
+        }
+
+        if (HasPendingCompletionAction)
+        {
+            return _queueSchedulerRuntime.CancelPendingAction();
+        }
+
+        return false;
+    }
+
     [RelayCommand]
     private void CancelPendingCompletionAction()
     {

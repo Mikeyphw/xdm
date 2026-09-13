@@ -23,7 +23,6 @@ public sealed class WindowStateStore
         string stateDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "xdm-modern");
-        Directory.CreateDirectory(stateDirectory);
         _statePath = Path.Combine(stateDirectory, "window-state.json");
     }
 
@@ -50,11 +49,20 @@ public sealed class WindowStateStore
         {
             return null;
         }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     public async Task SaveAsync(WindowPlacementState state, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
+        string? directory = Path.GetDirectoryName(_statePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
         string temporaryPath = _statePath + ".tmp";
         await using (FileStream stream = new(
             temporaryPath,
@@ -75,11 +83,37 @@ public sealed class WindowStateStore
         File.Move(temporaryPath, _statePath, overwrite: true);
     }
 
+    public async Task<bool> SaveBestEffortAsync(WindowPlacementState state, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await SaveAsync(state, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     public Task ResetAsync()
     {
-        if (File.Exists(_statePath))
+        try
         {
-            File.Delete(_statePath);
+            if (File.Exists(_statePath))
+            {
+                File.Delete(_statePath);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
 
         return Task.CompletedTask;

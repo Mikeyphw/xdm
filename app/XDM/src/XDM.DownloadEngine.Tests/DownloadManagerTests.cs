@@ -1429,6 +1429,27 @@ public sealed class DownloadManagerTests
         Assert.Equal(DownloadState.Paused, state.Current.Downloads.Single(item => item.Id == id).State);
     }
 
+
+    [Fact]
+    public async Task FreezeAdmissionRejectsDownloadsBeforeShutdownSnapshot()
+    {
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(CreatePayload(1024, 7)));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        await manager.InitializeAsync(CancellationToken.None);
+
+        manager.FreezeAdmission();
+
+        InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            manager.AddAsync(new DownloadRequest(
+                new Uri("https://example.test/late-admission.bin"),
+                directory.Path,
+                "late-admission.bin")));
+        Assert.Contains("shutting down", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(state.Current.Downloads);
+    }
+
     private static async Task<DownloadSnapshot> WaitForStateAsync(
         ApplicationState state,
         string id,

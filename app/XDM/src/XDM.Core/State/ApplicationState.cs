@@ -6,7 +6,7 @@ public sealed class ApplicationState : IApplicationState
 {
     private readonly object _sync = new();
     private readonly Dictionary<string, int> _downloadIndexes = new(StringComparer.Ordinal);
-    private ApplicationSnapshot _current = new(DateTimeOffset.UtcNow, true, []);
+    private ApplicationSnapshot _current = new(DateTimeOffset.UtcNow, false, []);
 
     public ApplicationSnapshot Current
     {
@@ -20,6 +20,23 @@ public sealed class ApplicationState : IApplicationState
     }
 
     public event EventHandler<ApplicationSnapshot>? Changed;
+
+    public void SetCoreReady(bool ready)
+    {
+        ApplicationSnapshot next;
+        lock (_sync)
+        {
+            if (_current.CoreReady == ready)
+            {
+                return;
+            }
+
+            next = _current with { CoreReady = ready };
+            _current = next;
+        }
+
+        Changed?.Invoke(this, next);
+    }
 
     public void ReplaceDownloads(IEnumerable<DownloadSnapshot> downloads)
     {

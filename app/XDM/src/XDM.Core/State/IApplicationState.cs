@@ -8,6 +8,8 @@ public interface IApplicationState
 
     event EventHandler<ApplicationSnapshot>? Changed;
 
+    void SetCoreReady(bool ready);
+
     void ReplaceDownloads(IEnumerable<DownloadSnapshot> downloads);
 
     void UpsertDownload(DownloadSnapshot download);

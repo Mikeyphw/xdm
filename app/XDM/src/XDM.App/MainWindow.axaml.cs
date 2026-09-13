@@ -134,6 +134,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        state = NormalizePlacement(state, Screens.All.Select(static screen => screen.WorkingArea));
         Width = Math.Max(MinWidth, state.Width);
         Height = Math.Max(MinHeight, state.Height);
         Position = new Avalonia.PixelPoint(state.X, state.Y);
@@ -143,7 +144,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void MainWindow_Closing(object? sender, WindowClosingEventArgs eventArgs)
+    private void MainWindow_Closing(object? sender, WindowClosingEventArgs eventArgs)
     {
         bool hideToTray = !App.ExitRequested;
         if (hideToTray)
@@ -157,7 +158,7 @@ public partial class MainWindow : Window
             Math.Max(MinWidth, Bounds.Width),
             Math.Max(MinHeight, Bounds.Height),
             WindowState == Avalonia.Controls.WindowState.Maximized);
-        await _windowStateStore.SaveAsync(state);
+        _windowStateStore.SaveBestEffortAsync(state).GetAwaiter().GetResult();
         if (hideToTray)
         {
             Hide();
@@ -167,6 +168,42 @@ public partial class MainWindow : Window
                 viewModel.OperationMessage = "XDM is still running in the system tray.";
             }
         }
+    }
+
+
+    internal static WindowPlacementState NormalizePlacement(
+        WindowPlacementState state,
+        IEnumerable<PixelRect> workingAreas)
+    {
+        PixelRect[] areas = workingAreas.ToArray();
+        if (areas.Length == 0)
+        {
+            return state;
+        }
+
+        int width = (int)Math.Ceiling(Math.Max(1, state.Width));
+        int height = (int)Math.Ceiling(Math.Max(1, state.Height));
+        PixelRect proposed = new(state.X, state.Y, width, height);
+        bool visible = areas.Any(area => proposed.X + proposed.Width > area.X
+            && proposed.X < area.X + area.Width
+            && proposed.Y + proposed.Height > area.Y
+            && proposed.Y < area.Y + area.Height);
+        if (visible)
+        {
+            return state;
+        }
+
+        PixelRect primary = areas[0];
+        double restoredWidth = Math.Min(Math.Max(760d, state.Width), primary.Width);
+        double restoredHeight = Math.Min(Math.Max(680d, state.Height), primary.Height);
+        return state with
+        {
+            X = primary.X + Math.Max(0, (primary.Width - (int)restoredWidth) / 2),
+            Y = primary.Y + Math.Max(0, (primary.Height - (int)restoredHeight) / 2),
+            Width = restoredWidth,
+            Height = restoredHeight,
+            IsMaximized = false
+        };
     }
 
     private void ToggleNavigation_Click(object? sender, RoutedEventArgs e)
@@ -407,10 +444,7 @@ public partial class MainWindow : Window
 
         if (eventArgs.Key == Key.Escape)
         {
-            viewModel.CancelMediaDownloadCommand.Execute(null);
-            viewModel.CancelSelectedConversionCommand.Execute(null);
-            viewModel.CancelPendingCompletionActionCommand.Execute(null);
-            eventArgs.Handled = true;
+            eventArgs.Handled = viewModel.TryCancelContextualOperation();
         }
     }
 

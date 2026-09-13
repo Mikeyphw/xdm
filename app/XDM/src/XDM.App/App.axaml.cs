@@ -28,12 +28,29 @@ using XDM.Platform;
 
 namespace XDM.App;
 
+internal enum ExitIntent
+{
+    None,
+    UserRequested,
+    ApplicationRequested,
+    RecoveryRestart
+}
+
 public partial class App : Application
 {
     private ServiceProvider? _services;
     private MainWindowViewModel? _trayViewModel;
     private TrayIcon? _mainTrayIcon;
-    internal static bool ExitRequested { get; set; }
+    internal static ExitIntent RequestedExit { get; private set; }
+    internal static bool ExitRequested => RequestedExit != ExitIntent.None;
+
+    internal static void RequestExit(ExitIntent intent)
+    {
+        if (intent != ExitIntent.None)
+        {
+            RequestedExit = intent;
+        }
+    }
     internal static StartupOptions LaunchOptions { get; set; } = StartupOptions.Default;
 
     internal static SingleInstanceCoordinator? InstanceCoordinator { get; set; }
@@ -65,19 +82,20 @@ public partial class App : Application
                 ["previousCheckpointFlushSucceeded"] = recovery.PreviousSession?.CheckpointFlushSucceeded?.ToString()
             });
 
-        InitializeService(
+        bool coreReady = true;
+        coreReady &= InitializeService(
             "XDM-STARTUP-SETTINGS",
             () => services.GetRequiredService<ISettingsService>().InitializeAsync(),
             diagnostics);
-        InitializeService(
+        coreReady &= InitializeService(
             "XDM-STARTUP-TRANSFER-POLICY",
             () => services.GetRequiredService<ITransferPolicyRuntime>().InitializeAsync(),
             diagnostics);
-        InitializeService(
+        coreReady &= InitializeService(
             "XDM-STARTUP-DOWNLOADS",
             () => services.GetRequiredService<IDownloadManager>().InitializeAsync(),
             diagnostics);
-        InitializeService(
+        coreReady &= InitializeService(
             "XDM-STARTUP-RECOVERY-COORDINATOR",
             () => services.GetRequiredService<IDownloadRecoveryCoordinator>()
                 .ScanAsync(
@@ -85,6 +103,7 @@ public partial class App : Application
                     recovery.PreviousSession?.ActiveDownloadIds,
                     recovery.PreviousSession?.CheckpointFlushSucceeded),
             diagnostics);
+        services.GetRequiredService<IApplicationState>().SetCoreReady(coreReady);
 
         if (!recovery.SafeMode)
         {
@@ -143,7 +162,7 @@ public partial class App : Application
     }
 
 #pragma warning disable CA1031 // Startup diagnostics must capture arbitrary service initialization failures.
-    private static void InitializeService(
+    private static bool InitializeService(
         string code,
         Func<Task> initialize,
         IDiagnosticEventStore diagnostics)
@@ -152,6 +171,7 @@ public partial class App : Application
         {
             initialize().GetAwaiter().GetResult();
             diagnostics.Record(DiagnosticSeverity.Information, code, "Service initialized successfully.");
+            return true;
         }
         catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
         {
@@ -159,6 +179,7 @@ public partial class App : Application
                 DiagnosticSeverity.Error,
                 code,
                 $"Service initialization failed: {exception.Message}");
+            return false;
         }
     }
 
@@ -173,45 +194,9 @@ public partial class App : Application
     {
         try
         {
-            string[] activeIds = services.GetRequiredService<IApplicationState>()
-                .Current.Downloads
-                .Where(static download => download.State is DownloadState.Connecting
-                    or DownloadState.Downloading
-                    or DownloadState.Finalizing)
-                .Select(static download => download.Id)
-                .OrderBy(static id => id, StringComparer.Ordinal)
-                .ToArray();
-            recovery.BeginShutdown(activeIds);
-            DownloadShutdownReport report = services.GetRequiredService<IDownloadManager>()
-                .PrepareForShutdownAsync()
+            ShutdownCoordinator.ExecuteAsync(services, recovery, diagnostics)
                 .GetAwaiter()
                 .GetResult();
-            recovery.RecordCheckpointFlush(
-                report.CheckpointFlushSucceeded,
-                report.CheckpointsAttempted,
-                report.CheckpointsWritten,
-                report.FailedDownloadIds);
-            if (report.CheckpointFlushSucceeded)
-            {
-                recovery.MarkCleanShutdown();
-                diagnostics.Record(
-                    DiagnosticSeverity.Information,
-                    "XDM-SHUTDOWN-001",
-                    "Application shutdown completed cleanly after transfer checkpoints were flushed.",
-                    new Dictionary<string, string?>
-                    {
-                        ["sessionId"] = recovery.SessionId,
-                        ["activeDownloads"] = report.ActiveDownloadIds.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        ["checkpointsWritten"] = report.CheckpointsWritten.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                    });
-            }
-            else
-            {
-                diagnostics.Record(
-                    DiagnosticSeverity.Warning,
-                    "XDM-SHUTDOWN-CHECKPOINTS",
-                    "Shutdown completed without a fully successful checkpoint flush; recovery will treat the session as unclean.");
-            }
         }
         catch (Exception exception) when (exception is IOException
             or UnauthorizedAccessException
@@ -221,7 +206,7 @@ public partial class App : Application
             diagnostics.Record(
                 DiagnosticSeverity.Error,
                 "XDM-SHUTDOWN-FAILED",
-                $"Shutdown tracking could not be completed: {exception.Message}");
+                $"Shutdown did not complete cleanly: {exception.Message}");
         }
         finally
         {
@@ -229,7 +214,6 @@ public partial class App : Application
             {
                 _trayViewModel.PropertyChanged -= TrayViewModel_PropertyChanged;
             }
-            services.Dispose();
             _services = null;
         }
     }
@@ -317,7 +301,7 @@ public partial class App : Application
 
     private void TrayExit_Click(object? sender, EventArgs eventArgs)
     {
-        ExitRequested = true;
+        RequestExit(ExitIntent.UserRequested);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.Shutdown();

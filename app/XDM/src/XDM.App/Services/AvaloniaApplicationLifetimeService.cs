@@ -10,7 +10,7 @@ public sealed class AvaloniaApplicationLifetimeService : IApplicationLifetimeSer
     public Task RequestShutdownAsync(CancellationToken cancellationToken = default)
         => DispatchAsync(() =>
         {
-            App.ExitRequested = true;
+            App.RequestExit(ExitIntent.ApplicationRequested);
             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.Shutdown();

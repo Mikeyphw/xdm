@@ -66,6 +66,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private long _nextBackgroundTaskId;
     private bool _backgroundTrackingClosed;
     private bool _disposed;
+    private int _admissionClosed;
+    private DateTimeOffset? _shutdownDeadline;
+    private static readonly TimeSpan ShutdownBudget = TimeSpan.FromSeconds(15);
 
     public event EventHandler<QueueRuntimeSnapshot>? QueueRuntimeChanged;
 
@@ -363,6 +366,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
+        ThrowIfAdmissionClosed();
 
         if (!ModernFeaturePolicy.IsSupportedDownloadUri(request.Source))
         {
@@ -591,6 +595,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         lock (_organizationAdmissionSync)
         {
+            ThrowIfAdmissionClosed();
             if (!request.AllowDuplicateUrl)
             {
                 DownloadSession? admittedDuplicate = FindDuplicateUrlSession(request.Source);
@@ -1703,10 +1708,23 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
     }
 
+    public void FreezeAdmission()
+    {
+        ThrowIfDisposed();
+        lock (_organizationAdmissionSync)
+        {
+            if (Interlocked.Exchange(ref _admissionClosed, 1) == 0)
+            {
+                _shutdownDeadline = DateTimeOffset.UtcNow + ShutdownBudget;
+            }
+        }
+    }
+
     public async Task<DownloadShutdownReport> PrepareForShutdownAsync(
         CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
+        FreezeAdmission();
         DateTimeOffset startedAt = DateTimeOffset.UtcNow;
         DownloadSession[] activeSessions = _sessions.Values
             .Where(static session => session.State is DownloadState.Connecting
@@ -1734,8 +1752,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             try
             {
+                TimeSpan remaining = GetRemainingShutdownBudget();
+                if (remaining <= TimeSpan.Zero)
+                {
+                    throw new TimeoutException("The shutdown transfer-drain deadline expired.");
+                }
                 await Task.WhenAll(activeTasks)
-                    .WaitAsync(TimeSpan.FromSeconds(15), cancellationToken)
+                    .WaitAsync(remaining, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (TimeoutException)
@@ -1837,30 +1860,34 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
         }
 
-        WaitForTasks(activeTasks);
-        DrainBackgroundTasks();
+        DateTimeOffset deadline = _shutdownDeadline ?? DateTimeOffset.UtcNow + ShutdownBudget;
+        bool activeDrained = WaitForTasksUntil(activeTasks, deadline);
+        bool backgroundDrained = DrainBackgroundTasksUntil(deadline);
 
         foreach (CancellationTokenSource cancellation in operationCancellations)
         {
             cancellation.Dispose();
         }
 
-        foreach (DownloadSession session in _sessions.Values)
+        if (activeDrained && backgroundDrained)
         {
-            session.CheckpointGate.Dispose();
-        }
-
-        lock (_removedHistorySync)
-        {
-            foreach (DownloadSession session in _removedHistory)
+            foreach (DownloadSession session in _sessions.Values)
             {
-                session.OperationCancellation?.Dispose();
                 session.CheckpointGate.Dispose();
             }
-            _removedHistory.Clear();
-        }
 
-        _persistenceGate.Dispose();
+            lock (_removedHistorySync)
+            {
+                foreach (DownloadSession session in _removedHistory)
+                {
+                    session.OperationCancellation?.Dispose();
+                    session.CheckpointGate.Dispose();
+                }
+                _removedHistory.Clear();
+            }
+
+            _persistenceGate.Dispose();
+        }
     }
 
     private void Start(DownloadSession session)
@@ -3813,7 +3840,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         if (waitInline)
         {
-            WaitForTasks([task]);
+            _ = task.ContinueWith(
+                static completed => _ = completed.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
             return;
         }
 
@@ -3832,9 +3863,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             TaskScheduler.Default);
     }
 
-    private void DrainBackgroundTasks()
+    private bool DrainBackgroundTasksUntil(DateTimeOffset deadline)
     {
-        while (true)
+        while (DateTimeOffset.UtcNow < deadline)
         {
             Task[] pending;
             lock (_backgroundTaskSync)
@@ -3842,13 +3873,42 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 if (_backgroundTasks.Count == 0)
                 {
                     _backgroundTrackingClosed = true;
-                    return;
+                    return true;
                 }
 
                 pending = _backgroundTasks.Values.ToArray();
             }
 
-            WaitForTasks(pending);
+            if (!WaitForTasksUntil(pending, deadline))
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool WaitForTasksUntil(IReadOnlyCollection<Task> tasks, DateTimeOffset deadline)
+    {
+        if (tasks.Count == 0)
+        {
+            return true;
+        }
+
+        TimeSpan remaining = deadline - DateTimeOffset.UtcNow;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            Task.WhenAll(tasks).Wait(remaining);
+            return tasks.All(static task => task.IsCompleted);
+        }
+        catch (AggregateException)
+        {
+            return true;
         }
     }
 
@@ -5368,6 +5428,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             network.DefaultConnectionCount,
             network.MaximumConnectionCount,
             network.MinimumSegmentedSizeBytes);
+    }
+
+    private TimeSpan GetRemainingShutdownBudget()
+        => (_shutdownDeadline ?? DateTimeOffset.UtcNow + ShutdownBudget) - DateTimeOffset.UtcNow;
+
+    private void ThrowIfAdmissionClosed()
+    {
+        if (Volatile.Read(ref _admissionClosed) != 0)
+        {
+            throw new InvalidOperationException("Download admission is closed because XDM is shutting down.");
+        }
     }
 
     private void ThrowIfDisposed()
