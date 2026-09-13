@@ -4904,5 +4904,30 @@
     "gradle_task": "verifyXar04NavigationSessionOwnership",
     "overlay": "4 of 17",
     "validator": "tools/validate-xar04-navigation-session-ownership.py"
+  },
+  "xar05_external_intake_admission": {
+    "canonical_findings_closed": 26,
+    "order": "5 of 17",
+    "overlay": "XAR05",
+    "principles": [
+      "every external entry point creates a review/admission envelope",
+      "caller idempotency and stableMediaId are advisory evidence only",
+      "redacted URL is never the duplicate key",
+      "exact request envelope is durable before executable rows proceed",
+      "local/private targets require scoped approval"
+    ],
+    "report": "XDM_ANDROID_XAR05_EXTERNAL_INTAKE_ADMISSION_REPORT.md",
+    "source_section": "S03 External Intake",
+    "validation_task": "verifyXar05ExternalIntakeAdmission",
+    "validator": "tools/validate-xar05-external-intake-admission.py"
+  },
+  "xar_roadmap": {
+    "applied_overlays": [
+      "XAR01",
+      "XAR02",
+      "XAR03",
+      "XAR04",
+      "XAR05"
+    ]
   }
 }

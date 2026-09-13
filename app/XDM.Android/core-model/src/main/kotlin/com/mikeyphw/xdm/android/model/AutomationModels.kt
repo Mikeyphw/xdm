@@ -15,7 +15,22 @@ enum class AutomationCommandAction { EnqueueDownload, PromptAddDownload, Capture
 enum class AutomationCommandStatus { Received, Claimed, Executing, Applied, Accepted, Duplicate, Rejected, Executed, Failed }
 enum class ExternalCommandAuthorization { Untrusted, UserConfirmed, IntegrationToken }
 enum class ExternalNetworkTarget { Public, Loopback, PrivateAddress, LinkLocal, LocalHostname, Reserved, Unknown }
-enum class AutomationRejectionReason { None, MissingUrl, UnsupportedAction, UnsupportedUrl, SensitivePayloadRejected, BackendUnavailable, NoMediaDetected, Duplicate, UserDeclined, DurableHandoffFailed, ClaimLost }
+enum class AutomationRejectionReason {
+    None,
+    MissingUrl,
+    UnsupportedAction,
+    UnsupportedUrl,
+    UnsupportedContentUri,
+    UnsupportedMultiSharePayload,
+    SensitivePayloadRejected,
+    PrivateNetworkApprovalRequired,
+    BackendUnavailable,
+    NoMediaDetected,
+    Duplicate,
+    UserDeclined,
+    DurableHandoffFailed,
+    ClaimLost,
+}
 
 data class AutomationCommandDraft(
     val source: AutomationCommandSource,
@@ -46,6 +61,11 @@ data class AutomationCommandDraft(
     val sessionRevision: Long? = null,
     val proposedHeaders: String? = null,
     val finalHeaders: String? = null,
+    /** Caller supplied values are retained as evidence only; XDM computes the durable key locally. */
+    val requestFingerprint: String? = null,
+    val directCandidatesJson: String? = null,
+    val totalCandidateCount: Int? = null,
+    val truncatedCandidates: Boolean = false,
     val pageObservationNonce: String? = null,
     val pageObservationCreatedAtEpochMs: Long? = null,
     val pageObservationExpiresAtEpochMs: Long? = null,
@@ -55,6 +75,9 @@ data class AutomationCommandDraft(
     val normalizedPageUrl: String? get() = ExternalUrlPolicy.normalizedUrl(pageUrl)
     val originHost: String? get() = ExternalUrlPolicy.originHost(normalizedPageUrl ?: normalizedUrl)
     val sanitizedHeaders: String? get() = ExternalUrlPolicy.sanitizeHeaders(rawHeaders)
+    val effectiveHeaderBlock: String? get() = finalHeaders?.takeIf(String::isNotBlank)
+        ?: proposedHeaders?.takeIf(String::isNotBlank)
+        ?: rawHeaders?.takeIf(String::isNotBlank)
     val stableIdempotencyKey: String get() = AutomationCommandIds.stableKey(this)
 }
 
@@ -88,7 +111,7 @@ data class AutomationCommandRecord(
 )
 
 object ExternalUrlPolicy {
-    private val externalUrlPattern = Regex("""(?:https?|ftp)://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
+    private val externalUrlPattern = Regex("""(?:(?:https?|ftp)://|magnet:\?)[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
     private val clipboardUrlPattern = Regex("""https?://[^\s<>()\[\]{}\"']+""", RegexOption.IGNORE_CASE)
     private val trailingNoise = Regex("""[),.;:!?]+$""")
     private val sensitiveQueryNames = setOf(
@@ -115,6 +138,7 @@ object ExternalUrlPolicy {
     fun persistableUrl(raw: String?): String? {
         val normalized = normalizedUrl(raw) ?: return null
         val uri = runCatching { URI(normalized) }.getOrNull() ?: return null
+        if (uri.scheme.equals("magnet", true)) return normalized.take(2048)
         val query = uri.rawQuery
             ?.split('&')
             ?.filter(String::isNotBlank)
@@ -148,6 +172,7 @@ object ExternalUrlPolicy {
 
     fun classifyNetworkTarget(raw: String?): ExternalNetworkTarget {
         val uri = normalizedUrl(raw)?.let { runCatching { URI(it) }.getOrNull() } ?: return ExternalNetworkTarget.Unknown
+        if (uri.scheme.equals("magnet", true)) return ExternalNetworkTarget.Public
         val host = uri.host?.trim()?.lowercase(Locale.US) ?: return ExternalNetworkTarget.Unknown
         if (host == "localhost" || host == "ip6-localhost") return ExternalNetworkTarget.Loopback
         if (host.endsWithAny(localHostSuffixes) || '.' !in host && ':' !in host) return ExternalNetworkTarget.LocalHostname
@@ -171,11 +196,31 @@ object ExternalUrlPolicy {
         runCatching { URI(url).host?.lowercase(Locale.US)?.takeIf { it.isNotBlank() } }.getOrNull()
     }
 
+    fun sameOrigin(first: String?, second: String?): Boolean {
+        val left = normalizedUrl(first)?.let { runCatching { URI(it) }.getOrNull() } ?: return false
+        val right = normalizedUrl(second)?.let { runCatching { URI(it) }.getOrNull() } ?: return false
+        val leftPort = explicitPort(left)
+        val rightPort = explicitPort(right)
+        return left.scheme.equals(right.scheme, true) &&
+            left.host.equals(right.host, true) &&
+            leftPort == rightPort
+    }
+
+    fun credentialHeadersAllowedFor(pageUrl: String?, targetUrl: String?): Boolean {
+        val target = normalizedUrl(targetUrl) ?: return false
+        val page = normalizedUrl(pageUrl) ?: return true
+        return sameOrigin(page, target)
+    }
+
     fun sanitizeHeaders(raw: String?): String? = PrivacyDiagnosticsRedactor.redactHeaders(raw)
 
     private fun normalizeDownloadUrl(raw: String): String? {
         val uri = runCatching { URI(raw) }.getOrNull() ?: return null
         val scheme = uri.scheme?.lowercase(Locale.US) ?: return null
+        if (scheme == "magnet") {
+            if (uri.rawFragment != null || uri.rawSchemeSpecificPart.isNullOrBlank()) return null
+            return "magnet:" + uri.rawSchemeSpecificPart.take(2048)
+        }
         if (scheme != "http" && scheme != "https" && scheme != "ftp") return null
         if (uri.userInfo != null || uri.fragment != null) return null
         val host = uri.host?.lowercase(Locale.US)?.takeIf { it.isNotBlank() } ?: return null
@@ -195,6 +240,14 @@ object ExternalUrlPolicy {
         val name = normalizeQueryName(rawName)
         if (name in sensitiveQueryNames) return true
         return sensitiveQuerySuffixes.any { suffix -> name.endsWith(suffix) }
+    }
+
+    private fun explicitPort(uri: URI): Int = when {
+        uri.port != -1 -> uri.port
+        uri.scheme.equals("http", true) -> 80
+        uri.scheme.equals("https", true) -> 443
+        uri.scheme.equals("ftp", true) -> 21
+        else -> -1
     }
 
     internal fun redactQueryParameter(part: String, replacement: String): String {
@@ -247,30 +300,33 @@ object BrowserHandoffPolicy {
 
 object AutomationCommandIds {
     fun stableKey(draft: AutomationCommandDraft): String {
-        val explicit = draft.explicitIdempotencyKey?.trim()?.takeIf { it.isNotBlank() }
-        if (explicit != null) return "external:${draft.source.name}:$explicit"
-        if (draft.action == AutomationCommandAction.CaptureMedia) {
-            val normalizedUrl = ExternalUrlPolicy.normalizedUrl(draft.url)
-            val normalizedPage = ExternalUrlPolicy.normalizedUrl(draft.pageUrl)
-            val logicalMedia = draft.stableMediaId?.trim()?.takeIf { it.isNotBlank() }
-                ?: ExternalUrlPolicy.persistableUrl(normalizedUrl).orEmpty()
-            val logicalPage = ExternalUrlPolicy.persistableUrl(normalizedPage).orEmpty()
-            val raw = listOf(
-                "external-handoff",
-                draft.action.name,
-                logicalMedia,
-                logicalPage,
-                (draft.sessionRevision ?: 0L).toString(),
-            ).joinToString("|")
-            return "auto:" + sha256(raw).take(32)
-        }
-        return stableKey(
-            source = draft.source,
-            action = draft.action,
-            url = draft.url,
-            fileName = draft.fileName,
-            pageUrl = draft.pageUrl,
-        )
+        val normalizedUrl = ExternalUrlPolicy.normalizedUrl(draft.url)
+        val normalizedPage = ExternalUrlPolicy.normalizedUrl(draft.pageUrl)
+        val normalizedFrame = ExternalUrlPolicy.normalizedUrl(draft.frameUrl)
+        val explicit = draft.explicitIdempotencyKey?.trim()?.take(160).orEmpty()
+        val candidateGraph = listOfNotNull(
+            draft.directCandidatesJson?.let(::sha256),
+            draft.totalCandidateCount?.toString(),
+            draft.truncatedCandidates.takeIf { it }?.let { "truncated" },
+        ).joinToString("/")
+        val raw = listOf(
+            "external-handoff-v5",
+            if (normalizedUrl != null || normalizedPage != null) "external-handoff" else draft.source.name,
+            draft.action.name,
+            normalizedUrl.orEmpty(),
+            normalizedPage.orEmpty(),
+            normalizedFrame.orEmpty(),
+            draft.fileName.textIdentityCommandPart(),
+            draft.mimeType.textIdentityCommandPart(),
+            draft.mediaKind.textIdentityCommandPart(),
+            draft.stableMediaId.textIdentityCommandPart(),
+            (draft.sessionRevision ?: 0L).toString(),
+            hashHeaders(draft.effectiveHeaderBlock),
+            draft.requestFingerprint.textIdentityCommandPart(),
+            candidateGraph,
+            explicit,
+        ).joinToString("|")
+        return "auto:" + sha256(raw).take(32)
     }
 
     fun stableKey(
@@ -280,26 +336,61 @@ object AutomationCommandIds {
         fileName: String? = null,
         pageUrl: String? = null,
     ): String {
-        val normalizedUrl = ExternalUrlPolicy.normalizedUrl(url)
-        val normalizedPage = ExternalUrlPolicy.normalizedUrl(pageUrl)
-        val sourcePart = if (normalizedUrl != null || normalizedPage != null) "external-handoff" else source.name
         val raw = listOf(
-            sourcePart,
+            "external-handoff-v5",
+            if (ExternalUrlPolicy.normalizedUrl(url) != null || ExternalUrlPolicy.normalizedUrl(pageUrl) != null) "external-handoff" else source.name,
             action.name,
-            normalizedUrl.urlIdentityCommandPart(),
+            ExternalUrlPolicy.normalizedUrl(url).orEmpty(),
+            ExternalUrlPolicy.normalizedUrl(pageUrl).orEmpty(),
             fileName.textIdentityCommandPart(),
-            normalizedPage.urlIdentityCommandPart(),
         ).joinToString("|")
         return "auto:" + sha256(raw).take(32)
     }
 
     fun commandId(idempotencyKey: String): String = "cmd-" + sha256(idempotencyKey).take(32)
 
-    private fun String?.urlIdentityCommandPart(): String = this?.trim().orEmpty()
+    private fun hashHeaders(raw: String?): String = raw
+        ?.lineSequence()
+        ?.mapNotNull { line ->
+            val split = line.indexOf(':')
+            if (split <= 0) return@mapNotNull null
+            line.substring(0, split).trim().lowercase(Locale.US) + ":" + line.substring(split + 1).trim()
+        }
+        ?.sorted()
+        ?.joinToString("\n")
+        ?.let(::sha256)
+        .orEmpty()
 
     private fun String?.textIdentityCommandPart(): String = this?.trim()?.lowercase(Locale.US).orEmpty()
 
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
-        .digest(value.toByteArray(Charsets.UTF_8))
+        .digest(value.toByteArray(StandardCharsets.UTF_8))
         .joinToString("") { byte -> "%02x".format(byte) }
 }
+
+/** Admission envelope rules shared by share-sheet, browser, Tasker, and replay paths. */
+object ExternalAdmissionPolicy {
+    fun requiresReview(draft: AutomationCommandDraft): Boolean = when (draft.action) {
+        AutomationCommandAction.EnqueueDownload,
+        AutomationCommandAction.CaptureMedia,
+        AutomationCommandAction.PromptAddDownload,
+        -> true
+        AutomationCommandAction.PauseAll,
+        AutomationCommandAction.ResumeAll,
+        AutomationCommandAction.Unknown,
+        -> false
+    }
+
+    fun validateForDispatch(draft: AutomationCommandDraft): AutomationRejectionReason {
+        if (draft.action == AutomationCommandAction.Unknown) return AutomationRejectionReason.UnsupportedAction
+        if (draft.action in setOf(AutomationCommandAction.PauseAll, AutomationCommandAction.ResumeAll)) return AutomationRejectionReason.None
+        val url = draft.normalizedUrl ?: return AutomationRejectionReason.MissingUrl
+        val scheme = runCatching { URI(url).scheme?.lowercase(Locale.US) }.getOrNull()
+        if (scheme !in setOf("http", "https", "ftp", "magnet")) return AutomationRejectionReason.UnsupportedUrl
+        if (ExternalUrlPolicy.requiresPrivateNetworkApproval(url) && !draft.privateNetworkApproved) {
+            return AutomationRejectionReason.PrivateNetworkApprovalRequired
+        }
+        return AutomationRejectionReason.None
+    }
+}
+

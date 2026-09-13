@@ -160,8 +160,12 @@ fun XdmApp(
                     externalSessionHealth = externalSessionHealth,
                     externalEngineEscalationPlan = externalEngineEscalation,
                     onInspectMedia = { url, fileName ->
-                        activeExternalDraft?.takeIf { it.url == url.trim() }?.let(viewModel::inspectExternalMedia)
-                            ?: viewModel.inspectManualMedia(url, fileName)
+                        val currentDraft = activeExternalDraft?.takeIf { it.url == url.trim() }
+                        if (currentDraft != null) {
+                            viewModel.inspectExternalMedia(currentDraft)
+                        } else {
+                            viewModel.inspectManualMedia(url, fileName)
+                        }
                     },
                     onCancel = viewModel::dismissAddDownloadSession,
                     onDestinationChanged = viewModel::setDestination,

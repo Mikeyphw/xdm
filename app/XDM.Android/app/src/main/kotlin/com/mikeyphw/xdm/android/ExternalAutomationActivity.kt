@@ -28,7 +28,7 @@ class ExternalAutomationActivity : ComponentActivity() {
         }
         val tokenValid = ExternalAutomationTrustStore(this).verify(suppliedSecret)
         val privateTarget = draft.normalizedUrl != null && ExternalUrlPolicy.requiresPrivateNetworkApproval(draft.normalizedUrl)
-        val tokenMayAutoExecute = tokenValid && !privateTarget && draft.action == AutomationCommandAction.EnqueueDownload
+        val tokenMayAutoExecute = tokenValid && draft.action in setOf(AutomationCommandAction.PauseAll, AutomationCommandAction.ResumeAll)
         if (tokenMayAutoExecute) {
             dispatch(
                 draft.approvedForDispatch(
@@ -44,7 +44,7 @@ class ExternalAutomationActivity : ComponentActivity() {
             .setTitle(
                 when {
                     privateTarget -> "Approve local-network action"
-                    tokenValid -> "Confirm privileged automation action"
+                    tokenValid -> "Review trusted automation action"
                     else -> "Approve external automation"
                 },
             )

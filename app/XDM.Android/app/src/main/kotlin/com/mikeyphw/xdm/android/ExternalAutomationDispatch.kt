@@ -5,6 +5,7 @@ import com.mikeyphw.xdm.android.model.AutomationCommandIds
 import com.mikeyphw.xdm.android.model.AutomationCommandRecord
 import com.mikeyphw.xdm.android.model.AutomationCommandStatus
 import com.mikeyphw.xdm.android.model.AutomationRejectionReason
+import com.mikeyphw.xdm.android.model.ExternalAdmissionPolicy
 import com.mikeyphw.xdm.android.model.ExternalCommandAuthorization
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
@@ -16,6 +17,11 @@ import org.json.JSONObject
 internal object ExternalAutomationDispatch {
     suspend fun persist(repository: DownloadRepository, draft: AutomationCommandDraft): String? {
         if (draft.authorization == ExternalCommandAuthorization.Untrusted) return null
+        val rejection = ExternalAdmissionPolicy.validateForDispatch(draft)
+        if (rejection != AutomationRejectionReason.None) {
+            persistRejected(repository, draft, rejection, "External command rejected by unified admission policy: ${rejection.name}")
+            return null
+        }
         val key = draft.stableIdempotencyKey
         val existing = repository.findAutomationCommandByKey(key)
         if (existing != null && existing.status !in setOf(
@@ -108,6 +114,8 @@ internal object ExternalAutomationDispatch {
     fun restore(record: AutomationCommandRecord): AutomationCommandDraft {
         val secure = MediaRequestHandoffStore.forCommand(record.id)
         val meta = record.metadataJson?.let { runCatching { JSONObject(it) }.getOrNull() }
+        val restoredHeaders = secure?.headers?.entries?.joinToString("\n") { (name, value) -> "$name: $value" }
+        val restoredHeaderKind = meta?.optString("headersKind")?.takeIf(String::isNotBlank) ?: "raw"
         return AutomationCommandDraft(
             source = record.source,
             action = record.action,
@@ -121,7 +129,9 @@ internal object ExternalAutomationDispatch {
             authorization = record.authorization,
             privateNetworkApproved = record.privateNetworkApproved,
             cleartextCredentialsApproved = record.cleartextCredentialsApproved,
-            rawHeaders = secure?.headers?.entries?.joinToString("\n") { (name, value) -> "$name: $value" },
+            rawHeaders = restoredHeaders.takeIf { restoredHeaderKind == "raw" },
+            proposedHeaders = restoredHeaders.takeIf { restoredHeaderKind == "proposed" },
+            finalHeaders = restoredHeaders.takeIf { restoredHeaderKind == "final" },
             mimeType = meta?.optString("mimeType")?.takeIf(String::isNotBlank),
             mediaKind = meta?.optString("mediaKind")?.takeIf(String::isNotBlank),
             contentLength = meta?.optLong("contentLength", -1L)?.takeIf { it > 0L },
@@ -130,6 +140,12 @@ internal object ExternalAutomationDispatch {
             frameUrl = meta?.optString("frameUrl")?.takeIf(String::isNotBlank),
             stableMediaId = meta?.optString("stableMediaId")?.takeIf(String::isNotBlank),
             sessionRevision = meta?.optLong("sessionRevision", -1L)?.takeIf { it > 0L },
+            requestFingerprint = meta?.optString("requestFingerprint")?.takeIf(String::isNotBlank),
+            totalCandidateCount = meta?.optInt("totalCandidateCount", -1)?.takeIf { it > 0 },
+            truncatedCandidates = meta?.optBoolean("truncatedCandidates", false) ?: false,
+            pageObservationNonce = meta?.optString("pageObservationNonce")?.takeIf(String::isNotBlank),
+            pageObservationCreatedAtEpochMs = meta?.optLong("pageObservationCreatedAtEpochMs", -1L)?.takeIf { it > 0L },
+            pageObservationExpiresAtEpochMs = meta?.optLong("pageObservationExpiresAtEpochMs", -1L)?.takeIf { it > 0L },
             receivedAtEpochMs = record.createdAtEpochMs,
         )
     }
@@ -145,21 +161,43 @@ internal object ExternalAutomationDispatch {
         putText("frameUrl", draft.frameUrl)
         putText("stableMediaId", draft.stableMediaId)
         draft.sessionRevision?.takeIf { it > 0 }?.let { json.put("sessionRevision", it) }
+        putText("requestFingerprint", draft.requestFingerprint)
+        draft.pageObservationNonce?.takeIf(String::isNotBlank)?.let { json.put("pageObservationNonce", it.take(256)) }
+        draft.pageObservationCreatedAtEpochMs?.takeIf { it > 0 }?.let { json.put("pageObservationCreatedAtEpochMs", it) }
+        draft.pageObservationExpiresAtEpochMs?.takeIf { it > 0 }?.let { json.put("pageObservationExpiresAtEpochMs", it) }
+        draft.totalCandidateCount?.takeIf { it > 0 }?.let { json.put("totalCandidateCount", it) }
+        if (draft.truncatedCandidates) json.put("truncatedCandidates", true)
+        draft.directCandidatesJson?.takeIf(String::isNotBlank)?.let { json.put("directCandidatesSha256", sha256(it)) }
+        json.put("headersKind", when {
+            !draft.finalHeaders.isNullOrBlank() -> "final"
+            !draft.proposedHeaders.isNullOrBlank() -> "proposed"
+            !draft.rawHeaders.isNullOrBlank() -> "raw"
+            else -> "none"
+        })
         return json.takeIf { it.length() > 0 }?.toString()
     }
 
     private fun headersFor(draft: AutomationCommandDraft): Map<String, String> {
         val allowed = setOf("cookie", "authorization", "referer", "user-agent", "origin", "accept", "accept-language")
+        val credentialHeaders = setOf("cookie", "authorization", "origin")
         val result = linkedMapOf<String, String>()
-        draft.rawHeaders.orEmpty().lineSequence().forEach { line ->
+        val rawBlock = draft.finalHeaders ?: draft.proposedHeaders ?: draft.rawHeaders
+        val sameOriginCredentials = ExternalUrlPolicy.credentialHeadersAllowedFor(draft.pageUrl, draft.normalizedUrl)
+        rawBlock.orEmpty().lineSequence().forEach { line ->
             val split = line.indexOf(':')
             if (split <= 0) return@forEach
             val name = line.substring(0, split).trim()
             val value = line.substring(split + 1).trim()
-            if (name.lowercase(Locale.US) !in allowed || value.isBlank() || '\n' in value || '\r' in value) return@forEach
-            if (ExternalUrlPolicy.isCleartext(draft.normalizedUrl) && !draft.cleartextCredentialsApproved && name.lowercase(Locale.US) in setOf("cookie", "authorization")) return@forEach
+            val lowerName = name.lowercase(Locale.US)
+            if (lowerName !in allowed || value.isBlank() || '\n' in value || '\r' in value) return@forEach
+            if (!sameOriginCredentials && lowerName in credentialHeaders) return@forEach
+            if (ExternalUrlPolicy.isCleartext(draft.normalizedUrl) && !draft.cleartextCredentialsApproved && lowerName in setOf("cookie", "authorization")) return@forEach
             result[name] = value.take(8192)
         }
         return result
     }
+
+    private fun sha256(value: String): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> "%02x".format(byte) }
 }

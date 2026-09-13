@@ -23,7 +23,7 @@ class AutomationModelsTest {
     }
 
     @Test
-    fun captureMediaIdempotencyIncludesRevisionButNotCredentialValue() {
+    fun captureMediaIdempotencyIncludesExactSignedRequestAndRevision() {
         val first = AutomationCommandDraft(
             source = AutomationCommandSource.BrowserExtension,
             action = AutomationCommandAction.CaptureMedia,
@@ -33,21 +33,23 @@ class AutomationModelsTest {
         )
         val replay = first.copy(url = "https://cdn.example/Video.m3u8?token=two")
         val refreshed = replay.copy(sessionRevision = 11L)
-        assertEquals(first.stableIdempotencyKey, replay.stableIdempotencyKey)
-        assertNotEquals(first.stableIdempotencyKey, refreshed.stableIdempotencyKey)
+        assertNotEquals(first.stableIdempotencyKey, replay.stableIdempotencyKey)
+        assertNotEquals(replay.stableIdempotencyKey, refreshed.stableIdempotencyKey)
     }
 
     @Test
-    fun explicitKeysAreSourceScoped() {
+    fun explicitKeysAreSourceScopedAndRequestScoped() {
         val tasker = AutomationCommandDraft(
             source = AutomationCommandSource.Tasker,
             action = AutomationCommandAction.EnqueueDownload,
             explicitIdempotencyKey = "same-event",
         )
         val share = tasker.copy(source = AutomationCommandSource.ShareSheet)
+        val differentUrl = tasker.copy(url = "https://example.test/file.bin")
 
         assertTrue(tasker.stableIdempotencyKey != share.stableIdempotencyKey)
-        assertEquals("external:Tasker:same-event", tasker.stableIdempotencyKey)
+        assertTrue(tasker.stableIdempotencyKey != differentUrl.stableIdempotencyKey)
+        assertTrue(tasker.stableIdempotencyKey.startsWith("auto:"))
     }
 
     @Test

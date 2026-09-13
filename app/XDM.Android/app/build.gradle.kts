@@ -402,6 +402,15 @@ val verifyXar04NavigationSessionOwnership = tasks.register<Exec>("verifyXar04Nav
     trackStaticValidation("xar04-navigation-session-ownership")
 }
 
+
+val verifyXar05ExternalIntakeAdmission = tasks.register<Exec>("verifyXar05ExternalIntakeAdmission") {
+    group = "verification"
+    description = "Verify XAR05 unified external intake, atomic exact-request admission, and S03 coverage."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar05-external-intake-admission.py")
+    trackStaticValidation("xar05-external-intake-admission")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."

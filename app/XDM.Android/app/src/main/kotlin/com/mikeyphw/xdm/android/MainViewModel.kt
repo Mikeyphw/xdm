@@ -1065,22 +1065,33 @@ class MainViewModel(
             preferences.values.collectLatest(::refreshBrowserBridgeStatus)
         }
         viewModelScope.launch(Dispatchers.IO) {
-            repository.pendingAutomationCommands().forEach { command ->
-                when {
-                    command.status == AutomationCommandStatus.Received || command.status == AutomationCommandStatus.Accepted ->
-                        processPersistedAutomationCommand(command.id)
-                    command.status in setOf(AutomationCommandStatus.Claimed, AutomationCommandStatus.Executing) && command.action == AutomationCommandAction.PromptAddDownload ->
-                        openExternalAddDraft(command, ExternalAutomationDispatch.restore(command), "Recovered Add Download confirmation after process restart")
-                    command.status == AutomationCommandStatus.Claimed || command.status == AutomationCommandStatus.Executing -> {
-                        val recovered = repository.transitionAutomationCommand(
-                            command.id,
-                            listOf(AutomationCommandStatus.Claimed, AutomationCommandStatus.Executing),
-                            AutomationCommandStatus.Received,
-                            "Recovered interrupted durable automation claim after process restart.",
-                        )
-                        if (recovered == 1) processPersistedAutomationCommand(command.id)
+            var recoveredIds = repository.pendingAutomationCommands().map { it.id }
+            val seen = linkedSetOf<String>()
+            while (recoveredIds.isNotEmpty()) {
+                val nextIds = mutableListOf<String>()
+                recoveredIds.forEach { commandId ->
+                    if (!seen.add(commandId)) return@forEach
+                    val command = repository.findAutomationCommand(commandId) ?: return@forEach
+                    when {
+                        command.status == AutomationCommandStatus.Received || command.status == AutomationCommandStatus.Accepted ->
+                            processPersistedAutomationCommand(command.id)
+                        command.status in setOf(AutomationCommandStatus.Claimed, AutomationCommandStatus.Executing) && command.action == AutomationCommandAction.PromptAddDownload ->
+                            openExternalAddDraft(command, ExternalAutomationDispatch.restore(command), "Recovered Add Download confirmation after process restart")
+                        command.status == AutomationCommandStatus.Claimed || command.status == AutomationCommandStatus.Executing -> {
+                            val recovered = repository.transitionAutomationCommand(
+                                command.id,
+                                listOf(AutomationCommandStatus.Claimed, AutomationCommandStatus.Executing),
+                                AutomationCommandStatus.Received,
+                                "Recovered interrupted durable automation claim after process restart.",
+                            )
+                            if (recovered == 1) nextIds += command.id
+                        }
                     }
                 }
+                recoveredIds = repository.pendingAutomationCommands()
+                    .map { it.id }
+                    .filterNot(seen::contains)
+                    .ifEmpty { nextIds.filterNot(seen::contains) }
             }
         }
     }
@@ -3224,9 +3235,11 @@ class MainViewModel(
         if (referer != null && headers.keys.none { it.equals("Referer", ignoreCase = true) }) {
             headers["Referer"] = referer
         }
-        if (ExternalUrlPolicy.isCleartext(targetUrl) && !cleartextCredentialsApproved) {
+        val targetHostChanged = !ExternalUrlPolicy.credentialHeadersAllowedFor(pageUrl, targetUrl)
+        if (targetHostChanged || (ExternalUrlPolicy.isCleartext(targetUrl) && !cleartextCredentialsApproved)) {
             headers.keys.removeAll { it.equals("Cookie", true) || it.equals("Authorization", true) }
         }
+        if (targetHostChanged) headers.keys.removeAll { it.equals("Origin", true) }
         headers.keys.removeAll {
             it.equals("Range", true) || it.equals("Host", true) ||
                 it.equals("Content-Length", true) || it.equals("Connection", true)
@@ -3271,7 +3284,7 @@ class MainViewModel(
             return
         }
         val safeName = resolveFileName(url, draft.fileName.orEmpty())
-        val sessionHeaders = transientSessionHeaders(draft.rawHeaders, draft.pageUrl, url, draft.cleartextCredentialsApproved)
+        val sessionHeaders = transientSessionHeaders(draft.effectiveHeaderBlock, draft.pageUrl, url, draft.cleartextCredentialsApproved)
         val mediaCandidate = mediaCaptureService.candidateFor(url)
         val transferShape = mediaCandidate?.let(::transferShapeForCandidate) ?: inferTransferShape(url)
         val currentPreferences = preferences.values.first()
@@ -3335,7 +3348,7 @@ class MainViewModel(
                     resultMessage = "Download persistence lost the execution claim",
                     rejectionReason = AutomationRejectionReason.ClaimLost,
                     updatedAtEpochMs = System.currentTimeMillis(),
-                ) { "Exact automation download handoff changed while durable download was preparing" },
+                ),
             )
             return
         }

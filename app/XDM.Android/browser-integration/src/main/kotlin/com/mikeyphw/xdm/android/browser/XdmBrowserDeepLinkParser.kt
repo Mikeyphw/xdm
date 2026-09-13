@@ -84,6 +84,20 @@ object XdmBrowserDeepLinkParser {
             parameters.singleValue(XdmBrowserDeepLinkContract.RawHeadersParameter).sanitizedHeaderBlock()
                 ?: final ?: proposed
         } else null
+        val requestFingerprint = if (allowHeaders) {
+            parameters.singleValue(XdmBrowserDeepLinkContract.RequestFingerprintParameter)
+                ?.trim()
+                ?.takeIf { it.matches(Regex("[A-Za-z0-9._:-]{8,256}")) }
+                ?.take(256)
+        } else null
+        val pageObservationNonce = if (allowHeaders) {
+            parameters.singleValue(XdmBrowserDeepLinkContract.PageObservationNonceParameter)
+                ?.trim()
+                ?.takeIf { it.matches(Regex("[A-Za-z0-9._:-]{16,256}")) }
+                ?.take(256)
+        } else null
+        val pageObservationCreatedAt = if (allowHeaders) parameters.singleValue(XdmBrowserDeepLinkContract.PageObservationCreatedAtParameter)?.toLongOrNull()?.takeIf { it > 0L } else null
+        val pageObservationExpiresAt = if (allowHeaders) parameters.singleValue(XdmBrowserDeepLinkContract.PageObservationExpiresAtParameter)?.toLongOrNull()?.takeIf { it > 0L } else null
         val directCandidatesJson = if (allowHeaders && action == AutomationCommandAction.CaptureMedia) {
             parameters.singleValue(XdmBrowserDeepLinkContract.DirectCandidatesParameter)
                 ?.takeIf { it.isNotBlank() && it.length <= XdmBrowserDeepLinkContract.MaxDirectCandidatesJsonCharacters }
@@ -118,6 +132,10 @@ object XdmBrowserDeepLinkParser {
                 rawHeaders = rawHeaders,
                 proposedHeaders = proposed,
                 finalHeaders = final,
+                requestFingerprint = requestFingerprint,
+                pageObservationNonce = pageObservationNonce,
+                pageObservationCreatedAtEpochMs = pageObservationCreatedAt,
+                pageObservationExpiresAtEpochMs = pageObservationExpiresAt,
                 directCandidatesJson = directCandidatesJson,
                 totalCandidateCount = totalCandidateCount,
                 truncatedCandidates = truncatedCandidates,

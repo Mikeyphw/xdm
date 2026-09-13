@@ -23,6 +23,10 @@ data class XdmBrowserDeepLinkPayload(
     val rawHeaders: String? = null,
     val proposedHeaders: String? = null,
     val finalHeaders: String? = null,
+    val requestFingerprint: String? = null,
+    val pageObservationNonce: String? = null,
+    val pageObservationCreatedAtEpochMs: Long? = null,
+    val pageObservationExpiresAtEpochMs: Long? = null,
     val directCandidatesJson: String? = null,
     val totalCandidateCount: Int? = null,
     val truncatedCandidates: Boolean = false,
@@ -61,6 +65,13 @@ data class XdmBrowserDeepLinkPayload(
         rawHeaders = rawHeaders,
         proposedHeaders = proposedHeaders,
         finalHeaders = finalHeaders,
+        requestFingerprint = requestFingerprint,
+        directCandidatesJson = directCandidatesJson,
+        totalCandidateCount = totalCandidateCount,
+        truncatedCandidates = truncatedCandidates,
+        pageObservationNonce = pageObservationNonce,
+        pageObservationCreatedAtEpochMs = pageObservationCreatedAtEpochMs,
+        pageObservationExpiresAtEpochMs = pageObservationExpiresAtEpochMs,
     )
 }
 

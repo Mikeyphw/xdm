@@ -29,44 +29,38 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
             reviewEncryptedBrowserCapture(deepLink.payload)
             return
         }
-        val draft = ExternalIntentDraftFactory.general(this, intent)
-        if (draft == null || (draft.normalizedUrl == null && draft.action.requiresUrl())) {
+        val intake = ExternalIntentDraftFactory.generalIntake(this, intent)
+        if (intake.rejectedDraft != null) {
+            rejectAndFinish(
+                intake.rejectedDraft,
+                intake.rejectionReason ?: AutomationRejectionReason.UnsupportedUrl,
+                intake.rejectionMessage ?: "External handoff was rejected before review",
+            )
+            return
+        }
+        val drafts = intake.drafts
+        if (drafts.isEmpty()) {
             finish()
             return
         }
-        if (deepLink is XdmBrowserDeepLinkParseResult.Accepted && deepLink.payload.hasDirectCaptureSession) {
-            routeDirectBrowserCapture(draft)
-            return
-        }
+        val draft = drafts.first()
         AlertDialog.Builder(this)
-            .setTitle("Open in XDM")
-            .setMessage(ExternalIntentDraftFactory.displaySummary(draft))
-            .setNegativeButton("Cancel") { _, _ -> rejectAndFinish(draft) }
+            .setTitle(if (drafts.size > 1) "Open ${drafts.size} links in XDM" else "Open in XDM")
+            .setMessage(ExternalIntentDraftFactory.displaySummary(draft, drafts.size))
+            .setNegativeButton("Cancel") { _, _ -> drafts.forEach { rejectAndFinish(it) } }
             .setPositiveButton("Continue") { _, _ ->
-                dispatch(
-                    draft.approvedForDispatch(
+                dispatchAll(drafts.map {
+                    it.approvedForDispatch(
                         authorization = ExternalCommandAuthorization.UserConfirmed,
-                        privateNetworkApproved = draft.normalizedUrl != null && ExternalUrlPolicy.requiresPrivateNetworkApproval(draft.normalizedUrl),
+                        privateNetworkApproved = it.normalizedUrl != null && ExternalUrlPolicy.requiresPrivateNetworkApproval(it.normalizedUrl),
                         cleartextCredentialsApproved = false,
-                    ),
-                )
+                    )
+                })
             }
-            .setOnCancelListener { rejectAndFinish(draft) }
+            .setOnCancelListener { drafts.forEach { rejectAndFinish(it) } }
             .show()
     }
 
-    private fun routeDirectBrowserCapture(draft: AutomationCommandDraft) {
-        val privateNetworkApproved = draft.normalizedUrl != null &&
-            ExternalUrlPolicy.requiresPrivateNetworkApproval(draft.normalizedUrl)
-        startActivity(
-            Intent(this, MainActivity::class.java)
-                .setAction(MainActivity.ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT)
-                .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI, intent.dataString)
-                .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED, privateNetworkApproved)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-        )
-        finish()
-    }
 
     private fun reviewEncryptedBrowserCapture(payload: XdmBrowserDeepLinkPayload) {
         val sessionLabel = payload.captureSessionId.orEmpty().take(32)
@@ -105,15 +99,17 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
             .show()
     }
 
-    protected fun dispatch(draft: AutomationCommandDraft) {
+    protected fun dispatch(draft: AutomationCommandDraft) = dispatchAll(listOf(draft))
+
+    protected fun dispatchAll(drafts: List<AutomationCommandDraft>) {
         lifecycleScope.launch {
             val repository = (application as XdmApplication).container.repository
-            val commandId = withContext(Dispatchers.IO) { ExternalAutomationDispatch.persist(repository, draft) }
-            if (commandId != null) {
+            val commandIds = withContext(Dispatchers.IO) { drafts.mapNotNull { ExternalAutomationDispatch.persist(repository, it) } }
+            if (commandIds.isNotEmpty()) {
                 startActivity(
                     Intent(this@ExternalHandoffReviewActivity, MainActivity::class.java)
                         .setAction(MainActivity.ACTION_INTERNAL_AUTOMATION_DISPATCH)
-                        .putExtra(MainActivity.EXTRA_INTERNAL_COMMAND_ID, commandId)
+                        .putExtra(MainActivity.EXTRA_INTERNAL_COMMAND_ID, commandIds.first())
                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 )
             }
@@ -121,14 +117,18 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
         }
     }
 
-    private fun rejectAndFinish(draft: AutomationCommandDraft) {
+    private fun rejectAndFinish(
+        draft: AutomationCommandDraft,
+        reason: AutomationRejectionReason = AutomationRejectionReason.UserDeclined,
+        message: String = "User declined external handoff",
+    ) {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 ExternalAutomationDispatch.persistRejected(
                     (application as XdmApplication).container.repository,
                     draft,
-                    AutomationRejectionReason.UserDeclined,
-                    "User declined external handoff",
+                    reason,
+                    message,
                 )
             }
             finish()

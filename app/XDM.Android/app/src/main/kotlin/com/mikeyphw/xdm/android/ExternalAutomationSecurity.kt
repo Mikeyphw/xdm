@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Base64
 import com.mikeyphw.xdm.android.browser.BrowserHandoffContract
 import com.mikeyphw.xdm.android.model.AutomationCommandAction
@@ -123,7 +124,16 @@ internal object ExternalIntentDraftFactory {
         )
     }
 
-    fun general(activity: Activity, intent: Intent): AutomationCommandDraft? {
+    data class GeneralIntakeResult(
+        val drafts: List<AutomationCommandDraft> = emptyList(),
+        val rejectedDraft: AutomationCommandDraft? = null,
+        val rejectionReason: com.mikeyphw.xdm.android.model.AutomationRejectionReason? = null,
+        val rejectionMessage: String? = null,
+    )
+
+    fun general(activity: Activity, intent: Intent): AutomationCommandDraft? = generalIntake(activity, intent).drafts.firstOrNull()
+
+    fun generalIntake(activity: Activity, intent: Intent): GeneralIntakeResult {
         val identity = ExternalCallerIdentity.from(activity, intent)
         val deepLink = com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParser.parseDetailed(
             rawDeepLink = intent.dataString,
@@ -133,57 +143,109 @@ internal object ExternalIntentDraftFactory {
             val payload = deepLink.payload
             // Encrypted capture sessions are handled by the dedicated review/journal path.
             // Never flatten ciphertext-bearing v2 capture data into a legacy URL automation draft.
-            if (payload.hasEncryptedCaptureEnvelope) return null
-            return payload.toAutomationCommandDraft(originPackage = identity.observedPackage).copy(
-                claimedOriginPackage = identity.claimedPackage,
+            if (payload.hasEncryptedCaptureEnvelope) return GeneralIntakeResult()
+            return GeneralIntakeResult(
+                drafts = listOf(payload.toAutomationCommandDraft(originPackage = identity.observedPackage).copy(
+                    claimedOriginPackage = identity.claimedPackage,
+                )),
             )
         }
-        if (deepLink is com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParseResult.Rejected) return null
+        if (deepLink is com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkParseResult.Rejected) {
+            return GeneralIntakeResult(
+                rejectedDraft = AutomationCommandDraft(
+                    source = AutomationCommandSource.BrowserExtension,
+                    action = AutomationCommandAction.Unknown,
+                    originPackage = identity.observedPackage,
+                    claimedOriginPackage = identity.claimedPackage,
+                ),
+                rejectionReason = com.mikeyphw.xdm.android.model.AutomationRejectionReason.UnsupportedUrl,
+                rejectionMessage = "Malformed browser handoff was rejected before review.",
+            )
+        }
 
         val action = intent.action.orEmpty()
-        val sharedText = sharedText(activity, intent)
-        val url = handoffUrl(activity, intent, sharedText)
-        val shouldPrompt = action in BrowserHandoffContract.DownloadManagerActions || action == Intent.ACTION_VIEW
-        val commandAction = if (shouldPrompt) AutomationCommandAction.PromptAddDownload else AutomationCommandAction.CaptureMedia
         if (action !in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_VIEW) &&
             action !in BrowserHandoffContract.DownloadManagerActions
-        ) return null
-        return AutomationCommandDraft(
-            source = when {
-                action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE -> AutomationCommandSource.ShareSheet
-                else -> AutomationCommandSource.ViewIntent
-            },
-            action = commandAction,
-            url = url,
-            fileName = handoffFileName(intent),
-            pageTitle = handoffTitle(intent),
-            pageUrl = handoffPageUrl(intent, url),
-            explicitIdempotencyKey = intent.getStringExtra(TaskerContract.ExtraIdempotencyKey),
-            originPackage = identity.observedPackage,
-            claimedOriginPackage = identity.claimedPackage,
-            rawHeaders = browserHeaders(intent),
-            mimeType = handoffMimeType(intent),
-            contentLength = handoffContentLength(intent),
-            frameUrl = handoffFrameUrl(intent),
-            stableMediaId = handoffStableMediaId(intent),
-            sessionRevision = handoffSessionRevision(intent),
-            proposedHeaders = browserProposedHeaders(intent),
-            finalHeaders = browserFinalHeaders(intent),
-            pageObservationNonce = intent.getStringExtra(BrowserHandoffContract.ExtraPageObservationNonce),
-            pageObservationCreatedAtEpochMs = intent.getLongExtra(BrowserHandoffContract.ExtraPageObservationCreatedAt, -1L).takeIf { it > 0L },
-            pageObservationExpiresAtEpochMs = intent.getLongExtra(BrowserHandoffContract.ExtraPageObservationExpiresAt, -1L).takeIf { it > 0L },
-        )
+        ) return GeneralIntakeResult()
+        val sharedText = sharedText(activity, intent)
+        val urls = handoffUrls(activity, intent, sharedText)
+        val contentUris = contentUris(intent)
+        val source = when {
+            action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE -> AutomationCommandSource.ShareSheet
+            else -> AutomationCommandSource.ViewIntent
+        }
+        if (urls.isEmpty()) {
+            val reason = if (contentUris.isNotEmpty()) {
+                com.mikeyphw.xdm.android.model.AutomationRejectionReason.UnsupportedContentUri
+            } else {
+                com.mikeyphw.xdm.android.model.AutomationRejectionReason.MissingUrl
+            }
+            return GeneralIntakeResult(
+                rejectedDraft = AutomationCommandDraft(
+                    source = source,
+                    action = AutomationCommandAction.PromptAddDownload,
+                    fileName = handoffFileName(intent),
+                    pageTitle = handoffTitle(intent),
+                    pageUrl = handoffPageUrl(intent),
+                    explicitIdempotencyKey = intent.getStringExtra(TaskerContract.ExtraIdempotencyKey),
+                    originPackage = identity.observedPackage,
+                    claimedOriginPackage = identity.claimedPackage,
+                    mimeType = handoffMimeType(intent),
+                    totalCandidateCount = contentUris.size.takeIf { it > 0 },
+                ),
+                rejectionReason = reason,
+                rejectionMessage = if (contentUris.isNotEmpty()) {
+                    "content:// shares are not silently imported. Use Add Download with a network URL or choose a document import flow when available."
+                } else {
+                    "No supported download URL was found in the external handoff."
+                },
+            )
+        }
+        val baseKey = intent.getStringExtra(TaskerContract.ExtraIdempotencyKey)
+        val drafts = urls.mapIndexed { index, url ->
+            AutomationCommandDraft(
+                source = source,
+                // Ordinary shares are Add Download review, not media-only capture. Browser media
+                // capture uses the typed custom-scheme action above.
+                action = AutomationCommandAction.PromptAddDownload,
+                url = url,
+                fileName = handoffFileName(intent),
+                pageTitle = handoffTitle(intent),
+                pageUrl = handoffPageUrl(intent, url),
+                explicitIdempotencyKey = baseKey?.let { if (urls.size == 1) it else "$it#$index" },
+                originPackage = identity.observedPackage,
+                claimedOriginPackage = identity.claimedPackage,
+                rawHeaders = browserHeaders(intent),
+                mimeType = handoffMimeType(intent),
+                contentLength = handoffContentLength(intent),
+                frameUrl = handoffFrameUrl(intent),
+                stableMediaId = handoffStableMediaId(intent),
+                sessionRevision = handoffSessionRevision(intent),
+                proposedHeaders = browserProposedHeaders(intent),
+                finalHeaders = browserFinalHeaders(intent),
+                requestFingerprint = handoffRequestFingerprint(intent),
+                pageObservationNonce = intent.getStringExtra(BrowserHandoffContract.ExtraPageObservationNonce),
+                pageObservationCreatedAtEpochMs = intent.getLongExtra(BrowserHandoffContract.ExtraPageObservationCreatedAt, -1L).takeIf { it > 0L },
+                pageObservationExpiresAtEpochMs = intent.getLongExtra(BrowserHandoffContract.ExtraPageObservationExpiresAt, -1L).takeIf { it > 0L },
+                totalCandidateCount = urls.size,
+            )
+        }
+        return GeneralIntakeResult(drafts = drafts)
     }
 
-    fun displaySummary(draft: AutomationCommandDraft): String = buildString {
-        append(
-            when (draft.action) {
+    fun displaySummary(draft: AutomationCommandDraft, totalDrafts: Int = 1): String = buildString {
+        if (totalDrafts > 1) {
+            append("Review ").append(totalDrafts).append(" external downloads in XDM?")
+        } else {
+            append(
+                when (draft.action) {
                 AutomationCommandAction.PauseAll -> "Pause every active XDM transfer?"
                 AutomationCommandAction.ResumeAll -> "Resume eligible paused XDM transfers?"
                 AutomationCommandAction.CaptureMedia -> "Review this media capture in XDM?"
-                else -> "Review this download in XDM?"
-            },
-        )
+                    else -> "Review this download in XDM?"
+                },
+            )
+        }
         val redacted = draft.normalizedUrl?.let(ExternalUrlPolicy::persistableUrl)
         if (!redacted.isNullOrBlank()) append("\n\n").append(redacted.take(500))
         when (ExternalUrlPolicy.classifyNetworkTarget(draft.normalizedUrl)) {
@@ -195,7 +257,9 @@ internal object ExternalIntentDraftFactory {
         }
     }
 
-    private fun handoffUrl(activity: Activity, intent: Intent, sharedText: String? = null): String? = sequenceOf(
+    private fun handoffUrl(activity: Activity, intent: Intent, sharedText: String? = null): String? = handoffUrls(activity, intent, sharedText).firstOrNull()
+
+    private fun handoffUrls(activity: Activity, intent: Intent, sharedText: String? = null): List<String> = sequenceOf(
         intent.dataString,
         sharedText,
         intent.getStringExtra(BrowserHandoffContract.ExtraDownloadUrl),
@@ -209,7 +273,30 @@ internal object ExternalIntentDraftFactory {
         intent.getStringExtra("com.android.browser.extra.URL"),
         intent.getStringExtra("org.mozilla.gecko.extra.URI"),
         intent.getStringExtra(Intent.EXTRA_SUBJECT),
-    ).plus(clipValues(activity, intent)).firstNotNullOfOrNull(ExternalUrlPolicy::normalizedUrl)
+    ).plus(clipValues(activity, intent))
+        .flatMap { value -> externalUrls(value).asSequence() }
+        .distinct()
+        .take(24)
+        .toList()
+
+    private fun externalUrls(value: String?): List<String> {
+        val text = value?.trim()?.takeIf(String::isNotBlank) ?: return emptyList()
+        val direct = ExternalUrlPolicy.normalizedUrl(text)
+        val embedded = ExternalUrlPolicy.urlsInText(text)
+        return (listOfNotNull(direct) + embedded).distinct()
+    }
+
+    private fun contentUris(intent: Intent): List<Uri> = buildList {
+        intent.data?.takeIf { it.scheme.equals("content", true) }?.let(::add)
+        @Suppress("DEPRECATION")
+        val streamUri = intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+        streamUri?.takeIf { it.scheme.equals("content", true) }?.let(::add)
+        intent.clipData?.let { clip ->
+            for (index in 0 until clip.itemCount) {
+                clip.getItemAt(index).uri?.takeIf { it.scheme.equals("content", true) }?.let(::add)
+            }
+        }
+    }.distinctBy { it.toString() }.take(24)
 
     private fun sharedText(activity: Activity, intent: Intent): String? = sequenceOf(
         intent.getStringExtra(Intent.EXTRA_TEXT),
@@ -302,6 +389,12 @@ internal object ExternalIntentDraftFactory {
         intent.getStringExtra("proposedHeaders"),
         intent.getStringExtra("proposed_headers"),
     ).joinToString("\n").take(32_768).takeIf { it.isNotBlank() }
+
+    private fun handoffRequestFingerprint(intent: Intent): String? = listOfNotNull(
+        intent.getStringExtra(BrowserHandoffContract.ExtraRequestFingerprint),
+        intent.getStringExtra("requestFingerprint"),
+        intent.getStringExtra("request_fingerprint"),
+    ).firstNotNullOfOrNull { value -> value.trim().takeIf { it.matches(Regex("[A-Za-z0-9._:-]{8,256}")) }?.take(256) }
 
     private fun browserFinalHeaders(intent: Intent): String? = listOfNotNull(
         intent.getStringExtra(BrowserHandoffContract.ExtraFinalRequestHeaders),
