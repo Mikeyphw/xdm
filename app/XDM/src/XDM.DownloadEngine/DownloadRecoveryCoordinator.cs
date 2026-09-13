@@ -8,7 +8,7 @@ using XDM.Core.State;
 
 namespace XDM.DownloadEngine;
 
-public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
+public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator, IDisposable
 {
     private const int MaximumScannedArtifacts = 4096;
     private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(15);
@@ -17,8 +17,11 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         ".xdm.part",
         ".xdm.resume.json",
         ".xdm.finalizing",
-        ".xdm.promoting"
+        ".xdm.promoting",
+        ".xdm.checksums.json",
+        ".xdm.recovery-dismissed.json"
     ];
+    private const string SegmentDirectorySuffix = ".segments";
     private static readonly EnumerationOptions ArtifactEnumerationOptions = new()
     {
         RecurseSubdirectories = true,
@@ -30,6 +33,8 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
     private readonly ISettingsService _settingsService;
     private readonly HttpClient _httpClient;
     private readonly ResumeCheckpointStore _checkpointStore = new();
+    private readonly FinalizationJournalStore _finalizationJournalStore = new();
+    private readonly RecoveryDismissalStore _dismissalStore = new();
     private readonly object _sync = new();
     private DownloadRecoveryCandidate[] _current = [];
 
@@ -47,6 +52,7 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         _historyStore = historyStore;
         _settingsService = settingsService;
         _httpClient = httpClient;
+        _applicationState.Changed += OnApplicationStateChanged;
     }
 
     public event EventHandler? Changed;
@@ -84,6 +90,10 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             cancellationToken.ThrowIfCancellationRequested();
             string destinationPath = Path.GetFullPath(item.DestinationPath);
             knownDestinations.Add(destinationPath);
+            if (await _dismissalStore.IsDismissedAsync(destinationPath, cancellationToken).ConfigureAwait(false))
+            {
+                continue;
+            }
             snapshots.TryGetValue(item.Id, out DownloadSnapshot? snapshot);
             DownloadRecoveryCandidate? candidate = await AssessKnownAsync(
                 item,
@@ -100,7 +110,8 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
 
         foreach (string destinationPath in EnumerateArtifactDestinations(GetScanRoots(persisted), cancellationToken))
         {
-            if (knownDestinations.Contains(Path.GetFullPath(destinationPath)))
+            if (knownDestinations.Contains(Path.GetFullPath(destinationPath))
+                || await _dismissalStore.IsDismissedAsync(destinationPath, cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
@@ -161,38 +172,98 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             });
         }
 
-        bool changed = HasRemoteChanged(candidate, identity);
-        DownloadRecoveryCandidate updated = changed
-            ? candidate with
+        RemoteValidationResult validation = EvaluateRemoteIdentity(candidate, identity);
+        if (validation.Changed)
+        {
+            return Replace(candidate with
             {
                 Classification = DownloadRecoveryClassification.RemoteFileChanged,
                 RecommendedAction = "Restart from zero or preserve the partial file before downloading the changed remote object.",
-                UnsafeReason = "The server identity or expected length no longer matches the persisted checkpoint.",
-                ResumeValidatorStatus = "Remote file changed"
-            }
-            : candidate with
+                UnsafeReason = validation.Message,
+                ResumeValidatorStatus = "Remote file changed",
+                RemoteIdentityValidated = false,
+                RepairSupported = false
+            });
+        }
+
+        if (!validation.Proven)
+        {
+            return Replace(candidate with
             {
-                Classification = DownloadRecoveryClassification.ReadyToResume,
-                RecommendedAction = "Resume the download. XDM will send a validated range request before appending.",
-                UnsafeReason = string.Empty,
-                ResumeValidatorStatus = identity.AcceptsRanges
-                    ? "Validated; byte ranges supported"
-                    : "Validated; server did not advertise ranges"
-            };
-        return Replace(updated);
+                Classification = DownloadRecoveryClassification.NeedsRemoteValidation,
+                RecommendedAction = "Remote identity is still unproven. Retry validation or restart from zero.",
+                UnsafeReason = validation.Message,
+                ResumeValidatorStatus = "Remote identity unproven",
+                RemoteIdentityValidated = false
+            });
+        }
+
+        bool requiresRanges = candidate.PartialBytes > 0;
+        if (requiresRanges && !identity.AcceptsRanges)
+        {
+            return Replace(candidate with
+            {
+                Classification = DownloadRecoveryClassification.NeedsRepair,
+                RecommendedAction = "The server identity matched, but byte-range resume is unavailable. Restart from zero.",
+                UnsafeReason = "The server did not advertise byte-range support, so existing partial bytes cannot be safely appended or selectively repaired.",
+                ResumeValidatorStatus = "Validated; byte ranges unavailable",
+                RemoteIdentityValidated = false,
+                RepairSupported = false
+            });
+        }
+
+        return Replace(candidate with
+        {
+            Classification = DownloadRecoveryClassification.ReadyToResume,
+            RecommendedAction = "Resume the download. XDM proved the remote identity and will revalidate the range response before appending.",
+            UnsafeReason = string.Empty,
+            ResumeValidatorStatus = requiresRanges
+                ? "Validated; byte ranges supported"
+                : "Validated; no partial bytes require a range",
+            RemoteIdentityValidated = true
+        });
     }
 
-    public void Dismiss(string candidateId)
+    public async Task DismissAsync(
+        string candidateId,
+        bool persist = false,
+        CancellationToken cancellationToken = default)
     {
-        DownloadRecoveryCandidate[] next;
-        lock (_sync)
+        DownloadRecoveryCandidate? candidate = Current.FirstOrDefault(item =>
+            string.Equals(item.Id, candidateId, StringComparison.Ordinal));
+        if (candidate is null)
         {
-            next = _current
-                .Where(candidate => !string.Equals(candidate.Id, candidateId, StringComparison.Ordinal))
-                .ToArray();
-            _current = next;
+            return;
         }
-        Changed?.Invoke(this, EventArgs.Empty);
+
+        if (persist)
+        {
+            await _dismissalStore
+                .SaveAsync(candidate.DestinationPath, candidate.Id, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        RemoveCandidate(candidateId);
+    }
+
+    public void MarkResumeStarted(string candidateId)
+    {
+        DownloadRecoveryCandidate? candidate = Current.FirstOrDefault(item =>
+            string.Equals(item.Id, candidateId, StringComparison.Ordinal));
+        if (candidate is null)
+        {
+            return;
+        }
+
+        Replace(candidate with
+        {
+            Classification = DownloadRecoveryClassification.ResumeInProgress,
+            RecommendedAction = "The transfer is running. This recovery record will clear only after the download completes safely.",
+            UnsafeReason = string.Empty,
+            ResumeValidatorStatus = "Validated; resume in progress",
+            OperationInProgress = true,
+            RemoteIdentityValidated = true
+        });
     }
 
     private async Task<DownloadRecoveryCandidate?> AssessKnownAsync(
@@ -204,13 +275,19 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         CancellationToken cancellationToken)
     {
         string destination = Path.GetFullPath(persisted.DestinationPath);
-        string partialPath = TransferArtifactPaths.GetPartialPath(destination);
+        string xdmPartialPath = TransferArtifactPaths.GetPartialPath(destination);
         string checkpointPath = TransferArtifactPaths.GetCheckpointPath(destination);
         string finalizationPath = TransferArtifactPaths.GetFinalizationMarkerPath(destination);
+        bool aria2DestinationOwnsProgress = persisted.Backend == DownloadBackendKind.Aria2 && File.Exists(destination);
+        string partialPath = aria2DestinationOwnsProgress ? destination : xdmPartialPath;
         long partialBytes = GetArtifactBytes(destination);
+        if (aria2DestinationOwnsProgress)
+        {
+            partialBytes = Math.Max(partialBytes, new FileInfo(destination).Length);
+        }
         ResumeCheckpoint? checkpoint = await _checkpointStore.LoadAsync(destination, cancellationToken)
             .ConfigureAwait(false);
-        FinalizationMarker? finalization = await ReadFinalizationMarkerAsync(finalizationPath, cancellationToken)
+        FinalizationMarker? finalization = await ReadFinalizationMarkerAsync(destination, cancellationToken)
             .ConfigureAwait(false);
         bool wasActive = wasTrackedActive || persisted.State is DownloadState.Connecting
             or DownloadState.Downloading
@@ -235,11 +312,9 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         DownloadRecoveryClassification classification;
         string action;
         string reason;
-        string stagingPath = TransferArtifactPaths.GetFinalizationStagingPath(destination);
         bool finalizationLooksComplete = finalization is not null
-            && ((File.Exists(destination) && new FileInfo(destination).Length == finalization.ExpectedLength)
-                || partialBytes == finalization.ExpectedLength
-                || (File.Exists(stagingPath) && new FileInfo(stagingPath).Length == finalization.ExpectedLength));
+            && await HasValidFinalizationCandidateAsync(destination, finalization, cancellationToken)
+                .ConfigureAwait(false);
         if (recoveredFinalization || finalizationLooksComplete)
         {
             classification = DownloadRecoveryClassification.AlreadyCompleteNotFinalized;
@@ -277,19 +352,18 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             action = "Validate the remote identity and local artifact length before resuming.";
             reason = "The previous shutdown did not complete its checkpoint flush for this active transfer.";
         }
-        else if (partialBytes > 0 && HasUsableValidator(checkpoint?.EntityTag ?? persisted.EntityTag, checkpoint?.LastModified ?? persisted.LastModified))
-        {
-            classification = DownloadRecoveryClassification.ReadyToResume;
-            action = "Resume the download. XDM will revalidate the server before appending.";
-            reason = string.Empty;
-        }
         else
         {
             classification = DownloadRecoveryClassification.NeedsRemoteValidation;
-            action = "Validate the remote file before resuming.";
+            action = "Validate the remote identity before resuming.";
+            bool hasPersistedValidator = HasUsableValidator(
+                checkpoint?.EntityTag ?? persisted.EntityTag,
+                checkpoint?.LastModified ?? persisted.LastModified);
             reason = partialBytes > 0
-                ? "The partial file has no strong ETag or Last-Modified validator."
-                : "The previous session ended while this transfer was active, before durable content was recorded.";
+                ? hasPersistedValidator
+                    ? "A persisted validator exists, but it has not yet been compared with the current remote object in this recovery session."
+                    : "The partial file has no strong ETag or Last-Modified validator that can prove remote identity."
+                : "The previous session ended while this transfer was active; XDM must validate the remote object before re-admitting it.";
         }
 
         string? entityTag = checkpoint?.EntityTag ?? persisted.EntityTag;
@@ -311,7 +385,12 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
             checkpoint?.ExpectedChecksum ?? persisted.ExpectedChecksum,
             classification,
             action,
-            reason);
+            reason,
+            RepairSupported: SupportsSelectiveRepair(
+                persisted,
+                checkpoint?.TotalBytes ?? persisted.TotalBytes,
+                classification,
+                partialBytes));
     }
 
     private async Task<DownloadRecoveryCandidate?> AssessOrphanAsync(
@@ -334,7 +413,7 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
 
         ResumeCheckpoint? checkpoint = await _checkpointStore.LoadAsync(destination, cancellationToken)
             .ConfigureAwait(false);
-        FinalizationMarker? finalization = await ReadFinalizationMarkerAsync(finalizationPath, cancellationToken)
+        FinalizationMarker? finalization = await ReadFinalizationMarkerAsync(destination, cancellationToken)
             .ConfigureAwait(false);
         string stableId = $"orphan:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(destination))).ToLowerInvariant()}";
         return new DownloadRecoveryCandidate(
@@ -420,6 +499,42 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
                     yield break;
                 }
             }
+
+            string[] segmentDirectories;
+            try
+            {
+                segmentDirectories = Directory
+                    .EnumerateDirectories(root, $"*{SegmentDirectorySuffix}", ArtifactEnumerationOptions)
+                    .Take(MaximumScannedArtifacts - count)
+                    .ToArray();
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            foreach (string segmentDirectory in segmentDirectories)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string fullPath = Path.GetFullPath(segmentDirectory);
+                if (fullPath.EndsWith(SegmentDirectorySuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string destination = fullPath[..^SegmentDirectorySuffix.Length];
+                    if (destinations.Add(destination))
+                    {
+                        yield return destination;
+                    }
+                }
+                count++;
+                if (count >= MaximumScannedArtifacts)
+                {
+                    yield break;
+                }
+            }
         }
     }
 
@@ -455,23 +570,51 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
                 || response.Headers.AcceptRanges.Any(static value =>
                     string.Equals(value, "bytes", StringComparison.OrdinalIgnoreCase)));
 
-    private static bool HasRemoteChanged(DownloadRecoveryCandidate candidate, RemoteIdentity remote)
+    private static RemoteValidationResult EvaluateRemoteIdentity(
+        DownloadRecoveryCandidate candidate,
+        RemoteIdentity remote)
     {
-        if (candidate.ExpectedTotalBytes is long expectedLength
-            && remote.Length is long actualLength
-            && expectedLength != actualLength)
+        if (candidate.ExpectedTotalBytes is long expectedLength)
         {
-            return true;
+            if (remote.Length is not long actualLength)
+            {
+                return new(false, false, "The server did not expose a content length, so the persisted object length cannot be proven.");
+            }
+            if (expectedLength != actualLength)
+            {
+                return new(false, true, $"The remote length changed from {expectedLength} to {actualLength} bytes.");
+            }
         }
-        if (!string.IsNullOrWhiteSpace(candidate.EntityTag)
-            && !string.IsNullOrWhiteSpace(remote.EntityTag)
-            && !string.Equals(candidate.EntityTag, remote.EntityTag, StringComparison.Ordinal))
+
+        bool hasStrongEtag = !string.IsNullOrWhiteSpace(candidate.EntityTag)
+            && !candidate.EntityTag.StartsWith("W/", StringComparison.OrdinalIgnoreCase);
+        if (hasStrongEtag)
         {
-            return true;
+            if (string.IsNullOrWhiteSpace(remote.EntityTag))
+            {
+                return new(false, false, "The persisted strong ETag is no longer exposed by the server.");
+            }
+            if (!string.Equals(candidate.EntityTag, remote.EntityTag, StringComparison.Ordinal))
+            {
+                return new(false, true, "The remote strong ETag no longer matches the persisted checkpoint.");
+            }
+            return new(true, false, "The remote strong ETag and known length match the persisted checkpoint.");
         }
-        return candidate.LastModified is DateTimeOffset expectedModified
-            && remote.LastModified is DateTimeOffset actualModified
-            && expectedModified != actualModified;
+
+        if (candidate.LastModified is DateTimeOffset expectedModified)
+        {
+            if (remote.LastModified is not DateTimeOffset actualModified)
+            {
+                return new(false, false, "The persisted Last-Modified validator is no longer exposed by the server.");
+            }
+            if (expectedModified != actualModified)
+            {
+                return new(false, true, "The remote Last-Modified validator no longer matches the persisted checkpoint.");
+            }
+            return new(true, false, "The remote Last-Modified validator and known length match the persisted checkpoint.");
+        }
+
+        return new(false, false, "No strong persisted remote validator is available to prove that the partial belongs to the current remote object.");
     }
 
     private DownloadRecoveryCandidate Replace(DownloadRecoveryCandidate updated)
@@ -489,6 +632,86 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         Changed?.Invoke(this, EventArgs.Empty);
         return updated;
     }
+
+    private void RemoveCandidate(string candidateId)
+    {
+        bool changed;
+        lock (_sync)
+        {
+            DownloadRecoveryCandidate[] next = _current
+                .Where(candidate => !string.Equals(candidate.Id, candidateId, StringComparison.Ordinal))
+                .ToArray();
+            changed = next.Length != _current.Length;
+            _current = next;
+        }
+        if (changed)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void OnApplicationStateChanged(object? sender, ApplicationSnapshot snapshot)
+    {
+        DownloadRecoveryCandidate[] tracked;
+        lock (_sync)
+        {
+            tracked = _current.Where(static candidate => candidate.OperationInProgress).ToArray();
+        }
+        if (tracked.Length == 0)
+        {
+            return;
+        }
+
+        Dictionary<string, DownloadSnapshot> downloads = snapshot.Downloads
+            .ToDictionary(static item => item.Id, StringComparer.Ordinal);
+        foreach (DownloadRecoveryCandidate candidate in tracked)
+        {
+            if (candidate.DownloadId is not string downloadId
+                || !downloads.TryGetValue(downloadId, out DownloadSnapshot? download))
+            {
+                continue;
+            }
+
+            if (download.State == DownloadState.Completed && !download.RecoveryRequired)
+            {
+                RemoveCandidate(candidate.Id);
+                continue;
+            }
+
+            if (download.State is DownloadState.Failed or DownloadState.Paused)
+            {
+                Replace(candidate with
+                {
+                    Classification = download.RecoveryRequired
+                        ? DownloadRecoveryClassification.NeedsRepair
+                        : DownloadRecoveryClassification.NeedsRemoteValidation,
+                    RecommendedAction = download.RecoveryRequired
+                        ? "The resumed transfer stopped with a recovery condition. Review and repair or restart it."
+                        : "The resumed transfer stopped before completion. Revalidate the remote identity before resuming again.",
+                    UnsafeReason = download.RecoveryMessage
+                        ?? "The recovery resume did not complete, so its previous validation proof is no longer sufficient for another append.",
+                    ResumeValidatorStatus = "Resume stopped before completion",
+                    OperationInProgress = false,
+                    RemoteIdentityValidated = false,
+                    RepairSupported = candidate.RepairSupported && download.RecoveryRequired
+                });
+            }
+        }
+    }
+
+    private static bool SupportsSelectiveRepair(
+        PersistedDownload persisted,
+        long? expectedLength,
+        DownloadRecoveryClassification classification,
+        long localArtifactBytes)
+        => classification == DownloadRecoveryClassification.NeedsRepair
+            && localArtifactBytes > 0
+            && expectedLength is > 0
+            && string.Equals(persisted.Method, "GET", StringComparison.OrdinalIgnoreCase)
+            && persisted.Source.Scheme is "http" or "https";
+
+    public void Dispose()
+        => _applicationState.Changed -= OnApplicationStateChanged;
 
     private void Publish(DownloadRecoveryCandidate[] candidates)
     {
@@ -515,7 +738,12 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         }
         try
         {
-            return Math.Max(bytes, Directory.EnumerateFiles(segmentDirectory).Sum(path => new FileInfo(path).Length));
+            long segmentBytes = 0;
+            foreach (string path in Directory.EnumerateFiles(segmentDirectory, "*.part", SearchOption.TopDirectoryOnly))
+            {
+                segmentBytes = checked(segmentBytes + new FileInfo(path).Length);
+            }
+            return Math.Max(bytes, segmentBytes);
         }
         catch (IOException)
         {
@@ -525,27 +753,23 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         {
             return bytes;
         }
+        catch (OverflowException)
+        {
+            return long.MaxValue;
+        }
     }
 
-    private static async Task<FinalizationMarker?> ReadFinalizationMarkerAsync(
-        string path,
+    private async Task<FinalizationMarker?> ReadFinalizationMarkerAsync(
+        string destinationPath,
         CancellationToken cancellationToken)
     {
-        if (!File.Exists(path))
-        {
-            return null;
-        }
         try
         {
-            await using FileStream stream = File.OpenRead(path);
-            FinalizationMarker? marker = await JsonSerializer.DeserializeAsync<FinalizationMarker>(stream, cancellationToken: cancellationToken)
+            return await _finalizationJournalStore
+                .LoadAsync(destinationPath, cancellationToken)
                 .ConfigureAwait(false);
-            return marker is not null
-                && (marker.Version is 1 or FinalizationMarker.CurrentVersion)
-                    ? marker
-                    : null;
         }
-        catch (JsonException)
+        catch (InvalidDataException)
         {
             return null;
         }
@@ -553,6 +777,44 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         {
             return null;
         }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static async Task<bool> HasValidFinalizationCandidateAsync(
+        string destinationPath,
+        FinalizationMarker marker,
+        CancellationToken cancellationToken)
+    {
+        string[] candidates =
+        [
+            destinationPath,
+            TransferArtifactPaths.GetPartialPath(destinationPath),
+            TransferArtifactPaths.GetFinalizationStagingPath(destinationPath)
+        ];
+        foreach (string path in candidates.Distinct(GetPathComparer()))
+        {
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+            try
+            {
+                await FinalizationFilePromoter
+                    .ValidateCandidateAsync(path, marker, cancellationToken)
+                    .ConfigureAwait(false);
+                return true;
+            }
+            catch (Exception exception) when (exception is InvalidDataException
+                or DownloadIntegrityException
+                or IOException
+                or UnauthorizedAccessException)
+            {
+            }
+        }
+        return false;
     }
 
     private static string FormatValidatorStatus(string? entityTag, DateTimeOffset? lastModified)
@@ -603,4 +865,9 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator
         DateTimeOffset? LastModified,
         long? Length,
         bool AcceptsRanges);
+
+    private sealed record RemoteValidationResult(
+        bool Proven,
+        bool Changed,
+        string Message);
 }

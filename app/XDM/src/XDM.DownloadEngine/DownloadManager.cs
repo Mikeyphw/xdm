@@ -321,6 +321,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.DuplicateReason,
                 item.AllowDestinationOverwrite,
                 item.BackendRequestIdentity);
+            session.ExpectedSha256 = item.ExpectedSha256;
+            session.ExpectedSha512 = item.ExpectedSha512;
 
             await LoadChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
 
@@ -497,6 +499,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
 
             _checkpointStore.Delete(destinationPath);
+            RecoveryDismissalStore.Delete(destinationPath);
             string overwriteMarkerPath = GetFinalizationMarkerPath(destinationPath);
             if (File.Exists(overwriteMarkerPath))
             {
@@ -667,7 +670,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         DownloadSession session = GetSession(downloadId);
         DownloadChecksumWorkflowState state = await _checksumWorkflowStore
-            .LoadAsync(session.DestinationPath, cancellationToken)
+            .LoadAsync(session.DestinationPath, session.Id, cancellationToken)
             .ConfigureAwait(false);
         lock (session.Sync)
         {
@@ -740,7 +743,6 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.IntegrityStatus = DownloadIntegrityStatus.Verifying;
             session.VerificationBytesProcessed = 0;
             session.VerificationTotalBytes = new FileInfo(filePath).Length;
-            session.RecoveryMessage = null;
         }
 
         RecordTransferDiagnostic(
@@ -750,38 +752,54 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             "XDM-TRANSFER-VERIFY-MANUAL-START",
             "Starting explicit SHA-256/SHA-512 verification without redownloading data.");
         Publish(session, forcePersist: false);
-        ChecksumVerificationOutcome outcome = await VerifyFileAgainstWorkflowAsync(
-            session,
-            filePath,
-            cancellationToken).ConfigureAwait(false);
-        await RefreshContentIdentityAsync(
-            session,
-            cancellationToken,
-            outcome.ActualSha256).ConfigureAwait(false);
-        Publish(session, forcePersist: true);
-        string algorithm = outcome.ExpectedSha512 is not null && outcome.ExpectedSha256 is null
-            ? DownloadChecksumService.Sha512
-            : DownloadChecksumService.Sha256;
-        string actual = algorithm == DownloadChecksumService.Sha512
-            ? outcome.ActualSha512 ?? string.Empty
-            : outcome.ActualSha256 ?? string.Empty;
-        string? expected = algorithm == DownloadChecksumService.Sha512
-            ? outcome.ExpectedSha512
-            : outcome.ExpectedSha256;
-        return new DownloadVerificationResult(
-            session.Id,
-            filePath,
-            algorithm,
-            actual,
-            expected,
-            outcome.IsMatch,
-            new FileInfo(filePath).Length,
-            outcome.Message,
-            outcome.ActualSha256,
-            outcome.ActualSha512,
-            outcome.ExpectedSha256,
-            outcome.ExpectedSha512,
-            outcome.LocalIntegrityRecordOnly);
+        bool completed = false;
+        try
+        {
+            ChecksumVerificationOutcome outcome = await VerifyFileAgainstWorkflowAsync(
+                session,
+                filePath,
+                cancellationToken).ConfigureAwait(false);
+            await RefreshContentIdentityAsync(
+                session,
+                cancellationToken,
+                outcome.ActualSha256).ConfigureAwait(false);
+            Publish(session, forcePersist: true);
+            string algorithm = outcome.ExpectedSha512 is not null && outcome.ExpectedSha256 is null
+                ? DownloadChecksumService.Sha512
+                : DownloadChecksumService.Sha256;
+            string actual = algorithm == DownloadChecksumService.Sha512
+                ? outcome.ActualSha512 ?? string.Empty
+                : outcome.ActualSha256 ?? string.Empty;
+            string? expected = algorithm == DownloadChecksumService.Sha512
+                ? outcome.ExpectedSha512
+                : outcome.ExpectedSha256;
+            completed = true;
+            return new DownloadVerificationResult(
+                session.Id,
+                filePath,
+                algorithm,
+                actual,
+                expected,
+                outcome.IsMatch,
+                new FileInfo(filePath).Length,
+                outcome.Message,
+                outcome.ActualSha256,
+                outcome.ActualSha512,
+                outcome.ExpectedSha256,
+                outcome.ExpectedSha512,
+                outcome.LocalIntegrityRecordOnly);
+        }
+        finally
+        {
+            if (!completed)
+            {
+                ClearTransientIntegrityStatus(
+                    session,
+                    recoveryOperation: false,
+                    "Verification did not complete. No integrity result was accepted.");
+                Publish(session, forcePersist: false);
+            }
+        }
     }
 
     public async Task<DownloadRepairResult> RepairAsync(
@@ -824,126 +842,148 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
         Publish(session, forcePersist: false);
 
-        if (!File.Exists(localPath))
+        bool completed = false;
+        try
         {
-            await ReconstructPartialFromSegmentsAsync(session, localPath, expectedLength, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        if (!File.Exists(localPath))
-        {
-            throw new FileNotFoundException("No local partial data is available to repair.", localPath);
-        }
+            if (!File.Exists(localPath))
+            {
+                await ReconstructPartialFromSegmentsAsync(session, localPath, expectedLength, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            if (!File.Exists(localPath))
+            {
+                throw new FileNotFoundException("No local partial data is available to repair.", localPath);
+            }
 
-        Progress<(long Processed, long Total)> progress = new(value =>
-        {
+            Progress<(long Processed, long Total)> progress = new(value =>
+            {
+                lock (session.Sync)
+                {
+                    session.VerificationBytesProcessed = value.Processed;
+                    session.VerificationTotalBytes = value.Total;
+                }
+                Publish(session, forcePersist: false);
+            });
+            PartialFileRepairResult repaired = await _partialFileRepairService.RepairAsync(
+                new PartialFileRepairRequest(
+                    session.Source,
+                    localPath,
+                    expectedLength,
+                    session.EntityTag,
+                    session.LastModified,
+                    session.Headers,
+                    session.Username,
+                    session.Password,
+                    session.Cookie,
+                    session.Referer,
+                    session.UserAgent,
+                    RequireRemoteValidator: session.ExpectedSha256 is null && session.ExpectedSha512 is null),
+                progress,
+                cancellationToken).ConfigureAwait(false);
+
             lock (session.Sync)
             {
-                session.VerificationBytesProcessed = value.Processed;
-                session.VerificationTotalBytes = value.Total;
+                session.DownloadedBytes = expectedLength;
+                session.TotalBytes = expectedLength;
+                session.EntityTag = repaired.EntityTag ?? session.EntityTag;
+                session.LastModified = repaired.LastModified ?? session.LastModified;
+                session.RecoveryMessage = repaired.RepairedRanges.Count == 0
+                    ? "All local ranges matched the validated remote object."
+                    : $"Repaired {repaired.RepairedRanges.Count} invalid range(s) without overwriting known-good data.";
             }
-            Publish(session, forcePersist: false);
-        });
-        PartialFileRepairResult repaired = await _partialFileRepairService.RepairAsync(
-            new PartialFileRepairRequest(
-                session.Source,
+
+            if (!string.Equals(localPath, destinationPath, StringComparison.Ordinal))
+            {
+                await _checkpointStore.SaveAsync(new ResumeCheckpoint(
+                    ResumeCheckpoint.CurrentVersion,
+                    session.Id,
+                    session.Source,
+                    destinationPath,
+                    expectedLength,
+                    expectedLength,
+                    session.EntityTag,
+                    session.LastModified,
+                    session.ConnectionCount,
+                    DateTimeOffset.UtcNow,
+                    session.ExpectedChecksumAlgorithm,
+                    session.ExpectedChecksum,
+                    session.Mirrors,
+                    ExpectedSha256: session.ExpectedSha256,
+                    ExpectedSha512: session.ExpectedSha512), cancellationToken).ConfigureAwait(false);
+            }
+
+            ChecksumVerificationOutcome verification = await VerifyFileAgainstWorkflowAsync(
+                session,
                 localPath,
-                expectedLength,
-                session.EntityTag,
-                session.LastModified,
-                session.Headers,
-                session.Username,
-                session.Password,
-                session.Cookie,
-                session.Referer,
-                session.UserAgent,
-                RequireRemoteValidator: session.ExpectedSha256 is null && session.ExpectedSha512 is null),
-            progress,
-            cancellationToken).ConfigureAwait(false);
+                cancellationToken).ConfigureAwait(false);
+            if (!verification.IsMatch)
+            {
+                Publish(session, forcePersist: true);
+                completed = true;
+                return new DownloadRepairResult(
+                    session.Id,
+                    false,
+                    null,
+                    "Range repair completed, but the expected checksum still does not match. The local data was not finalized.",
+                    repaired.BytesScanned,
+                    repaired.BytesDownloaded,
+                    repaired.BytesRepaired,
+                    repaired.RepairedRanges.Count,
+                    false,
+                    false);
+            }
 
-        lock (session.Sync)
-        {
-            session.DownloadedBytes = expectedLength;
-            session.TotalBytes = expectedLength;
-            session.EntityTag = repaired.EntityTag ?? session.EntityTag;
-            session.LastModified = repaired.LastModified ?? session.LastModified;
-            session.RecoveryMessage = repaired.RepairedRanges.Count == 0
-                ? "All local ranges matched the validated remote object."
-                : $"Repaired {repaired.RepairedRanges.Count} invalid range(s) without overwriting known-good data.";
-        }
+            bool finalized = false;
+            if (!string.Equals(localPath, destinationPath, StringComparison.Ordinal))
+            {
+                lock (session.Sync)
+                {
+                    session.State = DownloadState.Finalizing;
+                }
+                WriteFinalizationMarker(session, expectedLength);
+                await CompleteFromPartialAsync(session, localPath, expectedLength).ConfigureAwait(false);
+                finalized = true;
+            }
+            else
+            {
+                lock (session.Sync)
+                {
+                    session.State = DownloadState.Completed;
+                    session.RecoveryRequired = false;
+                    session.RecoveryMessage = null;
+                    session.ErrorMessage = null;
+                }
+                Publish(session, forcePersist: true);
+            }
 
-        if (!string.Equals(localPath, destinationPath, StringComparison.Ordinal))
-        {
-            await _checkpointStore.SaveAsync(new ResumeCheckpoint(
-                ResumeCheckpoint.CurrentVersion,
-                session.Id,
-                session.Source,
-                destinationPath,
-                expectedLength,
-                expectedLength,
-                session.EntityTag,
-                session.LastModified,
-                session.ConnectionCount,
-                DateTimeOffset.UtcNow,
-                session.ExpectedChecksumAlgorithm,
-                session.ExpectedChecksum,
-                session.Mirrors), cancellationToken).ConfigureAwait(false);
-        }
-
-        ChecksumVerificationOutcome verification = await VerifyFileAgainstWorkflowAsync(
-            session,
-            localPath,
-            cancellationToken).ConfigureAwait(false);
-        if (!verification.IsMatch)
-        {
-            Publish(session, forcePersist: true);
+            completed = true;
             return new DownloadRepairResult(
                 session.Id,
                 false,
                 null,
-                "Range repair completed, but the expected checksum still does not match. The local data was not finalized.",
+                repaired.RepairedRanges.Count == 0
+                    ? "Verification succeeded; no damaged ranges required replacement."
+                    : $"Repaired {repaired.RepairedRanges.Count} invalid range(s), verified the final checksum, and preserved all matching ranges.",
                 repaired.BytesScanned,
                 repaired.BytesDownloaded,
                 repaired.BytesRepaired,
                 repaired.RepairedRanges.Count,
-                false,
-                false);
+                finalized,
+                true);
         }
-
-        bool finalized = false;
-        if (!string.Equals(localPath, destinationPath, StringComparison.Ordinal))
+        finally
         {
-            lock (session.Sync)
+            if (!completed)
             {
-                session.State = DownloadState.Finalizing;
+                ClearTransientIntegrityStatus(
+                    session,
+                    recoveryOperation: true,
+                    cancellationToken.IsCancellationRequested
+                        ? "Repair was cancelled before integrity could be proven."
+                        : "Repair did not complete. Local artifacts were preserved for recovery.");
+                Publish(session, forcePersist: false);
             }
-            WriteFinalizationMarker(session, expectedLength);
-            await CompleteFromPartialAsync(session, localPath, expectedLength).ConfigureAwait(false);
-            finalized = true;
         }
-        else
-        {
-            lock (session.Sync)
-            {
-                session.State = DownloadState.Completed;
-                session.RecoveryRequired = false;
-                session.ErrorMessage = null;
-            }
-            Publish(session, forcePersist: true);
-        }
-
-        return new DownloadRepairResult(
-            session.Id,
-            false,
-            null,
-            repaired.RepairedRanges.Count == 0
-                ? "Verification succeeded; no damaged ranges required replacement."
-                : $"Repaired {repaired.RepairedRanges.Count} invalid range(s), verified the final checksum, and preserved all matching ranges.",
-            repaired.BytesScanned,
-            repaired.BytesDownloaded,
-            repaired.BytesRepaired,
-            repaired.RepairedRanges.Count,
-            finalized,
-            true);
     }
 
     public async Task<DownloadRepairResult> RestartFromZeroAsync(
@@ -961,74 +1001,92 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
         Publish(session, forcePersist: false);
 
-        string? preservedPath = null;
-        string destinationPath;
-        string? aria2Gid;
-        lock (session.Sync)
+        bool completed = false;
+        try
         {
-            destinationPath = session.DestinationPath;
-            aria2Gid = session.Backend == DownloadBackendKind.Aria2
-                ? session.BackendTaskId
-                : null;
-        }
-
-        if (aria2Gid is not null && _aria2Service is not null)
-        {
-            try
+            string? preservedPath = null;
+            string destinationPath;
+            string? aria2Gid;
+            lock (session.Sync)
             {
-                await _aria2Service.RemoveAsync(aria2Gid, cancellationToken).ConfigureAwait(false);
+                destinationPath = session.DestinationPath;
+                aria2Gid = session.Backend == DownloadBackendKind.Aria2
+                    ? session.BackendTaskId
+                    : null;
             }
-            catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
+
+            if (aria2Gid is not null && _aria2Service is not null)
             {
+                try
+                {
+                    await _aria2Service.RemoveAsync(aria2Gid, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
+                {
+                }
+            }
+
+            if (File.Exists(destinationPath))
+            {
+                preservedPath = ResolveUniqueArtifactPath(
+                    TransferArtifactPaths.GetCorruptBackupPath(destinationPath, DateTimeOffset.UtcNow));
+                await MoveFileAsync(destinationPath, preservedPath, overwrite: false, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            DeleteTransferArtifacts(destinationPath);
+            lock (session.Sync)
+            {
+                session.DownloadedBytes = 0;
+                session.BytesPerSecond = 0;
+                session.EntityTag = null;
+                session.LastModified = null;
+                session.ActualChecksum = null;
+                session.ActualSha256 = null;
+                session.ActualSha512 = null;
+                session.LastVerifiedAt = null;
+                session.VerificationBytesProcessed = 0;
+                session.VerificationTotalBytes = null;
+                session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
+                session.RecoveryRequired = false;
+                session.RecoveryMessage = null;
+                session.ErrorMessage = null;
+                session.State = DownloadState.Paused;
+                session.BackendTaskId = null;
+                session.Source = session.Mirrors[0];
+                RebindServerCredential(session, session.Source);
+                session.MirrorIndex = 1;
+            }
+            await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
+            Publish(session, forcePersist: true);
+            bool restarted = IsQueueActive(session.QueueId);
+            Start(session);
+            completed = true;
+            return new DownloadRepairResult(
+                session.Id,
+                restarted,
+                preservedPath,
+                preservedPath is null
+                    ? restarted
+                        ? "The transfer state was reset and the download was restarted from zero."
+                        : "The transfer state was reset and queued for the next queue start."
+                    : restarted
+                        ? $"The suspect file was preserved as '{preservedPath}' and a clean download was started."
+                        : $"The suspect file was preserved as '{preservedPath}' and a clean download was queued.");
+        }
+        finally
+        {
+            if (!completed)
+            {
+                ClearTransientIntegrityStatus(
+                    session,
+                    recoveryOperation: true,
+                    cancellationToken.IsCancellationRequested
+                        ? "Restart was cancelled before a clean transfer state was established."
+                        : "Restart did not complete. Recovery remains required and local artifacts were preserved where possible.");
+                Publish(session, forcePersist: false);
             }
         }
-
-        if (File.Exists(destinationPath))
-        {
-            preservedPath = ResolveUniqueArtifactPath(
-                TransferArtifactPaths.GetCorruptBackupPath(destinationPath, DateTimeOffset.UtcNow));
-            await MoveFileAsync(destinationPath, preservedPath, overwrite: false, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        DeleteTransferArtifacts(destinationPath);
-        lock (session.Sync)
-        {
-            session.DownloadedBytes = 0;
-            session.BytesPerSecond = 0;
-            session.EntityTag = null;
-            session.LastModified = null;
-            session.ActualChecksum = null;
-            session.ActualSha256 = null;
-            session.ActualSha512 = null;
-            session.LastVerifiedAt = null;
-            session.VerificationBytesProcessed = 0;
-            session.VerificationTotalBytes = null;
-            session.IntegrityStatus = DownloadIntegrityStatus.Checkpointed;
-            session.RecoveryRequired = false;
-            session.RecoveryMessage = null;
-            session.ErrorMessage = null;
-            session.State = DownloadState.Paused;
-            session.BackendTaskId = null;
-            session.Source = session.Mirrors[0];
-            RebindServerCredential(session, session.Source);
-            session.MirrorIndex = 1;
-        }
-        await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
-        Publish(session, forcePersist: true);
-        bool restarted = IsQueueActive(session.QueueId);
-        Start(session);
-        return new DownloadRepairResult(
-            session.Id,
-            restarted,
-            preservedPath,
-            preservedPath is null
-                ? restarted
-                    ? "The transfer state was reset and the download was restarted from zero."
-                    : "The transfer state was reset and queued for the next queue start."
-                : restarted
-                    ? $"The suspect file was preserved as '{preservedPath}' and a clean download was started."
-                    : $"The suspect file was preserved as '{preservedPath}' and a clean download was queued.");
     }
 
     public async Task<IReadOnlyList<string>> AddMetalinkAsync(
@@ -1744,22 +1802,48 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             {
                 throw new InvalidOperationException("Pause or cancel the download before relinking its file.");
             }
+        }
 
+        RelinkValidationResult validation = await ValidateRelinkCandidateAsync(
+            session,
+            fullPath,
+            cancellationToken).ConfigureAwait(false);
+
+        lock (session.Sync)
+        {
             session.DestinationPath = fullPath;
-            session.DownloadedBytes = new FileInfo(fullPath).Length;
-            session.TotalBytes ??= session.DownloadedBytes;
+            session.DownloadedBytes = validation.Length;
+            session.TotalBytes ??= validation.Length;
+            session.ActualSha256 = validation.ActualSha256;
+            session.ActualSha512 = validation.ActualSha512;
+            session.ActualChecksum = session.ExpectedChecksumAlgorithm == DownloadChecksumService.Sha512
+                ? validation.ActualSha512
+                : validation.ActualSha256 ?? validation.ActualSha512;
+            session.LastVerifiedAt = validation.VerifiedAt;
+            session.LocalIntegrityRecordOnly = validation.LocalIntegrityRecordOnly;
+            session.IntegrityStatus = validation.LocalIntegrityRecordOnly
+                ? DownloadIntegrityStatus.LocalRecord
+                : DownloadIntegrityStatus.Verified;
             session.State = DownloadState.Completed;
             session.RecoveryRequired = false;
-            session.RecoveryMessage = "Relinked to an existing file.";
+            session.RecoveryMessage = validation.LocalIntegrityRecordOnly
+                ? "Relinked after validating the known length and recording a local SHA-256 integrity identity."
+                : "Relinked after validating all known length and checksum constraints.";
             session.ErrorMessage = null;
-            session.ContentHashSha256 = null;
+            session.ContentHashSha256 = validation.ActualSha256;
             session.DuplicateOfDownloadId = null;
             session.DuplicateReason = null;
             session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        await RefreshContentIdentityAsync(session, cancellationToken).ConfigureAwait(false);
+        await SaveChecksumWorkflowAsync(session, cancellationToken, isMatch: true).ConfigureAwait(false);
+        await RefreshContentIdentityAsync(session, cancellationToken, validation.ActualSha256).ConfigureAwait(false);
         await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
+        if (!PathsEqual(before.DestinationPath, fullPath))
+        {
+            DeleteIfExists(TransferArtifactPaths.GetChecksumStatePath(before.DestinationPath));
+            DeleteIfExists($"{TransferArtifactPaths.GetChecksumStatePath(before.DestinationPath)}.tmp");
+        }
     }
 
     public async Task<int> PruneHistoryAsync(CancellationToken cancellationToken = default)
@@ -2874,14 +2958,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         string path;
         long? expectedLength;
-        string? expectedAlgorithm;
-        string? expectedChecksum;
         lock (session.Sync)
         {
             path = session.DestinationPath;
             expectedLength = session.TotalBytes;
-            expectedAlgorithm = session.ExpectedChecksumAlgorithm;
-            expectedChecksum = session.ExpectedChecksum;
             session.State = DownloadState.Finalizing;
             session.BytesPerSecond = 0;
         }
@@ -2899,28 +2979,19 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 $"aria2 completed a file with an unexpected length. Expected {length}; received {actualLength}.");
         }
 
-        string? actualChecksum = null;
-        if (expectedAlgorithm is not null && expectedChecksum is not null)
+        ChecksumVerificationOutcome verification = await VerifyFileAgainstWorkflowAsync(
+            session,
+            path,
+            cancellationToken).ConfigureAwait(false);
+        if (!verification.IsMatch)
         {
-            actualChecksum = await DownloadChecksumService
-                .ComputeAsync(path, expectedAlgorithm, cancellationToken)
-                .ConfigureAwait(false);
-            if (!string.Equals(actualChecksum, expectedChecksum, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new DownloadIntegrityException(
-                    $"aria2 completed the transfer, but {expectedAlgorithm} verification failed.");
-            }
+            throw new DownloadIntegrityException(verification.Message);
         }
 
         lock (session.Sync)
         {
             session.DownloadedBytes = actualLength;
             session.TotalBytes = actualLength;
-            session.ActualChecksum = actualChecksum;
-            session.LastVerifiedAt = actualChecksum is null ? null : DateTimeOffset.UtcNow;
-            session.IntegrityStatus = actualChecksum is null
-                ? DownloadIntegrityStatus.Unknown
-                : DownloadIntegrityStatus.Verified;
             session.State = DownloadState.Completed;
             session.ErrorMessage = null;
             session.RecoveryRequired = false;
@@ -4119,6 +4190,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         string? checksum;
         bool localIntegrityRecordOnly;
         bool allowOverwrite;
+        string? expectedSha256;
+        string? expectedSha512;
         lock (session.Sync)
         {
             destinationPath = session.DestinationPath;
@@ -4131,6 +4204,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             checksum = session.ActualChecksum;
             localIntegrityRecordOnly = session.LocalIntegrityRecordOnly;
             allowOverwrite = session.AllowDestinationOverwrite;
+            expectedSha256 = session.ExpectedSha256
+                ?? (session.LocalIntegrityRecordOnly ? session.ActualSha256 : null);
+            expectedSha512 = session.ExpectedSha512;
         }
 
         string markerPath = GetFinalizationMarkerPath(destinationPath);
@@ -4146,7 +4222,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             GetPartialPath(destinationPath),
             null,
             DateTimeOffset.UtcNow,
-            allowOverwrite);
+            allowOverwrite,
+            expectedSha256,
+            expectedSha512);
         byte[] payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(marker));
         using (FileStream stream = new(
             temporaryPath,
@@ -4388,7 +4466,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 partialPath,
                 null,
                 DateTimeOffset.UtcNow,
-                session.AllowDestinationOverwrite);
+                session.AllowDestinationOverwrite,
+                session.ExpectedSha256 ?? (session.LocalIntegrityRecordOnly ? session.ActualSha256 : null),
+                session.ExpectedSha512);
         FinalizationPromotionResult promotion = await _finalizationFilePromoter
             .PromoteAsync(partialPath, session.DestinationPath, marker)
             .ConfigureAwait(false);
@@ -5414,6 +5494,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             Directory.Delete(segmentDirectory, recursive: true);
         }
+        RecoveryDismissalStore.Delete(destinationPath);
     }
 
     private static void DeleteIfExists(string path)
@@ -5430,6 +5511,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         bool overwrite,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             File.Move(sourcePath, targetPath, overwrite);
@@ -5586,7 +5668,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.DuplicateOfDownloadId,
                 session.DuplicateReason,
                 session.AllowDestinationOverwrite,
-                session.BackendRequestIdentity);
+                session.BackendRequestIdentity,
+                session.ExpectedSha256,
+                session.ExpectedSha512);
         }
     }
 
@@ -5666,7 +5750,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     session.ExpectedChecksumAlgorithm,
                     session.ExpectedChecksum,
                     session.Mirrors,
-                    segmentLengths);
+                    segmentLengths,
+                    session.ExpectedSha256,
+                    session.ExpectedSha512);
             }
 
             await _checkpointStore.SaveAsync(checkpoint, cancellationToken).ConfigureAwait(false);
@@ -5858,10 +5944,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             bool identityMatches = (allowDownloadIdMismatch
                     || string.Equals(checkpoint.DownloadId, session.Id, StringComparison.Ordinal))
                 && sourceMatches
-                && string.Equals(
-                    Path.GetFullPath(checkpoint.DestinationPath),
-                    Path.GetFullPath(session.DestinationPath),
-                    StringComparison.Ordinal);
+                && PathsEqual(checkpoint.DestinationPath, session.DestinationPath);
             if (!identityMatches)
             {
                 session.RecoveryRequired = true;
@@ -5889,6 +5972,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.TotalBytes = checkpoint.TotalBytes ?? session.TotalBytes;
             session.EntityTag ??= checkpoint.EntityTag;
             session.LastModified ??= checkpoint.LastModified;
+            session.ExpectedSha256 ??= checkpoint.ExpectedSha256;
+            session.ExpectedSha512 ??= checkpoint.ExpectedSha512;
             session.ExpectedChecksumAlgorithm ??= checkpoint.ExpectedChecksumAlgorithm;
             session.ExpectedChecksum ??= checkpoint.ExpectedChecksum;
         }
@@ -5982,6 +6067,91 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.BytesPerSecond = 0;
         }
         DeleteTransferArtifacts(destinationPath);
+    }
+
+    private async Task<RelinkValidationResult> ValidateRelinkCandidateAsync(
+        DownloadSession session,
+        string fullPath,
+        CancellationToken cancellationToken)
+    {
+        long? expectedLength;
+        string? expectedSha256;
+        string? expectedSha512;
+        lock (session.Sync)
+        {
+            expectedLength = session.TotalBytes;
+            expectedSha256 = session.ExpectedSha256;
+            expectedSha512 = session.ExpectedSha512;
+        }
+
+        if (expectedLength is null && expectedSha256 is null && expectedSha512 is null)
+        {
+            throw new InvalidDataException(
+                "Relink is blocked because XDM has no known length or expected checksum with which to prove the replacement file.");
+        }
+
+        long actualLength = new FileInfo(fullPath).Length;
+        if (expectedLength is long knownLength && actualLength != knownLength)
+        {
+            throw new DownloadIntegrityException(
+                $"Relink rejected the file because its length is {actualLength} bytes; XDM expected {knownLength} bytes.");
+        }
+
+        bool localRecordOnly = expectedSha256 is null && expectedSha512 is null;
+        (string? actualSha256, string? actualSha512) = await DownloadChecksumService.ComputeSetAsync(
+            fullPath,
+            includeSha256: expectedSha256 is not null || localRecordOnly,
+            includeSha512: expectedSha512 is not null,
+            progress: null,
+            cancellationToken).ConfigureAwait(false);
+        if (expectedSha256 is not null
+            && !string.Equals(expectedSha256, actualSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DownloadIntegrityException("Relink rejected the file because SHA-256 does not match.");
+        }
+        if (expectedSha512 is not null
+            && !string.Equals(expectedSha512, actualSha512, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DownloadIntegrityException("Relink rejected the file because SHA-512 does not match.");
+        }
+
+        return new RelinkValidationResult(
+            actualLength,
+            actualSha256,
+            actualSha512,
+            localRecordOnly,
+            DateTimeOffset.UtcNow);
+    }
+
+    private static void ClearTransientIntegrityStatus(
+        DownloadSession session,
+        bool recoveryOperation,
+        string message)
+    {
+        lock (session.Sync)
+        {
+            if (session.IntegrityStatus is not (DownloadIntegrityStatus.Verifying or DownloadIntegrityStatus.Repairing))
+            {
+                return;
+            }
+
+            if (recoveryOperation)
+            {
+                session.RecoveryRequired = true;
+                session.RecoveryMessage = message;
+                session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+            }
+            else
+            {
+                session.IntegrityStatus = session.RecoveryRequired
+                    ? DownloadIntegrityStatus.RecoveryRequired
+                    : session.DownloadedBytes > 0 && session.State != DownloadState.Completed
+                        ? DownloadIntegrityStatus.Checkpointed
+                        : DownloadIntegrityStatus.Unknown;
+            }
+            session.VerificationBytesProcessed = 0;
+            session.VerificationTotalBytes = null;
+        }
     }
 
     private async Task VerifyPartialIfExpectedAsync(
@@ -6121,12 +6291,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         CancellationToken cancellationToken)
     {
         DownloadChecksumWorkflowState state = await _checksumWorkflowStore
-            .LoadAsync(session.DestinationPath, cancellationToken)
+            .LoadAsync(session.DestinationPath, session.Id, cancellationToken)
             .ConfigureAwait(false);
         lock (session.Sync)
         {
-            session.ExpectedSha256 = state.ExpectedSha256;
-            session.ExpectedSha512 = state.ExpectedSha512;
+            session.ExpectedSha256 ??= state.ExpectedSha256;
+            session.ExpectedSha512 ??= state.ExpectedSha512;
             if (session.ExpectedSha256 is null && session.ExpectedSha512 is null
                 && !string.IsNullOrWhiteSpace(session.ExpectedChecksum))
             {
@@ -6185,7 +6355,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                         : null),
                 session.LocalIntegrityRecordOnly,
                 session.VerificationBytesProcessed,
-                session.VerificationTotalBytes);
+                session.VerificationTotalBytes,
+                session.Id);
         }
         return _checksumWorkflowStore.SaveAsync(state, cancellationToken);
     }
@@ -6293,6 +6464,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
         return $"Checksum verification failed: {string.Join("; ", failures)}.";
     }
+
+    private sealed record RelinkValidationResult(
+        long Length,
+        string? ActualSha256,
+        string? ActualSha512,
+        bool LocalIntegrityRecordOnly,
+        DateTimeOffset VerifiedAt);
 
     private sealed record ChecksumVerificationOutcome(
         string? ExpectedSha256,

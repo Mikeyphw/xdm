@@ -1046,7 +1046,46 @@ public sealed class DownloadManagerTests
         Assert.Equal(DownloadBackendKind.Aria2, completed.Backend);
         Assert.Matches("^[0-9a-f]{16}$", completed.BackendTaskId!);
         Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
+        Assert.NotNull(completed.ActualSha256);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(payload)), completed.ActualSha256);
+        Assert.Equal(DownloadIntegrityStatus.LocalRecord, completed.IntegrityStatus);
         Assert.Equal(1, aria2.AddCount);
+    }
+
+    [Fact]
+    public async Task Aria2CompletionEnforcesEveryConfiguredExpectedChecksum()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = CreatePayload(4096, 199);
+        string sha256 = Convert.ToHexString(SHA256.HashData(payload));
+        string wrongSha512 = new string('0', 128);
+        ApplicationState state = new();
+        TestSettingsService settings = new(ApplicationSettings.CreateDefault() with
+        {
+            Aria2 = Aria2IntegrationSettings.Default with { Enabled = true }
+        });
+        FakeAria2Service aria2 = new(payload);
+        using DownloadManager manager = CreateManager(
+            new HttpClient(new RangeHandler(payload)),
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: settings,
+            aria2Service: aria2);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/aria2-checksum.bin"),
+            directory.Path,
+            "aria2-checksum.bin",
+            BackendPreference: DownloadBackendPreference.Aria2,
+            AllowBackendFallback: false,
+            ExpectedSha256: sha256,
+            ExpectedSha512: wrongSha512));
+
+        DownloadSnapshot failed = await WaitForStateAsync(state, id, DownloadState.Failed);
+        Assert.Equal(DownloadBackendKind.Aria2, failed.Backend);
+        Assert.Equal(DownloadIntegrityStatus.Mismatch, failed.IntegrityStatus);
+        Assert.True(failed.RecoveryRequired);
+        Assert.Contains("SHA-512", failed.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -1371,6 +1410,112 @@ public sealed class DownloadManagerTests
         Assert.NotNull(second.ContentHashSha256);
         Assert.Equal(firstId, second.DuplicateOfDownloadId);
         Assert.NotNull(second.DuplicateReason);
+    }
+
+    [Fact]
+    public async Task BothExpectedChecksumsRemainDurableWithoutWorkflowSidecar()
+    {
+        byte[] payload = CreatePayload(512, 35);
+        using TemporaryDirectory directory = new();
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        using HttpClient client = new(new RangeHandler(payload));
+        using (DownloadManager manager = CreateManager(client, state, history))
+        {
+            string id = await manager.AddAsync(new DownloadRequest(
+                new Uri("https://example.test/durable-checksums.bin"),
+                directory.Path,
+                "durable-checksums.bin"));
+            await WaitForStateAsync(state, id, DownloadState.Completed);
+            string sha256 = new string('A', 64);
+            string sha512 = new string('B', 128);
+            await manager.SetExpectedChecksumsAsync(id, sha256, sha512);
+
+            PersistedDownload persisted = Assert.Single(history.Downloads);
+            Assert.Equal(sha256, persisted.ExpectedSha256);
+            Assert.Equal(sha512, persisted.ExpectedSha512);
+            File.Delete(TransferArtifactPaths.GetChecksumStatePath(persisted.DestinationPath));
+        }
+
+        ApplicationState restoredState = new();
+        using DownloadManager restored = CreateManager(
+            new HttpClient(new RangeHandler(payload)),
+            restoredState,
+            history);
+        await restored.InitializeAsync();
+        PersistedDownload durable = Assert.Single(history.Downloads);
+        DownloadChecksumWorkflowState workflow = await restored.GetChecksumWorkflowAsync(durable.Id);
+        Assert.Equal(new string('A', 64), workflow.ExpectedSha256);
+        Assert.Equal(new string('B', 128), workflow.ExpectedSha512);
+    }
+
+    [Fact]
+    public async Task RelinkRejectsReplacementWhenNoIdentityConstraintIsKnown()
+    {
+        using TemporaryDirectory directory = new();
+        string oldPath = Path.Combine(directory.Path, "unknown-old.bin");
+        string replacement = Path.Combine(directory.Path, "unknown-new.bin");
+        await File.WriteAllBytesAsync(replacement, [1, 2, 3, 4]);
+        PersistedDownload persisted = new(
+            "unknown-relink",
+            new Uri("https://example.test/unknown.bin"),
+            oldPath,
+            0,
+            null,
+            DownloadState.Completed,
+            DateTimeOffset.UtcNow);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(
+            new HttpClient(new RangeHandler([1, 2, 3, 4])),
+            state,
+            new InMemoryHistoryStore([persisted]));
+        await manager.InitializeAsync();
+
+        InvalidDataException error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            manager.RelinkAsync(persisted.Id, replacement));
+
+        Assert.Contains("no known length or expected checksum", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(oldPath, state.Current.Downloads.Single().DestinationPath);
+    }
+
+    [Fact]
+    public async Task CancelledVerificationAndRestartDoNotLeaveTransientIntegrityStateLatched()
+    {
+        byte[] payload = CreatePayload(1024, 39);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "cancelled-integrity.bin");
+        await File.WriteAllBytesAsync(destination, payload);
+        PersistedDownload persisted = new(
+            "cancelled-integrity",
+            new Uri("https://example.test/cancelled-integrity.bin"),
+            destination,
+            payload.Length,
+            payload.Length,
+            DownloadState.Completed,
+            DateTimeOffset.UtcNow,
+            ExpectedSha256: Convert.ToHexString(SHA256.HashData(payload)));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(
+            new HttpClient(new RangeHandler(payload)),
+            state,
+            new InMemoryHistoryStore([persisted]));
+        await manager.InitializeAsync();
+
+        using CancellationTokenSource verifyCancellation = new();
+        verifyCancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            manager.VerifyAsync(persisted.Id, verifyCancellation.Token));
+        Assert.NotEqual(
+            DownloadIntegrityStatus.Verifying,
+            state.Current.Downloads.Single().IntegrityStatus);
+
+        using CancellationTokenSource restartCancellation = new();
+        restartCancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            manager.RestartFromZeroAsync(persisted.Id, restartCancellation.Token));
+        DownloadSnapshot afterRestart = state.Current.Downloads.Single();
+        Assert.NotEqual(DownloadIntegrityStatus.Repairing, afterRestart.IntegrityStatus);
+        Assert.True(afterRestart.RecoveryRequired);
     }
 
     [Fact]

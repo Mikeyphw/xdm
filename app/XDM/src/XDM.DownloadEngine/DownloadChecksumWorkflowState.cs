@@ -11,10 +11,11 @@ public sealed record DownloadChecksumWorkflowState(
     bool? IsMatch,
     bool LocalIntegrityRecordOnly,
     long VerificationBytesProcessed = 0,
-    long? VerificationTotalBytes = null)
+    long? VerificationTotalBytes = null,
+    string? OwnerDownloadId = null)
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
-    public static DownloadChecksumWorkflowState Empty(string destinationPath)
-        => new(CurrentVersion, destinationPath, null, null, null, null, null, null, false);
+    public static DownloadChecksumWorkflowState Empty(string destinationPath, string? ownerDownloadId = null)
+        => new(CurrentVersion, destinationPath, null, null, null, null, null, null, false, 0, null, ownerDownloadId);
 }

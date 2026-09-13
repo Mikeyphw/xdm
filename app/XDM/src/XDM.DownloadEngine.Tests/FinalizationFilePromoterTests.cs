@@ -91,6 +91,57 @@ public sealed class FinalizationFilePromoterTests
     }
 
     [Fact]
+    public async Task FinalizationValidationEnforcesBothExpectedChecksums()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-finalize-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            byte[] payload = [1, 3, 5, 7, 9];
+            string candidate = Path.Combine(directory, "candidate.bin");
+            await File.WriteAllBytesAsync(candidate, payload);
+            FinalizationMarker marker = new(
+                FinalizationMarker.CurrentVersion,
+                payload.Length,
+                ExpectedSha256: Convert.ToHexString(SHA256.HashData(payload)),
+                ExpectedSha512: new string('0', 128));
+
+            DownloadIntegrityException error = await Assert.ThrowsAsync<DownloadIntegrityException>(() =>
+                FinalizationFilePromoter.ValidateCandidateAsync(candidate, marker, CancellationToken.None));
+
+            Assert.Contains("SHA-512", error.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CorruptFinalizationJournalIsQuarantinedInsteadOfThrowing()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-finalize-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string destination = Path.Combine(directory, "corrupt-journal.bin");
+            string markerPath = TransferArtifactPaths.GetFinalizationMarkerPath(destination);
+            await File.WriteAllTextAsync(markerPath, "{ definitely not a journal }");
+            FinalizationJournalStore journal = new();
+
+            FinalizationMarker? marker = await journal.LoadAsync(destination, CancellationToken.None);
+
+            Assert.Null(marker);
+            Assert.False(File.Exists(markerPath));
+            Assert.NotEmpty(Directory.GetFiles(directory, "corrupt-journal.bin.xdm.finalizing.corrupt-*"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task LoadsLegacyLengthMarkerAsPreparedJournal()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"xdm-finalize-{Guid.NewGuid():N}");

@@ -39,4 +39,6 @@ public sealed record PersistedDownload(
     string? DuplicateOfDownloadId = null,
     string? DuplicateReason = null,
     bool AllowDestinationOverwrite = false,
-    string? BackendRequestIdentity = null);
+    string? BackendRequestIdentity = null,
+    string? ExpectedSha256 = null,
+    string? ExpectedSha512 = null);

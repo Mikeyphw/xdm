@@ -27,6 +27,49 @@ public sealed class DownloadChecksumWorkflowStoreTests
         Assert.Equal(expected, actual);
     }
 
+    [Fact]
+    public async Task CorruptSidecarIsQuarantinedWithoutAbortingLoad()
+    {
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "corrupt.bin");
+        string sidecar = TransferArtifactPaths.GetChecksumStatePath(destination);
+        await File.WriteAllTextAsync(sidecar, "{not-json");
+        DownloadChecksumWorkflowStore store = new();
+
+        DownloadChecksumWorkflowState state = await store.LoadAsync(destination, "download-1");
+
+        Assert.Equal(DownloadChecksumWorkflowState.CurrentVersion, state.Version);
+        Assert.Equal("download-1", state.OwnerDownloadId);
+        Assert.Null(state.ExpectedSha256);
+        Assert.False(File.Exists(sidecar));
+        Assert.NotEmpty(Directory.GetFiles(directory.Path, "corrupt.bin.xdm.checksums.json.corrupt-*"));
+    }
+
+    [Fact]
+    public async Task SidecarOwnedByAnotherDownloadIsRejectedAndQuarantined()
+    {
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "owned.bin");
+        DownloadChecksumWorkflowStore store = new();
+        await store.SaveAsync(new DownloadChecksumWorkflowState(
+            DownloadChecksumWorkflowState.CurrentVersion,
+            destination,
+            new string('A', 64),
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            OwnerDownloadId: "owner-a"));
+
+        DownloadChecksumWorkflowState state = await store.LoadAsync(destination, "owner-b");
+
+        Assert.Equal("owner-b", state.OwnerDownloadId);
+        Assert.Null(state.ExpectedSha256);
+        Assert.NotEmpty(Directory.GetFiles(directory.Path, "owned.bin.xdm.checksums.json.foreign-owner-*"));
+    }
+
     private sealed class TemporaryDirectory : IDisposable
     {
         public TemporaryDirectory()

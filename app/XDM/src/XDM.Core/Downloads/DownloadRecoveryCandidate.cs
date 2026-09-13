@@ -18,22 +18,34 @@ public sealed record DownloadRecoveryCandidate(
     DownloadRecoveryClassification Classification,
     string RecommendedAction,
     string UnsafeReason,
-    bool IsOrphaned = false)
+    bool IsOrphaned = false,
+    bool RemoteIdentityValidated = false,
+    bool RepairSupported = false,
+    bool OperationInProgress = false)
 {
     public bool CanResume
         => DownloadId is not null
-            && Classification is (DownloadRecoveryClassification.ReadyToResume
-                or DownloadRecoveryClassification.NeedsRemoteValidation);
+            && !OperationInProgress
+            && RemoteIdentityValidated
+            && Classification == DownloadRecoveryClassification.ReadyToResume;
 
     public bool CanValidate
         => DownloadId is not null
             && Source is not null
-            && Classification is (DownloadRecoveryClassification.ReadyToResume
-                or DownloadRecoveryClassification.NeedsRemoteValidation);
+            && !OperationInProgress
+            && Classification == DownloadRecoveryClassification.NeedsRemoteValidation
+            && Source.Scheme is "http" or "https";
 
     public bool CanRepair
         => DownloadId is not null
-            && Classification is not DownloadRecoveryClassification.OrphanedArtifact;
+            && !OperationInProgress
+            && RepairSupported
+            && Classification == DownloadRecoveryClassification.NeedsRepair;
+
+    public bool CanRestart
+        => DownloadId is not null
+            && !OperationInProgress
+            && Classification != DownloadRecoveryClassification.OrphanedArtifact;
 
     public bool HasExpectedChecksum => !string.IsNullOrWhiteSpace(ExpectedChecksum);
 }

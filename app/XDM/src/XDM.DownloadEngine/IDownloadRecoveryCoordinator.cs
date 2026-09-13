@@ -18,5 +18,10 @@ public interface IDownloadRecoveryCoordinator
         string candidateId,
         CancellationToken cancellationToken = default);
 
-    void Dismiss(string candidateId);
+    Task DismissAsync(
+        string candidateId,
+        bool persist = false,
+        CancellationToken cancellationToken = default);
+
+    void MarkResumeStarted(string candidateId);
 }

@@ -8,5 +8,6 @@ public enum DownloadRecoveryClassification
     MissingPartialFile,
     RemoteFileChanged,
     AlreadyCompleteNotFinalized,
-    OrphanedArtifact
+    OrphanedArtifact,
+    ResumeInProgress
 }

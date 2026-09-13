@@ -61,6 +61,17 @@ public static class AtomicFile
         }
     }
 
+    public static Task WriteAllBytesAsync(
+        string destinationPath,
+        ReadOnlyMemory<byte> payload,
+        CancellationToken cancellationToken = default,
+        bool createBackup = false)
+        => WriteAsync(
+            destinationPath,
+            async stream => await stream.WriteAsync(payload, cancellationToken).ConfigureAwait(false),
+            createBackup,
+            cancellationToken);
+
     public static void Quarantine(string path, string reason)
     {
         if (!File.Exists(path))

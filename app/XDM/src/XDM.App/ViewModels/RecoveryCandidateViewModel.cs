@@ -51,6 +51,7 @@ public sealed partial class RecoveryCandidateViewModel : ObservableObject
         DownloadRecoveryClassification.RemoteFileChanged => "Remote file changed",
         DownloadRecoveryClassification.AlreadyCompleteNotFinalized => "Completion recovered",
         DownloadRecoveryClassification.OrphanedArtifact => "Orphaned artifact",
+        DownloadRecoveryClassification.ResumeInProgress => "Resume in progress",
         _ => Candidate.Classification.ToString()
     };
 
@@ -75,6 +76,8 @@ public sealed partial class RecoveryCandidateViewModel : ObservableObject
     public bool CanValidate => Candidate.CanValidate;
 
     public bool CanRepair => Candidate.CanRepair;
+
+    public bool CanRestart => Candidate.CanRestart;
 
     public bool IsOrphaned => Candidate.IsOrphaned;
 

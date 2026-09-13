@@ -115,7 +115,27 @@ public sealed class FinalizationFilePromoter : IFinalizationFilePromoter
             throw new InvalidDataException(
                 $"Finalization expected {marker.ExpectedLength} bytes, but found {length} bytes.");
         }
-        if (!string.IsNullOrWhiteSpace(marker.ChecksumAlgorithm)
+        if (!string.IsNullOrWhiteSpace(marker.ExpectedSha256)
+            || !string.IsNullOrWhiteSpace(marker.ExpectedSha512))
+        {
+            (string? actualSha256, string? actualSha512) = await DownloadChecksumService.ComputeSetAsync(
+                path,
+                includeSha256: !string.IsNullOrWhiteSpace(marker.ExpectedSha256),
+                includeSha512: !string.IsNullOrWhiteSpace(marker.ExpectedSha512),
+                progress: null,
+                cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(marker.ExpectedSha256)
+                && !string.Equals(actualSha256, marker.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new DownloadIntegrityException("The finalization candidate failed SHA-256 verification.");
+            }
+            if (!string.IsNullOrWhiteSpace(marker.ExpectedSha512)
+                && !string.Equals(actualSha512, marker.ExpectedSha512, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new DownloadIntegrityException("The finalization candidate failed SHA-512 verification.");
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(marker.ChecksumAlgorithm)
             && !string.IsNullOrWhiteSpace(marker.Checksum))
         {
             string actual = await DownloadChecksumService

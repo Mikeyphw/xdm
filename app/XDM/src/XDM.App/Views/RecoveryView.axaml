@@ -105,7 +105,7 @@
               <Button Margin="0,0,8,8" Classes="primary" Content="Resume selected" Command="{Binding ResumeRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanResume}"/>
               <Button Margin="0,0,8,8" Classes="secondary" Content="Validate selected" Command="{Binding ValidateRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanValidate}"/>
               <Button Margin="0,0,8,8" Classes="secondary" Content="Verify and repair" Command="{Binding VerifyAndRepairRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRepair}"/>
-              <Button Margin="0,0,8,8" Classes="danger" Content="Restart from zero" Command="{Binding RestartRecoveryFromZeroCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRepair}"/>
+              <Button Margin="0,0,8,8" Classes="danger" Content="Restart from zero" Command="{Binding RestartRecoveryFromZeroCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRestart}"/>
               <Button Margin="0,0,8,8" Classes="quiet" Content="Locate partial file" Command="{Binding LocateRecoveryPartialCommand}"/>
               <Button Margin="0,0,8,8" Classes="quiet" Content="Open partial-file folder" Command="{Binding OpenRecoveryFolderCommand}"/>
               <Button Margin="0,0,8,8" Classes="quiet" Content="Remove recovery record" Command="{Binding RemoveRecoveryRecordCommand}"/>

@@ -75,8 +75,19 @@ public partial class MainWindowViewModel
         await RunRecoveryActionAsync(
             async () =>
             {
-                await _downloadManager.ResumeAsync(downloadId);
-                _downloadRecoveryCoordinator.Dismiss(selected.Id);
+                _downloadRecoveryCoordinator.MarkResumeStarted(selected.Id);
+                try
+                {
+                    await _downloadManager.ResumeAsync(downloadId);
+                }
+                catch
+                {
+                    await _downloadRecoveryCoordinator.ScanAsync(
+                        _recoveryService.PreviousSessionWasUnclean,
+                        _recoveryService.PreviousSession?.ActiveDownloadIds,
+                        _recoveryService.PreviousSession?.CheckpointFlushSucceeded);
+                    throw;
+                }
             },
             "The recovered transfer was resumed with server validation enabled.");
     }
@@ -94,7 +105,17 @@ public partial class MainWindowViewModel
             async () =>
             {
                 DownloadRepairResult result = await _downloadManager.RepairAsync(downloadId);
-                _downloadRecoveryCoordinator.Dismiss(selected.Id);
+                if (result.ChecksumMatched)
+                {
+                    await _downloadRecoveryCoordinator.DismissAsync(selected.Id);
+                }
+                else
+                {
+                    await _downloadRecoveryCoordinator.ScanAsync(
+                        _recoveryService.PreviousSessionWasUnclean,
+                        _recoveryService.PreviousSession?.ActiveDownloadIds,
+                        _recoveryService.PreviousSession?.CheckpointFlushSucceeded);
+                }
                 OperationMessage = result.Message;
             },
             null);
@@ -113,7 +134,7 @@ public partial class MainWindowViewModel
             async () =>
             {
                 DownloadRepairResult result = await _downloadManager.RestartFromZeroAsync(downloadId);
-                _downloadRecoveryCoordinator.Dismiss(selected.Id);
+                await _downloadRecoveryCoordinator.DismissAsync(selected.Id);
                 OperationMessage = $"Restarted from zero. {result.Message}";
             },
             null);
@@ -165,15 +186,8 @@ public partial class MainWindowViewModel
         }
 
         await RunRecoveryActionAsync(
-            async () =>
-            {
-                if (selected.DownloadId is string downloadId)
-                {
-                    await _downloadManager.RemoveAsync(downloadId, deletePartialFile: false);
-                }
-                _downloadRecoveryCoordinator.Dismiss(selected.Id);
-            },
-            "Removed the recovery record without deleting local artifacts.");
+            () => _downloadRecoveryCoordinator.DismissAsync(selected.Id, persist: true),
+            "Removed the recovery record persistently without deleting download history or local artifacts.");
     }
 
     private async Task RunRecoveryActionAsync(Func<Task> action, string? successMessage)
@@ -191,6 +205,10 @@ public partial class MainWindowViewModel
             {
                 OperationMessage = successMessage;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            OperationMessage = "Recovery action was cancelled; the recovery item was kept.";
         }
         catch (Exception exception) when (exception is IOException
             or UnauthorizedAccessException

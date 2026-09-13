@@ -11,7 +11,9 @@ public sealed record FinalizationMarker(
     string? SourcePath = null,
     string? StagingPath = null,
     DateTimeOffset? UpdatedAt = null,
-    bool AllowOverwrite = false)
+    bool AllowOverwrite = false,
+    string? ExpectedSha256 = null,
+    string? ExpectedSha512 = null)
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
 }

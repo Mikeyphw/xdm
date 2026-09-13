@@ -14,7 +14,9 @@ public sealed record ResumeCheckpoint(
     string? ExpectedChecksumAlgorithm = null,
     string? ExpectedChecksum = null,
     IReadOnlyList<Uri>? Mirrors = null,
-    IReadOnlyDictionary<int, long>? SegmentLengths = null)
+    IReadOnlyDictionary<int, long>? SegmentLengths = null,
+    string? ExpectedSha256 = null,
+    string? ExpectedSha512 = null)
 {
     public const int CurrentVersion = 1;
 }

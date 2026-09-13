@@ -23,6 +23,9 @@ public static class TransferArtifactPaths
     public static string GetChecksumStatePath(string destinationPath)
         => $"{destinationPath}.xdm.checksums.json";
 
+    public static string GetRecoveryDismissalPath(string destinationPath)
+        => $"{destinationPath}.xdm.recovery-dismissed.json";
+
     public static string GetRepairManifestPath(string localPath)
         => $"{localPath}.xdm.repair.json";
 
