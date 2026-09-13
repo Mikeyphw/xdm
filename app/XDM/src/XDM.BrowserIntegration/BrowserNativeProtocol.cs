@@ -60,7 +60,13 @@ public static class BrowserNativeProtocol
         "cookies-optional",
         "referer-optional",
         "user-agent",
+        "browser-request-id",
+        "source-page",
+        "file-size",
         "request-body-optional",
+        "post-body-required",
+        "batch-item-acknowledgement",
+        "loopback-request-deadlines",
         "capture-rules",
         "site-capture-modes",
         "incognito-policy",
@@ -245,10 +251,9 @@ public static class BrowserNativeProtocol
             throw new InvalidDataException($"Native capture batch must contain between 1 and {MaximumBatchItems} captures.");
         }
 
-        foreach (BrowserCaptureRequest capture in message.Captures)
-        {
-            capture.Validate();
-        }
+        // Batch items are validated by the native host one-by-one so one malformed
+        // item cannot erase acknowledgements for earlier successful captures.
+        // Single-item capture still validates here because its whole response is one item.
     }
 
     private static void ValidateMessageSize(int length)

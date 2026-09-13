@@ -30,7 +30,8 @@ public sealed record DownloadRequest(
     bool ApplyDestinationRules = true,
     bool AllowDuplicateUrl = false,
     string? ExpectedSha256 = null,
-    string? ExpectedSha512 = null)
+    string? ExpectedSha512 = null,
+    string? BrowserRequestId = null)
 {
     public string ResolveFileName()
     {

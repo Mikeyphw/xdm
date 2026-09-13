@@ -6,7 +6,7 @@ public static class NativeHostOriginVerifier
     {
         if (string.IsNullOrWhiteSpace(launchOrigin) || string.IsNullOrWhiteSpace(extensionId))
         {
-            return true;
+            return false;
         }
 
         string origin = launchOrigin.Trim().TrimEnd('/');

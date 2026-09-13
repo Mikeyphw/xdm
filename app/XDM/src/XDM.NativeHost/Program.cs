@@ -14,7 +14,9 @@ internal static class Program
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
-    private static readonly TimeSpan LoopbackTimeout = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan SingleCaptureLoopbackTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan PerBatchItemLoopbackBudget = TimeSpan.FromSeconds(22);
+    private static readonly TimeSpan BatchResponseReserve = TimeSpan.FromSeconds(10);
 
     public static async Task<int> Main()
     {
@@ -25,7 +27,7 @@ internal static class Program
         string? launchOrigin = NativeHostOriginVerifier.ResolveLaunchOrigin(Environment.GetCommandLineArgs());
         BrowserClientInfo? negotiatedClient = null;
 
-        using HttpClient client = new() { Timeout = LoopbackTimeout };
+        using HttpClient client = new() { Timeout = Timeout.InfiniteTimeSpan };
         while (true)
         {
             byte[]? payload;
@@ -147,32 +149,42 @@ internal static class Program
         List<BrowserNativeItemResult> results = new(captures.Count);
         string? token = await TryLoadTokenAsync().ConfigureAwait(false);
 
+        TimeSpan loopbackBudget = GetLoopbackBudget(captures.Count);
+        using CancellationTokenSource batchCancellation = new(loopbackBudget);
         foreach (BrowserCaptureRequest captureValue in captures)
         {
             BrowserCaptureRequest capture = captureValue with
             {
                 RequestId = captureValue.RequestId ?? message.RequestId
             };
-            if (token is null)
+            try
             {
-                results.Add(new BrowserNativeItemResult(capture.RequestId, false, "xdm_unavailable"));
-                continue;
-            }
+                if (token is null)
+                {
+                    results.Add(new BrowserNativeItemResult(capture.RequestId, false, "xdm_unavailable"));
+                    continue;
+                }
 
-            BrowserCaptureRuleDecision ruleDecision = BrowserCaptureRuleEvaluator.Evaluate(capture, message.Rules);
-            if (!ruleDecision.Accepted)
+                capture.Validate();
+                BrowserCaptureRuleDecision ruleDecision = BrowserCaptureRuleEvaluator.Evaluate(capture, message.Rules);
+                if (!ruleDecision.Accepted)
+                {
+                    results.Add(new BrowserNativeItemResult(capture.RequestId, false, ruleDecision.Reason));
+                    continue;
+                }
+
+                BrowserCaptureAcknowledgement acknowledgement = await SendCaptureAsync(client, token, capture, batchCancellation.Token)
+                    .ConfigureAwait(false);
+                results.Add(new BrowserNativeItemResult(
+                    capture.RequestId,
+                    acknowledgement.Accepted,
+                    acknowledgement.Reason,
+                    acknowledgement.DownloadId));
+            }
+            catch (Exception exception) when (exception is HttpRequestException or InvalidDataException or IOException or JsonException or OperationCanceledException)
             {
-                results.Add(new BrowserNativeItemResult(capture.RequestId, false, ruleDecision.Reason));
-                continue;
+                results.Add(new BrowserNativeItemResult(capture.RequestId, false, SanitizeReason(exception)));
             }
-
-            BrowserCaptureAcknowledgement acknowledgement = await SendCaptureAsync(client, token, capture)
-                .ConfigureAwait(false);
-            results.Add(new BrowserNativeItemResult(
-                capture.RequestId,
-                acknowledgement.Accepted,
-                acknowledgement.Reason,
-                acknowledgement.DownloadId));
         }
 
         int accepted = results.Count(static result => result.Accepted);
@@ -229,7 +241,8 @@ internal static class Program
         request.Headers.Add("X-XDM-Token", token);
         try
         {
-            using HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(false);
+            using CancellationTokenSource reportCancellation = new(SingleCaptureLoopbackTimeout);
+            using HttpResponseMessage response = await client.SendAsync(request, reportCancellation.Token).ConfigureAwait(false);
             _ = response.IsSuccessStatusCode;
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
@@ -240,7 +253,8 @@ internal static class Program
     private static async Task<BrowserCaptureAcknowledgement> SendCaptureAsync(
         HttpClient client,
         string token,
-        BrowserCaptureRequest capture)
+        BrowserCaptureRequest capture,
+        CancellationToken cancellationToken)
     {
         byte[] payload = BrowserCaptureProtocol.Serialize(capture);
         using HttpRequestMessage request = new(HttpMethod.Post, "http://127.0.0.1:9614/capture")
@@ -250,9 +264,11 @@ internal static class Program
         request.Content.Headers.ContentType = new("application/json");
         request.Headers.Add("X-XDM-Token", token);
 
-        using HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(false);
+        using CancellationTokenSource perItemCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        perItemCancellation.CancelAfter(SingleCaptureLoopbackTimeout);
+        using HttpResponseMessage response = await client.SendAsync(request, perItemCancellation.Token).ConfigureAwait(false);
         BrowserCaptureAcknowledgement? acknowledgement = await response.Content
-            .ReadFromJsonAsync<BrowserCaptureAcknowledgement>(JsonOptions)
+            .ReadFromJsonAsync<BrowserCaptureAcknowledgement>(JsonOptions, perItemCancellation.Token)
             .ConfigureAwait(false);
         if (acknowledgement is null
             || string.IsNullOrWhiteSpace(acknowledgement.Reason)
@@ -272,7 +288,8 @@ internal static class Program
         request.Headers.Add("X-XDM-Token", token);
         try
         {
-            using HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(false);
+            using CancellationTokenSource probeCancellation = new(SingleCaptureLoopbackTimeout);
+            using HttpResponseMessage response = await client.SendAsync(request, probeCancellation.Token).ConfigureAwait(false);
             return response.StatusCode == HttpStatusCode.OK;
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
@@ -280,6 +297,16 @@ internal static class Program
             return false;
         }
     }
+
+    private static TimeSpan GetLoopbackBudget(int itemCount)
+    {
+        int boundedItems = Math.Clamp(itemCount, 1, BrowserNativeProtocol.MaximumBatchItems);
+        return TimeSpan.FromTicks(
+            BatchResponseReserve.Ticks + (PerBatchItemLoopbackBudget.Ticks * boundedItems));
+    }
+
+    private static string SanitizeReason(Exception exception)
+        => exception is OperationCanceledException ? "loopback_timeout" : SanitizeError(exception.Message);
 
     private static async Task WriteResponseAsync(Stream output, BrowserNativeResponse response)
         => await NativeMessageFraming.WriteAsync(output, BrowserNativeProtocol.Serialize(response)).ConfigureAwait(false);

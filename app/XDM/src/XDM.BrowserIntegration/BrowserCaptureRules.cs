@@ -76,8 +76,8 @@ public sealed record BrowserCaptureRules(
             BlockedMimeTypes = NormalizeList(BlockedMimeTypes, lowerCase: true),
             AllowedExtensions = NormalizeExtensions(AllowedExtensions),
             BlockedExtensions = NormalizeExtensions(BlockedExtensions),
-            IncludedSites = NormalizeList(IncludedSites, lowerCase: true),
-            ExcludedSites = NormalizeList(ExcludedSites, lowerCase: true),
+            IncludedSites = NormalizeSites(IncludedSites),
+            ExcludedSites = NormalizeSites(ExcludedSites),
             DefaultSiteMode = NormalizeMode(DefaultSiteMode),
             SitePolicies = NormalizePolicies(SitePolicies)
         };
@@ -112,6 +112,28 @@ public sealed record BrowserCaptureRules(
             .Take(256)
             .ToArray()
             ?? [];
+
+    private static string[] NormalizeSites(IReadOnlyList<string>? values)
+        => values?
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Select(NormalizeSite)
+            .Where(static value => value.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(256)
+            .ToArray()
+            ?? [];
+
+    private static string NormalizeSite(string value)
+    {
+        string candidate = value.Trim();
+        if (Uri.TryCreate(candidate.Contains("://", StringComparison.Ordinal) ? candidate : $"https://{candidate}", UriKind.Absolute, out Uri? uri)
+            && uri.Scheme is "http" or "https")
+        {
+            return uri.IdnHost.TrimEnd('.').ToLowerInvariant();
+        }
+
+        return candidate.Trim().TrimStart('*').TrimStart('.').TrimEnd('/').TrimEnd('.').ToLowerInvariant();
+    }
 
     private static string[] NormalizeExtensions(IReadOnlyList<string>? values)
         => NormalizeList(values, lowerCase: true)

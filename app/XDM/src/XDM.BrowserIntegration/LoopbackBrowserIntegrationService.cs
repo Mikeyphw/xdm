@@ -10,7 +10,11 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
     private const int MaxExtensionHealthPayloadBytes = 32 * 1024;
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan CaptureDecisionTimeout = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan RequestHandlingTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan HandlerShutdownTimeout = TimeSpan.FromSeconds(5);
     private readonly object _sync = new();
+    private readonly object _handlerSync = new();
+    private readonly HashSet<Task> _handlers = [];
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly int _port;
     private HttpListener? _listener;
@@ -58,9 +62,28 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
         await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (!IsRecoverableToken(Current.AuthenticationToken))
+            {
+                UpdateStatus(status => status with
+                {
+                    IsListening = false,
+                    LastError = "Browser loopback token could not be persisted; native-host authentication is disabled until storage is writable."
+                });
+                return;
+            }
+
             if (_listenerTask is { IsCompleted: false })
             {
                 return;
+            }
+
+            if (_listenerTask is { IsFaulted: true } faulted)
+            {
+                UpdateStatus(status => status with
+                {
+                    IsListening = false,
+                    LastError = faulted.Exception?.GetBaseException().Message ?? "Browser listener failed."
+                });
             }
 
             HttpListener listener = new();
@@ -134,6 +157,8 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
                 }
             }
 
+            await WaitForHandlersAsync(cancellationToken).ConfigureAwait(false);
+
             _listener = null;
             _listenerTask = null;
             _lifetimeCancellation?.Dispose();
@@ -176,16 +201,29 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             {
                 break;
             }
+            catch (Exception exception) when (exception is HttpListenerException or ObjectDisposedException or InvalidOperationException)
+            {
+                UpdateStatus(status => status with
+                {
+                    IsListening = false,
+                    LastError = exception.Message
+                });
+                break;
+            }
 
-            _ = HandleContextSafelyAsync(context, cancellationToken);
+            TrackHandler(HandleContextSafelyAsync(context, CancellationToken.None));
         }
+
+        UpdateStatus(status => status with { IsListening = false });
     }
 
     private async Task HandleContextSafelyAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
+        using CancellationTokenSource requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        requestCancellation.CancelAfter(RequestHandlingTimeout);
         try
         {
-            await HandleContextAsync(context, cancellationToken).ConfigureAwait(false);
+            await HandleContextAsync(context, requestCancellation.Token).ConfigureAwait(false);
         }
         catch (JsonException exception)
         {
@@ -201,6 +239,14 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatus(status => status with { LastError = "Browser loopback request timed out." });
+            if (context.Response.OutputStream.CanWrite)
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.RequestTimeout;
+            }
         }
         catch (IOException exception)
         {
@@ -350,6 +396,48 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             cancellationToken).ConfigureAwait(false);
     }
 
+    private void TrackHandler(Task task)
+    {
+        lock (_handlerSync)
+        {
+            _handlers.Add(task);
+        }
+
+        _ = task.ContinueWith(completed =>
+        {
+            lock (_handlerSync)
+            {
+                _handlers.Remove(completed);
+            }
+
+            _ = completed.Exception;
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    private async Task WaitForHandlersAsync(CancellationToken cancellationToken)
+    {
+        Task[] handlers;
+        lock (_handlerSync)
+        {
+            handlers = _handlers.ToArray();
+        }
+
+        if (handlers.Length == 0)
+        {
+            return;
+        }
+
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(HandlerShutdownTimeout);
+        try
+        {
+            await Task.WhenAll(handlers).WaitAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     private static async Task<BrowserExtensionHealthReport> DeserializeExtensionHealthReportAsync(
         Stream input,
         CancellationToken cancellationToken)
@@ -388,6 +476,9 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             .ConfigureAwait(false);
         return report ?? throw new InvalidDataException("Browser extension health payload is empty.");
     }
+
+    private static bool IsRecoverableToken(string token)
+        => token.Length == 64 && token.All(static character => char.IsAsciiHexDigit(character));
 
     private bool IsAuthenticated(HttpListenerRequest request)
     {
@@ -444,13 +535,10 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             File.WriteAllText(path, token);
             return token;
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            _ = exception;
+            return "token-persistence-unavailable";
         }
     }
 }

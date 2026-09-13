@@ -108,6 +108,16 @@ public sealed class BrowserCaptureRuleEvaluatorTests
         Assert.Equal("manual_capture", BrowserCaptureRuleEvaluator.Evaluate(confirmed, rules).Reason);
     }
 
+    [Fact]
+    public void IncludedSitesNormalizeFullUrlsLikeExtensionRules()
+    {
+        BrowserCaptureRules rules = new(IncludedSites: ["https://example.test/downloads/path?x=1"]);
+
+        BrowserCaptureRuleDecision decision = BrowserCaptureRuleEvaluator.Evaluate(BaseRequest, rules);
+
+        Assert.True(decision.Accepted);
+    }
+
     private static BrowserCaptureRuleDecision Evaluate(BrowserCaptureRules rules)
         => BrowserCaptureRuleEvaluator.Evaluate(BaseRequest, rules);
 }

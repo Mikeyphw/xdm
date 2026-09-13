@@ -320,7 +320,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.DuplicateOfDownloadId,
                 item.DuplicateReason,
                 item.AllowDestinationOverwrite,
-                item.BackendRequestIdentity);
+                item.BackendRequestIdentity,
+                item.BrowserRequestId);
             session.ExpectedSha256 = item.ExpectedSha256;
             session.ExpectedSha512 = item.ExpectedSha512;
 
@@ -453,6 +454,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         string fileName = request.ResolveFileName();
         OrganizationSettings organization = (_settingsService.Current.Organization ?? OrganizationSettings.Default).Normalize();
+        string? normalizedBrowserRequestId = NormalizeBrowserRequestId(request.BrowserRequestId);
+        DownloadSession? duplicateBrowserRequest = FindBrowserRequestSession(normalizedBrowserRequestId);
+        if (duplicateBrowserRequest is not null)
+        {
+            return duplicateBrowserRequest.Id;
+        }
+
         DownloadSession? duplicateUrl = request.AllowDuplicateUrl
             ? null
             : FindDuplicateUrlSession(request.Source);
@@ -605,13 +613,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             duplicateUrl?.Id,
             duplicateUrl is null ? null : "The source URL matches an existing download.",
             effectiveRequest.DuplicateBehavior == DuplicateFileBehavior.Overwrite,
-            backendRequestIdentity);
+            backendRequestIdentity,
+            normalizedBrowserRequestId);
         session.ExpectedSha256 = normalizedExpectedSha256;
         session.ExpectedSha512 = normalizedExpectedSha512;
 
         lock (_organizationAdmissionSync)
         {
             ThrowIfAdmissionClosed();
+            DownloadSession? admittedBrowserRequest = FindBrowserRequestSession(normalizedBrowserRequestId);
+            if (admittedBrowserRequest is not null)
+            {
+                return admittedBrowserRequest.Id;
+            }
+
             if (!request.AllowDuplicateUrl)
             {
                 DownloadSession? admittedDuplicate = FindDuplicateUrlSession(request.Source);
@@ -4893,6 +4908,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.ConnectionCount = item.ConnectionCount;
             session.Priority = item.Priority;
             session.SourcePage = item.SourcePage;
+            session.BrowserRequestId = string.IsNullOrWhiteSpace(item.BrowserRequestId)
+                ? null
+                : item.BrowserRequestId.Trim();
             session.ExpectedChecksumAlgorithm = item.ExpectedChecksumAlgorithm;
             session.ExpectedChecksum = item.ExpectedChecksum;
             session.ActualChecksum = item.ActualChecksum;
@@ -4930,6 +4948,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         return _sessions.TryGetValue(downloadId, out DownloadSession? session)
             ? session
             : throw new KeyNotFoundException($"Download '{downloadId}' was not found.");
+    }
+
+    private static string? NormalizeBrowserRequestId(string? requestId)
+        => string.IsNullOrWhiteSpace(requestId) ? null : requestId.Trim();
+
+    private DownloadSession? FindBrowserRequestSession(string? browserRequestId)
+    {
+        if (string.IsNullOrWhiteSpace(browserRequestId))
+        {
+            return null;
+        }
+
+        return _sessions.Values.FirstOrDefault(session =>
+            string.Equals(session.BrowserRequestId, browserRequestId, StringComparison.Ordinal));
     }
 
     private DownloadSession? FindDuplicateUrlSession(Uri source)
@@ -5670,7 +5702,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.AllowDestinationOverwrite,
                 session.BackendRequestIdentity,
                 session.ExpectedSha256,
-                session.ExpectedSha512);
+                session.ExpectedSha512,
+                session.BrowserRequestId);
         }
     }
 
@@ -6654,7 +6687,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string? duplicateOfDownloadId = null,
             string? duplicateReason = null,
             bool allowDestinationOverwrite = false,
-            string? backendRequestIdentity = null)
+            string? backendRequestIdentity = null,
+            string? browserRequestId = null)
         {
             Id = id;
             Source = source;
@@ -6716,6 +6750,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             BackendRequestIdentity = string.IsNullOrWhiteSpace(backendRequestIdentity)
                 ? CreateBackendRequestIdentity(id, source, destinationPath, method)
                 : backendRequestIdentity.Trim();
+            BrowserRequestId = string.IsNullOrWhiteSpace(browserRequestId) ? null : browserRequestId.Trim();
             int currentMirrorIndex = Array.FindIndex(normalizedMirrors, mirror => mirror == source);
             MirrorIndex = currentMirrorIndex + 1;
         }
@@ -6799,6 +6834,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? BackendDecisionReason { get; set; }
 
         public string BackendRequestIdentity { get; set; }
+
+        public string? BrowserRequestId { get; set; }
 
         public bool Aria2OwnershipUncertain { get; set; }
 

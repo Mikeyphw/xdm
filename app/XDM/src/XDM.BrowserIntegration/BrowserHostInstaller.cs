@@ -107,7 +107,9 @@ public sealed class BrowserHostInstaller : IBrowserHostInstaller
                     description = $"XDM native browser integration host (protocol {BrowserNativeProtocol.ProtocolVersion})",
                     path = _nativeHostPath,
                     type = "stdio",
-                    allowed_extensions = new[] { FirefoxExtensionId, LegacyFirefoxExtensionId }
+                    allowed_extensions = new[] { FirefoxExtensionId, LegacyFirefoxExtensionId },
+                    xdm_allowed_extension_ids = new[] { FirefoxExtensionId, LegacyFirefoxExtensionId },
+                    xdm_protocol_version = BrowserNativeProtocol.ProtocolVersion
                 }
                 : new
                 {
@@ -115,7 +117,9 @@ public sealed class BrowserHostInstaller : IBrowserHostInstaller
                     description = $"XDM native browser integration host (protocol {BrowserNativeProtocol.ProtocolVersion})",
                     path = _nativeHostPath,
                     type = "stdio",
-                    allowed_origins = extensionIds.Select(static id => $"chrome-extension://{id}/").ToArray()
+                    allowed_origins = extensionIds.Select(static id => $"chrome-extension://{id}/").ToArray(),
+                    xdm_allowed_extension_ids = extensionIds,
+                    xdm_protocol_version = BrowserNativeProtocol.ProtocolVersion
                 };
             await WriteManifestAsync(path, manifest, cancellationToken).ConfigureAwait(false);
             _ = browser;
@@ -168,20 +172,17 @@ public sealed class BrowserHostInstaller : IBrowserHostInstaller
                     _platform == BrowserHostPlatform.Windows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
             bool typeMatches = root.TryGetProperty("type", out JsonElement type)
                 && string.Equals(type.GetString(), "stdio", StringComparison.Ordinal);
+            bool protocolMatches = root.TryGetProperty("xdm_protocol_version", out JsonElement protocolVersion)
+                && string.Equals(protocolVersion.GetString(), BrowserNativeProtocol.ProtocolVersion, StringComparison.Ordinal);
             bool allowListCompatible = isFirefox
                 ? root.TryGetProperty("allowed_extensions", out JsonElement extensions)
                     && extensions.ValueKind == JsonValueKind.Array
-                    && extensions.EnumerateArray()
-                        .Where(static value => value.ValueKind == JsonValueKind.String)
-                        .Select(static value => value.GetString())
-                        .Any(static value => string.Equals(value, FirefoxExtensionId, StringComparison.Ordinal))
+                    && HasExpectedFirefoxIdentity(root, extensions)
                 : root.TryGetProperty("allowed_origins", out JsonElement origins)
                     && origins.ValueKind == JsonValueKind.Array
                     && origins.GetArrayLength() > 0
-                    && origins.EnumerateArray().All(static value =>
-                        value.ValueKind == JsonValueKind.String
-                        && IsValidChromiumOrigin(value.GetString()));
-            bool compatible = nameMatches && pathMatches && typeMatches && allowListCompatible;
+                    && HasExpectedChromiumIdentity(root, origins);
+            bool compatible = nameMatches && pathMatches && typeMatches && protocolMatches && allowListCompatible;
             return new BrowserHostManifestStatus(
                 browser,
                 path,
@@ -193,6 +194,52 @@ public sealed class BrowserHostInstaller : IBrowserHostInstaller
         {
             return new BrowserHostManifestStatus(browser, path, true, false, $"Invalid manifest: {exception.Message}");
         }
+    }
+
+    private static bool HasExpectedFirefoxIdentity(JsonElement root, JsonElement extensions)
+    {
+        string[] allowed = extensions.EnumerateArray()
+            .Where(static value => value.ValueKind == JsonValueKind.String)
+            .Select(static value => value.GetString() ?? string.Empty)
+            .ToArray();
+        string[] expected = ReadManifestExtensionIds(root);
+        return expected.Contains(FirefoxExtensionId, StringComparer.Ordinal)
+            && allowed.OrderBy(static value => value, StringComparer.Ordinal)
+                .SequenceEqual(expected.OrderBy(static value => value, StringComparer.Ordinal), StringComparer.Ordinal);
+    }
+
+    private static bool HasExpectedChromiumIdentity(JsonElement root, JsonElement origins)
+    {
+        string[] originIds = origins.EnumerateArray()
+            .Where(static value => value.ValueKind == JsonValueKind.String && IsValidChromiumOrigin(value.GetString()))
+            .Select(static value => value.GetString()!["chrome-extension://".Length..^1])
+            .ToArray();
+        if (originIds.Length == 0 || originIds.Length != origins.GetArrayLength())
+        {
+            return false;
+        }
+
+        string[] expected = ReadManifestExtensionIds(root);
+        return expected.Length > 0
+            && originIds.OrderBy(static value => value, StringComparer.Ordinal)
+                .SequenceEqual(expected.OrderBy(static value => value, StringComparer.Ordinal), StringComparer.Ordinal);
+    }
+
+    private static string[] ReadManifestExtensionIds(JsonElement root)
+    {
+        if (!root.TryGetProperty("xdm_allowed_extension_ids", out JsonElement identities)
+            || identities.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return identities.EnumerateArray()
+            .Where(static value => value.ValueKind == JsonValueKind.String)
+            .Select(static value => value.GetString())
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Select(static value => value!.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
 

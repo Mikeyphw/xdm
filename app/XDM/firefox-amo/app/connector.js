@@ -2,7 +2,9 @@
 
 const HOST_NAME = "com.xtremedownloadmanager.xdm";
 const PROTOCOL_VERSION = "2.0";
-const REQUEST_TIMEOUT_MS = 25000;
+const REQUEST_TIMEOUT_MS = 30000;
+const BATCH_ITEM_TIMEOUT_MS = 22000;
+const BATCH_RESPONSE_RESERVE_MS = 10000;
 
 class NativeConnector {
   constructor(onStatusChanged = () => {}) {
@@ -18,7 +20,9 @@ class NativeConnector {
   async send(type, payload = {}) {
     await this.ensureConnected();
     const requestId = this.nextRequestId();
-    return this.postAndWait({ protocolVersion: PROTOCOL_VERSION, requestId, type, sessionId: this.sessionId, ...payload });
+    return this.postAndWait(
+      { protocolVersion: PROTOCOL_VERSION, requestId, type, sessionId: this.sessionId, ...payload },
+      timeoutFor(type, payload));
   }
 
   async health() {
@@ -85,13 +89,13 @@ class NativeConnector {
     }
   }
 
-  postAndWait(message) {
+  postAndWait(message, timeoutMs = REQUEST_TIMEOUT_MS) {
     if (!this.port) return Promise.reject(new Error("native_host_not_connected"));
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(message.requestId);
         reject(new Error("native_message_timeout"));
-      }, REQUEST_TIMEOUT_MS);
+      }, timeoutMs);
       this.pending.set(message.requestId, { resolve, reject, timeout, expectedType: `${message.type}-ack` });
       try { this.port.postMessage(message); }
       catch (error) {
@@ -142,6 +146,14 @@ async function permissionSnapshot() {
     grantedOrigins,
     enhancedAccessGranted: grantedOrigins.length > 0 && (all.permissions || []).includes("webRequest") && (all.permissions || []).includes("cookies")
   };
+}
+
+function timeoutFor(type, payload) {
+  if (type === "capture-batch") {
+    const count = Array.isArray(payload?.captures) ? payload.captures.length : 1;
+    return BATCH_RESPONSE_RESERVE_MS + Math.max(1, count) * BATCH_ITEM_TIMEOUT_MS;
+  }
+  return REQUEST_TIMEOUT_MS;
 }
 
 function detectBrowser() {

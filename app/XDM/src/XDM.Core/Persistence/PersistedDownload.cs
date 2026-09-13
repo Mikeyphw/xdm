@@ -41,4 +41,5 @@ public sealed record PersistedDownload(
     bool AllowDestinationOverwrite = false,
     string? BackendRequestIdentity = null,
     string? ExpectedSha256 = null,
-    string? ExpectedSha512 = null);
+    string? ExpectedSha512 = null,
+    string? BrowserRequestId = null);

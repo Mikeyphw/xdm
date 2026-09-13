@@ -40,15 +40,13 @@ export default class App {
     this.connector = new NativeConnector(status => this.onConnectorStatus(status));
     this.processingDownloads = new Set();
     this.requestMetadata = new Map();
+    this.requestMetadataByUrl = new Map();
     this.pendingCaptures = [];
     this.lastResult = null;
     this.metadataListenersRegistered = false;
   }
 
   async start() {
-    await this.loadRules();
-    await this.loadPendingCaptures();
-    await this.refreshPermissionState();
     this.registerDownloadTakeover();
     this.registerContextMenus();
     this.registerRuntimeMessages();
@@ -58,6 +56,11 @@ export default class App {
     chrome.alarms.onAlarm.addListener(alarm => {
       if (alarm.name === "xdm-health") void this.refreshHealth();
     });
+
+    await this.loadRules();
+    await this.loadPendingCaptures();
+    await this.loadRequestMetadata();
+    await this.refreshPermissionState();
     await this.refreshHealth();
   }
 
@@ -117,8 +120,11 @@ export default class App {
       await delay(120);
       const [item] = await chrome.downloads.search({ id: initialItem.id });
       if (!item || item.state === "complete") return;
-      const capture = await this.createCapture(item.finalUrl || item.url, {
-        requestId: `download-${item.id}-${Date.now()}`,
+      const sourceUrl = item.finalUrl || item.url;
+      const metadata = this.getMetadataForUrl(sourceUrl);
+      const capture = await this.createCapture(sourceUrl, {
+        requestId: metadata?.browserRequestId || `download-${item.id}-${Date.now()}`,
+        browserRequestId: metadata?.browserRequestId || null,
         fileName: leafName(item.filename),
         mimeType: item.mime || null,
         fileSize: positiveSize(item.fileSize || item.totalBytes),
@@ -176,18 +182,24 @@ export default class App {
     if (this.metadataListenersRegistered) return;
     chrome.webRequest.onBeforeRequest.addListener(
       this.onBeforeRequest = details => {
-        const entry = this.getMetadataEntry(details.url);
+        const entry = this.getMetadataEntry(details.requestId);
+        entry.browserRequestId = details.requestId;
+        entry.url = details.url;
         entry.method = details.method || "GET";
         entry.requestBodyBase64 = encodeRequestBody(details.requestBody);
         entry.updatedAt = Date.now();
-        this.requestMetadata.set(details.url, entry);
+        this.requestMetadata.set(details.requestId, entry);
+        this.requestMetadataByUrl.set(details.url, details.requestId);
+        void this.saveRequestMetadata();
       },
       { urls: ["http://*/*", "https://*/*"] },
       ["requestBody"]
     );
     chrome.webRequest.onBeforeSendHeaders.addListener(
       this.onBeforeSendHeaders = details => {
-        const entry = this.getMetadataEntry(details.url);
+        const entry = this.getMetadataEntry(details.requestId);
+        entry.browserRequestId = details.requestId;
+        entry.url = details.url;
         for (const header of details.requestHeaders || []) {
           const name = header.name.toLowerCase();
           const value = header.value || "";
@@ -199,7 +211,9 @@ export default class App {
           }
         }
         entry.updatedAt = Date.now();
-        this.requestMetadata.set(details.url, entry);
+        this.requestMetadata.set(details.requestId, entry);
+        this.requestMetadataByUrl.set(details.url, details.requestId);
+        void this.saveRequestMetadata();
       },
       { urls: ["http://*/*", "https://*/*"] },
       ["requestHeaders", "extraHeaders"]
@@ -212,21 +226,52 @@ export default class App {
     if (this.onBeforeRequest) chrome.webRequest.onBeforeRequest.removeListener(this.onBeforeRequest);
     if (this.onBeforeSendHeaders) chrome.webRequest.onBeforeSendHeaders.removeListener(this.onBeforeSendHeaders);
     this.requestMetadata.clear();
+    this.requestMetadataByUrl.clear();
     this.metadataListenersRegistered = false;
+    void this.saveRequestMetadata();
   }
 
-  getMetadataEntry(url) {
+  async loadRequestMetadata() {
+    const area = chrome.storage.session || chrome.storage.local;
+    const stored = await area.get("requestMetadata");
+    const threshold = Date.now() - METADATA_TTL_MS;
+    for (const item of Array.isArray(stored.requestMetadata) ? stored.requestMetadata : []) {
+      if (item?.browserRequestId && item?.url && item.updatedAt >= threshold) {
+        this.requestMetadata.set(item.browserRequestId, item);
+        this.requestMetadataByUrl.set(item.url, item.browserRequestId);
+      }
+    }
+  }
+
+  async saveRequestMetadata() {
+    const area = chrome.storage.session || chrome.storage.local;
     this.pruneMetadata();
-    return this.requestMetadata.get(url) || { headers: {}, updatedAt: Date.now() };
+    await area.set({ requestMetadata: Array.from(this.requestMetadata.values()).slice(-MAX_PENDING_ITEMS) });
+  }
+
+  getMetadataEntry(requestId) {
+    this.pruneMetadata();
+    return this.requestMetadata.get(requestId) || { browserRequestId: requestId, headers: {}, updatedAt: Date.now() };
+  }
+
+  getMetadataForUrl(url) {
+    this.pruneMetadata();
+    const requestId = this.requestMetadataByUrl.get(url);
+    return requestId ? this.requestMetadata.get(requestId) : null;
   }
 
   pruneMetadata() {
     const threshold = Date.now() - METADATA_TTL_MS;
-    for (const [url, value] of this.requestMetadata) if (value.updatedAt < threshold) this.requestMetadata.delete(url);
+    for (const [requestId, value] of this.requestMetadata) {
+      if (value.updatedAt < threshold) {
+        this.requestMetadata.delete(requestId);
+        if (value.url) this.requestMetadataByUrl.delete(value.url);
+      }
+    }
   }
 
   async createCapture(url, options = {}) {
-    const metadata = this.getMetadataEntry(url);
+    const metadata = options.browserRequestId ? this.requestMetadata.get(options.browserRequestId) : this.getMetadataForUrl(url) || { headers: {} };
     let cookie = null;
     if (this.permissionState?.enhancedAccessGranted) {
       try {
@@ -237,7 +282,8 @@ export default class App {
     const method = (metadata.method || options.method || "GET").toUpperCase();
     return {
       url,
-      requestId: options.requestId || `capture-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      requestId: options.requestId || metadata.browserRequestId || `capture-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      browserRequestId: options.browserRequestId || metadata.browserRequestId || null,
       fileName: options.fileName || null,
       headers: metadata.headers,
       cookie,

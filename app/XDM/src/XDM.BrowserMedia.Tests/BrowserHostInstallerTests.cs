@@ -38,6 +38,9 @@ public sealed class BrowserHostInstallerTests
                     .EnumerateArray()
                     .Select(static item => item.GetString())
                     .OfType<string>());
+            Assert.Equal(
+                BrowserNativeProtocol.ProtocolVersion,
+                manifest.RootElement.GetProperty("xdm_protocol_version").GetString());
 
             BrowserHostInstallationStatus removed = await installer.UninstallAsync();
             Assert.False(removed.FirefoxManifestInstalled);
@@ -106,6 +109,45 @@ public sealed class BrowserHostInstallerTests
             Assert.Contains(
                 status.Manifests!,
                 static manifest => manifest.Browser == "Firefox" && !manifest.IsCompatible);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RejectsChromiumManifestWithoutStoredExpectedExtensionIdentity()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"xdm-host-{Guid.NewGuid():N}");
+        string host = Path.Combine(root, "XDM.NativeHost");
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(host, "host");
+        try
+        {
+            BrowserHostInstaller installer = new(host, root, BrowserHostPlatform.Linux);
+            await installer.RepairAsync("abcdefghijklmnopabcdefghijklmnop");
+            string manifestPath = Path.Combine(
+                root,
+                ".config",
+                "chromium",
+                "NativeMessagingHosts",
+                $"{BrowserHostInstaller.HostName}.json");
+            await File.WriteAllTextAsync(
+                manifestPath,
+                JsonSerializer.Serialize(new
+                {
+                    name = BrowserHostInstaller.HostName,
+                    path = host,
+                    type = "stdio",
+                    xdm_protocol_version = BrowserNativeProtocol.ProtocolVersion,
+                    allowed_origins = new[] { "chrome-extension://abcdefghijklmnopabcdefghijklmnop/" }
+                }));
+
+            BrowserHostInstallationStatus status = installer.GetStatus();
+
+            Assert.False(status.IsCompatible);
+            Assert.Contains(status.Manifests!, static manifest => manifest.Browser == "Chromium" && !manifest.IsCompatible);
         }
         finally
         {

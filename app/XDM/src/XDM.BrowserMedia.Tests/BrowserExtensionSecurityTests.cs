@@ -64,6 +64,30 @@ public sealed class BrowserExtensionSecurityTests
         Assert.Contains("Waiting for confirmation", source, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("chrome-app.js")]
+    [InlineData("firefox-app.js")]
+    public void ExtensionRegistersWakeupListenersBeforeAwaitedStartup(string fixture)
+    {
+        string source = File.ReadAllText(GetFixturePath(fixture));
+
+        Assert.True(source.IndexOf("registerDownloadTakeover();", StringComparison.Ordinal) < source.IndexOf("await this.loadRules();", StringComparison.Ordinal));
+        Assert.True(source.IndexOf("registerRuntimeMessages();", StringComparison.Ordinal) < source.IndexOf("await this.loadRules();", StringComparison.Ordinal));
+        Assert.Contains("loadRequestMetadata", source, StringComparison.Ordinal);
+        Assert.Contains("browserRequestId", source, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("chrome-connector.js")]
+    [InlineData("firefox-connector.js")]
+    public void NativeConnectorScalesBatchTimeoutBeyondPerItemBudget(string fixture)
+    {
+        string source = File.ReadAllText(GetFixturePath(fixture));
+
+        Assert.Contains("BATCH_ITEM_TIMEOUT_MS", source, StringComparison.Ordinal);
+        Assert.Contains("timeoutFor(type, payload)", source, StringComparison.Ordinal);
+    }
+
     private static JsonDocument LoadManifest(string name)
         => JsonDocument.Parse(File.ReadAllBytes(GetFixturePath(name)));
 

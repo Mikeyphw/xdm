@@ -111,6 +111,57 @@ public sealed class LoopbackAcknowledgementTests
         Assert.False(service.Current.ExtensionEnhancedAccessGranted);
     }
 
+
+    [Fact]
+    public async Task StopAsyncWaitsForInFlightCaptureDecision()
+    {
+        int port = GetFreeTcpPort();
+        const string token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        using LoopbackBrowserIntegrationService service = new(port, token);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.CaptureReceived += (_, eventArgs) => _ = Task.Run(async () =>
+        {
+            entered.TrySetResult();
+            await release.Task;
+            eventArgs.Accept("stop-safe-download");
+        });
+        await service.InitializeAsync();
+        Assert.True(service.Current.IsListening, service.Current.LastError);
+
+        using HttpClient client = new();
+        byte[] payload = BrowserCaptureProtocol.Serialize(new BrowserCaptureRequest(
+            new Uri("https://example.test/large.iso"),
+            RequestId: "stop-safe-fixture",
+            BrowserRequestId: "browser-stop-safe-fixture"));
+        using ByteArrayContent content = new(payload);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        using HttpRequestMessage request = new(HttpMethod.Post, $"http://127.0.0.1:{port}/capture")
+        {
+            Content = content
+        };
+        request.Headers.Add("X-XDM-Token", token);
+
+        Task<HttpResponseMessage> responseTask = client.SendAsync(request);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(responseTask.IsCompleted);
+
+        Task stopTask = service.StopAsync();
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        Assert.False(stopTask.IsCompleted);
+        release.TrySetResult();
+
+        using HttpResponseMessage response = await responseTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+        BrowserCaptureAcknowledgement? acknowledgement = await response.Content
+            .ReadFromJsonAsync<BrowserCaptureAcknowledgement>();
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.True(acknowledgement!.Accepted);
+        Assert.Equal("stop-safe-download", acknowledgement.DownloadId);
+        Assert.False(service.Current.IsListening);
+    }
+
     private static int GetFreeTcpPort()
     {
         TcpListener listener = new(IPAddress.Loopback, 0);

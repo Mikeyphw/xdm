@@ -1946,6 +1946,32 @@ public sealed class DownloadManagerTests
         Assert.Empty(state.Current.Downloads);
     }
 
+
+    [Fact]
+    public async Task BrowserRequestIdIsDurableIdempotencyKey()
+    {
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(CreatePayload(256, 13)));
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        using DownloadManager manager = CreateManager(client, state, history);
+        await manager.InitializeAsync(CancellationToken.None);
+
+        string first = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/browser.bin"),
+            directory.Path,
+            "browser.bin",
+            BrowserRequestId: "browser-request-1"));
+        string second = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/browser.bin?retry=1"),
+            directory.Path,
+            "browser-retry.bin",
+            BrowserRequestId: "browser-request-1"));
+
+        Assert.Equal(first, second);
+        Assert.Single(state.Current.Downloads);
+    }
+
     private static async Task<DownloadSnapshot> WaitForStateAsync(
         ApplicationState state,
         string id,

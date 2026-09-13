@@ -6,6 +6,7 @@ namespace XDM.BrowserIntegration;
 public sealed record BrowserCaptureRequest(
     Uri Url,
     string? RequestId = null,
+    string? BrowserRequestId = null,
     string? FileName = null,
     IReadOnlyDictionary<string, string>? Headers = null,
     string? Cookie = null,
@@ -68,6 +69,7 @@ public sealed record BrowserCaptureRequest(
         return this with
         {
             RequestId = NormalizeOptional(RequestId),
+            BrowserRequestId = NormalizeOptional(BrowserRequestId),
             FileName = NormalizeOptional(FileName),
             Cookie = NormalizeOptional(Cookie),
             Referer = NormalizeOptional(Referer),
@@ -97,12 +99,8 @@ public sealed record BrowserCaptureRequest(
             throw new InvalidDataException("Browser capture URL exceeds the maximum supported length.");
         }
 
-        if (RequestId is { Length: > 128 }
-            || RequestId is not null
-                && RequestId.Any(static character => !(char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.')))
-        {
-            throw new InvalidDataException("Browser capture request ID is invalid.");
-        }
+        ValidateProtocolIdentity(RequestId, "Browser capture request ID is invalid.");
+        ValidateProtocolIdentity(BrowserRequestId, "Browser request ID is invalid.");
 
         if (FileName is { Length: > 1024 }
             || FileName is not null && FileName.Any(static character => char.IsControl(character)))
@@ -130,7 +128,7 @@ public sealed record BrowserCaptureRequest(
             throw new InvalidDataException("Browser capture only accepts GET and POST requests.");
         }
 
-        if (Operation is not ("automatic" or "context" or "download-all" or "media"))
+        if (Operation is not ("automatic" or "context" or "download-all" or "media" or "confirmed"))
         {
             throw new InvalidDataException("Browser capture operation is invalid.");
         }
@@ -180,6 +178,11 @@ public sealed record BrowserCaptureRequest(
             throw new InvalidDataException("Browser capture source page must be an absolute HTTP or HTTPS URL.");
         }
 
+        if (Method == "POST" && RequestBodyBase64 is null)
+        {
+            throw new InvalidDataException("Browser POST captures require an exact replay body.");
+        }
+
         if (RequestBodyBase64 is not null)
         {
             if (Method != "POST")
@@ -206,6 +209,16 @@ public sealed record BrowserCaptureRequest(
 
     public byte[]? GetRequestBody()
         => RequestBodyBase64 is null ? null : Convert.FromBase64String(RequestBodyBase64);
+
+    private static void ValidateProtocolIdentity(string? value, string message)
+    {
+        if (value is { Length: > 128 }
+            || value is not null
+                && value.Any(static character => !(char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.')))
+        {
+            throw new InvalidDataException(message);
+        }
+    }
 
     private static void ValidateHeader(string name, string value)
     {

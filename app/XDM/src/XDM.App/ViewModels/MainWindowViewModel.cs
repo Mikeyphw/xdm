@@ -50,6 +50,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ITransferHealthProbe _transferHealthProbe;
     private readonly IDesktopNotificationService _desktopNotifications;
     private readonly IBrowserHostInstaller _browserHostInstaller;
+    private readonly BrowserCaptureAcknowledgementStore _browserAcknowledgements = new();
     private readonly IApplicationLifetimeService _applicationLifetimeService;
     private readonly Dictionary<string, DownloadState> _lastDownloadStates = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<DownloadTimelineEntry>> _downloadTimelines = new(StringComparer.Ordinal);
@@ -2444,6 +2445,28 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task HandleBrowserCaptureAsync(BrowserCaptureEventArgs eventArgs)
     {
         BrowserCaptureRequest request = eventArgs.Request;
+        if (_browserAcknowledgements.TryGet(request.RequestId) is BrowserCaptureAcknowledgement remembered)
+        {
+            CompleteBrowserCapture(eventArgs, remembered);
+            return;
+        }
+
+        BrowserCaptureAcknowledgement Accept(string? downloadId)
+        {
+            BrowserCaptureAcknowledgement ack = new(request.RequestId, true, "accepted", downloadId);
+            _browserAcknowledgements.Save(ack);
+            eventArgs.Accept(downloadId);
+            return ack;
+        }
+
+        BrowserCaptureAcknowledgement Reject(string reason)
+        {
+            BrowserCaptureAcknowledgement ack = new(request.RequestId, false, string.IsNullOrWhiteSpace(reason) ? "rejected" : reason, null);
+            _browserAcknowledgements.Save(ack);
+            eventArgs.Reject(ack.Reason);
+            return ack;
+        }
+
         if (request.Method == "GET" && request.Operation == "media")
         {
             try
@@ -2455,12 +2478,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     .ConfigureAwait(false);
                 if (catalog.Kind == MediaKind.Unknown || catalog.Formats.Count == 0)
                 {
-                    eventArgs.Reject(catalog.Description);
+                    Reject(catalog.Description);
                     SetBrowserCaptureFailure(catalog.Description);
                     return;
                 }
 
-                eventArgs.Accept($"media-{Guid.NewGuid():N}");
+                Accept($"media-{Guid.NewGuid():N}");
                 _dispatcher.Post(() =>
                 {
                     AddMediaInboxEntry(
@@ -2474,22 +2497,22 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
             catch (HttpRequestException exception)
             {
-                eventArgs.Reject(exception.Message);
+                Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
             catch (InvalidDataException exception)
             {
-                eventArgs.Reject(exception.Message);
+                Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
             catch (InvalidOperationException exception)
             {
-                eventArgs.Reject(exception.Message);
+                Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
             catch (NotSupportedException exception)
             {
-                eventArgs.Reject(exception.Message);
+                Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
 
@@ -2523,31 +2546,33 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 Method: request.Method,
                 RequestBody: request.GetRequestBody(),
                 RequestBodyContentType: request.RequestBodyContentType,
-                SourcePage: ParseOptionalHttpUri(request.Referer));
+                SourcePage: ParseOptionalHttpUri(request.SourcePage) ?? ParseOptionalHttpUri(request.Referer),
+                ExpectedLength: request.FileSize,
+                BrowserRequestId: request.BrowserRequestId ?? request.RequestId);
             downloadId = await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
-            eventArgs.Accept(downloadId);
+            Accept(downloadId);
         }
         catch (IOException exception)
         {
-            eventArgs.Reject(exception.Message);
+            Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
         catch (ArgumentException exception)
         {
-            eventArgs.Reject(exception.Message);
+            Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
         catch (InvalidOperationException exception)
         {
-            eventArgs.Reject(exception.Message);
+            Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
         catch (UnauthorizedAccessException exception)
         {
-            eventArgs.Reject(exception.Message);
+            Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
@@ -2577,6 +2602,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             OperationMessage = $"Browser capture accepted as {downloadId}.";
         });
+    }
+
+    private static void CompleteBrowserCapture(BrowserCaptureEventArgs eventArgs, BrowserCaptureAcknowledgement acknowledgement)
+    {
+        if (acknowledgement.Accepted)
+        {
+            eventArgs.Accept(acknowledgement.DownloadId);
+        }
+        else
+        {
+            eventArgs.Reject(acknowledgement.Reason);
+        }
     }
 
     private void OnSettingsChanged(object? sender, ApplicationSettings settings)

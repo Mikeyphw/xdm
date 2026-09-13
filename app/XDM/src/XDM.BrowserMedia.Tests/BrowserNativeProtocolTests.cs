@@ -119,6 +119,31 @@ public sealed class BrowserNativeProtocolTests
         Assert.False(NativeHostOriginVerifier.IsMatch(
             "chrome-extension://abcdefghijklmnopabcdefghijklmnop/",
             "ponmlkjihgfedcbaponmlkjihgfedcba"));
+        Assert.False(NativeHostOriginVerifier.IsMatch(null, "abcdefghijklmnopabcdefghijklmnop"));
+        Assert.False(NativeHostOriginVerifier.IsMatch("chrome-extension://abcdefghijklmnopabcdefghijklmnop/", null));
+    }
+
+    [Fact]
+    public void CaptureBatchDefersPerItemValidationToPreserveAcknowledgements()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("""
+            {"protocolVersion":"2.0","requestId":"batch-with-invalid-item","type":"capture-batch","sessionId":"0123456789abcdef0123456789abcdef","captures":[{"url":"https://example.test/ok.bin","requestId":"ok"},{"url":"https://example.test/post","requestId":"bad-post","method":"POST"}]}
+            """);
+
+        BrowserNativeMessage message = BrowserNativeProtocol.Parse(payload);
+
+        Assert.Equal(2, message.Captures!.Count);
+        Assert.Equal("bad-post", message.Captures[1].RequestId);
+    }
+
+
+    [Fact]
+    public void AdvertisesRem10BridgeAndLifecycleCapabilities()
+    {
+        Assert.Contains("browser-request-id", BrowserNativeProtocol.Capabilities);
+        Assert.Contains("post-body-required", BrowserNativeProtocol.Capabilities);
+        Assert.Contains("batch-item-acknowledgement", BrowserNativeProtocol.Capabilities);
+        Assert.Contains("loopback-request-deadlines", BrowserNativeProtocol.Capabilities);
     }
 
     private static BrowserNativeMessage ParseFixture(string name)

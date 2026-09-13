@@ -60,6 +60,30 @@ public sealed class BrowserCaptureProtocolTests
     }
 
     [Fact]
+    public void AllowsConfirmedOperationAndBrowserRequestIdentity()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("""
+            {"url":"https://example.test/file.zip","requestId":"confirmed-1","browserRequestId":"31542","operation":"confirmed","bypassRules":true}
+            """);
+
+        BrowserCaptureRequest request = BrowserCaptureProtocol.Parse(payload);
+
+        Assert.Equal("confirmed", request.Operation);
+        Assert.Equal("31542", request.BrowserRequestId);
+    }
+
+    [Fact]
+    public void RejectsPostCaptureWithoutExactReplayBody()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("""
+            {"url":"https://example.test/export","requestId":"post-no-body","method":"POST"}
+            """);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => BrowserCaptureProtocol.Parse(payload));
+        Assert.Contains("exact replay body", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void RejectsUnsupportedSchemes()
     {
         byte[] payload = Encoding.UTF8.GetBytes("{\"url\":\"file:///tmp/test.bin\"}");
