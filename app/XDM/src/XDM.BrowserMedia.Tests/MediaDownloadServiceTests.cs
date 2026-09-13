@@ -109,6 +109,127 @@ public sealed class MediaDownloadServiceTests
         }
     }
 
+
+    [Fact]
+    public async Task PublishesSubtitleTracksAfterMainMediaWithStableUniqueNames()
+    {
+        using HttpClient client = new(new RoutingHandler(request =>
+        {
+            string path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith("captions-one.srt", StringComparison.Ordinal))
+            {
+                return RoutingHandler.Bytes("first subtitle"u8.ToArray());
+            }
+
+            if (path.EndsWith("captions-two.ttml", StringComparison.Ordinal))
+            {
+                return RoutingHandler.Bytes("second subtitle"u8.ToArray());
+            }
+
+            return RoutingHandler.Bytes("main video"u8.ToArray());
+        }));
+        Uri source = new("https://media.example.test/watch");
+        MediaCatalog catalog = new(
+            source,
+            MediaKind.DirectFile,
+            "video",
+            false,
+            [
+                new MediaFormat("video", MediaStreamKind.Muxed, new Uri("https://media.example.test/video.mp4"), "mp4", null, null, null, null, null, null, "video", true, false),
+                new MediaFormat("sub-one", MediaStreamKind.Subtitle, new Uri("https://media.example.test/captions-one.srt"), "srt", null, null, null, null, null, "en", "English", false, false),
+                new MediaFormat("sub-two", MediaStreamKind.Subtitle, new Uri("https://media.example.test/captions-two.ttml"), "ttml", null, null, null, null, null, "en", "English", false, false)
+            ],
+            "direct",
+            "direct");
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-media-subtitles-{Guid.NewGuid():N}");
+        string destination = Path.Combine(directory, "video.mp4");
+        try
+        {
+            MediaDownloadService service = new(client, new FixedCatalogService(catalog), new FakeFfmpegService());
+
+            MediaDownloadResult result = await service.DownloadAsync(new MediaDownloadRequest(
+                source,
+                destination,
+                SubtitleFormatIds: ["sub-one", "sub-two"]));
+
+            Assert.Equal("main video", await File.ReadAllTextAsync(destination));
+            Assert.Collection(
+                result.SubtitlePaths.OrderBy(static path => path, StringComparer.OrdinalIgnoreCase),
+                first =>
+                {
+                    Assert.EndsWith("video.en.2.ttml", first, StringComparison.OrdinalIgnoreCase);
+                    Assert.Equal("second subtitle", File.ReadAllText(first));
+                },
+                second =>
+                {
+                    Assert.EndsWith("video.en.srt", second, StringComparison.OrdinalIgnoreCase);
+                    Assert.Equal("first subtitle", File.ReadAllText(second));
+                });
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task DoesNotPublishSubtitlesWhenMainMuxFails()
+    {
+        using HttpClient client = new(new RoutingHandler(request =>
+        {
+            string path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith("captions.srt", StringComparison.Ordinal))
+            {
+                return RoutingHandler.Bytes("subtitle"u8.ToArray());
+            }
+
+            return RoutingHandler.Bytes(Path.GetFileName(path) switch
+            {
+                "audio.m4a" => "audio"u8.ToArray(),
+                _ => "video"u8.ToArray()
+            });
+        }));
+        Uri source = new("https://media.example.test/watch");
+        MediaCatalog catalog = new(
+            source,
+            MediaKind.DirectFile,
+            "video",
+            false,
+            [
+                new MediaFormat("video", MediaStreamKind.Video, new Uri("https://media.example.test/video.mp4"), "mp4", null, null, null, null, null, null, "video", true, false),
+                new MediaFormat("audio", MediaStreamKind.Audio, new Uri("https://media.example.test/audio.m4a"), "m4a", null, null, null, null, null, null, "audio", true, false),
+                new MediaFormat("sub", MediaStreamKind.Subtitle, new Uri("https://media.example.test/captions.srt"), "srt", null, null, null, null, null, "en", "English", false, false)
+            ],
+            "direct",
+            "direct");
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-media-subtitle-fail-{Guid.NewGuid():N}");
+        string destination = Path.Combine(directory, "video.mp4");
+        try
+        {
+            MediaDownloadService service = new(client, new FixedCatalogService(catalog), new FakeFfmpegService { FailMux = true });
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.DownloadAsync(new MediaDownloadRequest(
+                source,
+                destination,
+                VideoFormatId: "video",
+                AudioFormatId: "audio",
+                SubtitleFormatIds: ["sub"]));
+
+            Assert.False(File.Exists(destination));
+            Assert.False(Directory.EnumerateFiles(directory, "*.srt", SearchOption.TopDirectoryOnly).Any(File.Exists));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
     private sealed class FixedCatalogService(MediaCatalog catalog) : IMediaCatalogService
     {
         public Task<MediaCatalog> GetCatalogAsync(
@@ -122,6 +243,8 @@ public sealed class MediaDownloadServiceTests
     {
         public int MuxCalls { get; private set; }
 
+        public bool FailMux { get; init; }
+
         public Task<ExternalToolHealth> GetHealthAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(new ExternalToolHealth("FFmpeg", true, "fake", "fake", "ok"));
 
@@ -131,6 +254,11 @@ public sealed class MediaDownloadServiceTests
             CancellationToken cancellationToken = default)
         {
             MuxCalls++;
+            if (FailMux)
+            {
+                throw new InvalidOperationException("mux failed");
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
             await using FileStream destination = new(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
             foreach (string inputPath in inputPaths)

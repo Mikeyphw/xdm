@@ -17,20 +17,21 @@ internal sealed class FragmentCheckpointStore(string path)
             return null;
         }
 
-        await using FileStream stream = new(
-            path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            16 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
         try
         {
+            await using FileStream stream = new(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                16 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
             return await JsonSerializer.DeserializeAsync<FragmentCheckpoint>(stream, JsonOptions, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (JsonException)
         {
+            QuarantineMalformedCheckpoint();
             return null;
         }
     }
@@ -53,5 +54,26 @@ internal sealed class FragmentCheckpointStore(string path)
         }
 
         File.Move(temporaryPath, fullPath, overwrite: true);
+    }
+
+    private void QuarantineMalformedCheckpoint()
+    {
+        try
+        {
+            string fullPath = Path.GetFullPath(path);
+            if (!File.Exists(fullPath))
+            {
+                return;
+            }
+
+            string quarantinePath = $"{fullPath}.corrupt-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}";
+            File.Move(fullPath, quarantinePath, overwrite: false);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 }

@@ -3,8 +3,6 @@ using System.Net.Http.Headers;
 
 namespace XDM.Media;
 
-internal sealed record MediaManifestResponse(string Content, Uri FinalUri);
-
 internal static class MediaHttp
 {
     public const int MaximumManifestBytes = 8 * 1024 * 1024;
@@ -34,34 +32,11 @@ internal static class MediaHttp
         MediaRequestMetadata metadata,
         CancellationToken cancellationToken)
     {
-        MediaManifestResponse response = await ReadManifestResponseAsync(
-            client,
-            uri,
-            metadata,
-            cancellationToken).ConfigureAwait(false);
-        return response.Content;
-    }
-
-    public static async Task<MediaManifestResponse> ReadManifestResponseAsync(
-        HttpClient client,
-        Uri uri,
-        MediaRequestMetadata metadata,
-        CancellationToken cancellationToken)
-    {
         using HttpRequestMessage request = CreateRequest(HttpMethod.Get, uri, metadata);
         using HttpResponseMessage response = await client
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        string content = await ReadManifestContentAsync(response, cancellationToken).ConfigureAwait(false);
-        Uri finalUri = response.RequestMessage?.RequestUri ?? uri;
-        return new MediaManifestResponse(content, finalUri);
-    }
-
-    public static async Task<string> ReadManifestContentAsync(
-        HttpResponseMessage response,
-        CancellationToken cancellationToken)
-    {
         await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using MemoryStream buffer = new();
         await CopyBoundedAsync(stream, buffer, MaximumManifestBytes, cancellationToken).ConfigureAwait(false);
@@ -89,7 +64,7 @@ internal static class MediaHttp
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        ValidateRangeResponse(response, rangeOffset);
+        ValidateRangeResponse(response, rangeOffset, rangeLength);
         await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using MemoryStream buffer = new();
         await CopyBoundedAsync(stream, buffer, maximumBytes, cancellationToken).ConfigureAwait(false);
@@ -140,7 +115,7 @@ internal static class MediaHttp
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        ValidateRangeResponse(response, rangeOffset);
+        ValidateRangeResponse(response, rangeOffset, rangeLength);
         string fullPath = Path.GetFullPath(destinationPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         string temporaryPath = $"{fullPath}.downloading";
@@ -206,11 +181,31 @@ internal static class MediaHttp
         }
     }
 
-    private static void ValidateRangeResponse(HttpResponseMessage response, long? rangeOffset)
+    private static void ValidateRangeResponse(HttpResponseMessage response, long? rangeOffset, long? rangeLength)
     {
-        if (rangeOffset is not null && response.StatusCode != HttpStatusCode.PartialContent)
+        if (rangeOffset is null)
+        {
+            return;
+        }
+
+        if (response.StatusCode != HttpStatusCode.PartialContent)
         {
             throw new InvalidDataException("The media server ignored the requested byte range.");
+        }
+
+        ContentRangeHeaderValue? contentRange = response.Content.Headers.ContentRange;
+        if (contentRange?.From != rangeOffset)
+        {
+            throw new InvalidDataException("The media server returned an unexpected byte-range start.");
+        }
+
+        if (rangeLength is long expectedLength)
+        {
+            long expectedEnd = checked(rangeOffset.Value + expectedLength - 1);
+            if (contentRange.To != expectedEnd)
+            {
+                throw new InvalidDataException("The media server returned an unexpected byte-range end.");
+            }
         }
     }
 

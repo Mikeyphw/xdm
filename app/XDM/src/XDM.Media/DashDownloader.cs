@@ -25,18 +25,17 @@ internal sealed class DashDownloader(HttpClient httpClient)
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(format);
-        string representationId = string.IsNullOrWhiteSpace(format.ProviderData) ? format.Id : format.ProviderData!;
-        string formatDirectory = Path.Combine(workspace, Sanitize(format.Id));
+        string representationId = string.IsNullOrWhiteSpace(format.ProviderData) ? format.Id : format.ProviderData;
+        string formatDirectory = FragmentIdentity.FormatDirectory(workspace, format);
         string fragmentsDirectory = Path.Combine(formatDirectory, "fragments");
         Directory.CreateDirectory(fragmentsDirectory);
         FragmentCheckpointStore checkpointStore = new(Path.Combine(formatDirectory, "checkpoint.json"));
         FragmentCheckpoint? checkpoint = await checkpointStore.LoadAsync(cancellationToken).ConfigureAwait(false);
-        HashSet<string> completed = checkpoint is not null
-            && string.Equals(checkpoint.Source, format.ManifestUri.AbsoluteUri, StringComparison.Ordinal)
-            && string.Equals(checkpoint.FormatId, format.Id, StringComparison.Ordinal)
-                ? new HashSet<string>(checkpoint.CompletedIds, StringComparer.Ordinal)
-                : new HashSet<string>(StringComparer.Ordinal);
-        long downloadedBytes = checkpoint?.DownloadedBytes ?? 0;
+        FragmentResumeState resume = FragmentResumeState.FromCheckpoint(
+            checkpoint,
+            format.ManifestUri.AbsoluteUri,
+            format.Id,
+            formatDirectory);
         Stopwatch elapsed = Stopwatch.StartNew();
         bool dynamic = false;
         TimeSpan updatePeriod = TimeSpan.FromSeconds(5);
@@ -44,6 +43,11 @@ internal sealed class DashDownloader(HttpClient httpClient)
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (LiveLimitReached(liveDuration, resume.LiveElapsedSeconds, elapsed.Elapsed))
+            {
+                break;
+            }
+
             string manifestText = await FragmentRetryPolicy.ExecuteAsync(
                 token => MediaHttp.ReadManifestAsync(httpClient, format.ManifestUri, metadata, token),
                 cancellationToken).ConfigureAwait(false);
@@ -51,136 +55,126 @@ internal sealed class DashDownloader(HttpClient httpClient)
             dynamic = manifest.IsDynamic;
             updatePeriod = manifest.MinimumUpdatePeriod;
             DashRepresentation representation = manifest.Representations.FirstOrDefault(candidate =>
-                string.Equals(candidate.ScopedId, representationId, StringComparison.Ordinal)
-                || string.Equals(candidate.Id, representationId, StringComparison.Ordinal))
+                string.Equals(candidate.Id, representationId, StringComparison.Ordinal))
                 ?? throw new InvalidDataException($"DASH representation '{representationId}' is no longer present in the manifest.");
             IReadOnlyList<DashSegmentReference> segments = DashManifestParser.BuildSegments(
                 representation,
                 manifest,
                 DateTimeOffset.UtcNow);
+            long order = 0;
             foreach (DashSegmentReference segment in segments)
             {
-                string id = Sanitize(segment.Id);
-                string partPath = Path.Combine(
-                    fragmentsDirectory,
-                    segment.IsInitialization ? "00000000000000000000-init.part" : $"{id}.part");
-                if (completed.Contains(segment.Id) && File.Exists(partPath))
+                cancellationToken.ThrowIfCancellationRequested();
+                if (LiveLimitReached(liveDuration, resume.LiveElapsedSeconds, elapsed.Elapsed))
+                {
+                    break;
+                }
+
+                FragmentPlanEntry plan = CreateSegmentPlan(segment, order++);
+                if (resume.TryReuse(plan))
                 {
                     continue;
                 }
 
+                long currentBytes = resume.DownloadedBytes;
                 long bytes = await FragmentRetryPolicy.ExecuteAsync(
                     token => MediaHttp.DownloadToFileAsync(
                         httpClient,
                         segment.Uri,
                         metadata,
-                        partPath,
+                        Path.Combine(formatDirectory, plan.RelativePath),
                         null,
                         null,
-                        RemainingLimit(maximumBytes, downloadedBytes),
+                        MaximumSegmentDownloadLimit(maximumBytes, currentBytes),
                         token),
                     cancellationToken).ConfigureAwait(false);
-                if (bytes > MaximumSegmentBytes)
-                {
-                    File.Delete(partPath);
-                    throw new InvalidDataException("DASH segment exceeded the supported size limit.");
-                }
-
-                downloadedBytes = checked(downloadedBytes + bytes);
-                completed.Add(segment.Id);
+                resume.Complete(plan, bytes);
                 await checkpointStore.SaveAsync(
-                    new FragmentCheckpoint(
+                    resume.ToCheckpoint(
                         format.ManifestUri.AbsoluteUri,
                         format.Id,
-                        completed.Order(StringComparer.Ordinal).ToArray(),
-                        downloadedBytes,
+                        CreatePlanId(format, representation, manifest),
+                        resume.LiveElapsedSeconds + elapsed.Elapsed.TotalSeconds,
                         DateTimeOffset.UtcNow),
                     cancellationToken).ConfigureAwait(false);
-                int mediaCount = completed.Count(static id => !id.Equals("init", StringComparison.Ordinal));
+                int mediaCount = resume.EntriesInOrderSnapshot().Count(static entry => !entry.Id.Equals("init", StringComparison.Ordinal));
                 int totalMedia = segments.Count(static segment => !segment.IsInitialization);
                 progress?.Report(new MediaDownloadProgress(
                     dynamic ? "Downloading live DASH" : "Downloading DASH",
                     mediaCount,
                     dynamic ? null : totalMedia,
-                    downloadedBytes,
+                    resume.DownloadedBytes,
                     $"Downloaded DASH fragment {segment.Id}."));
             }
 
-            if (!manifest.IsDynamic || (liveDuration is TimeSpan limit && elapsed.Elapsed >= limit))
+            if (!manifest.IsDynamic || LiveLimitReached(liveDuration, resume.LiveElapsedSeconds, elapsed.Elapsed))
             {
                 break;
+            }
+
+            if (liveDuration is TimeSpan limit)
+            {
+                TimeSpan remaining = limit - TimeSpan.FromSeconds(resume.LiveElapsedSeconds) - elapsed.Elapsed;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
+                updatePeriod = remaining < updatePeriod ? remaining : updatePeriod;
             }
 
             await Task.Delay(updatePeriod, cancellationToken).ConfigureAwait(false);
         }
 
         string outputPath = Path.Combine(formatDirectory, "stream.bin");
-        await AssembleAsync(fragmentsDirectory, outputPath, cancellationToken).ConfigureAwait(false);
-        int fragmentCount = completed.Count(static id => !id.Equals("init", StringComparison.Ordinal));
-        return new StreamDownloadResult(outputPath, fragmentCount, downloadedBytes, dynamic);
+        await FragmentAssembler.AssembleAsync(
+            resume.ExistingPathsInOrder(),
+            outputPath,
+            "No DASH fragments were downloaded.",
+            cancellationToken).ConfigureAwait(false);
+        int fragmentCount = resume.EntriesInOrderSnapshot().Count(static entry => !entry.Id.Equals("init", StringComparison.Ordinal));
+        return new StreamDownloadResult(outputPath, fragmentCount, resume.DownloadedBytes, dynamic);
     }
 
-    private static long? RemainingLimit(long? maximumBytes, long downloadedBytes)
+    private static FragmentPlanEntry CreateSegmentPlan(DashSegmentReference segment, long order)
     {
-        if (maximumBytes is not long limit)
-        {
-            return null;
-        }
+        string identity = FragmentIdentity.Create(segment.Uri, contentKey: segment.IsInitialization ? "dash-init-v2" : "dash-segment-v2");
+        string fileName = segment.IsInitialization
+            ? $"00000000000000000000-init-{identity[..16].ToLowerInvariant()}.part"
+            : FragmentIdentity.StableFileName(segment.Id, identity, "dash");
+        return new FragmentPlanEntry(
+            segment.Id,
+            segment.Uri,
+            segment.IsInitialization ? long.MinValue : order,
+            Path.Combine("fragments", fileName),
+            identity,
+            IsInitialization: segment.IsInitialization);
+    }
 
-        long remaining = limit - downloadedBytes;
+    private static string CreatePlanId(MediaFormat format, DashRepresentation representation, DashManifest manifest)
+        => FragmentIdentity.ShortHash(
+            "dash",
+            format.ManifestUri.AbsoluteUri,
+            format.Id,
+            representation.Id,
+            manifest.IsDynamic.ToString(),
+            manifest.Duration?.ToString(),
+            manifest.MinimumUpdatePeriod.ToString());
+
+    private static long? MaximumSegmentDownloadLimit(long? maximumBytes, long downloadedBytes)
+    {
+        long remaining = maximumBytes is long limit
+            ? limit - downloadedBytes
+            : MaximumSegmentBytes;
         if (remaining <= 0)
         {
-            throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+            throw new InvalidDataException($"Media capture exceeded the configured {maximumBytes} byte limit.");
         }
 
-        return remaining;
+        return Math.Min(remaining, MaximumSegmentBytes);
     }
 
-    private static async Task AssembleAsync(
-        string fragmentsDirectory,
-        string destinationPath,
-        CancellationToken cancellationToken)
-    {
-        string[] fragments = Directory
-            .EnumerateFiles(fragmentsDirectory, "*.part", SearchOption.TopDirectoryOnly)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        if (fragments.Length == 0)
-        {
-            throw new InvalidDataException("No DASH fragments were downloaded.");
-        }
-
-        string temporaryPath = $"{destinationPath}.assembling";
-        await using (FileStream destination = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            128 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan))
-        {
-            foreach (string fragment in fragments)
-            {
-                await using FileStream source = new(
-                    fragment,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    128 * 1024,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
-            }
-
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(temporaryPath, destinationPath, overwrite: true);
-    }
-
-    private static string Sanitize(string value)
-    {
-        HashSet<char> invalid = new(Path.GetInvalidFileNameChars());
-        string sanitized = new(value.Select(character => invalid.Contains(character) ? '_' : character).ToArray());
-        return sanitized.Length == 0 ? "format" : sanitized;
-    }
+    private static bool LiveLimitReached(TimeSpan? liveDuration, double previousSeconds, TimeSpan elapsed)
+        => liveDuration is TimeSpan limit
+            && TimeSpan.FromSeconds(previousSeconds) + elapsed >= limit;
 }

@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 
 namespace XDM.Media;
@@ -59,16 +57,19 @@ public sealed class MediaDownloadService(
 
         string destinationPath = Path.GetFullPath(request.DestinationPath);
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-        string workspace = CreateWorkspace(destinationPath, request.Source);
+        string workspace = CreateWorkspace(destinationPath, request, mainFormats, subtitles);
         Directory.CreateDirectory(workspace);
+        FileStream? workspaceLock = null;
         Stopwatch stopwatch = Stopwatch.StartNew();
         List<StreamDownloadResult> mainStreams = [];
+        List<PendingSubtitle> pendingSubtitles = [];
         List<string> subtitlePaths = [];
         long consumedBytes = 0;
         bool usedFfmpeg = false;
         bool completedSuccessfully = false;
         try
         {
+            workspaceLock = AcquireWorkspaceLock(workspace);
             int formatIndex = 0;
             foreach (MediaFormat format in mainFormats)
             {
@@ -92,6 +93,7 @@ public sealed class MediaDownloadService(
                 formatIndex++;
             }
 
+            HashSet<string> reservedSubtitlePaths = new(StringComparer.OrdinalIgnoreCase);
             foreach (MediaFormat subtitle in subtitles)
             {
                 StreamDownloadResult subtitleStream = await DownloadFormatAsync(
@@ -104,12 +106,9 @@ public sealed class MediaDownloadService(
                     progress,
                     cancellationToken).ConfigureAwait(false);
                 consumedBytes = checked(consumedBytes + subtitleStream.DownloadedBytes);
-                string language = SanitizeFileComponent(subtitle.Language ?? subtitle.Name ?? subtitle.Id);
-                string subtitlePath = Path.Combine(
-                    Path.GetDirectoryName(destinationPath)!,
-                    $"{Path.GetFileNameWithoutExtension(destinationPath)}.{language}.vtt");
-                File.Move(subtitleStream.Path, subtitlePath, overwrite: true);
-                subtitlePaths.Add(subtitlePath);
+                pendingSubtitles.Add(new PendingSubtitle(
+                    subtitleStream.Path,
+                    CreateSubtitleDestination(destinationPath, subtitle, reservedSubtitlePaths)));
             }
 
             bool requiresMux = mainStreams.Count > 1
@@ -145,6 +144,14 @@ public sealed class MediaDownloadService(
                 File.Move(temporaryDestination, destinationPath, overwrite: true);
             }
 
+            foreach (PendingSubtitle subtitle in pendingSubtitles)
+            {
+                string temporarySubtitle = CreateFinalizationPath(subtitle.DestinationPath);
+                File.Copy(subtitle.SourcePath, temporarySubtitle, overwrite: true);
+                File.Move(temporarySubtitle, subtitle.DestinationPath, overwrite: true);
+                subtitlePaths.Add(subtitle.DestinationPath);
+            }
+
             stopwatch.Stop();
             progress?.Report(new MediaDownloadProgress(
                 "Completed",
@@ -164,6 +171,7 @@ public sealed class MediaDownloadService(
         }
         finally
         {
+            workspaceLock?.Dispose();
             if (!request.KeepPartialFiles && completedSuccessfully)
             {
                 TryDeleteDirectory(workspace);
@@ -218,7 +226,7 @@ public sealed class MediaDownloadService(
                 cancellationToken).ConfigureAwait(false);
         }
 
-        string formatDirectory = Path.Combine(workspace, SanitizeFileComponent(format.Id));
+        string formatDirectory = FragmentIdentity.FormatDirectory(workspace, format);
         Directory.CreateDirectory(formatDirectory);
         string outputPath = Path.Combine(formatDirectory, "stream.bin");
         long bytes = await FragmentRetryPolicy.ExecuteAsync(
@@ -345,10 +353,94 @@ public sealed class MediaDownloadService(
         return Path.Combine(directory, $".{fileName}.xdm-finalizing{extension}");
     }
 
-    private static string CreateWorkspace(string destinationPath, Uri source)
+    private static string CreateWorkspace(
+        string destinationPath,
+        MediaDownloadRequest request,
+        IReadOnlyList<MediaFormat> mainFormats,
+        IReadOnlyList<MediaFormat> subtitles)
     {
-        string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source.AbsoluteUri)))[..16];
+        string key = FragmentIdentity.ShortHash(
+            "media-workspace-v2",
+            request.Source.AbsoluteUri,
+            destinationPath,
+            request.VideoFormatId,
+            request.AudioFormatId,
+            string.Join("\n", request.SubtitleIds.OrderBy(static id => id, StringComparer.Ordinal)),
+            string.Join("\n", mainFormats.Concat(subtitles).Select(FormatIdentity)))[..16].ToLowerInvariant();
         return Path.Combine(Path.GetDirectoryName(destinationPath)!, ".xdm-media", key);
+    }
+
+    private static string FormatIdentity(MediaFormat format)
+        => string.Join('|', format.Id, format.ManifestUri.AbsoluteUri, format.ProviderData ?? string.Empty);
+
+    private static FileStream AcquireWorkspaceLock(string workspace)
+    {
+        try
+        {
+            return new FileStream(
+                Path.Combine(workspace, ".workspace.lock"),
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None);
+        }
+        catch (IOException exception)
+        {
+            throw new InvalidOperationException("This media workspace is already being used by another capture.", exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            throw new InvalidOperationException("This media workspace could not be locked for exclusive capture.", exception);
+        }
+    }
+
+    private static string CreateSubtitleDestination(
+        string destinationPath,
+        MediaFormat subtitle,
+        HashSet<string> reservedPaths)
+    {
+        string directory = Path.GetDirectoryName(destinationPath)!;
+        string basename = Path.GetFileNameWithoutExtension(destinationPath);
+        string label = FragmentIdentity.SanitizeFileComponent(subtitle.Language ?? subtitle.Name ?? subtitle.Id, "subtitle");
+        string extension = ResolveSubtitleExtension(subtitle);
+        string candidate = Path.Combine(directory, $"{basename}.{label}{extension}");
+        int duplicate = 2;
+        while (!reservedPaths.Add(candidate))
+        {
+            candidate = Path.Combine(directory, $"{basename}.{label}.{duplicate++}{extension}");
+        }
+
+        return candidate;
+    }
+
+    private static string ResolveSubtitleExtension(MediaFormat subtitle)
+    {
+        string?[] candidates =
+        [
+            subtitle.Container,
+            Path.GetExtension(subtitle.ManifestUri.AbsolutePath).TrimStart('.')
+        ];
+        foreach (string? candidate in candidates)
+        {
+            string normalized = (candidate ?? string.Empty).Trim().TrimStart('.').ToLowerInvariant();
+            switch (normalized)
+            {
+                case "vtt":
+                case "webvtt":
+                    return ".vtt";
+                case "srt":
+                case "subrip":
+                    return ".srt";
+                case "ttml":
+                case "dfxp":
+                case "xml":
+                    return ".ttml";
+                case "ass":
+                case "ssa":
+                    return ".ass";
+            }
+        }
+
+        return ".vtt";
     }
 
     private static void ValidateRequest(MediaDownloadRequest request)
@@ -375,13 +467,6 @@ public sealed class MediaDownloadService(
         }
     }
 
-    private static string SanitizeFileComponent(string value)
-    {
-        HashSet<char> invalid = new(Path.GetInvalidFileNameChars());
-        string sanitized = new(value.Select(character => invalid.Contains(character) ? '_' : character).ToArray());
-        return sanitized.Length == 0 ? "media" : sanitized;
-    }
-
     private static void TryDeleteDirectory(string path)
     {
         try
@@ -398,4 +483,6 @@ public sealed class MediaDownloadService(
         {
         }
     }
+
+    private sealed record PendingSubtitle(string SourcePath, string DestinationPath);
 }

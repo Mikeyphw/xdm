@@ -39,4 +39,55 @@ public sealed class DashManifestParserTests
         Assert.Throws<InvalidDataException>(() =>
             DashManifestParser.Parse(new Uri("https://example.test/manifest.mpd"), malicious));
     }
+
+
+    [Fact]
+    public void SegmentListIdsRemainStableWhenSlidingListPrependsNewUris()
+    {
+        const string first = """
+            <MPD mediaPresentationDuration="PT20S"><Period><AdaptationSet mimeType="video/mp4"><Representation id="v1">
+              <SegmentList><SegmentURL media="a.m4s" /><SegmentURL media="b.m4s" /></SegmentList>
+            </Representation></AdaptationSet></Period></MPD>
+            """;
+        const string second = """
+            <MPD mediaPresentationDuration="PT30S"><Period><AdaptationSet mimeType="video/mp4"><Representation id="v1">
+              <SegmentList><SegmentURL media="new.m4s" /><SegmentURL media="a.m4s" /><SegmentURL media="b.m4s" /></SegmentList>
+            </Representation></AdaptationSet></Period></MPD>
+            """;
+        Uri source = new("https://media.example.test/path/manifest.mpd");
+        DashSegmentReference firstA = DashManifestParser.BuildSegments(
+            DashManifestParser.Parse(source, first).Representations[0],
+            DashManifestParser.Parse(source, first),
+            DateTimeOffset.UnixEpoch)[0];
+        DashManifest secondManifest = DashManifestParser.Parse(source, second);
+        DashSegmentReference secondA = DashManifestParser.BuildSegments(secondManifest.Representations[0], secondManifest, DateTimeOffset.UnixEpoch)[1];
+
+        Assert.Equal(firstA.Id, secondA.Id);
+    }
+
+    [Fact]
+    public void DynamicOpenTimelineExpandsWithinLiveWindow()
+    {
+        const string manifestText = """
+            <MPD type="dynamic" availabilityStartTime="2026-09-13T00:00:00Z" timeShiftBufferDepth="PT30S" minimumUpdatePeriod="PT1S">
+              <Period><AdaptationSet mimeType="video/mp4"><Representation id="v1">
+                <BaseURL>https://media.example.test/live/</BaseURL>
+                <SegmentTemplate timescale="1" media="s-$Time$.m4s">
+                  <SegmentTimeline><S t="0" d="5" r="-1" /></SegmentTimeline>
+                </SegmentTemplate>
+              </Representation></AdaptationSet></Period>
+            </MPD>
+            """;
+        Uri source = new("https://media.example.test/live/manifest.mpd");
+        DashManifest manifest = DashManifestParser.Parse(source, manifestText);
+
+        List<DashSegmentReference> segments = DashManifestParser.BuildSegments(
+            manifest.Representations[0],
+            manifest,
+            new DateTimeOffset(2026, 9, 13, 0, 1, 0, TimeSpan.Zero));
+
+        Assert.True(segments.Count > 1);
+        Assert.Contains(segments, static segment => segment.Uri.AbsoluteUri.EndsWith("s-55.m4s", StringComparison.Ordinal));
+    }
+
 }

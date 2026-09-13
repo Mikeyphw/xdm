@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace XDM.Media;
 
@@ -8,7 +7,7 @@ internal sealed class HlsDownloader(HttpClient httpClient)
 {
     private readonly Dictionary<string, byte[]> _keyCache = new(StringComparer.Ordinal);
     private const int MaximumFragments = 1_000_000;
-    private const int MaximumSegmentBytes = 1024 * 1024 * 1024;
+    private const int MaximumBufferedSegmentBytes = 64 * 1024 * 1024;
 
     public Task<StreamDownloadResult> DownloadAsync(
         MediaFormat format,
@@ -29,17 +28,16 @@ internal sealed class HlsDownloader(HttpClient httpClient)
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(format);
-        string formatDirectory = Path.Combine(workspace, Sanitize(format.Id));
+        string formatDirectory = FragmentIdentity.FormatDirectory(workspace, format);
         string fragmentsDirectory = Path.Combine(formatDirectory, "fragments");
         Directory.CreateDirectory(fragmentsDirectory);
         FragmentCheckpointStore checkpointStore = new(Path.Combine(formatDirectory, "checkpoint.json"));
         FragmentCheckpoint? checkpoint = await checkpointStore.LoadAsync(cancellationToken).ConfigureAwait(false);
-        HashSet<string> completed = checkpoint is not null
-            && string.Equals(checkpoint.Source, format.ManifestUri.AbsoluteUri, StringComparison.Ordinal)
-            && string.Equals(checkpoint.FormatId, format.Id, StringComparison.Ordinal)
-                ? new HashSet<string>(checkpoint.CompletedIds, StringComparer.Ordinal)
-                : new HashSet<string>(StringComparer.Ordinal);
-        long downloadedBytes = checkpoint?.DownloadedBytes ?? 0;
+        FragmentResumeState resume = FragmentResumeState.FromCheckpoint(
+            checkpoint,
+            format.ManifestUri.AbsoluteUri,
+            format.Id,
+            formatDirectory);
         Stopwatch elapsed = Stopwatch.StartNew();
         bool observedLive = false;
         int targetDurationSeconds = 6;
@@ -47,6 +45,11 @@ internal sealed class HlsDownloader(HttpClient httpClient)
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (LiveLimitReached(liveDuration, resume.LiveElapsedSeconds, elapsed.Elapsed))
+            {
+                break;
+            }
+
             string manifestText = await FragmentRetryPolicy.ExecuteAsync(
                 token => MediaHttp.ReadManifestAsync(httpClient, format.ManifestUri, metadata, token),
                 cancellationToken).ConfigureAwait(false);
@@ -59,62 +62,149 @@ internal sealed class HlsDownloader(HttpClient httpClient)
             bool currentManifestIsLive = !manifest.EndList;
             observedLive |= currentManifestIsLive;
             targetDurationSeconds = manifest.TargetDurationSeconds;
+            int manifestSegmentCount = manifest.Segments.Count;
             foreach (HlsSegment segment in manifest.Segments.OrderBy(static segment => segment.Sequence))
             {
-                if (completed.Count >= MaximumFragments)
+                cancellationToken.ThrowIfCancellationRequested();
+                if (resume.Count >= MaximumFragments)
                 {
                     throw new InvalidDataException("HLS download exceeded the supported fragment count.");
                 }
 
-                string id = segment.Sequence.ToString("D20", System.Globalization.CultureInfo.InvariantCulture);
-                string partPath = Path.Combine(fragmentsDirectory, $"{id}.part");
-                if (completed.Contains(id) && File.Exists(partPath))
+                if (LiveLimitReached(liveDuration, resume.LiveElapsedSeconds, elapsed.Elapsed))
+                {
+                    break;
+                }
+
+                FragmentPlanEntry plan = CreateSegmentPlan(segment, resume);
+                if (resume.TryReuse(plan))
                 {
                     continue;
                 }
 
-                long? remainingBytes = RemainingLimit(maximumBytes, downloadedBytes);
+                // Rebuild the plan after reuse inspection because a stale checkpoint entry
+                // can be removed when its identity no longer matches the current manifest.
+                // This keeps HLS initialization maps transactional: if the only prior init
+                // owner was invalidated, the replacement segment carries the init map again.
+                plan = CreateSegmentPlan(segment, resume);
+
+                long currentBytes = resume.DownloadedBytes;
+                long? remainingBytes = RemainingLimit(maximumBytes, currentBytes);
                 long bytes = await FragmentRetryPolicy.ExecuteAsync(
-                    token => DownloadSegmentAsync(segment, partPath, formatDirectory, metadata, remainingBytes, token),
+                    token => DownloadSegmentAsync(segment, plan, formatDirectory, metadata, remainingBytes, token),
                     cancellationToken).ConfigureAwait(false);
-                EnsureWithinLimit(downloadedBytes, bytes, maximumBytes);
-                downloadedBytes = checked(downloadedBytes + bytes);
-                completed.Add(id);
+                EnsureWithinLimit(currentBytes, bytes, maximumBytes);
+                resume.Complete(plan, bytes);
                 await checkpointStore.SaveAsync(
-                    new FragmentCheckpoint(
+                    resume.ToCheckpoint(
                         format.ManifestUri.AbsoluteUri,
                         format.Id,
-                        completed.Order(StringComparer.Ordinal).ToArray(),
-                        downloadedBytes,
+                        CreatePlanId(format, manifest),
+                        resume.LiveElapsedSeconds + elapsed.Elapsed.TotalSeconds,
                         DateTimeOffset.UtcNow),
                     cancellationToken).ConfigureAwait(false);
                 progress?.Report(new MediaDownloadProgress(
                     currentManifestIsLive ? "Downloading live HLS" : "Downloading HLS",
-                    completed.Count,
-                    manifest.EndList ? manifest.Segments.Count : null,
-                    downloadedBytes,
+                    resume.Count,
+                    manifest.EndList ? manifestSegmentCount : null,
+                    resume.DownloadedBytes,
                     $"Downloaded HLS fragment {segment.Sequence}."));
             }
 
-            if (manifest.EndList || (liveDuration is TimeSpan limit && elapsed.Elapsed >= limit))
+            if (manifest.EndList || LiveLimitReached(liveDuration, resume.LiveElapsedSeconds, elapsed.Elapsed))
             {
                 break;
             }
 
             TimeSpan refreshDelay = TimeSpan.FromSeconds(Math.Clamp(targetDurationSeconds / 2.0, 1, 30));
+            if (liveDuration is TimeSpan limit)
+            {
+                TimeSpan remaining = limit - TimeSpan.FromSeconds(resume.LiveElapsedSeconds) - elapsed.Elapsed;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
+                refreshDelay = remaining < refreshDelay ? remaining : refreshDelay;
+            }
+
             await Task.Delay(refreshDelay, cancellationToken).ConfigureAwait(false);
         }
 
         string outputPath = Path.Combine(formatDirectory, "stream.bin");
-        await AssembleAsync(fragmentsDirectory, outputPath, cancellationToken).ConfigureAwait(false);
-        return new StreamDownloadResult(outputPath, completed.Count, downloadedBytes, observedLive);
+        await FragmentAssembler.AssembleAsync(
+            resume.ExistingPathsInOrder(),
+            outputPath,
+            "No HLS fragments were downloaded.",
+            cancellationToken).ConfigureAwait(false);
+        return new StreamDownloadResult(outputPath, resume.Count, resume.DownloadedBytes, observedLive);
+    }
+
+    private static FragmentPlanEntry CreateSegmentPlan(
+        HlsSegment segment,
+        FragmentResumeState resume)
+    {
+        string id = segment.Sequence.ToString("D20", System.Globalization.CultureInfo.InvariantCulture);
+        string? initializationIdentity = CreateInitializationIdentity(segment.InitializationMap);
+        bool includeInitialization = initializationIdentity is not null
+            && (resume.EntryContainsInitialization(id, initializationIdentity)
+                || !resume.ContainsInitialization(initializationIdentity));
+        string identity = FragmentIdentity.Create(
+            segment.Uri,
+            segment.ByteRangeOffset,
+            segment.ByteRangeLength,
+            CreateContentKey(segment, includeInitialization, initializationIdentity));
+        string fileName = FragmentIdentity.StableFileName(id, identity, "hls");
+        return new FragmentPlanEntry(
+            id,
+            segment.Uri,
+            segment.Sequence,
+            Path.Combine("fragments", fileName),
+            identity,
+            segment.ByteRangeOffset,
+            segment.ByteRangeLength,
+            false,
+            includeInitialization,
+            initializationIdentity);
+    }
+
+    private static string CreatePlanId(MediaFormat format, HlsManifest manifest)
+        => FragmentIdentity.ShortHash(
+            "hls",
+            format.ManifestUri.AbsoluteUri,
+            format.Id,
+            manifest.MediaSequence.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            manifest.EndList.ToString(),
+            manifest.Segments.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    private static string? CreateInitializationIdentity(HlsInitializationMap? map)
+        => map is null
+            ? null
+            : FragmentIdentity.Create(map.Uri, map.ByteRangeOffset, map.ByteRangeLength, "hls-init-map");
+
+    private static string CreateContentKey(
+        HlsSegment segment,
+        bool includeInitialization,
+        string? initializationIdentity)
+    {
+        string keyIdentity = segment.Key is null
+            ? "clear"
+            : FragmentIdentity.ShortHash(
+                segment.Key.Method,
+                segment.Key.Uri.AbsoluteUri,
+                segment.Key.InitializationVector is null ? null : Convert.ToHexString(segment.Key.InitializationVector));
+        return string.Join('|',
+            "hls-segment-v2",
+            keyIdentity,
+            segment.Discontinuity ? "discontinuity" : "continuous",
+            includeInitialization ? initializationIdentity ?? "init" : "no-init");
     }
 
     private static int MaximumReadBytes(long? maximumBytes)
     {
         if (maximumBytes is not long limit)
         {
-            return MaximumSegmentBytes;
+            return MaximumBufferedSegmentBytes;
         }
 
         if (limit <= 0)
@@ -122,7 +212,7 @@ internal sealed class HlsDownloader(HttpClient httpClient)
             throw new InvalidDataException("Media capture reached its configured size limit.");
         }
 
-        return checked((int)Math.Min(limit, MaximumSegmentBytes));
+        return checked((int)Math.Min(limit, MaximumBufferedSegmentBytes));
     }
 
     private static long? RemainingLimit(long? maximumBytes, long downloadedBytes)
@@ -141,6 +231,10 @@ internal sealed class HlsDownloader(HttpClient httpClient)
         return remaining;
     }
 
+    private static bool LiveLimitReached(TimeSpan? liveDuration, double previousSeconds, TimeSpan elapsed)
+        => liveDuration is TimeSpan limit
+            && TimeSpan.FromSeconds(previousSeconds) + elapsed >= limit;
+
     private static void EnsureWithinLimit(long downloadedBytes, long nextBytes, long? maximumBytes)
     {
         if (maximumBytes is long limit && checked(downloadedBytes + nextBytes) > limit)
@@ -151,12 +245,30 @@ internal sealed class HlsDownloader(HttpClient httpClient)
 
     private async Task<long> DownloadSegmentAsync(
         HlsSegment segment,
-        string destinationPath,
+        FragmentPlanEntry plan,
         string formatDirectory,
         MediaRequestMetadata metadata,
         long? maximumBytes,
         CancellationToken cancellationToken)
     {
+        string destinationPath = Path.Combine(formatDirectory, plan.RelativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+        byte[]? initialization = plan.HasInitialization
+            ? await GetInitializationBytesAsync(segment, metadata, cancellationToken).ConfigureAwait(false)
+            : null;
+        if (segment.Key is null && initialization is null)
+        {
+            return await MediaHttp.DownloadToFileAsync(
+                httpClient,
+                segment.Uri,
+                metadata,
+                destinationPath,
+                segment.ByteRangeOffset,
+                segment.ByteRangeLength,
+                maximumBytes,
+                cancellationToken).ConfigureAwait(false);
+        }
+
         byte[] encrypted = await MediaHttp.ReadBytesAsync(
             httpClient,
             segment.Uri,
@@ -173,63 +285,59 @@ internal sealed class HlsDownloader(HttpClient httpClient)
                 encrypted,
                 metadata,
                 cancellationToken).ConfigureAwait(false);
-        (byte[]? initialization, string? mapMarkerPath) = await GetInitializationBytesAsync(
-            segment,
-            formatDirectory,
-            metadata,
-            cancellationToken).ConfigureAwait(false);
-        string temporaryPath = $"{destinationPath}.downloading";
-        await using (FileStream stream = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            128 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan))
+        long totalLength = payload.LongLength + (initialization?.LongLength ?? 0);
+        if (maximumBytes is long limit && totalLength > limit)
         {
-            if (initialization is not null)
+            throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+        }
+
+        string temporaryPath = $"{destinationPath}.downloading";
+        bool completed = false;
+        try
+        {
+            await using (FileStream stream = new(
+                temporaryPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                128 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan))
             {
-                await stream.WriteAsync(initialization, cancellationToken).ConfigureAwait(false);
+                if (initialization is not null)
+                {
+                    await stream.WriteAsync(initialization, cancellationToken).ConfigureAwait(false);
+                }
+
+                await stream.WriteAsync(payload, cancellationToken).ConfigureAwait(false);
+                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            await stream.WriteAsync(payload, cancellationToken).ConfigureAwait(false);
-            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            File.Move(temporaryPath, destinationPath, overwrite: true);
+            completed = true;
+            return totalLength;
         }
-
-        File.Move(temporaryPath, destinationPath, overwrite: true);
-        if (mapMarkerPath is not null)
+        finally
         {
-            await File.WriteAllTextAsync(mapMarkerPath, segment.InitializationMap!.Uri.AbsoluteUri, cancellationToken).ConfigureAwait(false);
+            if (!completed && File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
-
-        return payload.LongLength + (initialization?.LongLength ?? 0);
     }
 
-    private async Task<(byte[]? Bytes, string? MarkerPath)> GetInitializationBytesAsync(
+    private async Task<byte[]> GetInitializationBytesAsync(
         HlsSegment segment,
-        string formatDirectory,
         MediaRequestMetadata metadata,
         CancellationToken cancellationToken)
     {
-        if (segment.InitializationMap is not HlsInitializationMap map)
-        {
-            return (null, null);
-        }
-
-        string mapId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            $"{map.Uri.AbsoluteUri}|{map.ByteRangeOffset}|{map.ByteRangeLength}")))[..16];
-        string markerPath = Path.Combine(formatDirectory, $"map-{mapId}.used");
-        if (File.Exists(markerPath))
-        {
-            return (null, null);
-        }
-
+        HlsInitializationMap map = segment.InitializationMap
+            ?? throw new InvalidDataException("HLS initialization map was not available for the selected segment.");
         byte[] bytes = await FragmentRetryPolicy.ExecuteAsync(
             token => MediaHttp.ReadBytesAsync(
                 httpClient,
                 map.Uri,
                 metadata,
-                MaximumSegmentBytes,
+                MaximumBufferedSegmentBytes,
                 map.ByteRangeOffset,
                 map.ByteRangeLength,
                 token),
@@ -249,7 +357,7 @@ internal sealed class HlsDownloader(HttpClient httpClient)
                 cancellationToken).ConfigureAwait(false);
         }
 
-        return (bytes, markerPath);
+        return bytes;
     }
 
     private async Task<byte[]> DecryptPayloadAsync(
@@ -274,6 +382,7 @@ internal sealed class HlsDownloader(HttpClient httpClient)
                 cancellationToken).ConfigureAwait(false);
             _keyCache[keyId] = key;
         }
+
         if (key.Length != 16)
         {
             throw new InvalidDataException("HLS AES-128 key must contain exactly 16 bytes.");
@@ -285,17 +394,8 @@ internal sealed class HlsDownloader(HttpClient httpClient)
         aes.IV = iv;
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
-        try
-        {
-            using ICryptoTransform decryptor = aes.CreateDecryptor();
-            return decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
-        }
-        catch (CryptographicException)
-        {
-            aes.Padding = PaddingMode.None;
-            using ICryptoTransform decryptor = aes.CreateDecryptor();
-            return decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
-        }
+        using ICryptoTransform decryptor = aes.CreateDecryptor();
+        return decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
     }
 
     private static byte[] CreateSequenceInitializationVector(long sequence)
@@ -303,53 +403,5 @@ internal sealed class HlsDownloader(HttpClient httpClient)
         byte[] iv = new byte[16];
         System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(iv.AsSpan(8), sequence);
         return iv;
-    }
-
-    private static async Task AssembleAsync(
-        string fragmentsDirectory,
-        string destinationPath,
-        CancellationToken cancellationToken)
-    {
-        string[] fragments = Directory
-            .EnumerateFiles(fragmentsDirectory, "*.part", SearchOption.TopDirectoryOnly)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        if (fragments.Length == 0)
-        {
-            throw new InvalidDataException("No HLS fragments were downloaded.");
-        }
-
-        string temporaryPath = $"{destinationPath}.assembling";
-        await using (FileStream destination = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            128 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan))
-        {
-            foreach (string fragment in fragments)
-            {
-                await using FileStream source = new(
-                    fragment,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    128 * 1024,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
-            }
-
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(temporaryPath, destinationPath, overwrite: true);
-    }
-
-    private static string Sanitize(string value)
-    {
-        HashSet<char> invalid = new(Path.GetInvalidFileNameChars());
-        string sanitized = new(value.Select(character => invalid.Contains(character) ? '_' : character).ToArray());
-        return sanitized.Length == 0 ? "format" : sanitized;
     }
 }

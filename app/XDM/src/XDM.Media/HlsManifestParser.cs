@@ -28,6 +28,7 @@ internal static class HlsManifestParser
         double pendingDuration = 0;
         long? pendingRangeLength = null;
         long? pendingRangeOffset = null;
+        bool pendingRangeOffsetExplicit = false;
         bool pendingDiscontinuity = false;
         HlsEncryptionKey? currentKey = null;
         HlsInitializationMap? currentMap = null;
@@ -36,6 +37,7 @@ internal static class HlsManifestParser
         long mediaSequence = 0;
         long nextSequence = 0;
         long? previousRangeEnd = null;
+        Uri? previousRangeUri = null;
 
         foreach (string raw in lines)
         {
@@ -100,9 +102,9 @@ internal static class HlsManifestParser
             {
                 ParseByteRange(
                     line[(line.IndexOf(':') + 1)..],
-                    previousRangeEnd,
                     out pendingRangeLength,
-                    out pendingRangeOffset);
+                    out pendingRangeOffset,
+                    out pendingRangeOffsetExplicit);
                 continue;
             }
 
@@ -153,28 +155,40 @@ internal static class HlsManifestParser
                 continue;
             }
 
+            long? effectiveRangeOffset = pendingRangeOffset;
+            if (pendingRangeLength is not null && !pendingRangeOffsetExplicit)
+            {
+                effectiveRangeOffset = previousRangeUri is not null
+                    && UriEqualsIgnoringFragment(previousRangeUri, resolved)
+                    ? previousRangeEnd ?? 0
+                    : 0;
+            }
+
             long sequence = nextSequence++;
             segments.Add(new HlsSegment(
                 sequence,
                 resolved,
                 pendingDuration,
                 pendingRangeLength,
-                pendingRangeOffset,
+                effectiveRangeOffset,
                 currentKey,
                 currentMap,
                 pendingDiscontinuity));
-            if (pendingRangeLength is long length && pendingRangeOffset is long offset)
+            if (pendingRangeLength is long length && effectiveRangeOffset is long offset)
             {
                 previousRangeEnd = checked(offset + length);
+                previousRangeUri = resolved;
             }
             else
             {
                 previousRangeEnd = null;
+                previousRangeUri = null;
             }
 
             pendingDuration = 0;
             pendingRangeLength = null;
             pendingRangeOffset = null;
+            pendingRangeOffsetExplicit = false;
             pendingDiscontinuity = false;
         }
 
@@ -278,7 +292,7 @@ internal static class HlsManifestParser
         long? offset = null;
         if (attributes.TryGetValue("BYTERANGE", out string? range))
         {
-            ParseByteRange(range, null, out length, out offset);
+            ParseByteRange(range, out length, out offset, out _);
         }
 
         return new HlsInitializationMap(uri, length, offset);
@@ -298,9 +312,9 @@ internal static class HlsManifestParser
 
     private static void ParseByteRange(
         string value,
-        long? implicitOffset,
         out long? length,
-        out long? offset)
+        out long? offset,
+        out bool explicitOffset)
     {
         string[] parts = value.Split('@', 2, StringSplitOptions.TrimEntries);
         length = ParseNonNegativeLong(parts[0], "byte-range length");
@@ -309,9 +323,8 @@ internal static class HlsManifestParser
             throw new InvalidDataException("HLS byte-range length must be positive.");
         }
 
-        offset = parts.Length == 2
-            ? ParseNonNegativeLong(parts[1], "byte-range offset")
-            : implicitOffset ?? 0;
+        explicitOffset = parts.Length == 2;
+        offset = explicitOffset ? ParseNonNegativeLong(parts[1], "byte-range offset") : null;
     }
 
     private static void ParseResolution(string? value, out int? width, out int? height)
@@ -333,6 +346,13 @@ internal static class HlsManifestParser
             width = parsedWidth;
             height = parsedHeight;
         }
+    }
+
+    private static bool UriEqualsIgnoringFragment(Uri left, Uri right)
+    {
+        UriBuilder leftBuilder = new(left) { Fragment = string.Empty };
+        UriBuilder rightBuilder = new(right) { Fragment = string.Empty };
+        return string.Equals(leftBuilder.Uri.AbsoluteUri, rightBuilder.Uri.AbsoluteUri, StringComparison.Ordinal);
     }
 
     private static Uri Resolve(Uri baseUri, string value)

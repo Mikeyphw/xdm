@@ -46,24 +46,17 @@ internal static partial class DashManifestParser
         minimumUpdate = TimeSpan.FromSeconds(Math.Clamp(minimumUpdate.TotalSeconds, 1, 60));
         Uri rootBase = ResolveBase(manifestUri, FirstChildValue(root, "BaseURL"));
         List<DashRepresentation> representations = [];
-        int periodIndex = 0;
         foreach (XElement period in Children(root, "Period"))
         {
-            string periodId = ScopedComponent(Attribute(period, "id"), $"p{periodIndex}");
             TimeSpan? periodDuration = ParseDuration(Attribute(period, "duration")) ?? duration;
             Uri periodBase = ResolveBase(rootBase, FirstChildValue(period, "BaseURL"));
-            int adaptationIndex = 0;
             foreach (XElement adaptation in Children(period, "AdaptationSet"))
             {
-                string adaptationId = ScopedComponent(Attribute(adaptation, "id"), $"a{adaptationIndex}");
                 Uri adaptationBase = ResolveBase(periodBase, FirstChildValue(adaptation, "BaseURL"));
                 string? adaptationMime = Attribute(adaptation, "mimeType");
                 string? adaptationContentType = Attribute(adaptation, "contentType");
                 string? adaptationCodecs = Attribute(adaptation, "codecs");
                 string? language = Attribute(adaptation, "lang");
-                string? adaptationRole = ResolveRole(adaptation);
-                bool adaptationDefault = IsDefaultRole(adaptationRole);
-                bool adaptationEncrypted = HasContentProtection(adaptation);
                 DashSegmentTemplate? adaptationTemplate = ParseTemplate(FirstChild(adaptation, "SegmentTemplate"));
                 DashSegmentList? adaptationList = ParseList(adaptationBase, FirstChild(adaptation, "SegmentList"));
                 foreach (XElement representation in Children(adaptation, "Representation"))
@@ -86,37 +79,23 @@ internal static partial class DashManifestParser
                         list = new DashSegmentList(null, [representationBase]);
                     }
 
-                    string? role = ResolveRole(representation) ?? adaptationRole;
-                    string scopedId = BuildScopedRepresentationId(periodId, adaptationId, id);
                     representations.Add(new DashRepresentation(
                         id,
-                        scopedId,
                         kind,
                         representationBase,
-                        InferDashContainer(mime, Attribute(representation, "codecs") ?? adaptationCodecs),
+                        mime,
                         Attribute(representation, "codecs") ?? adaptationCodecs,
                         ParseLong(Attribute(representation, "bandwidth")),
                         ParseInt(Attribute(representation, "width")),
                         ParseInt(Attribute(representation, "height")),
                         ParseFrameRate(Attribute(representation, "frameRate")),
-                        Attribute(representation, "lang") ?? language,
+                        language,
                         Attribute(representation, "label") ?? Attribute(adaptation, "label"),
                         periodDuration,
-                        periodId,
-                        periodIndex,
-                        adaptationId,
-                        adaptationIndex,
-                        role,
-                        IsDefaultRole(role) || adaptationDefault,
-                        adaptationEncrypted || HasContentProtection(representation),
                         template,
                         list));
                 }
-
-                adaptationIndex++;
             }
-
-            periodIndex++;
         }
 
         if (representations.Count == 0)
@@ -147,8 +126,21 @@ internal static partial class DashManifestParser
                 references.Add(new DashSegmentReference("init", list.Initialization, true));
             }
 
-            references.AddRange(list.SegmentUris.Select((uri, index) =>
-                new DashSegmentReference($"segment-{index:D10}", uri, false)));
+            Dictionary<string, int> occurrences = new(StringComparer.Ordinal);
+            foreach (Uri uri in list.SegmentUris)
+            {
+                string uriKey = uri.AbsoluteUri;
+                occurrences.TryGetValue(uriKey, out int occurrence);
+                occurrences[uriKey] = occurrence + 1;
+                string suffix = occurrence == 0
+                    ? string.Empty
+                    : $"-{occurrence:D4}";
+                references.Add(new DashSegmentReference(
+                    $"segment-list-{FragmentIdentity.ShortHash(uriKey)[..20].ToLowerInvariant()}{suffix}",
+                    uri,
+                    false));
+            }
+
             return references;
         }
 
@@ -175,7 +167,10 @@ internal static partial class DashManifestParser
                 int repeat = entry.Repeat;
                 if (repeat < 0)
                 {
-                    repeat = ResolveOpenRepeat(entry.Duration, currentTime, representation.PeriodDuration, template.Timescale, manifest.IsDynamic);
+                    (long shiftedTime, long skippedSegments) = ResolveOpenTimelineStart(entry.Duration, currentTime, template.Timescale, manifest, nowUtc);
+                    currentTime = shiftedTime;
+                    number = checked(number + skippedSegments);
+                    repeat = ResolveOpenRepeat(entry.Duration, currentTime, representation.PeriodDuration, template.Timescale, manifest, nowUtc);
                 }
 
                 for (int index = 0; index <= repeat; index++)
@@ -292,12 +287,53 @@ internal static partial class DashManifestParser
         return new DashSegmentList(initialization, segmentUris);
     }
 
+    private static (long Time, long SkippedSegments) ResolveOpenTimelineStart(
+        long duration,
+        long currentTime,
+        long timescale,
+        DashManifest manifest,
+        DateTimeOffset nowUtc)
+    {
+        if (!manifest.IsDynamic)
+        {
+            return (currentTime, 0);
+        }
+
+        TimeSpan segmentDuration = TimeSpan.FromSeconds((double)duration / timescale);
+        TimeSpan depth = manifest.TimeShiftBufferDepth ?? TimeSpan.FromMinutes(2);
+        TimeSpan elapsed = manifest.AvailabilityStartTime is DateTimeOffset start
+            ? nowUtc - start
+            : depth + segmentDuration;
+        if (elapsed < segmentDuration)
+        {
+            elapsed = segmentDuration;
+        }
+
+        long availableEnd = checked((long)Math.Ceiling(elapsed.TotalSeconds * timescale));
+        long depthUnits = checked((long)Math.Ceiling(depth.TotalSeconds * timescale));
+        long windowStart = Math.Max(currentTime, availableEnd - depthUnits);
+        long delta = windowStart - currentTime;
+        if (delta <= 0)
+        {
+            return (currentTime, 0);
+        }
+
+        long skippedSegments = delta / duration;
+        if (delta % duration != 0)
+        {
+            skippedSegments++;
+        }
+
+        return (checked(currentTime + skippedSegments * duration), skippedSegments);
+    }
+
     private static int ResolveOpenRepeat(
         long duration,
         long currentTime,
         TimeSpan? periodDuration,
         long timescale,
-        bool dynamic)
+        DashManifest manifest,
+        DateTimeOffset nowUtc)
     {
         if (periodDuration is TimeSpan total)
         {
@@ -306,7 +342,30 @@ internal static partial class DashManifestParser
             return Math.Max(0, checked((int)Math.Ceiling((double)remaining / duration)) - 1);
         }
 
-        return dynamic ? 0 : throw new NotSupportedException("An open DASH timeline repeat requires a period duration.");
+        if (!manifest.IsDynamic)
+        {
+            throw new NotSupportedException("An open DASH timeline repeat requires a period duration.");
+        }
+
+        TimeSpan segmentDuration = TimeSpan.FromSeconds((double)duration / timescale);
+        TimeSpan depth = manifest.TimeShiftBufferDepth ?? TimeSpan.FromMinutes(2);
+        TimeSpan elapsed = manifest.AvailabilityStartTime is DateTimeOffset start
+            ? nowUtc - start
+            : depth + segmentDuration;
+        if (elapsed < segmentDuration)
+        {
+            elapsed = segmentDuration;
+        }
+
+        long availableEnd = checked((long)Math.Ceiling(elapsed.TotalSeconds * timescale));
+        long depthUnits = checked((long)Math.Ceiling(depth.TotalSeconds * timescale));
+        long windowStart = Math.Max(currentTime, availableEnd - depthUnits);
+        long remainingUnits = Math.Max(0, availableEnd - windowStart);
+        int segmentCount = checked((int)Math.Clamp(
+            Math.Ceiling((double)remainingUnits / duration),
+            1,
+            MaximumSegmentsPerRepresentation));
+        return segmentCount - 1;
     }
 
     private static int ResolveDurationSegmentCount(
@@ -371,69 +430,6 @@ internal static partial class DashManifestParser
             return number.ToString($"D{width}", CultureInfo.InvariantCulture);
         });
         return value.Replace("$$", "$", StringComparison.Ordinal);
-    }
-
-    private static string BuildScopedRepresentationId(string periodId, string adaptationId, string representationId)
-        => $"p:{SanitizeIdentityComponent(periodId)}|a:{SanitizeIdentityComponent(adaptationId)}|r:{SanitizeIdentityComponent(representationId)}";
-
-    private static string ScopedComponent(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-
-    private static string SanitizeIdentityComponent(string value)
-    {
-        string normalized = value.Trim();
-        return normalized.Length == 0
-            ? "unknown"
-            : normalized.Replace("|", "%7C", StringComparison.Ordinal).Replace(":", "%3A", StringComparison.Ordinal);
-    }
-
-    private static string? ResolveRole(XElement element)
-    {
-        XElement? role = Children(element, "Role").FirstOrDefault();
-        string? value = role is null ? null : Attribute(role, "value");
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    }
-
-    private static bool IsDefaultRole(string? role)
-        => role is not null
-            && (role.Equals("main", StringComparison.OrdinalIgnoreCase)
-                || role.Equals("default", StringComparison.OrdinalIgnoreCase));
-
-    private static bool HasContentProtection(XElement element)
-        => FirstChild(element, "ContentProtection") is not null;
-
-    private static string? InferDashContainer(string? mime, string? codecs)
-    {
-        if (string.IsNullOrWhiteSpace(mime))
-        {
-            return null;
-        }
-
-        string value = mime.Trim().ToLowerInvariant();
-        if (value.Contains("webm", StringComparison.Ordinal))
-        {
-            return "webm";
-        }
-
-        if (value.Contains("mp4", StringComparison.Ordinal)
-            || value.Contains("m4s", StringComparison.Ordinal)
-            || (codecs?.Contains("avc", StringComparison.OrdinalIgnoreCase) == true)
-            || (codecs?.Contains("mp4a", StringComparison.OrdinalIgnoreCase) == true))
-        {
-            return "mp4";
-        }
-
-        if (value.Contains("ttml", StringComparison.Ordinal))
-        {
-            return "ttml";
-        }
-
-        if (value.Contains("vtt", StringComparison.Ordinal) || value.Contains("webvtt", StringComparison.Ordinal))
-        {
-            return "vtt";
-        }
-
-        return null;
     }
 
     private static MediaStreamKind ResolveKind(string? contentType, string? mime)

@@ -55,4 +55,47 @@ public sealed class DashDownloaderTests
             }
         }
     }
+
+
+    [Fact]
+    public async Task EnforcesSegmentSizeLimitBeforeKeepingOversizedPart()
+    {
+        using HttpClient client = new(new RoutingHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("manifest.mpd", StringComparison.Ordinal))
+            {
+                return RoutingHandler.Text(
+                    "<MPD mediaPresentationDuration=\"PT4S\"><Period><AdaptationSet mimeType=\"video/mp4\"><Representation id=\"v1\"><BaseURL>https://media.example.test/path/</BaseURL><SegmentList><SegmentURL media=\"big.m4s\" /></SegmentList></Representation></AdaptationSet></Period></MPD>",
+                    "application/dash+xml");
+            }
+
+            return RoutingHandler.Bytes(new byte[2048]);
+        }));
+        string workspace = Path.Combine(Path.GetTempPath(), $"xdm-dash-limit-{Guid.NewGuid():N}");
+        try
+        {
+            MediaFormat format = new("dash-video", MediaStreamKind.Video, new Uri("https://media.example.test/path/manifest.mpd"), "video/mp4", null, null, null, null, null, null, "video", true, false, "v1");
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => new DashDownloader(client).DownloadAsync(
+                format,
+                workspace,
+                MediaRequestMetadata.Empty,
+                null,
+                1024,
+                null,
+                CancellationToken.None));
+
+            Assert.Empty(Directory.Exists(workspace)
+                ? Directory.EnumerateFiles(workspace, "*.part", SearchOption.AllDirectories)
+                : Array.Empty<string>());
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, recursive: true);
+            }
+        }
+    }
+
 }

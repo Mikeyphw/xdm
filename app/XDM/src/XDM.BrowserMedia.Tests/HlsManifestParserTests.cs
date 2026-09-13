@@ -203,7 +203,7 @@ public sealed class HlsManifestParserTests
 
             Assert.Equal(plain, await File.ReadAllBytesAsync(result.Path));
             Assert.Equal(2, segmentCalls);
-            Assert.True(File.Exists(Path.Combine(workspace, "hls-main", "checkpoint.json")));
+            Assert.True(Directory.EnumerateFiles(workspace, "checkpoint.json", SearchOption.AllDirectories).Any(File.Exists));
         }
         finally
         {
@@ -213,4 +213,188 @@ public sealed class HlsManifestParserTests
             }
         }
     }
+
+
+    [Fact]
+    public void ByteRangeImplicitOffsetResetsWhenResourceChanges()
+    {
+        const string playlist = """
+            #EXTM3U
+            #EXT-X-BYTERANGE:100@20
+            #EXTINF:2,
+            media-a.bin
+            #EXT-X-BYTERANGE:50
+            #EXTINF:2,
+            media-b.bin
+            #EXT-X-ENDLIST
+            """;
+
+        HlsManifest manifest = HlsManifestParser.Parse(new Uri("https://example.test/live/index.m3u8"), playlist);
+
+        Assert.Equal(20, manifest.Segments[0].ByteRangeOffset);
+        Assert.Equal(0, manifest.Segments[1].ByteRangeOffset);
+    }
+
+    [Fact]
+    public async Task DownloaderAssemblesOnlyCheckpointOwnedFragments()
+    {
+        using HttpClient client = new(new RoutingHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith(".m3u8", StringComparison.Ordinal)
+                ? RoutingHandler.Text(
+                    "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXTINF:4,\nsegment.ts\n#EXT-X-ENDLIST\n",
+                    "application/vnd.apple.mpegurl")
+                : RoutingHandler.Bytes("owned"u8.ToArray())));
+        string workspace = Path.Combine(Path.GetTempPath(), $"xdm-hls-owned-{Guid.NewGuid():N}");
+        try
+        {
+            MediaFormat format = new("hls-main", MediaStreamKind.Muxed, new Uri("https://example.test/vod.m3u8"), "hls", null, null, null, null, null, null, "main", true, false);
+            StreamDownloadResult first = await new HlsDownloader(client).DownloadAsync(
+                format,
+                workspace,
+                MediaRequestMetadata.Empty,
+                null,
+                null,
+                CancellationToken.None);
+            string fragmentDirectory = Directory.EnumerateDirectories(workspace, "fragments", SearchOption.AllDirectories).Single();
+            await File.WriteAllTextAsync(Path.Combine(fragmentDirectory, "99999999999999999999-orphan.part"), "orphan");
+
+            StreamDownloadResult second = await new HlsDownloader(client).DownloadAsync(
+                format,
+                workspace,
+                MediaRequestMetadata.Empty,
+                null,
+                null,
+                CancellationToken.None);
+
+            Assert.Equal("owned", await File.ReadAllTextAsync(second.Path));
+            Assert.Equal(first.DownloadedBytes, second.DownloadedBytes);
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task DownloaderRejectsMismatchedContentRangeCoordinates()
+    {
+        using HttpClient client = new(new RoutingHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith(".m3u8", StringComparison.Ordinal))
+            {
+                return RoutingHandler.Text(
+                    "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-BYTERANGE:4@10\n#EXTINF:4,\nmedia.bin\n#EXT-X-ENDLIST\n",
+                    "application/vnd.apple.mpegurl");
+            }
+
+            HttpResponseMessage response = new(HttpStatusCode.PartialContent)
+            {
+                Content = new ByteArrayContent("test"u8.ToArray())
+            };
+            response.Content.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(11, 14, 100);
+            return response;
+        }));
+        string workspace = Path.Combine(Path.GetTempPath(), $"xdm-hls-range-{Guid.NewGuid():N}");
+        try
+        {
+            MediaFormat format = new("hls-main", MediaStreamKind.Muxed, new Uri("https://example.test/vod.m3u8"), "hls", null, null, null, null, null, null, "main", true, false);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => new HlsDownloader(client).DownloadAsync(
+                format,
+                workspace,
+                MediaRequestMetadata.Empty,
+                null,
+                null,
+                CancellationToken.None));
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, recursive: true);
+            }
+        }
+    }
+
+
+    [Fact]
+    public async Task DownloaderQuarantinesMalformedCheckpointAndRebuildsOwnedState()
+    {
+        using HttpClient client = new(new RoutingHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith(".m3u8", StringComparison.Ordinal)
+                ? RoutingHandler.Text(
+                    "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXTINF:4,\nsegment.ts\n#EXT-X-ENDLIST\n",
+                    "application/vnd.apple.mpegurl")
+                : RoutingHandler.Bytes("rebuilt"u8.ToArray())));
+        string workspace = Path.Combine(Path.GetTempPath(), $"xdm-hls-corrupt-{Guid.NewGuid():N}");
+        try
+        {
+            MediaFormat format = new("hls-main", MediaStreamKind.Muxed, new Uri("https://example.test/vod.m3u8"), "hls", null, null, null, null, null, null, "main", true, false);
+            string formatDirectory = FragmentIdentity.FormatDirectory(workspace, format);
+            Directory.CreateDirectory(formatDirectory);
+            await File.WriteAllTextAsync(Path.Combine(formatDirectory, "checkpoint.json"), "{not valid json");
+
+            StreamDownloadResult result = await new HlsDownloader(client).DownloadAsync(
+                format,
+                workspace,
+                MediaRequestMetadata.Empty,
+                null,
+                null,
+                CancellationToken.None);
+
+            Assert.Equal("rebuilt", await File.ReadAllTextAsync(result.Path));
+            Assert.True(Directory.EnumerateFiles(formatDirectory, "checkpoint.json.corrupt-*").Any(File.Exists));
+            Assert.True(File.Exists(Path.Combine(formatDirectory, "checkpoint.json")));
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task DownloaderDoesNotRetryPermanentHttpFailures()
+    {
+        int segmentCalls = 0;
+        using HttpClient client = new(new RoutingHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith(".m3u8", StringComparison.Ordinal))
+            {
+                return RoutingHandler.Text(
+                    "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXTINF:4,\nmissing.ts\n#EXT-X-ENDLIST\n",
+                    "application/vnd.apple.mpegurl");
+            }
+
+            segmentCalls++;
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }));
+        string workspace = Path.Combine(Path.GetTempPath(), $"xdm-hls-404-{Guid.NewGuid():N}");
+        try
+        {
+            MediaFormat format = new("hls-main", MediaStreamKind.Muxed, new Uri("https://example.test/vod.m3u8"), "hls", null, null, null, null, null, null, "main", true, false);
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => new HlsDownloader(client).DownloadAsync(
+                format,
+                workspace,
+                MediaRequestMetadata.Empty,
+                null,
+                null,
+                CancellationToken.None));
+            Assert.Equal(1, segmentCalls);
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, recursive: true);
+            }
+        }
+    }
+
 }

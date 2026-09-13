@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace XDM.Media;
 
 internal static class FragmentRetryPolicy
@@ -14,7 +16,9 @@ internal static class FragmentRetryPolicy
             {
                 return await operation(cancellationToken).ConfigureAwait(false);
             }
-            catch (HttpRequestException exception) when (attempt < 4 && !cancellationToken.IsCancellationRequested)
+            catch (HttpRequestException exception) when (attempt < 4
+                && IsTransient(exception.StatusCode)
+                && !cancellationToken.IsCancellationRequested)
             {
                 last = exception;
                 await DelayAsync(attempt, cancellationToken).ConfigureAwait(false);
@@ -33,6 +37,15 @@ internal static class FragmentRetryPolicy
 
         throw last ?? new InvalidOperationException("Fragment retry policy failed without an exception.");
     }
+
+    private static bool IsTransient(HttpStatusCode? statusCode)
+        => statusCode is null
+            || statusCode is HttpStatusCode.RequestTimeout
+                or HttpStatusCode.TooManyRequests
+                or HttpStatusCode.InternalServerError
+                or HttpStatusCode.BadGateway
+                or HttpStatusCode.ServiceUnavailable
+                or HttpStatusCode.GatewayTimeout;
 
     private static Task DelayAsync(int attempt, CancellationToken cancellationToken)
         => Task.Delay(TimeSpan.FromMilliseconds(250 * Math.Pow(2, attempt)), cancellationToken);

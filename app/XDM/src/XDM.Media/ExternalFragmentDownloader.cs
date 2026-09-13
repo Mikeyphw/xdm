@@ -2,6 +2,8 @@ namespace XDM.Media;
 
 internal sealed class ExternalFragmentDownloader(HttpClient httpClient)
 {
+    private const int MaximumFragmentBytes = 1024 * 1024 * 1024;
+
     public Task<StreamDownloadResult> DownloadAsync(
         MediaFormat format,
         ExternalMediaFormatData providerData,
@@ -20,124 +22,93 @@ internal sealed class ExternalFragmentDownloader(HttpClient httpClient)
         IProgress<MediaDownloadProgress>? progress,
         CancellationToken cancellationToken)
     {
-        string formatDirectory = Path.Combine(workspace, Sanitize(format.Id));
+        string formatDirectory = FragmentIdentity.FormatDirectory(workspace, format);
         string fragmentsDirectory = Path.Combine(formatDirectory, "fragments");
         Directory.CreateDirectory(fragmentsDirectory);
         FragmentCheckpointStore checkpointStore = new(Path.Combine(formatDirectory, "checkpoint.json"));
         FragmentCheckpoint? checkpoint = await checkpointStore.LoadAsync(cancellationToken).ConfigureAwait(false);
-        HashSet<string> completed = checkpoint is not null
-            && string.Equals(checkpoint.Source, format.ManifestUri.AbsoluteUri, StringComparison.Ordinal)
-            && string.Equals(checkpoint.FormatId, format.Id, StringComparison.Ordinal)
-                ? new HashSet<string>(checkpoint.CompletedIds, StringComparer.Ordinal)
-                : new HashSet<string>(StringComparer.Ordinal);
-        long downloadedBytes = checkpoint?.DownloadedBytes ?? 0;
+        FragmentResumeState resume = FragmentResumeState.FromCheckpoint(
+            checkpoint,
+            format.ManifestUri.AbsoluteUri,
+            format.Id,
+            formatDirectory);
 
         IReadOnlyList<ExternalMediaFragment> fragments = providerData.Fragments.Count > 0
             ? providerData.Fragments
-            : [new ExternalMediaFragment("fragment-0000000000", new Uri(providerData.DirectUrl))];
+            : [new ExternalMediaFragment(CreateStableId(new Uri(providerData.DirectUrl), 0), new Uri(providerData.DirectUrl))];
+        long order = 0;
         foreach (ExternalMediaFragment fragment in fragments)
         {
-            string partPath = Path.Combine(fragmentsDirectory, $"{Sanitize(fragment.Id)}.part");
-            if (completed.Contains(fragment.Id) && File.Exists(partPath))
+            FragmentPlanEntry plan = CreateFragmentPlan(fragment, order++);
+            if (resume.TryReuse(plan))
             {
                 continue;
             }
 
+            long currentBytes = resume.DownloadedBytes;
             long bytes = await FragmentRetryPolicy.ExecuteAsync(
                 token => MediaHttp.DownloadToFileAsync(
                     httpClient,
                     fragment.Uri,
                     metadata,
-                    partPath,
+                    Path.Combine(formatDirectory, plan.RelativePath),
                     null,
                     null,
-                    RemainingLimit(maximumBytes, downloadedBytes),
+                    MaximumFragmentDownloadLimit(maximumBytes, currentBytes),
                     token),
                 cancellationToken).ConfigureAwait(false);
-            downloadedBytes = checked(downloadedBytes + bytes);
-            completed.Add(fragment.Id);
+            resume.Complete(plan, bytes);
             await checkpointStore.SaveAsync(
-                new FragmentCheckpoint(
+                resume.ToCheckpoint(
                     format.ManifestUri.AbsoluteUri,
                     format.Id,
-                    completed.Order(StringComparer.Ordinal).ToArray(),
-                    downloadedBytes,
+                    FragmentIdentity.ShortHash("external", format.ManifestUri.AbsoluteUri, format.Id, providerData.Protocol),
+                    resume.LiveElapsedSeconds,
                     DateTimeOffset.UtcNow),
                 cancellationToken).ConfigureAwait(false);
             progress?.Report(new MediaDownloadProgress(
                 "Downloading extracted media",
-                completed.Count,
+                resume.Count,
                 fragments.Count,
-                downloadedBytes,
-                $"Downloaded extracted fragment {completed.Count} of {fragments.Count}."));
+                resume.DownloadedBytes,
+                $"Downloaded extracted fragment {resume.Count} of {fragments.Count}."));
         }
 
         string outputPath = Path.Combine(formatDirectory, "stream.bin");
-        await AssembleAsync(fragmentsDirectory, outputPath, cancellationToken).ConfigureAwait(false);
-        return new StreamDownloadResult(outputPath, fragments.Count, downloadedBytes, false);
+        await FragmentAssembler.AssembleAsync(
+            resume.ExistingPathsInOrder(),
+            outputPath,
+            "No extracted media fragments were downloaded.",
+            cancellationToken).ConfigureAwait(false);
+        return new StreamDownloadResult(outputPath, fragments.Count, resume.DownloadedBytes, false);
     }
 
-    private static long? RemainingLimit(long? maximumBytes, long downloadedBytes)
-    {
-        if (maximumBytes is not long limit)
-        {
-            return null;
-        }
+    internal static string CreateStableId(Uri uri, int occurrence)
+        => occurrence == 0
+            ? $"fragment-{FragmentIdentity.ShortHash(uri.AbsoluteUri)[..20].ToLowerInvariant()}"
+            : $"fragment-{FragmentIdentity.ShortHash(uri.AbsoluteUri)[..20].ToLowerInvariant()}-{occurrence:D4}";
 
-        long remaining = limit - downloadedBytes;
+    private static FragmentPlanEntry CreateFragmentPlan(ExternalMediaFragment fragment, long order)
+    {
+        string identity = FragmentIdentity.Create(fragment.Uri, contentKey: "external-fragment-v2");
+        return new FragmentPlanEntry(
+            fragment.Id,
+            fragment.Uri,
+            order,
+            Path.Combine("fragments", FragmentIdentity.StableFileName(fragment.Id, identity, "external")),
+            identity);
+    }
+
+    private static long? MaximumFragmentDownloadLimit(long? maximumBytes, long downloadedBytes)
+    {
+        long remaining = maximumBytes is long limit
+            ? limit - downloadedBytes
+            : MaximumFragmentBytes;
         if (remaining <= 0)
         {
-            throw new InvalidDataException($"Media capture exceeded the configured {limit} byte limit.");
+            throw new InvalidDataException($"Media capture exceeded the configured {maximumBytes} byte limit.");
         }
 
-        return remaining;
-    }
-
-    private static async Task AssembleAsync(
-        string fragmentsDirectory,
-        string destinationPath,
-        CancellationToken cancellationToken)
-    {
-        string[] fragments = Directory
-            .EnumerateFiles(fragmentsDirectory, "*.part", SearchOption.TopDirectoryOnly)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        if (fragments.Length == 0)
-        {
-            throw new InvalidDataException("No extracted media fragments were downloaded.");
-        }
-
-        string temporaryPath = $"{destinationPath}.assembling";
-        await using (FileStream destination = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            128 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan))
-        {
-            foreach (string fragment in fragments)
-            {
-                await using FileStream source = new(
-                    fragment,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    128 * 1024,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
-            }
-
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(temporaryPath, destinationPath, overwrite: true);
-    }
-
-    private static string Sanitize(string value)
-    {
-        HashSet<char> invalid = new(Path.GetInvalidFileNameChars());
-        string sanitized = new(value.Select(character => invalid.Contains(character) ? '_' : character).ToArray());
-        return sanitized.Length == 0 ? "format" : sanitized;
+        return Math.Min(remaining, MaximumFragmentBytes);
     }
 }
