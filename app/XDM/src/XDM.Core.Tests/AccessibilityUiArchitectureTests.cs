@@ -11,6 +11,7 @@ public sealed class AccessibilityUiArchitectureTests
         "DiagnosticsView.axaml",
         "DownloadsView.axaml",
         "MediaView.axaml",
+        "RecoveryView.axaml",
         "QueuesView.axaml",
         "SchedulerView.axaml",
         "SettingsView.axaml",
@@ -53,6 +54,96 @@ public sealed class AccessibilityUiArchitectureTests
                 string.IsNullOrWhiteSpace(control.Attribute("AutomationProperties.AutomationId")?.Value),
                 $"{control.Name.LocalName} is missing a stable automation id.");
         });
+    }
+
+
+    [Fact]
+    public void MiniWindowParticipatesInLocalizationAccessibilityAndMainActionState()
+    {
+        XElement[] elements = LoadMiniWindow().DescendantsAndSelf().ToArray();
+        Assert.Contains(elements, static element =>
+            string.Equals(element.Attribute("AutomationProperties.AutomationId")?.Value, "MiniDownloads", StringComparison.Ordinal)
+            && string.Equals(element.Attribute("AutomationProperties.Name")?.Value, "{Binding Localization[ui_mini_downloads]}", StringComparison.Ordinal));
+
+        Assert.Contains(elements, static element =>
+            string.Equals(element.Attribute("AutomationProperties.AutomationId")?.Value, "MiniPauseSelectedTransfer", StringComparison.Ordinal)
+            && string.Equals(element.Attribute("IsEnabled")?.Value, "{Binding CanPauseSelectedTransfer}", StringComparison.Ordinal)
+            && string.Equals(element.Attribute("Content")?.Value, "{Binding Localization[ui_pause]}", StringComparison.Ordinal));
+        Assert.Contains(elements, static element =>
+            string.Equals(element.Attribute("AutomationProperties.AutomationId")?.Value, "MiniResumeSelectedTransfer", StringComparison.Ordinal)
+            && string.Equals(element.Attribute("IsEnabled")?.Value, "{Binding CanResumeSelectedTransfer}", StringComparison.Ordinal)
+            && string.Equals(element.Attribute("Content")?.Value, "{Binding Localization[ui_resume]}", StringComparison.Ordinal));
+        Assert.Contains(elements, static element =>
+            string.Equals(element.Attribute("AutomationProperties.AutomationId")?.Value, "MiniCancelSelectedTransfer", StringComparison.Ordinal)
+            && string.Equals(element.Attribute("IsEnabled")?.Value, "{Binding CanCancelSelectedTransfer}", StringComparison.Ordinal)
+            && string.Equals(element.Attribute("Content")?.Value, "{Binding Localization[ui_cancel]}", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ShellNavigationDocumentsAllNineNumericShortcuts()
+    {
+        XElement[] elements = LoadMainWindow().DescendantsAndSelf().ToArray();
+        XElement navigation = Assert.Single(elements, static element =>
+            string.Equals(element.Attribute("AutomationProperties.AutomationId")?.Value, "PrimaryNavigation", StringComparison.Ordinal));
+        XAttribute? helpText = navigation.Attribute("AutomationProperties.HelpText");
+        Assert.NotNull(helpText);
+        Assert.Equal("{Binding Localization[ui_primary_navigation_help]}", helpText.Value);
+    }
+
+    [Fact]
+    public void ShellAndPageFixturesDoNotExposeHardCodedVisibleCopy()
+    {
+        List<XElement> roots = [LoadMainWindow(), LoadMiniWindow()];
+        roots.AddRange(ViewFixtures.Select(LoadView));
+        string[] visibleAttributes = ["Text", "Content", "Header", "PlaceholderText", "Watermark", "Title"];
+        string[] allowedLiterals = ["—"];
+
+        foreach (XElement element in roots.SelectMany(static root => root.DescendantsAndSelf()))
+        {
+            foreach (string attributeName in visibleAttributes)
+            {
+                string? value = element.Attribute(attributeName)?.Value;
+                if (string.IsNullOrWhiteSpace(value)
+                    || value.StartsWith("{Binding", StringComparison.Ordinal)
+                    || value.StartsWith("{DynamicResource", StringComparison.Ordinal)
+                    || value.StartsWith("{StaticResource", StringComparison.Ordinal)
+                    || allowedLiterals.Contains(value, StringComparer.Ordinal)
+                    || !value.Any(char.IsLetter))
+                {
+                    continue;
+                }
+
+                Assert.True(false, $"{element.Name.LocalName}.{attributeName} has non-localized visible text: {value}");
+            }
+        }
+    }
+
+    [Fact]
+    public void SettingsChoiceControlsUseLocalizedChoiceViewModels()
+    {
+        XElement[] settings = LoadView("SettingsView.axaml").DescendantsAndSelf().ToArray();
+        AssertLocalizedChoice(settings, "DuplicateFileBehavior", "DuplicateBehaviorChoices", "SelectedDuplicateBehaviorChoice");
+        AssertLocalizedChoice(settings, "DuplicateUrlBehavior", "DuplicateUrlBehaviorChoices", "SelectedDuplicateUrlBehaviorChoice");
+        AssertLocalizedChoice(settings, "ProxyMode", "ProxyModeChoices", "SelectedProxyModeChoice");
+        AssertLocalizedChoice(settings, "ProxyAuthenticationMode", "ProxyAuthenticationModeChoices", "SelectedProxyAuthenticationModeChoice");
+        AssertLocalizedChoice(settings, "Aria2ConnectionMode", "Aria2ConnectionModeChoices", "SelectedAria2ConnectionModeChoice");
+        AssertLocalizedChoice(settings, "Settings_UpdateChannel", "UpdateChannelChoices", "SelectedUpdateChannelChoice");
+    }
+
+    private static void AssertLocalizedChoice(
+        XElement[] elements,
+        string automationId,
+        string itemsSource,
+        string selectedItem)
+    {
+        XElement comboBox = Assert.Single(elements, element =>
+            element.Name.LocalName == "ComboBox"
+            && string.Equals(element.Attribute("AutomationProperties.AutomationId")?.Value, automationId, StringComparison.Ordinal));
+        Assert.Equal($"{{Binding {itemsSource}}}", comboBox.Attribute("ItemsSource")?.Value);
+        Assert.Equal($"{{Binding {selectedItem}}}", comboBox.Attribute("SelectedItem")?.Value);
+        Assert.Contains(comboBox.Descendants(), static element =>
+            element.Name.LocalName == "TextBlock"
+            && string.Equals(element.Attribute("Text")?.Value, "{Binding Label}", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -106,6 +197,11 @@ public sealed class AccessibilityUiArchitectureTests
     private static XElement LoadMainWindow()
         => Assert.IsType<XElement>(XDocument.Load(
             Path.Combine(AppContext.BaseDirectory, "Fixtures", "MainWindow.axaml"),
+            LoadOptions.None).Root);
+
+    private static XElement LoadMiniWindow()
+        => Assert.IsType<XElement>(XDocument.Load(
+            Path.Combine(AppContext.BaseDirectory, "Fixtures", "MiniWindow.axaml"),
             LoadOptions.None).Root);
 
     private static XElement LoadView(string name)

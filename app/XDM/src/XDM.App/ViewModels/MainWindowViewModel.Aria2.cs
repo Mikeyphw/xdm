@@ -111,6 +111,11 @@ public partial class MainWindowViewModel
 
     partial void OnSelectedAria2ConnectionModeChanged(Aria2ConnectionMode value)
     {
+        if (!_localizedChoiceSelectionSyncing)
+        {
+            SelectChoice(Aria2ConnectionModeChoices, value, choice => SelectedAria2ConnectionModeChoice = choice);
+        }
+
         OnPropertyChanged(nameof(IsManagedAria2Mode));
         OnPropertyChanged(nameof(CanStartManagedAria2));
     }

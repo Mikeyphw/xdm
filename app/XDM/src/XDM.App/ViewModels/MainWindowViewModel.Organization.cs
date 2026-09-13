@@ -73,7 +73,14 @@ public partial class MainWindowViewModel
         => _ = RefreshDestinationConflictPreviewAsync();
 
     partial void OnSelectedDuplicateBehaviorChanged(string value)
-        => _ = RefreshDestinationConflictPreviewAsync();
+    {
+        if (!_localizedChoiceSelectionSyncing)
+        {
+            SyncDuplicateBehaviorChoiceFromValue();
+        }
+
+        _ = RefreshDestinationConflictPreviewAsync();
+    }
 
     private async Task RefreshDestinationConflictPreviewAsync()
     {

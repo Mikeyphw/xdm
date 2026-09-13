@@ -120,19 +120,106 @@ public sealed class LegacyTranslationCatalog
             requested = "en";
         }
 
+        string normalized = LegacyLanguageIndex.NormalizeIdentifier(requested);
         LanguageDefinition? exact = Languages.FirstOrDefault(language =>
             string.Equals(language.Id, requested, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(language.CultureName, requested, StringComparison.OrdinalIgnoreCase));
+            || string.Equals(language.CultureName, requested, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(language.Id, normalized, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(language.CultureName, normalized, StringComparison.OrdinalIgnoreCase));
         if (exact is not null)
         {
             return exact;
         }
 
-        string neutral = requested.Split('-', StringSplitOptions.RemoveEmptyEntries)[0];
-        LanguageDefinition? neutralMatch = Languages.FirstOrDefault(language =>
-            string.Equals(language.CultureName.Split('-')[0], neutral, StringComparison.OrdinalIgnoreCase));
+        CultureInfo requestedCulture = GetCultureOrDefault(normalized, systemCulture);
+        string language = requestedCulture.TwoLetterISOLanguageName.Length > 0
+            ? requestedCulture.TwoLetterISOLanguageName
+            : normalized.Split('-', StringSplitOptions.RemoveEmptyEntries)[0];
+        string? script = ResolveScriptHint(requestedCulture.Name, requested);
+
+        LanguageDefinition? scriptMatch = script is null
+            ? null
+            : Languages.FirstOrDefault(languageDefinition =>
+                string.Equals(GetLanguage(languageDefinition.CultureName), language, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(ResolveScriptHint(languageDefinition.CultureName, languageDefinition.Id), script, StringComparison.OrdinalIgnoreCase));
+        if (scriptMatch is not null)
+        {
+            return scriptMatch;
+        }
+
+        LanguageDefinition? parentMatch = FindParentCultureMatch(requestedCulture);
+        if (parentMatch is not null)
+        {
+            return parentMatch;
+        }
+
+        LanguageDefinition? neutralMatch = Languages.FirstOrDefault(languageDefinition =>
+            string.Equals(GetLanguage(languageDefinition.CultureName), language, StringComparison.OrdinalIgnoreCase));
         return neutralMatch
-            ?? Languages.FirstOrDefault(static language => string.Equals(language.Id, "en", StringComparison.OrdinalIgnoreCase))
+            ?? Languages.FirstOrDefault(static languageDefinition => string.Equals(languageDefinition.Id, "en", StringComparison.OrdinalIgnoreCase))
             ?? new LanguageDefinition("en", "English", "English.txt", "en", false);
+    }
+
+    private LanguageDefinition? FindParentCultureMatch(CultureInfo culture)
+    {
+        CultureInfo current = culture;
+        while (!string.IsNullOrEmpty(current.Name))
+        {
+            LanguageDefinition? match = Languages.FirstOrDefault(language =>
+                string.Equals(language.CultureName, current.Name, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(language.Id, current.Name, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+            {
+                return match;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private static CultureInfo GetCultureOrDefault(string cultureName, CultureInfo fallback)
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(cultureName);
+        }
+        catch (CultureNotFoundException)
+        {
+            return fallback.Name.Length > 0 ? fallback : CultureInfo.GetCultureInfo("en");
+        }
+    }
+
+    private static string GetLanguage(string cultureName)
+        => cultureName.Split('-', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? cultureName;
+
+    private static string? ResolveScriptHint(string cultureName, string original)
+    {
+        string token = cultureName.Length > 0 ? cultureName : original;
+        string[] parts = token.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        string? explicitScript = parts.FirstOrDefault(static part =>
+            part.Length == 4
+            && (string.Equals(part, "Hans", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(part, "Hant", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(part, "Latn", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(part, "Cyrl", StringComparison.OrdinalIgnoreCase)));
+        if (explicitScript is not null)
+        {
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(explicitScript.ToLowerInvariant());
+        }
+
+        if (parts.Length >= 2 && string.Equals(parts[0], "zh", StringComparison.OrdinalIgnoreCase))
+        {
+            string region = parts[^1].ToUpperInvariant();
+            return region is "TW" or "HK" or "MO" ? "Hant" : region is "CN" or "SG" ? "Hans" : null;
+        }
+
+        if (parts.Length >= 2 && string.Equals(parts[0], "sr", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(parts[^1], "BA", StringComparison.OrdinalIgnoreCase) ? "Latn" : "Cyrl";
+        }
+
+        return null;
     }
 }

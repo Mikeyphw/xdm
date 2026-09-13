@@ -47,7 +47,7 @@
 
               <Grid x:Name="ConversionWorkspace" ColumnDefinitions="2*,*" ColumnSpacing="14" RowSpacing="12" MinHeight="300">
                 <Border x:Name="ConversionJobsPane" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
-                  <ListBox ItemsSource="{Binding ConversionJobs}" SelectedItem="{Binding SelectedConversionJob}" Background="Transparent" BorderThickness="0" Padding="7" AutomationProperties.Name="Conversion Job" AutomationProperties.AutomationId="Conversion_SelectedConversionJob">
+                  <ListBox ItemsSource="{Binding ConversionJobs}" SelectedItem="{Binding SelectedConversionJob}" Background="Transparent" BorderThickness="0" Padding="7" AutomationProperties.Name="{Binding Localization[ui_conversion_job]}" AutomationProperties.AutomationId="Conversion_SelectedConversionJob">
                     <ListBox.ItemsPanel>
                       <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
                     </ListBox.ItemsPanel>

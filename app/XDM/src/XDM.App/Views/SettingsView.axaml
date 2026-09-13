@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" x:Class="XDM.App.Views.SettingsView" mc:Ignorable="d" KeyboardNavigation.TabNavigation="Continue" AutomationProperties.AccessibilityView="Control">
   <Grid RowDefinitions="*,Auto,Auto">
-    <TabControl AutomationProperties.AutomationId="SettingsCategories" AutomationProperties.Name="Settings categories" AutomationProperties.LandmarkType="Navigation" AutomationProperties.AccessibilityView="Control">
+    <TabControl AutomationProperties.AutomationId="SettingsCategories" AutomationProperties.Name="{Binding Localization[ui_settings_categories]}" AutomationProperties.LandmarkType="Navigation" AutomationProperties.AccessibilityView="Control">
       <TabItem Header="{Binding Localization[ui_settings_general]}">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Spacing="14" MaxWidth="920" Margin="0,14,12,14" HorizontalAlignment="Left">
@@ -27,7 +27,13 @@
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_duplicate_file_behavior]}" Classes="form-label"/>
-                    <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="DuplicateFileBehavior"/>
+                    <ComboBox ItemsSource="{Binding DuplicateBehaviorChoices}" SelectedItem="{Binding SelectedDuplicateBehaviorChoice}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="DuplicateFileBehavior">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_default_connections]}" Classes="form-label"/>
@@ -51,7 +57,13 @@
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_duplicate_url_behavior]}" Classes="form-label"/>
-                    <ComboBox ItemsSource="{Binding DuplicateUrlBehaviors}" SelectedItem="{Binding SelectedDuplicateUrlBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_url_behavior]}" AutomationProperties.AutomationId="DuplicateUrlBehavior"/>
+                    <ComboBox ItemsSource="{Binding DuplicateUrlBehaviorChoices}" SelectedItem="{Binding SelectedDuplicateUrlBehaviorChoice}" AutomationProperties.Name="{Binding Localization[ui_duplicate_url_behavior]}" AutomationProperties.AutomationId="DuplicateUrlBehavior">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                   </StackPanel>
                   <CheckBox Grid.Column="1" Content="{Binding Localization[ui_compute_sha256_content_identity_after_completion]}" IsChecked="{Binding ComputeContentHashes}" VerticalAlignment="Bottom" Margin="0,0,0,8" AutomationProperties.AutomationId="ComputeContentHashes"/>
                 </Grid>
@@ -158,7 +170,13 @@
                 <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_proxy_mode]}" Classes="form-label"/>
-                    <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding SelectedProxyMode}" AutomationProperties.Name="{Binding Localization[ui_proxy_mode]}" AutomationProperties.AutomationId="ProxyMode"/>
+                    <ComboBox ItemsSource="{Binding ProxyModeChoices}" SelectedItem="{Binding SelectedProxyModeChoice}" AutomationProperties.Name="{Binding Localization[ui_proxy_mode]}" AutomationProperties.AutomationId="ProxyMode">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_proxy_host]}" Classes="form-label"/>
@@ -172,7 +190,13 @@
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_proxy_authentication_mode]}" Classes="form-label"/>
-                    <ComboBox ItemsSource="{Binding ProxyAuthenticationModes}" SelectedItem="{Binding SelectedProxyAuthenticationMode}" AutomationProperties.Name="{Binding Localization[ui_proxy_authentication_mode]}" AutomationProperties.AutomationId="ProxyAuthenticationMode"/>
+                    <ComboBox ItemsSource="{Binding ProxyAuthenticationModeChoices}" SelectedItem="{Binding SelectedProxyAuthenticationModeChoice}" AutomationProperties.Name="{Binding Localization[ui_proxy_authentication_mode]}" AutomationProperties.AutomationId="ProxyAuthenticationMode">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_proxy_username]}" Classes="form-label"/>
@@ -233,7 +257,13 @@
                 <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_connection_mode]}" Classes="form-label"/>
-                    <ComboBox ItemsSource="{Binding Aria2ConnectionModes}" SelectedItem="{Binding SelectedAria2ConnectionMode}" AutomationProperties.Name="{Binding Localization[ui_aria2_connection_mode]}" AutomationProperties.AutomationId="Aria2ConnectionMode"/>
+                    <ComboBox ItemsSource="{Binding Aria2ConnectionModeChoices}" SelectedItem="{Binding SelectedAria2ConnectionModeChoice}" AutomationProperties.Name="{Binding Localization[ui_aria2_connection_mode]}" AutomationProperties.AutomationId="Aria2ConnectionMode">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_rpc_endpoint]}" Classes="form-label"/>
@@ -306,7 +336,7 @@
                     <Button HorizontalAlignment="Left" Classes="primary" Content="{Binding Localization[ui_add_to_aria2]}" Command="{Binding AddAria2DownloadCommand}"/>
                   </StackPanel>
                 </Border>
-                <ListBox ItemsSource="{Binding Aria2Tasks}" SelectedItem="{Binding SelectedAria2Task}" MaxHeight="310" AutomationProperties.Name="Aria2 Task" AutomationProperties.AutomationId="Settings_SelectedAria2Task">
+                <ListBox ItemsSource="{Binding Aria2Tasks}" SelectedItem="{Binding SelectedAria2Task}" MaxHeight="310" AutomationProperties.Name="{Binding Localization[ui_aria2_task]}" AutomationProperties.AutomationId="Settings_SelectedAria2Task">
                   <ListBox.ItemTemplate>
                     <DataTemplate>
                       <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="2*,Auto" ColumnSpacing="12" RowSpacing="5" Margin="2" AutomationProperties.Name="{Binding DisplayName}" AutomationProperties.ItemStatus="{Binding StatusText}" AutomationProperties.AccessibilityView="Content">
@@ -353,13 +383,13 @@
                   <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_add_or_replace]}" Command="{Binding AddServerCredentialCommand}"/>
                   <Button Classes="danger" Content="{Binding Localization[ui_remove_selected]}" Command="{Binding RemoveSelectedServerCredentialCommand}"/>
                 </WrapPanel>
-                <ListBox ItemsSource="{Binding ServerCredentials}" SelectedItem="{Binding SelectedServerCredential}" MaxHeight="150" AutomationProperties.Name="Server Credential" AutomationProperties.AutomationId="Settings_SelectedServerCredential">
+                <ListBox ItemsSource="{Binding ServerCredentials}" SelectedItem="{Binding SelectedServerCredential}" MaxHeight="150" AutomationProperties.Name="{Binding Localization[ui_server_credential]}" AutomationProperties.AutomationId="Settings_SelectedServerCredential">
                   <ListBox.ItemTemplate>
                     <DataTemplate>
                       <Grid ColumnDefinitions="2*,*,Auto" ColumnSpacing="10" Margin="2">
                         <TextBlock Text="{Binding Host}" Foreground="{DynamicResource XdmBodyForeground}"/>
                         <TextBlock Grid.Column="1" Text="{Binding Username}" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
-                        <TextBlock Grid.Column="2" Text="Saved" Foreground="{DynamicResource XdmAccentForeground}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Localization[ui_saved]}" Foreground="{DynamicResource XdmAccentForeground}"/>
                       </Grid>
                     </DataTemplate>
                   </ListBox.ItemTemplate>
@@ -395,7 +425,13 @@
                 <TextBlock Text="{Binding Localization[ui_updates]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
                 <Grid ColumnDefinitions="Auto,220" ColumnSpacing="12">
                   <TextBlock Text="{Binding Localization[ui_update_channel]}" Classes="label" VerticalAlignment="Center"/>
-                  <ComboBox Grid.Column="1" ItemsSource="{Binding UpdateChannels}" SelectedItem="{Binding SelectedUpdateChannel}" AutomationProperties.Name="{Binding Localization[ui_update_channel]}" AutomationProperties.AutomationId="Settings_UpdateChannel"/>
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding UpdateChannelChoices}" SelectedItem="{Binding SelectedUpdateChannelChoice}" AutomationProperties.Name="{Binding Localization[ui_update_channel]}" AutomationProperties.AutomationId="Settings_UpdateChannel">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                 </Grid>
                 <CheckBox Content="{Binding Localization[ui_automatic_update_checks]}" IsChecked="{Binding AutomaticUpdateChecks}" AutomationProperties.AutomationId="Settings_AutomaticUpdateChecks"/>
                 <CheckBox Content="{Binding Localization[ui_notify_when_update_staged]}" IsChecked="{Binding NotifyWhenUpdateStaged}" AutomationProperties.AutomationId="Settings_NotifyWhenUpdateStaged"/>

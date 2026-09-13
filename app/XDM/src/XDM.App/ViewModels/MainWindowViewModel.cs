@@ -133,6 +133,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         RuntimeDescription = platformInfo.Runtime;
 
         Localization = localization;
+        InitializeLocalizedChoices();
         Sections = new ObservableCollection<NavigationItem>
         {
             new("downloads", "nav_downloads", "M12 3V14.17L16.59 9.59L18 11L11 18L4 11L5.41 9.59L10 14.17V3H12M4 19H18V21H4V19Z", "nav_downloads_summary", localization),
@@ -185,11 +186,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         PreviousSessionWasUnclean = recoveryService.PreviousSessionWasUnclean;
         OnPropertyChanged(nameof(ShowRecoveryReview));
         OnPropertyChanged(nameof(RecoveryReviewSummary));
-        RecoveryStatus = recoveryService.SafeMode
-            ? "Safe mode is active; browser integration and scheduler startup were skipped."
-            : recoveryService.PreviousSessionWasUnclean
-                ? "The previous session did not shut down cleanly. Review recovered downloads before resuming them."
-                : "No recovery action is currently required.";
+        RecoveryStatus = FormatRecoveryStatus();
         ApplyRecoveryCandidates(downloadRecoveryCoordinator.Current);
         downloadRecoveryCoordinator.Changed += OnRecoveryCandidatesChanged;
         if (recoveryService.PreviousSessionWasUnclean)
@@ -773,6 +770,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasSelectedDownload));
         OnPropertyChanged(nameof(HasNoSelectedDownload));
         OnPropertyChanged(nameof(CanRunTransferHealthProbe));
+        RefreshMiniWindowActionState();
     }
 
     partial void OnIsTransferHealthProbeRunningChanged(bool value)
@@ -1984,7 +1982,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!string.Equals(SelectedDownload.StatusText, nameof(DownloadState.Completed), StringComparison.Ordinal)
+        if (SelectedDownload.State != DownloadState.Completed
             || !File.Exists(SelectedDownload.DestinationPath))
         {
             OperationMessage = "Only a completed download whose file still exists can be converted.";
@@ -1992,7 +1990,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         SetConversionSourcePath(SelectedDownload.DestinationPath);
-        SelectedSection = Sections.FirstOrDefault(static section => section.Title == "Conversion") ?? SelectedSection;
+        SelectSection("conversion");
         ConversionStatus = $"Ready to convert {SelectedDownload.FileName}.";
     }
 
@@ -2684,6 +2682,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
         OnPropertyChanged(nameof(AggregateProgressText));
         OnPropertyChanged(nameof(MiniDownloads));
+        RefreshMiniWindowActionState();
         OnPropertyChanged(nameof(RecoveryItemCount));
         OnPropertyChanged(nameof(HasRecoveryItems));
         OnPropertyChanged(nameof(ShowRecoveryReview));
@@ -3036,6 +3035,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             RefreshBulkSelectionState();
         }
+
+        if (sender is DownloadItemViewModel download
+            && string.Equals(download.Id, SelectedDownload?.Id, StringComparison.Ordinal)
+            && eventArgs.PropertyName is nameof(DownloadItemViewModel.CanPause)
+                or nameof(DownloadItemViewModel.CanResume)
+                or nameof(DownloadItemViewModel.CanCancel)
+                or nameof(DownloadItemViewModel.State))
+        {
+            RefreshMiniWindowActionState();
+        }
     }
 
     private void RefreshBulkSelectionState()
@@ -3207,6 +3216,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
+
+    private string FormatRecoveryStatus()
+        => _recoveryService.SafeMode
+            ? _localization["ui_safe_mode_startup_skipped"]
+            : _recoveryService.PreviousSessionWasUnclean
+                ? _localization["ui_previous_session_unclean_recovery_prompt"]
+                : _localization["ui_no_recovery_action_required"];
+
     private void OnLocalizationChanged(object? sender, EventArgs eventArgs)
     {
         if (_dispatcher.CheckAccess())
@@ -3226,6 +3243,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             section.Refresh();
         }
 
+        RefreshLocalizedChoices();
         RefreshDownloadStatusFilters();
         OnPropertyChanged(nameof(BulkSelectionSummary));
         OnPropertyChanged(nameof(RecoveryReviewSummary));
@@ -3238,6 +3256,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         CurrentTitle = SelectedSection?.Title ?? _localization["nav_downloads"];
         CurrentSummary = SelectedSection?.Summary ?? string.Empty;
+        RecoveryStatus = FormatRecoveryStatus();
         CoreStatus = _applicationState.Current.CoreReady ? _localization["core_ready"] : _localization["core_starting"];
         AggregateSpeed = LocaleFormatter.FormatRate(_applicationState.Current.AggregateBytesPerSecond, _localization.Culture);
         RefreshFilteredDownloads();

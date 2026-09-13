@@ -32,12 +32,12 @@
         <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
             <StackPanel Spacing="4">
-              <TextBlock Text="SUBSYSTEM HEALTH &amp; REPAIR" Classes="label" AutomationProperties.HeadingLevel="2"/>
-              <TextBlock Text="Browser bridge, native-host registration, aria2 RPC, FFmpeg, proxy configuration, and destination-disk access." TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+              <TextBlock Text="{Binding Localization[ui_subsystem_health_and_repair]}" Classes="label" AutomationProperties.HeadingLevel="2"/>
+              <TextBlock Text="{Binding Localization[ui_subsystem_health_description]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
             </StackPanel>
             <Button Grid.Column="1"
                     Classes="primary"
-                    Content="Refresh health"
+                    Content="{Binding Localization[ui_refresh_health]}"
                     Command="{Binding RefreshSubsystemHealthCommand}"
                     IsEnabled="{Binding CanRefreshSubsystemHealth}"
                     AutomationProperties.AutomationId="Diagnostics_RefreshSubsystemHealth"/>
@@ -73,13 +73,13 @@
           <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
               <StackPanel Spacing="4">
-                <TextBlock Text="DETERMINISTIC TEST DOWNLOAD" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <TextBlock Text="{Binding Localization[ui_deterministic_test_download]}" Classes="label" AutomationProperties.HeadingLevel="3"/>
                 <TextBlock Text="{Binding DeterministicDownloadTestStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
                 <TextBlock Text="{Binding DeterministicDownloadTestDetails}" TextWrapping="Wrap" FontFamily="monospace" FontSize="10" Foreground="{DynamicResource XdmMutedForeground}"/>
               </StackPanel>
               <Button Grid.Column="1"
                       Classes="primary"
-                      Content="Run 1 MiB test"
+                      Content="{Binding Localization[ui_run_1_mib_test]}"
                       Command="{Binding RunDeterministicDownloadTestCommand}"
                       IsEnabled="{Binding CanRunDeterministicDownloadTest}"
                       VerticalAlignment="Top"
@@ -93,15 +93,15 @@
         <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
             <StackPanel Spacing="4">
-              <TextBlock Text="SELECTED-TRANSFER WORKBENCH" Classes="label" AutomationProperties.HeadingLevel="2"/>
-              <TextBlock Text="Instrumented engine events and bounded live checks for one transfer." TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
+              <TextBlock Text="{Binding Localization[ui_selected_transfer_workbench]}" Classes="label" AutomationProperties.HeadingLevel="2"/>
+              <TextBlock Text="{Binding Localization[ui_selected_transfer_workbench_description]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
             </StackPanel>
             <ComboBox Grid.Column="1"
                       MinWidth="300"
                       ItemsSource="{Binding Downloads}"
                       SelectedItem="{Binding SelectedDownload}"
                       AutomationProperties.AutomationId="Diagnostics_TransferSelector"
-                      AutomationProperties.Name="Transfer to diagnose">
+                      AutomationProperties.Name="{Binding Localization[ui_transfer_to_diagnose]}">
               <ComboBox.ItemTemplate>
                 <DataTemplate>
                   <StackPanel>
@@ -120,16 +120,16 @@
               <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                   <StackPanel Spacing="3">
-                    <TextBlock Text="LIVE CONNECTION PROBE" Classes="label" AutomationProperties.HeadingLevel="3"/>
-                    <TextBlock Text="DNS, direct TCP, TLS, configured HTTP/range, and a 1 MiB destination write." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                    <TextBlock Text="{Binding Localization[ui_live_connection_probe]}" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                    <TextBlock Text="{Binding Localization[ui_live_connection_probe_description]}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
                   </StackPanel>
                   <Button Grid.Column="1"
                           Classes="primary"
-                          Content="Run probe"
+                          Content="{Binding Localization[ui_run_probe]}"
                           Command="{Binding RunTransferHealthProbeCommand}"
                           IsEnabled="{Binding CanRunTransferHealthProbe}"
                           AutomationProperties.AutomationId="Diagnostics_RunTransferProbe"
-                          AutomationProperties.Name="Run bounded transfer health probe"/>
+                          AutomationProperties.Name="{Binding Localization[ui_run_bounded_transfer_health_probe]}"/>
                 </Grid>
                 <TextBlock Text="{Binding TransferHealthProbeStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
                 <ItemsControl ItemsSource="{Binding TransferHealthProbeStages}">
@@ -156,16 +156,16 @@
               <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                   <StackPanel Spacing="3">
-                    <TextBlock Text="TRANSFER TIMELINE" Classes="label" AutomationProperties.HeadingLevel="3"/>
-                    <TextBlock Text="Scheduling → backend → proxy/connection → HTTP/resume → retry → disk → verification → finalization" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
+                    <TextBlock Text="{Binding Localization[ui_transfer_timeline]}" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                    <TextBlock Text="{Binding Localization[ui_transfer_timeline_description]}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}"/>
                   </StackPanel>
                   <Button Grid.Column="1"
                           Classes="secondary"
-                          Content="Clear selected"
+                          Content="{Binding Localization[ui_clear_selected]}"
                           Command="{Binding ClearSelectedTransferDiagnosticsCommand}"
                           IsEnabled="{Binding HasSelectedDownload}"
                           AutomationProperties.AutomationId="Diagnostics_ClearSelectedTimeline"
-                          AutomationProperties.Name="Clear selected transfer timeline"/>
+                          AutomationProperties.Name="{Binding Localization[ui_clear_selected_transfer_timeline]}"/>
                 </Grid>
                 <ItemsControl ItemsSource="{Binding SelectedTransferDiagnostics}">
                   <ItemsControl.ItemTemplate>
@@ -192,14 +192,14 @@
           <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="14">
             <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="8">
-                <TextBlock Text="RESUME AVAILABILITY" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <TextBlock Text="{Binding Localization[ui_resume_availability]}" Classes="label" AutomationProperties.HeadingLevel="3"/>
                 <TextBlock Text="{Binding SelectedTransferResumeSummary}" TextWrapping="Wrap" Foreground="{DynamicResource XdmBodyForeground}"/>
               </StackPanel>
             </Border>
 
             <Border Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="8">
-                <TextBlock Text="SANITIZED RESPONSE HEADERS" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <TextBlock Text="{Binding Localization[ui_sanitized_response_headers]}" Classes="label" AutomationProperties.HeadingLevel="3"/>
                 <ItemsControl ItemsSource="{Binding SelectedTransferResponseHeaders}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -215,7 +215,7 @@
 
             <Border Grid.Row="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="8">
-                <TextBlock Text="RETRY HISTORY" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <TextBlock Text="{Binding Localization[ui_retry_history]}" Classes="label" AutomationProperties.HeadingLevel="3"/>
                 <ItemsControl ItemsSource="{Binding SelectedTransferRetryHistory}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -235,7 +235,7 @@
 
             <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
               <StackPanel Spacing="8">
-                <TextBlock Text="SEGMENT MAP" Classes="label" AutomationProperties.HeadingLevel="3"/>
+                <TextBlock Text="{Binding Localization[ui_segment_map]}" Classes="label" AutomationProperties.HeadingLevel="3"/>
                 <ItemsControl ItemsSource="{Binding SelectedTransferSegments}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>

@@ -297,7 +297,7 @@
                       Click="ToggleNavigation_Click"
                       ToolTip.Tip="{Binding Localization[ui_application_sections]}"
                       AutomationProperties.Name="{Binding Localization[ui_application_sections]}"
-                      AutomationProperties.HelpText="Open or collapse the application navigation pane."
+                      AutomationProperties.HelpText="{Binding Localization[ui_navigation_toggle_help]}"
                       AutomationProperties.AcceleratorKey="F6"
                       AutomationProperties.AutomationId="NavigationPaneToggle">
                 <PathIcon Data="M3,6 L21,6 M3,12 L21,12 M3,18 L21,18"
@@ -316,7 +316,7 @@
                      ItemsSource="{Binding Sections}"
                      AutomationProperties.Name="{Binding Localization[ui_application_sections]}"
                      AutomationProperties.AutomationId="PrimaryNavigation"
-                     AutomationProperties.HelpText="Use Up and Down Arrow to choose a section. Ctrl+1 through Ctrl+8 jump directly to a section."
+                     AutomationProperties.HelpText="{Binding Localization[ui_primary_navigation_help]}"
                      AutomationProperties.LandmarkType="Navigation"
                      AutomationProperties.AccessibilityView="Control"
                      SelectedItem="{Binding SelectedSection}"
@@ -354,7 +354,7 @@
                     Click="ToggleNavigation_Click"
                     ToolTip.Tip="{Binding Localization[ui_application_sections]}"
                     AutomationProperties.Name="{Binding Localization[ui_application_sections]}"
-                    AutomationProperties.HelpText="Open the application navigation pane."
+                    AutomationProperties.HelpText="{Binding Localization[ui_navigation_toggle_help_content]}"
                     AutomationProperties.AcceleratorKey="F6"
                     AutomationProperties.AutomationId="ContentNavigationToggle">
               <PathIcon Data="M3,6 L21,6 M3,12 L21,12 M3,18 L21,18"
@@ -526,7 +526,7 @@
                 AutomationProperties.LandmarkType="Region"
                 AutomationProperties.AccessibilityView="Control">
             <Grid x:Name="DashboardSummary" ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding IsDashboardSummaryVisible}"
-                  AutomationProperties.Name="Download activity summary"
+                  AutomationProperties.Name="{Binding Localization[ui_download_activity_summary]}"
                   AutomationProperties.LandmarkType="Region">
               <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="10" Padding="15">
                 <StackPanel Spacing="6">

@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="XDM.App.Views.RecoveryView"
-             AutomationProperties.Name="Recovery workbench">
+             AutomationProperties.Name="{Binding Localization[ui_recovery_workbench]}">
   <Grid RowDefinitions="Auto,*" RowSpacing="12">
     <Border Background="{DynamicResource XdmPanelBackground}"
             BorderBrush="{DynamicResource XdmBorderBrush}"
@@ -10,17 +10,17 @@
             Padding="16">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
         <StackPanel Spacing="4">
-          <TextBlock Text="Startup recovery workbench" Classes="section-title"/>
+          <TextBlock Text="{Binding Localization[ui_startup_recovery_workbench]}" Classes="section-title"/>
           <TextBlock Text="{Binding RecoveryCandidateSummary}"
                      Classes="supporting"
                      TextWrapping="Wrap"/>
-          <TextBlock Text="Recovered jobs remain paused until you explicitly validate, resume, repair, or restart them."
+          <TextBlock Text="{Binding Localization[ui_recovery_workbench_description]}"
                      Classes="caption"
                      TextWrapping="Wrap"/>
         </StackPanel>
         <Button Grid.Column="1"
                 Classes="secondary"
-                Content="Scan again"
+                Content="{Binding Localization[ui_scan_again]}"
                 Command="{Binding RefreshRecoveryCommand}"/>
       </Grid>
     </Border>
@@ -32,13 +32,14 @@
               CornerRadius="10"
               Padding="10">
         <Grid RowDefinitions="Auto,*" RowSpacing="8">
-          <TextBlock Text="Recovery items" Classes="card-title" Margin="4"/>
+          <TextBlock Text="{Binding Localization[ui_recovery_items]}" Classes="card-title" Margin="4"/>
           <ListBox Grid.Row="1"
                    ItemsSource="{Binding RecoveryCandidates}"
                    SelectedItem="{Binding SelectedRecoveryCandidate}"
                    Background="Transparent"
                    BorderThickness="0"
-                   AutomationProperties.Name="Recovery candidates">
+                   AutomationProperties.Name="{Binding Localization[ui_recovery_candidates]}"
+                   AutomationProperties.AutomationId="RecoveryCandidates">
             <ListBox.ItemTemplate>
               <DataTemplate>
                 <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="8" RowSpacing="3">
@@ -70,45 +71,45 @@
             </StackPanel>
 
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="7">
-              <TextBlock Text="Classification" Classes="form-label"/>
+              <TextBlock Text="{Binding Localization[ui_classification]}" Classes="form-label"/>
               <TextBlock Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ClassificationText}" Foreground="{DynamicResource XdmAccentForeground}"/>
-              <TextBlock Grid.Row="1" Text="Partial bytes" Classes="form-label"/>
+              <TextBlock Grid.Row="1" Text="{Binding Localization[ui_partial_bytes]}" Classes="form-label"/>
               <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.PartialBytesText}"/>
-              <TextBlock Grid.Row="2" Text="Expected total" Classes="form-label"/>
+              <TextBlock Grid.Row="2" Text="{Binding Localization[ui_expected_total]}" Classes="form-label"/>
               <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ExpectedTotalText}"/>
-              <TextBlock Grid.Row="3" Text="Last checkpoint" Classes="form-label"/>
+              <TextBlock Grid.Row="3" Text="{Binding Localization[ui_last_checkpoint]}" Classes="form-label"/>
               <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.CheckpointText}"/>
-              <TextBlock Grid.Row="4" Text="Resume validators" Classes="form-label"/>
+              <TextBlock Grid.Row="4" Text="{Binding Localization[ui_resume_validators]}" Classes="form-label"/>
               <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ValidatorText}"/>
-              <TextBlock Grid.Row="5" Text="ETag" Classes="form-label"/>
+              <TextBlock Grid.Row="5" Text="{Binding Localization[ui_etag]}" Classes="form-label"/>
               <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.EntityTagText}" Classes="caption" TextWrapping="Wrap"/>
-              <TextBlock Grid.Row="6" Text="Last-Modified" Classes="form-label"/>
+              <TextBlock Grid.Row="6" Text="{Binding Localization[ui_last_modified]}" Classes="form-label"/>
               <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.LastModifiedText}"/>
-              <TextBlock Grid.Row="7" Text="Expected checksum" Classes="form-label"/>
+              <TextBlock Grid.Row="7" Text="{Binding Localization[ui_expected_checksum]}" Classes="form-label"/>
               <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding SelectedRecoveryCandidate.ChecksumText}" Classes="caption" TextWrapping="Wrap"/>
             </Grid>
 
             <Border Background="{DynamicResource XdmInfoSoftBrush}" CornerRadius="8" Padding="12">
               <StackPanel Spacing="5">
-                <TextBlock Text="Recommended action" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding Localization[ui_recommended_action]}" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding SelectedRecoveryCandidate.RecommendedAction}" Classes="supporting" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
             <Border Classes="error-state" Padding="12">
               <StackPanel Spacing="5">
-                <TextBlock Text="Why normal resume may be unsafe" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding Localization[ui_why_normal_resume_may_be_unsafe]}" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding SelectedRecoveryCandidate.UnsafeReason}" Classes="supporting" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
 
             <WrapPanel Orientation="Horizontal">
-              <Button Margin="0,0,8,8" Classes="primary" Content="Resume selected" Command="{Binding ResumeRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanResume}"/>
-              <Button Margin="0,0,8,8" Classes="secondary" Content="Validate selected" Command="{Binding ValidateRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanValidate}"/>
-              <Button Margin="0,0,8,8" Classes="secondary" Content="Verify and repair" Command="{Binding VerifyAndRepairRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRepair}"/>
-              <Button Margin="0,0,8,8" Classes="danger" Content="Restart from zero" Command="{Binding RestartRecoveryFromZeroCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRestart}"/>
-              <Button Margin="0,0,8,8" Classes="quiet" Content="Locate partial file" Command="{Binding LocateRecoveryPartialCommand}"/>
-              <Button Margin="0,0,8,8" Classes="quiet" Content="Open partial-file folder" Command="{Binding OpenRecoveryFolderCommand}"/>
-              <Button Margin="0,0,8,8" Classes="quiet" Content="Remove recovery record" Command="{Binding RemoveRecoveryRecordCommand}"/>
+              <Button Margin="0,0,8,8" Classes="primary" Content="{Binding Localization[ui_resume_selected]}" Command="{Binding ResumeRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanResume}"/>
+              <Button Margin="0,0,8,8" Classes="secondary" Content="{Binding Localization[ui_validate_selected]}" Command="{Binding ValidateRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanValidate}"/>
+              <Button Margin="0,0,8,8" Classes="secondary" Content="{Binding Localization[ui_verify_and_repair]}" Command="{Binding VerifyAndRepairRecoveryCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRepair}"/>
+              <Button Margin="0,0,8,8" Classes="danger" Content="{Binding Localization[ui_restart_from_zero]}" Command="{Binding RestartRecoveryFromZeroCommand}" IsEnabled="{Binding SelectedRecoveryCandidate.CanRestart}"/>
+              <Button Margin="0,0,8,8" Classes="quiet" Content="{Binding Localization[ui_locate_partial_file]}" Command="{Binding LocateRecoveryPartialCommand}"/>
+              <Button Margin="0,0,8,8" Classes="quiet" Content="{Binding Localization[ui_open_partial_file_folder]}" Command="{Binding OpenRecoveryFolderCommand}"/>
+              <Button Margin="0,0,8,8" Classes="quiet" Content="{Binding Localization[ui_remove_recovery_record]}" Command="{Binding RemoveRecoveryRecordCommand}"/>
             </WrapPanel>
           </StackPanel>
         </ScrollViewer>

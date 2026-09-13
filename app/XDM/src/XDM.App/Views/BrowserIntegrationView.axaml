@@ -38,9 +38,9 @@
           <TextBlock Text="{Binding Localization[ui_browser_security_description]}" Classes="supporting" TextWrapping="Wrap"/>
           <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="8">
             <TextBlock Text="{Binding Localization[ui_endpoint]}" Classes="label" VerticalAlignment="Center"/>
-            <TextBox Grid.Column="1" Text="{Binding BrowserEndpoint}" IsReadOnly="True" AutomationProperties.Name="Browser capture endpoint" AutomationProperties.AutomationId="BrowserIntegration_BrowserEndpoint"/>
+            <TextBox Grid.Column="1" Text="{Binding BrowserEndpoint}" IsReadOnly="True" AutomationProperties.Name="{Binding Localization[ui_browser_capture_endpoint]}" AutomationProperties.AutomationId="BrowserIntegration_BrowserEndpoint"/>
             <TextBlock Grid.Row="1" Text="{Binding Localization[ui_token]}" Classes="label" VerticalAlignment="Center"/>
-            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BrowserAuthenticationToken}" IsReadOnly="True" AutomationProperties.Name="Browser authentication token" AutomationProperties.AutomationId="BrowserIntegration_BrowserAuthenticationToken"/>
+            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BrowserAuthenticationToken}" IsReadOnly="True" AutomationProperties.Name="{Binding Localization[ui_browser_authentication_token]}" AutomationProperties.AutomationId="BrowserIntegration_BrowserAuthenticationToken"/>
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Button Classes="primary" Content="{Binding Localization[ui_refresh_diagnostics]}" Command="{Binding RefreshBrowserDiagnosticsCommand}" AutomationProperties.AutomationId="BrowserIntegration_RefreshDiagnostics"/>
@@ -56,7 +56,7 @@
             <TextBlock Text="{Binding Localization[ui_native_host_registration]}" Classes="section-title" AutomationProperties.HeadingLevel="2"/>
             <TextBlock Text="{Binding BrowserHostStatus}" TextWrapping="Wrap" Foreground="{DynamicResource XdmSecondarySoftForeground}"/>
             <TextBlock Text="{Binding Localization[ui_chromium_extension_ids]}" Classes="label"/>
-            <TextBox PlaceholderText="{Binding Localization[ui_chromium_extension_id_s_comma_separated_firefox_is_automatic]}" Text="{Binding BrowserExtensionId}" AutomationProperties.Name="Chromium extension IDs" AutomationProperties.AutomationId="BrowserIntegration_ChromiumExtensionIds"/>
+            <TextBox PlaceholderText="{Binding Localization[ui_chromium_extension_id_s_comma_separated_firefox_is_automatic]}" Text="{Binding BrowserExtensionId}" AutomationProperties.Name="{Binding Localization[ui_chromium_extension_ids]}" AutomationProperties.AutomationId="BrowserIntegration_ChromiumExtensionIds"/>
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button Classes="primary" Content="{Binding Localization[ui_install_repair]}" Command="{Binding RepairBrowserHostCommand}"/>
               <Button Classes="danger" Content="{Binding Localization[ui_uninstall]}" Command="{Binding UninstallBrowserHostCommand}"/>

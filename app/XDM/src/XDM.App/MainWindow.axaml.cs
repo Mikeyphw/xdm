@@ -638,6 +638,16 @@ public partial class MainWindow : Window
             Key.D6 => 5,
             Key.D7 => 6,
             Key.D8 => 7,
+            Key.D9 => 8,
+            Key.NumPad1 => 0,
+            Key.NumPad2 => 1,
+            Key.NumPad3 => 2,
+            Key.NumPad4 => 3,
+            Key.NumPad5 => 4,
+            Key.NumPad6 => 5,
+            Key.NumPad7 => 6,
+            Key.NumPad8 => 7,
+            Key.NumPad9 => 8,
             _ => -1,
         };
         return index >= 0;

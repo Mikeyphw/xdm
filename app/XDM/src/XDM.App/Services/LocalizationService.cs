@@ -13,6 +13,7 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
     private readonly ISettingsService _settingsService;
     private readonly LegacyTranslationCatalog _legacyCatalog;
     private readonly Dictionary<string, string> _modernEnglish;
+    private readonly IReadOnlyDictionary<string, Dictionary<string, string>> _modernResources;
     private readonly CultureInfo _systemCulture;
     private LanguageDefinition _currentLanguage;
     private CultureInfo _culture;
@@ -24,6 +25,7 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
         _settingsService = settingsService;
         _systemCulture = CultureInfo.CurrentUICulture;
         _modernEnglish = LoadModernEnglish();
+        _modernResources = LoadModernResourceCatalog(_modernEnglish);
         _legacyCatalog = LegacyTranslationCatalog.Load(Path.Combine(AppContext.BaseDirectory, "Lang"));
         _currentLanguage = _legacyCatalog.ResolveLanguage("en", _systemCulture, useSystemLanguage: true);
         _culture = CultureInfo.GetCultureInfo(_currentLanguage.CultureName);
@@ -58,6 +60,11 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
         if (!_modernEnglish.TryGetValue(key, out string? english))
         {
             english = fallback;
+        }
+
+        if (TryGetModernString(key, out string? modernLocalized))
+        {
+            return modernLocalized;
         }
 
         string? legacyKey = _legacyCatalog.FindLegacyKey(english);
@@ -118,6 +125,98 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AnnounceStatusChanges)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
         Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+
+    private bool TryGetModernString(string key, out string? value)
+    {
+        foreach (string candidate in GetModernResourceCandidates())
+        {
+            if (_modernResources.TryGetValue(candidate, out Dictionary<string, string>? resources)
+                && resources.TryGetValue(key, out string? candidateValue)
+                && candidateValue.Length > 0)
+            {
+                value = candidateValue;
+                return true;
+            }
+        }
+
+        value = null;
+        return false;
+    }
+
+    private IEnumerable<string> GetModernResourceCandidates()
+    {
+        if (string.Equals(_currentLanguage.Id, "en", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(_currentLanguage.CultureName, "en", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return "en";
+            yield break;
+        }
+
+        foreach (string candidate in new[] { _currentLanguage.Id, _currentLanguage.CultureName })
+        {
+            if (!string.IsNullOrWhiteSpace(candidate) && !string.Equals(candidate, "en", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return candidate;
+            }
+        }
+
+        CultureInfo culture;
+        try
+        {
+            culture = CultureInfo.GetCultureInfo(_currentLanguage.CultureName);
+        }
+        catch (CultureNotFoundException)
+        {
+            yield break;
+        }
+
+        CultureInfo current = culture.Parent;
+        while (!string.IsNullOrEmpty(current.Name) && !string.Equals(current.Name, "en", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return current.Name;
+            current = current.Parent;
+        }
+    }
+
+    private static IReadOnlyDictionary<string, Dictionary<string, string>> LoadModernResourceCatalog(
+        Dictionary<string, string> english)
+    {
+        Dictionary<string, Dictionary<string, string>> resources = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["en"] = english
+        };
+
+        string directory = Path.Combine(AppContext.BaseDirectory, "Localization");
+        if (!Directory.Exists(directory))
+        {
+            return resources;
+        }
+
+        foreach (string file in Directory.EnumerateFiles(directory, "strings.*.json", SearchOption.TopDirectoryOnly))
+        {
+            string name = Path.GetFileNameWithoutExtension(file);
+            if (!name.StartsWith("strings.", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string cultureName = name["strings.".Length..];
+            if (cultureName.Length == 0)
+            {
+                continue;
+            }
+
+            using FileStream stream = File.OpenRead(file);
+            Dictionary<string, string>? loaded = JsonSerializer.Deserialize<Dictionary<string, string>>(stream);
+            if (loaded is not null && loaded.Count > 0)
+            {
+                resources[cultureName] = loaded;
+            }
+        }
+
+        return resources;
     }
 
     private static Dictionary<string, string> LoadModernEnglish()

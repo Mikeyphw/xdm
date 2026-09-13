@@ -127,11 +127,11 @@
                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource XdmBodyForeground}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                       <TextBlock Text="{Binding MaxConcurrentDownloads}" Foreground="{DynamicResource XdmAccentForeground}"/>
-                      <TextBlock Text="concurrent" Foreground="{DynamicResource XdmAccentForeground}"/>
+                      <TextBlock Text="{Binding $parent[UserControl].DataContext.Localization[ui_concurrent]}" Foreground="{DynamicResource XdmAccentForeground}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
                       <TextBlock Text="{Binding SpeedLimitBytesPerSecond}" Foreground="{DynamicResource XdmMutedForeground}"/>
-                      <TextBlock Text="B/s limit" Foreground="{DynamicResource XdmMutedForeground}"/>
+                      <TextBlock Text="{Binding $parent[UserControl].DataContext.Localization[ui_bytes_per_second_limit]}" Foreground="{DynamicResource XdmMutedForeground}"/>
                     </StackPanel>
                   </Grid>
                 </Border>
@@ -142,7 +142,7 @@
           <TextBlock Text="{Binding SelectedQueueBlockedReason}" Foreground="{DynamicResource XdmWarningForeground}" TextWrapping="Wrap"
                      AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="Queues_SelectedQueueBlockedReason"/>
           <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
-            <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}" AutomationProperties.Name="Queue" AutomationProperties.AutomationId="Queues_SelectedQueue">
+            <ComboBox ItemsSource="{Binding QueueDefinitions}" SelectedItem="{Binding SelectedQueue}" AutomationProperties.Name="{Binding Localization[ui_queue]}" AutomationProperties.AutomationId="Queues_SelectedQueue">
               <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
             <Button Grid.Column="1" Classes="primary" Content="{Binding Localization[ui_start]}" Command="{Binding StartSelectedQueueCommand}"/>

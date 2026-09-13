@@ -1,7 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="XDM.App.MiniWindow"
-        Title="XDM Mini"
+        Title="{Binding Localization[ui_xdm_mini]}"
+        AutomationProperties.Name="{Binding Localization[ui_xdm_mini]}"
+        AutomationProperties.HelpText="{Binding Localization[ui_compact_transfer_controls]}"
         Width="430"
         Height="320"
         MinWidth="340"
@@ -11,34 +13,34 @@
   <Grid RowDefinitions="Auto,Auto,*" Margin="14" RowSpacing="10">
     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
       <StackPanel>
-        <TextBlock Text="XDM Mini" FontSize="18" FontWeight="SemiBold"/>
-        <TextBlock Text="Compact transfer controls" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
+        <TextBlock Text="{Binding Localization[ui_xdm_mini]}" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock Text="{Binding Localization[ui_compact_transfer_controls]}" Classes="caption" Foreground="{DynamicResource XdmMutedForeground}"/>
       </StackPanel>
-      <Button Grid.Column="1" Classes="quiet" Content="Open full window" Click="OpenFullWindow_Click"/>
+      <Button Grid.Column="1" Classes="quiet" Content="{Binding Localization[ui_open_full_window]}" AutomationProperties.Name="{Binding Localization[ui_open_full_window]}" Click="OpenFullWindow_Click"/>
     </Grid>
     <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="8">
       <Border Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10">
         <StackPanel>
-          <TextBlock Text="Active" Classes="caption"/>
+          <TextBlock Text="{Binding Localization[ui_active]}" Classes="caption"/>
           <TextBlock Text="{Binding ActiveDownloadCount}" FontSize="20" FontWeight="SemiBold"/>
         </StackPanel>
       </Border>
       <Border Grid.Column="1" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10">
         <StackPanel>
-          <TextBlock Text="Progress" Classes="caption"/>
+          <TextBlock Text="{Binding Localization[ui_progress]}" Classes="caption"/>
           <TextBlock Text="{Binding AggregateProgressText}" FontSize="20" FontWeight="SemiBold"/>
         </StackPanel>
       </Border>
       <Border Grid.Column="2" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="8" Padding="10">
         <StackPanel>
-          <TextBlock Text="Speed" Classes="caption"/>
+          <TextBlock Text="{Binding Localization[ui_speed]}" Classes="caption"/>
           <TextBlock Text="{Binding AggregateSpeed}" FontSize="20" FontWeight="SemiBold"/>
         </StackPanel>
       </Border>
     </Grid>
     <Border Grid.Row="2" Background="{DynamicResource XdmPanelBackground}" CornerRadius="8" Padding="8">
       <Grid RowDefinitions="*,Auto" RowSpacing="8">
-        <ListBox ItemsSource="{Binding MiniDownloads}" SelectedItem="{Binding SelectedDownload}" Background="Transparent" BorderThickness="0">
+        <ListBox ItemsSource="{Binding MiniDownloads}" SelectedItem="{Binding SelectedDownload}" Background="Transparent" BorderThickness="0" AutomationProperties.Name="{Binding Localization[ui_mini_downloads]}" AutomationProperties.HelpText="{Binding Localization[ui_mini_downloads_help]}" AutomationProperties.AutomationId="MiniDownloads">
           <ListBox.ItemTemplate>
             <DataTemplate>
               <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="4">
@@ -49,10 +51,10 @@
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-        <WrapPanel Grid.Row="1" HorizontalAlignment="Right">
-          <Button Margin="0,0,6,0" Classes="secondary" Content="Pause" Command="{Binding PauseSelectedCommand}"/>
-          <Button Margin="0,0,6,0" Classes="secondary" Content="Resume" Command="{Binding ResumeSelectedCommand}"/>
-          <Button Classes="danger" Content="Cancel" Command="{Binding CancelSelectedCommand}"/>
+        <WrapPanel Grid.Row="1" HorizontalAlignment="Right" AutomationProperties.Name="{Binding Localization[ui_mini_transfer_actions]}" AutomationProperties.AccessibilityView="Control">
+          <Button Margin="0,0,6,0" Classes="secondary" Content="{Binding Localization[ui_pause]}" Command="{Binding PauseSelectedCommand}" IsEnabled="{Binding CanPauseSelectedTransfer}" AutomationProperties.Name="{Binding Localization[ui_pause_selected_transfer]}" AutomationProperties.AutomationId="MiniPauseSelectedTransfer"/>
+          <Button Margin="0,0,6,0" Classes="secondary" Content="{Binding Localization[ui_resume]}" Command="{Binding ResumeSelectedCommand}" IsEnabled="{Binding CanResumeSelectedTransfer}" AutomationProperties.Name="{Binding Localization[ui_resume_selected_transfer]}" AutomationProperties.AutomationId="MiniResumeSelectedTransfer"/>
+          <Button Classes="danger" Content="{Binding Localization[ui_cancel]}" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding CanCancelSelectedTransfer}" AutomationProperties.Name="{Binding Localization[ui_cancel_selected_transfer]}" AutomationProperties.AutomationId="MiniCancelSelectedTransfer"/>
         </WrapPanel>
       </Grid>
     </Border>

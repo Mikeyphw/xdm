@@ -34,6 +34,77 @@ public sealed class LegacyTranslationCatalogTests
         }
     }
 
+
+    [Fact]
+    public void ResolvesSystemLanguageWithScriptRegionAwareFallback()
+    {
+        string directory = CreateTemporaryDirectory();
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory, "index.txt"),
+                string.Join(Environment.NewLine,
+                [
+                    "English=English.txt",
+                    "Chinese simplified (简体中文)=Chinese simplified.txt",
+                    "Chinese Traditional (繁體中文)=Chinese Traditional.txt",
+                    "Traditional Chinese - Taiwan (繁體中文(台灣))=Traditional Chinese - Taiwan.txt",
+                    "Serbian - Latin (Srpski (latinica))=Serbian - Latin.txt",
+                    "Serbian Cyrillic (Српски (ћирилица))=Serbian Cyrillic.txt"
+                ]) + Environment.NewLine);
+            foreach (string fileName in new[]
+            {
+                "English.txt",
+                "Chinese simplified.txt",
+                "Chinese Traditional.txt",
+                "Traditional Chinese - Taiwan.txt",
+                "Serbian - Latin.txt",
+                "Serbian Cyrillic.txt"
+            })
+            {
+                File.WriteAllText(Path.Combine(directory, fileName), "MENU_PAUSE=Pause" + Environment.NewLine);
+            }
+
+            LegacyTranslationCatalog catalog = LegacyTranslationCatalog.Load(directory);
+            Assert.Equal("zh-Hant", catalog.ResolveLanguage("zh-HK", CultureInfo.GetCultureInfo("en-US"), false).Id);
+            Assert.Equal("zh-Hans", catalog.ResolveLanguage("zh-SG", CultureInfo.GetCultureInfo("en-US"), false).Id);
+            Assert.Equal("sr-Latn", catalog.ResolveLanguage("sr-Latn-RS", CultureInfo.GetCultureInfo("en-US"), false).Id);
+            Assert.Equal("sr-Cyrl", catalog.ResolveLanguage("sr-RS", CultureInfo.GetCultureInfo("en-US"), false).Id);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LanguageIndexIncludesEveryMappedShippedLanguage()
+    {
+        string directory = CreateTemporaryDirectory();
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory, "index.txt"),
+                string.Join(Environment.NewLine,
+                [
+                    "English=English.txt",
+                    "Hindi=Hindi.txt",
+                    "Malagasy=Malagasy.txt"
+                ]) + Environment.NewLine);
+            File.WriteAllText(Path.Combine(directory, "English.txt"), "MENU_PAUSE=Pause" + Environment.NewLine);
+            File.WriteAllText(Path.Combine(directory, "Hindi.txt"), "MENU_PAUSE=रोकें" + Environment.NewLine);
+            File.WriteAllText(Path.Combine(directory, "Malagasy.txt"), "MENU_PAUSE=Ajanony" + Environment.NewLine);
+
+            LegacyTranslationCatalog catalog = LegacyTranslationCatalog.Load(directory);
+            Assert.Contains(catalog.Languages, static language => language.Id == "hi" && language.FileName == "Hindi.txt");
+            Assert.Contains(catalog.Languages, static language => language.Id == "mg" && language.FileName == "Malagasy.txt");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [Fact]
     public void RejectsMalformedAndOversizedEntries()
     {

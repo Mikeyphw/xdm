@@ -35,7 +35,13 @@
               </StackPanel>
               <StackPanel x:Name="DuplicateBehaviorField" Grid.Column="2" Spacing="6">
                 <TextBlock Text="{Binding Localization[ui_duplicate_file_behavior]}" Classes="form-label"/>
-                <ComboBox ItemsSource="{Binding DuplicateBehaviors}" SelectedItem="{Binding SelectedDuplicateBehavior}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="NewDownloadDuplicateBehavior"/>
+                <ComboBox ItemsSource="{Binding DuplicateBehaviorChoices}" SelectedItem="{Binding SelectedDuplicateBehaviorChoice}" AutomationProperties.Name="{Binding Localization[ui_duplicate_file_behavior]}" AutomationProperties.AutomationId="NewDownloadDuplicateBehavior">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
               </StackPanel>
               <StackPanel x:Name="SpeedLimitField" Grid.Column="3" Spacing="6">
                 <TextBlock Text="{Binding Localization[ui_speed_limit_kb_s_0_unlimited]}" Classes="form-label"/>
@@ -166,7 +172,7 @@
               </Button.Flyout>
             </Button>
           </Grid>
-          <ListBox x:Name="DownloadsList" Grid.Row="1" ItemsSource="{Binding FilteredDownloads}" SelectedItem="{Binding SelectedDownload}" SelectionMode="Multiple" SelectionChanged="DownloadsList_SelectionChanged" Background="Transparent" BorderThickness="0" Padding="7" IsVisible="{Binding HasFilteredDownloads}" AutomationProperties.AutomationId="DownloadsList" AutomationProperties.Name="Download">
+          <ListBox x:Name="DownloadsList" Grid.Row="1" ItemsSource="{Binding FilteredDownloads}" SelectedItem="{Binding SelectedDownload}" SelectionMode="Multiple" SelectionChanged="DownloadsList_SelectionChanged" Background="Transparent" BorderThickness="0" Padding="7" IsVisible="{Binding HasFilteredDownloads}" AutomationProperties.AutomationId="DownloadsList" AutomationProperties.Name="{Binding Localization[ui_download]}">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
@@ -374,7 +380,7 @@
             <Expander Header="{Binding Localization[ui_more_actions]}">
               <StackPanel Margin="0,8,0,0" Spacing="10">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                  <ComboBox ItemsSource="{Binding DownloadPriorities}" SelectedItem="{Binding SelectedDownloadPriority}" AutomationProperties.Name="Download Priority" AutomationProperties.AutomationId="Downloads_SelectedDownloadPriority"/>
+                  <ComboBox ItemsSource="{Binding DownloadPriorities}" SelectedItem="{Binding SelectedDownloadPriority}" AutomationProperties.Name="{Binding Localization[ui_download_priority]}" AutomationProperties.AutomationId="Downloads_SelectedDownloadPriority"/>
                   <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_set_priority]}" Command="{Binding ApplySelectedDownloadPriorityCommand}"/>
                 </Grid>
                 <WrapPanel Orientation="Horizontal">
@@ -414,7 +420,7 @@
             </Expander>
 
             <Expander Header="{Binding Localization[ui_event_timeline]}" IsExpanded="True">
-              <ListBox ItemsSource="{Binding SelectedDownloadTimeline}" Background="Transparent" BorderThickness="0" MaxHeight="240" AutomationProperties.Name="Download Timeline" AutomationProperties.AutomationId="Downloads_SelectedDownloadTimeline">
+              <ListBox ItemsSource="{Binding SelectedDownloadTimeline}" Background="Transparent" BorderThickness="0" MaxHeight="240" AutomationProperties.Name="{Binding Localization[ui_download_timeline]}" AutomationProperties.AutomationId="Downloads_SelectedDownloadTimeline">
                 <ListBox.ItemsPanel>
                   <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
                 </ListBox.ItemsPanel>

@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <None Include="../XDM.App/MainWindow.axaml" Link="Fixtures/MainWindow.axaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../XDM.App/MiniWindow.axaml" Link="Fixtures/MiniWindow.axaml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../XDM.App/Views/*.axaml" Link="Fixtures/Views/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../XDM.App/Localization/strings.en.json" Link="Fixtures/strings.en.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

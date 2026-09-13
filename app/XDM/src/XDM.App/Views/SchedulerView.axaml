@@ -4,7 +4,7 @@
                 <Border x:Name="ScheduleListPane" Background="{DynamicResource XdmPanelBackground}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource XdmBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="10">
                     <TextBlock Text="{Binding Localization[ui_queue_schedules]}" Classes="label"/>
-                    <ListBox ItemsSource="{Binding Schedules}" SelectedItem="{Binding SelectedSchedule}" MinHeight="220" MaxHeight="420" AutomationProperties.Name="Schedule" AutomationProperties.AutomationId="Scheduler_SelectedSchedule">
+                    <ListBox ItemsSource="{Binding Schedules}" SelectedItem="{Binding SelectedSchedule}" MinHeight="220" MaxHeight="420" AutomationProperties.Name="{Binding Localization[ui_schedule]}" AutomationProperties.AutomationId="Scheduler_SelectedSchedule">
                       <ListBox.ItemTemplate>
                         <DataTemplate>
                           <Border Padding="10" Background="{DynamicResource XdmPanelAltBackground}" CornerRadius="7">
