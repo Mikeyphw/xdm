@@ -33,4 +33,24 @@ public sealed class DownloadInputParserTests
         Assert.Equal("application/octet-stream", headers["Accept"]);
         Assert.Equal(2, headers.Count);
     }
+    [Fact]
+    public void KeepsCaseDistinctPathAndQueryIdentities()
+    {
+        IReadOnlyList<Uri> urls = DownloadInputParser.ParseUrls("https://example.test/File.bin?q=A https://EXAMPLE.test/file.bin?q=a");
+
+        Assert.Equal(2, urls.Count);
+    }
+
+    [Fact]
+    public void DetailedParsePreservesRejectedTokensForRetry()
+    {
+        DownloadUrlParseResult result = DownloadInputParser.ParseUrlsDetailed(
+            "https://example.test/a.bin malformed gopher://example.test/nope");
+
+        Assert.Single(result.AcceptedUrls);
+        Assert.Equal(2, result.RejectedTokens.Count);
+        Assert.Contains(result.RejectedTokens, token => token.Input == "malformed");
+        Assert.Contains(result.RejectedTokens, token => token.Input.StartsWith("gopher:", StringComparison.Ordinal));
+    }
+
 }

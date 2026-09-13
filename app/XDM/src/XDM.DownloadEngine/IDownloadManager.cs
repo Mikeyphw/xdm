@@ -18,6 +18,14 @@ public interface IDownloadManager
 
     Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default);
 
+    Task<DownloadAdmissionPreview> PreviewAdmissionAsync(
+        DownloadRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DownloadAdmissionPreview>> PreviewBatchAdmissionAsync(
+        IReadOnlyList<DownloadRequest> requests,
+        CancellationToken cancellationToken = default);
+
 
     Task<DownloadVerificationResult> VerifyAsync(
         string downloadId,

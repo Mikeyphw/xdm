@@ -53,6 +53,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IApplicationLifetimeService _applicationLifetimeService;
     private readonly Dictionary<string, DownloadState> _lastDownloadStates = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<DownloadTimelineEntry>> _downloadTimelines = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _filePresenceProbeVersions = new(StringComparer.Ordinal);
     private CancellationTokenSource? _mediaDownloadCancellation;
     private MediaCatalog? _currentMediaCatalog;
     private bool _disposed;
@@ -848,10 +849,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task AddDownloadAsync()
     {
-        IReadOnlyList<Uri> sources = DownloadInputParser.ParseUrls(NewDownloadUrls);
+        DownloadUrlParseResult parsed = DownloadInputParser.ParseUrlsDetailed(NewDownloadUrls);
+        IReadOnlyList<Uri> sources = parsed.AcceptedUrls;
         if (sources.Count == 0)
         {
-            OperationMessage = "Enter at least one valid HTTP or HTTPS URL.";
+            OperationMessage = "Enter at least one valid HTTP, HTTPS, FTP, or FTPS URL.";
             return;
         }
 
@@ -872,19 +874,26 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         int added = 0;
         int focusedExisting = 0;
         HashSet<string> existingIds = Downloads.Select(static item => item.Id).ToHashSet(StringComparer.Ordinal);
+        HashSet<string> processedIdentities = new(StringComparer.Ordinal);
         List<string> failures = [];
 
         foreach (Uri source in sources)
         {
+            string identity = DownloadMetadata.NormalizeSourceIdentity(source);
             try
             {
                 string? fileName = sources.Count == 1 && !string.IsNullOrWhiteSpace(CustomFileName)
                     ? CustomFileName.Trim()
                     : null;
+                DownloadCategoryRoute route = DownloadCategoryRouting.Resolve(
+                    _settingsService.Current,
+                    source,
+                    SelectedCategory?.Id,
+                    DestinationFolder);
                 (string? savedUsername, string? savedPassword) = ResolveServerCredential(source);
                 DownloadRequest request = new(
                     source,
-                    DestinationFolder,
+                    route.DestinationDirectory,
                     fileName,
                     headers,
                     EmptyToNull(Username) ?? savedUsername,
@@ -893,7 +902,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     EmptyToNull(Referer),
                     EmptyToNull(UserAgent),
                     SelectedQueue?.Id,
-                    ResolveCategoryId(source, SelectedCategory?.Id),
+                    route.CategoryId,
                     speedLimit,
                     duplicateBehavior,
                     ConnectionCount: (_settingsService.Current.Network ?? NetworkSettings.Default).Normalize().DefaultConnectionCount,
@@ -911,6 +920,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 string downloadId = await _downloadManager.AddAsync(request);
                 DownloadItemViewModel? existingDownload = Downloads.FirstOrDefault(item =>
                     string.Equals(item.Id, downloadId, StringComparison.Ordinal));
+                processedIdentities.Add(identity);
                 if (existingIds.Add(downloadId))
                 {
                     added++;
@@ -921,23 +931,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     focusedExisting++;
                 }
             }
-            catch (ArgumentException exception)
+            catch (Exception exception) when (exception is ArgumentException
+                or IOException
+                or UnauthorizedAccessException
+                or InvalidOperationException)
             {
-                failures.Add(exception.Message);
-            }
-            catch (IOException exception)
-            {
-                failures.Add(exception.Message);
-            }
-            catch (UnauthorizedAccessException exception)
-            {
-                failures.Add(exception.Message);
+                failures.Add($"{source}: {exception.Message}");
             }
         }
 
-        if (added > 0)
+        string[] retryTokens = parsed.Tokens
+            .Where(token => !token.Accepted
+                || token.Uri is null
+                || !processedIdentities.Contains(DownloadMetadata.NormalizeSourceIdentity(token.Uri)))
+            .Select(static token => token.Input)
+            .ToArray();
+        NewDownloadUrls = string.Join(Environment.NewLine, retryTokens);
+
+        if (retryTokens.Length == 0)
         {
-            NewDownloadUrls = string.Empty;
             MirrorUrls = string.Empty;
             ExpectedChecksum = string.Empty;
             ExpectedSha256 = string.Empty;
@@ -955,12 +967,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
         }
 
+        int rejected = parsed.RejectedTokens.Count;
         string focusMessage = focusedExisting > 0
             ? $" Focused {focusedExisting} existing duplicate URL{(focusedExisting == 1 ? string.Empty : "s")}."
             : string.Empty;
-        OperationMessage = failures.Count == 0
-            ? $"Added {added} download{(added == 1 ? string.Empty : "s")}.{focusMessage}"
-            : $"Added {added}; {failures.Count} failed: {failures[0]}{focusMessage}";
+        string failureSummary = failures.Count == 0
+            ? string.Empty
+            : $" {failures.Count} failed: {string.Join(" | ", failures.Take(3))}";
+        string rejectedSummary = rejected == 0
+            ? string.Empty
+            : $" {rejected} invalid or unsupported token{(rejected == 1 ? string.Empty : "s")} retained for correction.";
+        OperationMessage = $"Added {added} download{(added == 1 ? string.Empty : "s")}.{focusMessage}{failureSummary}{rejectedSummary}".Trim();
     }
 
     [RelayCommand]
@@ -1210,10 +1227,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        string id = SelectedDownload.Id;
-        await _downloadManager.RemoveAsync(id);
-        CanUndoHistoryRemoval = _downloadManager.UndoableRemovalCount > 0;
-        OperationMessage = "Download removed from history. Use Undo to restore it.";
+        if (!SelectedDownload.CanRemoveFromHistory)
+        {
+            OperationMessage = "Pause or cancel the live transfer before removing it from history.";
+            return;
+        }
+
+        try
+        {
+            await _downloadManager.RemoveAsync(SelectedDownload.Id);
+            CanUndoHistoryRemoval = _downloadManager.UndoableRemovalCount > 0;
+            OperationMessage = "Download removed from history. Use Undo to restore it.";
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or InvalidOperationException)
+        {
+            OperationMessage = exception.Message;
+        }
     }
 
 
@@ -1258,50 +1289,50 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task PauseBulkAsync()
     {
-        DownloadItemViewModel[] targets = GetActionTargets();
-        foreach (DownloadItemViewModel download in targets.Where(static item => item.CanPause))
-        {
-            await _downloadManager.PauseAsync(download.Id);
-        }
-
-        OperationMessage = $"Pause requested for {targets.Length} download(s).";
+        BulkOperationResult result = await BulkOperationExecutor.ExecuteAsync(
+            GetActionTargets(),
+            static item => item.CanPause,
+            item => _downloadManager.PauseAsync(item.Id));
+        OperationMessage = FormatBulkResult("Pause", result);
     }
 
     [RelayCommand]
     private async Task ResumeBulkAsync()
     {
-        DownloadItemViewModel[] targets = GetActionTargets();
-        foreach (DownloadItemViewModel download in targets.Where(static item => item.CanResume))
-        {
-            await _downloadManager.ResumeAsync(download.Id);
-        }
-
-        OperationMessage = $"Resume requested for {targets.Length} download(s).";
+        BulkOperationResult result = await BulkOperationExecutor.ExecuteAsync(
+            GetActionTargets(),
+            static item => item.CanResume,
+            item => _downloadManager.ResumeAsync(item.Id));
+        OperationMessage = FormatBulkResult("Resume", result);
     }
 
     [RelayCommand]
     private async Task CancelBulkAsync()
     {
-        DownloadItemViewModel[] targets = GetActionTargets();
-        foreach (DownloadItemViewModel download in targets.Where(static item => item.CanCancel))
-        {
-            await _downloadManager.CancelAsync(download.Id);
-        }
-
-        OperationMessage = $"Cancel requested for {targets.Length} download(s).";
+        BulkOperationResult result = await BulkOperationExecutor.ExecuteAsync(
+            GetActionTargets(),
+            static item => item.CanCancel,
+            item => _downloadManager.CancelAsync(item.Id));
+        OperationMessage = FormatBulkResult("Cancel", result);
     }
 
     [RelayCommand]
     private async Task RemoveBulkAsync()
     {
-        DownloadItemViewModel[] targets = GetActionTargets();
-        foreach (DownloadItemViewModel download in targets)
-        {
-            await _downloadManager.RemoveAsync(download.Id);
-        }
-
+        BulkOperationResult result = await BulkOperationExecutor.ExecuteAsync(
+            GetActionTargets(),
+            static item => item.CanRemoveFromHistory,
+            item => _downloadManager.RemoveAsync(item.Id));
         CanUndoHistoryRemoval = _downloadManager.UndoableRemovalCount > 0;
-        OperationMessage = $"Removed {targets.Length} download(s) from history. Use Undo to restore them one at a time.";
+        OperationMessage = $"{FormatBulkResult("Remove from history", result)} Use Undo to restore successful removals one at a time.";
+    }
+
+    private static string FormatBulkResult(string verb, BulkOperationResult result)
+    {
+        string errors = result.Errors.Count == 0
+            ? string.Empty
+            : $" First error: {result.Errors[0]}";
+        return $"{verb}: {result.Succeeded} succeeded, {result.Skipped} skipped, {result.Failed} failed.{errors}";
     }
 
     [RelayCommand]
@@ -2115,6 +2146,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _mediaDownloadCancellation?.Dispose();
         _updateCancellation?.Cancel();
         _updateCancellation?.Dispose();
+        _destinationPreviewCancellation?.Cancel();
+        _destinationPreviewCancellation?.Dispose();
         _applicationState.Changed -= OnApplicationStateChanged;
         _settingsService.Changed -= OnSettingsChanged;
         _localization.Changed -= OnLocalizationChanged;
@@ -2463,9 +2496,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             ApplicationSettings settings = _settingsService.Current;
             (string? savedUsername, string? savedPassword) = ResolveServerCredential(request.Url);
             NetworkSettings network = settings.Network ?? NetworkSettings.Default;
+            DownloadCategoryRoute route = DownloadCategoryRouting.Resolve(
+                settings,
+                request.Url,
+                request.CategoryId,
+                settings.DefaultDownloadDirectory);
             DownloadRequest downloadRequest = new(
                 request.Url,
-                settings.DefaultDownloadDirectory,
+                route.DestinationDirectory,
                 request.FileName,
                 request.Headers,
                 Username: savedUsername,
@@ -2474,7 +2512,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 Referer: request.Referer,
                 UserAgent: request.UserAgent,
                 QueueId: request.QueueId,
-                CategoryId: ResolveCategoryId(request.Url, request.CategoryId),
+                CategoryId: route.CategoryId,
                 ConnectionCount: request.Method == "GET" ? network.DefaultConnectionCount : 1,
                 Method: request.Method,
                 RequestBody: request.GetRequestBody(),
@@ -2556,6 +2594,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         Dictionary<string, DownloadItemViewModel> existing = Downloads
             .ToDictionary(static item => item.Id, StringComparer.Ordinal);
+        bool filterRefreshRequired = false;
 
         foreach (DownloadSnapshot download in snapshot.Downloads)
         {
@@ -2565,17 +2604,29 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             if (existing.Remove(download.Id, out DownloadItemViewModel? item))
             {
+                bool destinationChanged = !DownloadPathIdentity.Equals(item.DestinationPath, download.DestinationPath);
+                filterRefreshRequired |= SnapshotAffectsFiltering(item, download);
                 item.Apply(download, _localization);
+                if (download.State == DownloadState.Completed && (stateChanged || destinationChanged))
+                {
+                    ScheduleFilePresenceProbe(item);
+                }
             }
             else
             {
                 DownloadItemViewModel added = new(download, _localization);
                 SubscribeDownloadItem(added);
                 Downloads.Add(added);
+                filterRefreshRequired = true;
+                if (download.State == DownloadState.Completed)
+                {
+                    ScheduleFilePresenceProbe(added);
+                }
             }
 
             if (stateChanged)
             {
+                filterRefreshRequired = true;
                 AppendTimeline(download);
                 if (hadPreviousState && download.State == DownloadState.Completed)
                 {
@@ -2602,17 +2653,65 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             UnsubscribeDownloadItem(removed);
             Downloads.Remove(removed);
+            _lastDownloadStates.Remove(removed.Id);
+            _downloadTimelines.Remove(removed.Id);
+            _filePresenceProbeVersions.Remove(removed.Id);
+            filterRefreshRequired = true;
         }
 
         RefreshBulkSelectionState();
-        RefreshFilteredDownloads();
-        RefreshDestinationConflictPreview();
+        if (filterRefreshRequired)
+        {
+            RefreshFilteredDownloads();
+            _ = RefreshDestinationConflictPreviewAsync();
+        }
         OnPropertyChanged(nameof(AggregateProgressText));
         OnPropertyChanged(nameof(MiniDownloads));
         OnPropertyChanged(nameof(RecoveryItemCount));
         OnPropertyChanged(nameof(HasRecoveryItems));
         OnPropertyChanged(nameof(ShowRecoveryReview));
         OnPropertyChanged(nameof(RecoveryReviewSummary));
+    }
+
+    private static bool SnapshotAffectsFiltering(DownloadItemViewModel item, DownloadSnapshot snapshot)
+        => item.State != snapshot.State
+            || item.Source != snapshot.Source
+            || !DownloadPathIdentity.Equals(item.DestinationPath, snapshot.DestinationPath)
+            || !string.Equals(item.FileName, snapshot.FileName, StringComparison.Ordinal)
+            || !string.Equals(item.CategoryId, snapshot.CategoryId ?? string.Empty, StringComparison.Ordinal)
+            || item.IsArchived != snapshot.IsArchived
+            || !string.Equals(item.TagsText, string.Join(", ", snapshot.Tags ?? []), StringComparison.Ordinal)
+            || item.TotalBytes != snapshot.TotalBytes
+            || item.IsDuplicate != !string.IsNullOrWhiteSpace(snapshot.DuplicateReason);
+
+    private void ScheduleFilePresenceProbe(DownloadItemViewModel item)
+    {
+        long version = _filePresenceProbeVersions.TryGetValue(item.Id, out long current) ? current + 1 : 1;
+        _filePresenceProbeVersions[item.Id] = version;
+        string destinationPath = item.DestinationPath;
+        _ = Task.Run(() => !File.Exists(destinationPath)).ContinueWith(task =>
+        {
+            if (task.IsCanceled || task.IsFaulted)
+            {
+                return;
+            }
+
+            _dispatcher.Post(() =>
+            {
+                if (_filePresenceProbeVersions.TryGetValue(item.Id, out long latest)
+                    && latest == version
+                    && Downloads.Contains(item)
+                    && DownloadPathIdentity.Equals(item.DestinationPath, destinationPath))
+                {
+                    bool changed = item.IsFileMissing != task.Result;
+                    item.SetFileMissing(task.Result);
+                    if (changed)
+                    {
+                        RefreshFilteredDownloads();
+                    }
+                }
+            });
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     private void ApplyQueueRuntime(QueueRuntimeSnapshot snapshot)
@@ -2982,7 +3081,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         FilteredDownloads.Clear();
         foreach (DownloadItemViewModel download in Downloads)
         {
-            download.RefreshFilePresence();
             bool statusMatches = string.Equals(status, _localization["status_all"], StringComparison.OrdinalIgnoreCase)
                 || string.Equals(download.StatusText, status, StringComparison.OrdinalIgnoreCase);
             bool archiveMatches = search.Contains("archived:", StringComparison.OrdinalIgnoreCase)

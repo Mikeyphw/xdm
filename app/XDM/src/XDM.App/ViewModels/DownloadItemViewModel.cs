@@ -215,7 +215,10 @@ public sealed partial class DownloadItemViewModel : ObservableObject
         TagsText = string.Join(", ", snapshot.Tags ?? []);
         CategoryId = snapshot.CategoryId ?? string.Empty;
         IsArchived = snapshot.IsArchived;
-        IsFileMissing = snapshot.State == DownloadState.Completed && !File.Exists(snapshot.DestinationPath);
+        if (snapshot.State != DownloadState.Completed)
+        {
+            IsFileMissing = false;
+        }
         DuplicateReason = snapshot.DuplicateReason;
         ContentHashSha256 = snapshot.ContentHashSha256;
         TotalBytes = snapshot.TotalBytes;
@@ -229,10 +232,11 @@ public sealed partial class DownloadItemViewModel : ObservableObject
         OnPropertyChanged(nameof(RecoveryRequired));
         OnPropertyChanged(nameof(CanVerify));
         OnPropertyChanged(nameof(CanRepair));
+        OnPropertyChanged(nameof(CanRemoveFromHistory));
         QueueId = snapshot.QueueId;
         QueueOrder = snapshot.QueueOrder;
         Priority = snapshot.Priority;
-        CanPause = snapshot.State is DownloadState.Connecting or DownloadState.Downloading;
+        CanPause = snapshot.State is DownloadState.Queued or DownloadState.Connecting or DownloadState.Downloading;
         CanResume = snapshot.State is DownloadState.Paused or DownloadState.Failed or DownloadState.Cancelled;
         CanCancel = snapshot.State is DownloadState.Queued
             or DownloadState.Connecting
@@ -240,8 +244,13 @@ public sealed partial class DownloadItemViewModel : ObservableObject
             or DownloadState.Paused;
     }
 
+    public bool CanRemoveFromHistory => State is DownloadState.Completed or DownloadState.Failed or DownloadState.Cancelled;
+
+    public void SetFileMissing(bool isMissing)
+        => IsFileMissing = State == DownloadState.Completed && isMissing;
+
     public void RefreshFilePresence()
-        => IsFileMissing = State == DownloadState.Completed && !File.Exists(DestinationPath);
+        => SetFileMissing(State == DownloadState.Completed && !File.Exists(DestinationPath));
 
     public bool MatchesSearch(string query)
         => DownloadSearchExpression.Matches(

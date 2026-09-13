@@ -151,6 +151,28 @@ public sealed class QueueSchedulerRuntimeTests
         public Task<string> AddAsync(DownloadRequest request, CancellationToken cancellationToken = default)
             => Task.FromResult(Guid.NewGuid().ToString("N"));
 
+        public Task<DownloadAdmissionPreview> PreviewAdmissionAsync(
+            DownloadRequest request,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new DownloadAdmissionPreview(
+                request.Source,
+                request.ResolveFileName(),
+                Path.Combine(request.DestinationDirectory, request.ResolveFileName()),
+                false,
+                false));
+
+        public Task<IReadOnlyList<DownloadAdmissionPreview>> PreviewBatchAdmissionAsync(
+            IReadOnlyList<DownloadRequest> requests,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<DownloadAdmissionPreview>>(requests
+                .Select(request => new DownloadAdmissionPreview(
+                    request.Source,
+                    request.ResolveFileName(),
+                    Path.Combine(request.DestinationDirectory, request.ResolveFileName()),
+                    false,
+                    false))
+                .ToArray());
+
         public Task<DownloadVerificationResult> VerifyAsync(
             string downloadId,
             CancellationToken cancellationToken = default)

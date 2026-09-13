@@ -1209,6 +1209,62 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
     }
 
+    public Task<DownloadAdmissionPreview> PreviewAdmissionAsync(
+        DownloadRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        ThrowIfDisposed();
+        return Task.FromResult(PreviewAdmissionCore(request, null));
+    }
+
+    public Task<IReadOnlyList<DownloadAdmissionPreview>> PreviewBatchAdmissionAsync(
+        IReadOnlyList<DownloadRequest> requests,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        cancellationToken.ThrowIfCancellationRequested();
+        ThrowIfDisposed();
+
+        HashSet<string> reserved = new(DownloadPathIdentity.Comparer);
+        List<DownloadAdmissionPreview> result = new(requests.Count);
+        foreach (DownloadRequest request in requests)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            DownloadAdmissionPreview preview = PreviewAdmissionCore(request, reserved);
+            result.Add(preview);
+            reserved.Add(Path.GetFullPath(preview.DestinationPath));
+        }
+
+        return Task.FromResult<IReadOnlyList<DownloadAdmissionPreview>>(result);
+    }
+
+    private DownloadAdmissionPreview PreviewAdmissionCore(
+        DownloadRequest request,
+        IReadOnlySet<string>? reservedPaths)
+    {
+        string fileName = request.ResolveFileName();
+        OrganizationSettings organization = (_settingsService.Current.Organization ?? OrganizationSettings.Default).Normalize();
+        DownloadRequest effective = ApplyDestinationRule(request, fileName, organization);
+        ArgumentException.ThrowIfNullOrWhiteSpace(effective.DestinationDirectory);
+
+        string original = Path.Combine(effective.DestinationDirectory, fileName);
+        bool hasConflict = File.Exists(original)
+            || _sessions.Values.Any(session => DownloadPathIdentity.Equals(session.DestinationPath, original))
+            || (reservedPaths?.Contains(Path.GetFullPath(original)) ?? false);
+        string destination = hasConflict && effective.DuplicateBehavior != DuplicateFileBehavior.AutoRename
+            ? original
+            : ResolveDestinationPath(effective, fileName, reservedPaths);
+        return new(
+            request.Source,
+            fileName,
+            destination,
+            hasConflict,
+            hasConflict && effective.DuplicateBehavior == DuplicateFileBehavior.AutoRename
+                && !DownloadPathIdentity.Equals(original, destination));
+    }
+
     public Task RemoveAsync(
         string downloadId,
         bool deletePartialFile = false,
@@ -1227,6 +1283,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         DownloadSession session = GetSession(downloadId);
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (scope == DownloadDeletionScope.HistoryOnly)
+        {
+            DownloadState state;
+            lock (session.Sync)
+            {
+                state = session.State;
+            }
+            if (state is not (DownloadState.Completed or DownloadState.Failed or DownloadState.Cancelled))
+            {
+                throw new InvalidOperationException(
+                    "Only completed, failed, or cancelled downloads can be removed from history without deleting transfer state.");
+            }
+        }
 
         string? aria2Gid;
         lock (session.Sync)
@@ -1399,14 +1469,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         string targetPath = Path.GetFullPath(destinationPath);
-        if (string.Equals(Path.GetFullPath(sourcePath), targetPath, StringComparison.Ordinal))
+        if (DownloadPathIdentity.Equals(sourcePath, targetPath))
         {
             return;
         }
 
         bool destinationInUse = _sessions.Values.Any(other =>
             !ReferenceEquals(other, session)
-            && string.Equals(other.DestinationPath, targetPath, StringComparison.OrdinalIgnoreCase));
+            && DownloadPathIdentity.Equals(other.DestinationPath, targetPath));
         if (destinationInUse)
         {
             throw new IOException($"Another download already uses the destination path: {targetPath}");
@@ -2746,10 +2816,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         try
         {
-            return string.Equals(
-                Path.GetFullPath(left),
-                Path.GetFullPath(right),
-                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+            return DownloadPathIdentity.Equals(left, right);
         }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
         {
@@ -4201,7 +4268,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             .FirstOrDefault(session => string.Equals(
                 DownloadMetadata.NormalizeSourceIdentity(session.Source),
                 identity,
-                StringComparison.OrdinalIgnoreCase));
+                StringComparison.Ordinal));
     }
 
     private static DownloadRequest ApplyDestinationRule(
@@ -4274,11 +4341,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
     }
 
-    private string ResolveDestinationPath(DownloadRequest request, string fileName)
+    private string ResolveDestinationPath(
+        DownloadRequest request,
+        string fileName,
+        IReadOnlySet<string>? reservedPaths = null)
     {
         string candidate = Path.Combine(request.DestinationDirectory, fileName);
         bool sessionCollision = _sessions.Values.Any(session =>
-            string.Equals(session.DestinationPath, candidate, StringComparison.OrdinalIgnoreCase));
+            DownloadPathIdentity.Equals(session.DestinationPath, candidate))
+            || (reservedPaths?.Contains(Path.GetFullPath(candidate)) ?? false);
         bool fileCollision = File.Exists(candidate);
 
         // A matching transactional partial file is resumable state, not a destination collision.
@@ -4318,7 +4389,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 || File.Exists(TransferArtifactPaths.GetCheckpointPath(renamed))
                 || Directory.Exists(SegmentedDownloadExecutor.GetSegmentDirectory(renamed))
                 || _sessions.Values.Any(session =>
-                    string.Equals(session.DestinationPath, renamed, StringComparison.OrdinalIgnoreCase));
+                    DownloadPathIdentity.Equals(session.DestinationPath, renamed))
+                || (reservedPaths?.Contains(Path.GetFullPath(renamed)) ?? false);
             if (!isUsed)
             {
                 return renamed;

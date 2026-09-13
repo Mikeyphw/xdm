@@ -3,12 +3,15 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.Core.Downloads;
 using XDM.Core.Settings;
+using XDM.DownloadEngine;
 
 namespace XDM.App.ViewModels;
 
 public partial class MainWindowViewModel
 {
     private static readonly char[] DestinationRuleExtensionSeparators = [',', ';', ' '];
+    private CancellationTokenSource? _destinationPreviewCancellation;
+    private long _destinationPreviewVersion;
     public ObservableCollection<SavedSearchDefinition> SavedSearches { get; } = [];
 
     public ObservableCollection<DestinationRuleDefinition> DestinationRules { get; } = [];
@@ -61,59 +64,134 @@ public partial class MainWindowViewModel
     private string newDestinationRuleTags = string.Empty;
 
     partial void OnNewDownloadUrlsChanged(string value)
-        => RefreshDestinationConflictPreview();
+        => _ = RefreshDestinationConflictPreviewAsync();
 
     partial void OnDestinationFolderChanged(string value)
-        => RefreshDestinationConflictPreview();
+        => _ = RefreshDestinationConflictPreviewAsync();
 
     partial void OnCustomFileNameChanged(string value)
-        => RefreshDestinationConflictPreview();
+        => _ = RefreshDestinationConflictPreviewAsync();
 
     partial void OnSelectedDuplicateBehaviorChanged(string value)
-        => RefreshDestinationConflictPreview();
+        => _ = RefreshDestinationConflictPreviewAsync();
 
-    private void RefreshDestinationConflictPreview()
+    private async Task RefreshDestinationConflictPreviewAsync()
     {
-        IReadOnlyList<Uri> sources = DownloadInputParser.ParseUrls(NewDownloadUrls);
-        Uri? source = sources.Count > 0 ? sources[0] : null;
-        if (source is null || string.IsNullOrWhiteSpace(DestinationFolder))
+        _destinationPreviewCancellation?.Cancel();
+        _destinationPreviewCancellation?.Dispose();
+        CancellationTokenSource cancellation = new();
+        _destinationPreviewCancellation = cancellation;
+        long version = ++_destinationPreviewVersion;
+
+        DownloadUrlParseResult parsed = DownloadInputParser.ParseUrlsDetailed(NewDownloadUrls);
+        if (parsed.AcceptedUrls.Count == 0 || string.IsNullOrWhiteSpace(DestinationFolder))
         {
             DestinationConflictPreview = string.Empty;
             HasDestinationConflict = false;
             return;
         }
 
-        string fileName = string.IsNullOrWhiteSpace(CustomFileName)
-            ? Uri.UnescapeDataString(Path.GetFileName(source.LocalPath))
-            : CustomFileName.Trim();
-        if (string.IsNullOrWhiteSpace(fileName))
+        DuplicateFileBehavior duplicateBehavior = Enum.TryParse(
+            SelectedDuplicateBehavior,
+            ignoreCase: true,
+            out DuplicateFileBehavior parsedBehavior)
+                ? parsedBehavior
+                : DuplicateFileBehavior.AutoRename;
+        ApplicationSettings settings = _settingsService.Current;
+        IReadOnlyDictionary<string, string> headers = DownloadInputParser.ParseHeaders(RequestHeaders);
+        long? speedLimit = ParseKilobytesPerSecond(SpeedLimitKbps);
+        IReadOnlyList<Uri> sources = parsed.AcceptedUrls;
+        List<DownloadRequest> requests = new(sources.Count);
+        foreach (Uri source in sources)
         {
-            fileName = "download.bin";
+            DownloadCategoryRoute route = DownloadCategoryRouting.Resolve(
+                settings,
+                source,
+                SelectedCategory?.Id,
+                DestinationFolder);
+            (string? savedUsername, string? savedPassword) = ResolveServerCredential(source);
+            requests.Add(new DownloadRequest(
+                source,
+                route.DestinationDirectory,
+                sources.Count == 1 && !string.IsNullOrWhiteSpace(CustomFileName) ? CustomFileName.Trim() : null,
+                headers,
+                EmptyToNull(Username) ?? savedUsername,
+                EmptyToNull(Password) ?? savedPassword,
+                EmptyToNull(Cookie),
+                EmptyToNull(Referer),
+                EmptyToNull(UserAgent),
+                SelectedQueue?.Id,
+                route.CategoryId,
+                speedLimit,
+                duplicateBehavior,
+                ConnectionCount: (settings.Network ?? NetworkSettings.Default).Normalize().DefaultConnectionCount,
+                Priority: NewDownloadPriority,
+                SourcePage: ParseOptionalHttpUri(Referer),
+                Mirrors: DownloadInputParser.ParseUrls(MirrorUrls),
+                ExpectedChecksumAlgorithm: EmptyToNull(ExpectedChecksumAlgorithm),
+                ExpectedChecksum: EmptyToNull(ExpectedChecksum),
+                BackendPreference: NewDownloadBackendPreference,
+                AllowBackendFallback: NewDownloadAllowBackendFallback,
+                Tags: DownloadMetadata.ParseTags(NewDownloadTags),
+                ExpectedSha256: EmptyToNull(ExpectedSha256),
+                ExpectedSha512: EmptyToNull(ExpectedSha512)));
         }
 
-        OrganizationSettings activeOrganization = (_settingsService.Current.Organization ?? OrganizationSettings.Default).Normalize();
-        DestinationRuleDefinition? rule = activeOrganization.DestinationRules
-            .FirstOrDefault(candidate => candidate.Matches(source, fileName));
-        string directory = rule?.DestinationDirectory ?? DestinationFolder;
-        string path = Path.Combine(directory, fileName);
-        bool collision = File.Exists(path)
-            || Downloads.Any(download => string.Equals(download.DestinationPath, path, StringComparison.OrdinalIgnoreCase));
-        HasDestinationConflict = collision;
-        string routing = rule is null ? string.Empty : $" Rule '{rule.Name}' routes this download to {directory}.";
-        DestinationConflictPreview = collision
-            ? $"Destination conflict: {path}. {SelectedDuplicateBehavior} will be applied.{routing}"
-            : $"Destination available: {path}.{routing}";
+        try
+        {
+            IReadOnlyList<DownloadAdmissionPreview> previews = await Task.Run(
+                () => _downloadManager.PreviewBatchAdmissionAsync(requests, cancellation.Token),
+                cancellation.Token);
+            if (cancellation.IsCancellationRequested || version != _destinationPreviewVersion || previews.Count == 0)
+            {
+                return;
+            }
+
+            DownloadAdmissionPreview first = previews[0];
+            HasDestinationConflict = previews.Any(static preview => preview.HasConflict);
+            string batch = previews.Count > 1 ? $" Batch plans {previews.Count} destinations; showing first." : string.Empty;
+            DestinationConflictPreview = first.HasConflict
+                ? $"Destination conflict: {first.DestinationPath}. {SelectedDuplicateBehavior} will be applied.{batch}"
+                : $"Destination available: {first.DestinationPath}.{batch}";
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (exception is ArgumentException
+            or IOException
+            or UnauthorizedAccessException
+            or InvalidOperationException)
+        {
+            if (version == _destinationPreviewVersion)
+            {
+                HasDestinationConflict = true;
+                DestinationConflictPreview = $"Destination preview unavailable: {exception.Message}";
+            }
+        }
     }
 
     [RelayCommand]
-    private void RefreshOrganizationState()
+    private async Task RefreshOrganizationStateAsync()
     {
-        foreach (DownloadItemViewModel download in Downloads)
+        DownloadItemViewModel[] completed = Downloads
+            .Where(static download => download.State == DownloadState.Completed)
+            .ToArray();
+        (DownloadItemViewModel Item, bool Missing)[] results = await Task.Run(() => completed
+            .Select(item => (item, !File.Exists(item.DestinationPath)))
+            .ToArray());
+        bool changed = false;
+        foreach ((DownloadItemViewModel item, bool missing) in results)
         {
-            download.RefreshFilePresence();
+            if (item.IsFileMissing != missing)
+            {
+                changed = true;
+                item.SetFileMissing(missing);
+            }
         }
-
-        RefreshFilteredDownloads();
+        if (changed)
+        {
+            RefreshFilteredDownloads();
+        }
         OperationMessage = "Download organization state refreshed.";
     }
 
@@ -250,7 +328,7 @@ public partial class MainWindowViewModel
         NewDestinationRuleExtensions = string.Empty;
         NewDestinationRuleDirectory = string.Empty;
         NewDestinationRuleTags = string.Empty;
-        RefreshDestinationConflictPreview();
+        _ = RefreshDestinationConflictPreviewAsync();
         OperationMessage = "Destination rule added; save settings to activate it.";
     }
 
@@ -264,7 +342,7 @@ public partial class MainWindowViewModel
 
         DestinationRules.Remove(SelectedDestinationRule);
         SelectedDestinationRule = DestinationRules.FirstOrDefault();
-        RefreshDestinationConflictPreview();
+        _ = RefreshDestinationConflictPreviewAsync();
         OperationMessage = "Destination rule removed; save settings to persist the change.";
     }
 
@@ -286,7 +364,7 @@ public partial class MainWindowViewModel
             DestinationRules.Add(rule);
         }
         SelectedDestinationRule = DestinationRules.FirstOrDefault();
-        RefreshDestinationConflictPreview();
+        _ = RefreshDestinationConflictPreviewAsync();
     }
 
     private OrganizationSettings BuildOrganizationSettings()

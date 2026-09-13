@@ -106,11 +106,11 @@
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_retention_days]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding HistoryRetentionDays, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="36500" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retention_days]}" AutomationProperties.AutomationId="HistoryRetentionDays"/>
+                    <NumericUpDown Value="{Binding HistoryRetentionDays, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="3650" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retention_days]}" AutomationProperties.AutomationId="HistoryRetentionDays"/>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_maximum_history_entries]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding HistoryMaximumEntries, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="1000000" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_history_entries]}" AutomationProperties.AutomationId="HistoryMaximumEntries"/>
+                    <NumericUpDown Value="{Binding HistoryMaximumEntries, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="100" Maximum="100000" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_history_entries]}" AutomationProperties.AutomationId="HistoryMaximumEntries"/>
                   </StackPanel>
                 </Grid>
                 <TextBlock Text="{Binding Localization[ui_retention_removes_only_history_entries_downloaded_files_are_never_delete]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>

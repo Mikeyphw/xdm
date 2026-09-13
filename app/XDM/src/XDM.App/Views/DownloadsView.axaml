@@ -381,7 +381,7 @@
                   <Button Margin="0,0,8,8" Classes="quiet" Content="{Binding Localization[ui_earlier]}" Command="{Binding MoveSelectedDownloadEarlierCommand}"/>
                   <Button Margin="0,0,8,8" Classes="quiet" Content="{Binding Localization[ui_later]}" Command="{Binding MoveSelectedDownloadLaterCommand}"/>
                   <Button Margin="0,0,8,8" Classes="secondary" Content="{Binding Localization[ui_convert]}" Command="{Binding PrepareSelectedDownloadConversionCommand}"/>
-                  <Button Margin="0,0,8,8" Classes="danger" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedCommand}"/>
+                  <Button Margin="0,0,8,8" Classes="danger" Content="{Binding Localization[ui_remove]}" Command="{Binding RemoveSelectedCommand}" IsEnabled="{Binding SelectedDownload.CanRemoveFromHistory}"/>
                 </WrapPanel>
               </StackPanel>
             </Expander>

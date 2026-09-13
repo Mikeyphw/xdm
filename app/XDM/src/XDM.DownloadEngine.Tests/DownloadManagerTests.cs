@@ -1408,7 +1408,7 @@ public sealed class DownloadManagerTests
             Path.Combine(directory.Path, "file.bin"),
             0,
             100,
-            DownloadState.Paused,
+            DownloadState.Completed,
             DateTimeOffset.UtcNow);
         ApplicationState state = new();
         ControllableHistoryStore history = new([persisted]);
@@ -1452,6 +1452,68 @@ public sealed class DownloadManagerTests
         Assert.True(File.Exists(source));
         Assert.False(File.Exists(target));
         Assert.Equal(source, Assert.Single(state.Current.Downloads).DestinationPath);
+    }
+
+    [Fact]
+    public async Task HistoryOnlyRemovalRejectsNonTerminalTransferWithoutCancellingIt()
+    {
+        using TemporaryDirectory directory = new();
+        PersistedDownload persisted = new(
+            "live-history",
+            new Uri("https://example.test/live.bin"),
+            Path.Combine(directory.Path, "live.bin"),
+            0,
+            100,
+            DownloadState.Paused,
+            DateTimeOffset.UtcNow);
+        ApplicationState state = new();
+        using HttpClient client = new(new RangeHandler(CreatePayload(1024, 43)));
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
+        await manager.InitializeAsync(CancellationToken.None);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            manager.DeleteAsync("live-history", DownloadDeletionScope.HistoryOnly));
+
+        DownloadSnapshot snapshot = Assert.Single(state.Current.Downloads);
+        Assert.Equal(DownloadState.Paused, snapshot.State);
+    }
+
+    [Fact]
+    public async Task BatchPreviewReservesEarlierAutoRenamedDestinations()
+    {
+        using TemporaryDirectory directory = new();
+        await File.WriteAllBytesAsync(Path.Combine(directory.Path, "same.bin"), [1, 2, 3]);
+        using HttpClient client = new(new RangeHandler(CreatePayload(1024, 47)));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        await manager.InitializeAsync(CancellationToken.None);
+
+        IReadOnlyList<DownloadAdmissionPreview> previews = await manager.PreviewBatchAdmissionAsync(
+        [
+            new DownloadRequest(new Uri("https://example.test/a.bin"), directory.Path, "same.bin"),
+            new DownloadRequest(new Uri("https://example.test/b.bin"), directory.Path, "same.bin")
+        ]);
+
+        Assert.Equal(2, previews.Count);
+        Assert.NotEqual(previews[0].DestinationPath, previews[1].DestinationPath);
+        Assert.All(previews, static preview => Assert.True(preview.HasConflict));
+    }
+
+    [Fact]
+    public async Task CaseDistinctUrlPathsAreNotCollapsedAsDuplicates()
+    {
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new RangeHandler(CreatePayload(2048, 53)));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+        await manager.InitializeAsync(CancellationToken.None);
+
+        string first = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/File.bin"), directory.Path, "one.bin"));
+        string second = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/file.bin"), directory.Path, "two.bin"));
+
+        Assert.NotEqual(first, second);
     }
 
     private static DownloadManager CreateManager(

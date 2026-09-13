@@ -30,4 +30,11 @@ public static class DownloadMetadata
 
         return builder.Uri.AbsoluteUri;
     }
+
+    public static bool SourceIdentitiesEqual(Uri left, Uri right)
+        => string.Equals(
+            NormalizeSourceIdentity(left),
+            NormalizeSourceIdentity(right),
+            StringComparison.Ordinal);
 }
+

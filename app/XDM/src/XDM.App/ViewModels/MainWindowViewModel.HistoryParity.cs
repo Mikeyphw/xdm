@@ -261,52 +261,8 @@ public partial class MainWindowViewModel
 
         try
         {
-            DownloadListImportResult result = await _downloadListTransferService.ImportAsync(HistoryTransferPath);
-            int added = 0;
-            int failed = 0;
-            foreach (DownloadListEntry entry in result.Downloads)
-            {
-                string destination = string.IsNullOrWhiteSpace(entry.DestinationDirectory)
-                    ? DestinationFolder
-                    : entry.DestinationDirectory;
-                try
-                {
-                    await _downloadManager.AddAsync(new DownloadRequest(
-                        entry.Source,
-                        destination,
-                        entry.FileName,
-                        QueueId: entry.QueueId,
-                        CategoryId: entry.CategoryId,
-                        DuplicateBehavior: DuplicateFileBehavior.AutoRename,
-                        ConnectionCount: entry.ConnectionCount,
-                        Priority: entry.Priority,
-                        SourcePage: entry.SourcePage,
-                        Mirrors: entry.Mirrors,
-                        ExpectedChecksumAlgorithm: entry.ExpectedChecksumAlgorithm,
-                        ExpectedChecksum: entry.ExpectedChecksum,
-                        ExpectedLength: entry.ExpectedLength,
-                        BackendPreference: entry.BackendPreference,
-                        AllowBackendFallback: entry.AllowBackendFallback,
-                        Tags: entry.Tags,
-                        ExpectedSha256: entry.ExpectedSha256,
-                        ExpectedSha512: entry.ExpectedSha512));
-                    added++;
-                }
-                catch (ArgumentException)
-                {
-                    failed++;
-                }
-                catch (IOException)
-                {
-                    failed++;
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    failed++;
-                }
-            }
-
-            HistoryTransferStatus = $"Imported {added:N0} download(s) from {result.SourceFormat}; ignored {result.IgnoredEntries:N0}; failed to queue {failed:N0}.";
+            (int added, int duplicates, int failed, string format, int ignored) = await ImportDownloadListCoreAsync(HistoryTransferPath);
+            HistoryTransferStatus = $"Imported {added:N0} new download(s) from {format}; focused {duplicates:N0} existing duplicate(s); ignored {ignored:N0}; failed to queue {failed:N0}.";
         }
         catch (System.Text.Json.JsonException exception)
         {
@@ -324,6 +280,63 @@ public partial class MainWindowViewModel
         {
             HistoryTransferStatus = exception.Message;
         }
+    }
+
+    private async Task<(int Added, int Duplicates, int Failed, string Format, int Ignored)> ImportDownloadListCoreAsync(string path)
+    {
+        DownloadListImportResult result = await _downloadListTransferService.ImportAsync(path);
+        HashSet<string> knownIds = _applicationState.Current.Downloads
+            .Select(static item => item.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        int added = 0;
+        int duplicates = 0;
+        int failed = 0;
+        foreach (DownloadListEntry entry in result.Downloads)
+        {
+            string destination = string.IsNullOrWhiteSpace(entry.DestinationDirectory)
+                ? DestinationFolder
+                : entry.DestinationDirectory;
+            try
+            {
+                string id = await _downloadManager.AddAsync(new DownloadRequest(
+                    entry.Source,
+                    destination,
+                    entry.FileName,
+                    QueueId: entry.QueueId,
+                    CategoryId: entry.CategoryId,
+                    DuplicateBehavior: DuplicateFileBehavior.AutoRename,
+                    ConnectionCount: entry.ConnectionCount,
+                    Priority: entry.Priority,
+                    SourcePage: entry.SourcePage,
+                    Mirrors: entry.Mirrors,
+                    ExpectedChecksumAlgorithm: entry.ExpectedChecksumAlgorithm,
+                    ExpectedChecksum: entry.ExpectedChecksum,
+                    ExpectedLength: entry.ExpectedLength,
+                    BackendPreference: entry.BackendPreference,
+                    AllowBackendFallback: entry.AllowBackendFallback,
+                    Tags: entry.Tags,
+                    ExpectedSha256: entry.ExpectedSha256,
+                    ExpectedSha512: entry.ExpectedSha512));
+                if (knownIds.Add(id))
+                {
+                    added++;
+                }
+                else
+                {
+                    duplicates++;
+                }
+            }
+            catch (Exception exception) when (exception is ArgumentException
+                or IOException
+                or UnauthorizedAccessException
+                or InvalidOperationException)
+            {
+                _ = exception;
+                failed++;
+            }
+        }
+
+        return (added, duplicates, failed, result.SourceFormat, result.IgnoredEntries);
     }
 
     [RelayCommand]

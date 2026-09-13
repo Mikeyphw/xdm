@@ -253,7 +253,7 @@
   "ui_notify_when_update_staged": "Notify me when a verified package is staged",
   "ui_one_argument_per_line_use_file_where_the_file_path_belongs": "One argument per line; use {file} where the file path belongs",
   "ui_one_command_argument_per_line": "One command argument per line",
-  "ui_one_or_more_http_https_urls": "One or more HTTP/HTTPS URLs",
+  "ui_one_or_more_http_https_urls": "One or more HTTP/HTTPS/FTP/FTPS URLs",
   "ui_open_file": "Open file",
   "ui_open_folder": "Open folder",
   "ui_open_source_page": "Open source page",

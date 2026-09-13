@@ -446,7 +446,7 @@ public partial class MainWindowViewModel
         IReadOnlyList<Uri> urls = DownloadInputParser.ParseUrls(text);
         if (urls.Count == 0)
         {
-            OperationMessage = "The dropped text did not contain an HTTP or HTTPS URL.";
+            OperationMessage = "The dropped text did not contain an HTTP, HTTPS, FTP, or FTPS URL.";
             return Task.CompletedTask;
         }
 
@@ -460,24 +460,79 @@ public partial class MainWindowViewModel
     public async Task HandleDroppedFilesAsync(IReadOnlyList<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);
-        int imported = 0;
+        int processed = 0;
+        int unsupported = 0;
+        List<string> errors = [];
         List<string> urls = [];
+
         foreach (string path in paths.Where(static path => !string.IsNullOrWhiteSpace(path)))
         {
             string extension = Path.GetExtension(path);
             if (extension.Equals(".meta4", StringComparison.OrdinalIgnoreCase)
                 || extension.Equals(".metalink", StringComparison.OrdinalIgnoreCase))
             {
-                await ImportMetalinkAsync(path);
-                imported++;
+                try
+                {
+                    await using FileStream stream = new(
+                        path,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        16 * 1024,
+                        FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    IReadOnlyList<string> ids = await _downloadManager.AddMetalinkAsync(
+                        stream,
+                        DestinationFolder,
+                        SelectedQueue?.Id);
+                    if (ids.Count > 0)
+                    {
+                        processed++;
+                    }
+                    else
+                    {
+                        errors.Add($"{Path.GetFileName(path)}: Metalink contained no queueable downloads.");
+                    }
+                }
+                catch (Exception exception) when (exception is InvalidDataException
+                    or IOException
+                    or ArgumentException
+                    or UnauthorizedAccessException
+                    or InvalidOperationException)
+                {
+                    errors.Add($"{Path.GetFileName(path)}: {exception.Message}");
+                }
                 continue;
             }
 
             if (extension.Equals(".json", StringComparison.OrdinalIgnoreCase))
             {
-                HistoryTransferPath = path;
-                await ImportDownloadListAsync();
-                imported++;
+                try
+                {
+                    var importResult = await ImportDownloadListCoreAsync(path);
+                    int added = importResult.Added;
+                    int duplicates = importResult.Duplicates;
+                    int failed = importResult.Failed;
+                    if (added + duplicates > 0 && failed == 0)
+                    {
+                        processed++;
+                    }
+                    else if (added + duplicates > 0)
+                    {
+                        processed++;
+                        errors.Add($"{Path.GetFileName(path)}: {failed} download(s) failed to queue.");
+                    }
+                    else
+                    {
+                        errors.Add($"{Path.GetFileName(path)}: no downloads were imported.");
+                    }
+                }
+                catch (Exception exception) when (exception is System.Text.Json.JsonException
+                    or InvalidDataException
+                    or IOException
+                    or UnauthorizedAccessException)
+                {
+                    errors.Add($"{Path.GetFileName(path)}: {exception.Message}");
+                }
                 continue;
             }
 
@@ -496,31 +551,51 @@ public partial class MainWindowViewModel
                                 .Select(static line => line[4..].Trim()));
                     }
 
-                    urls.AddRange(DownloadInputParser.ParseUrls(text).Select(static url => url.AbsoluteUri));
-                    imported++;
+                    IReadOnlyList<Uri> parsed = DownloadInputParser.ParseUrls(text);
+                    if (parsed.Count == 0)
+                    {
+                        errors.Add($"{Path.GetFileName(path)}: no supported HTTP, HTTPS, FTP, or FTPS URL was found.");
+                    }
+                    else
+                    {
+                        urls.AddRange(parsed.Select(static url => url.AbsoluteUri));
+                        processed++;
+                    }
                 }
-                catch (IOException exception)
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 {
-                    OperationMessage = exception.Message;
+                    errors.Add($"{Path.GetFileName(path)}: {exception.Message}");
                 }
-                catch (UnauthorizedAccessException exception)
-                {
-                    OperationMessage = exception.Message;
-                }
+                continue;
             }
+
+            unsupported++;
         }
 
         if (urls.Count > 0)
         {
-            NewDownloadUrls = string.Join(Environment.NewLine, urls.Distinct(StringComparer.Ordinal));
+            NewDownloadUrls = string.Join(
+                Environment.NewLine,
+                urls.Distinct(StringComparer.Ordinal));
             SelectSection("downloads");
             UiActionRequested?.Invoke(this, "focus-new-download");
         }
 
-        OperationMessage = imported > 0
-            ? $"Processed {imported} dropped file{(imported == 1 ? string.Empty : "s")}."
-            : "No supported Metalink, JSON, text, or internet-shortcut files were dropped.";
+        if (processed == 0 && errors.Count == 0)
+        {
+            OperationMessage = unsupported > 0
+                ? $"No supported files were processed; {unsupported} unsupported file(s)."
+                : "No supported Metalink, JSON, text, or internet-shortcut files were dropped.";
+            return;
+        }
+
+        string failureSummary = errors.Count == 0
+            ? string.Empty
+            : $" {errors.Count} failed: {string.Join(" | ", errors.Take(3))}";
+        string unsupportedSummary = unsupported == 0 ? string.Empty : $" {unsupported} unsupported.";
+        OperationMessage = $"Processed {processed} dropped file{(processed == 1 ? string.Empty : "s")}.{unsupportedSummary}{failureSummary}".Trim();
     }
+
 }
 
 public sealed record NotificationCenterEntryViewModel(NotificationCenterEntry Entry)

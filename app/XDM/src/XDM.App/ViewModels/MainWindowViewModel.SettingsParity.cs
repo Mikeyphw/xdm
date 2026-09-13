@@ -3,6 +3,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.Core.Settings;
+using XDM.Core.Downloads;
 
 namespace XDM.App.ViewModels;
 
@@ -365,22 +366,11 @@ public partial class MainWindowViewModel
     }
 
     private string? ResolveCategoryId(Uri source, string? selectedCategoryId)
-    {
-        ApplicationSettings committed = _settingsService.Current;
-        DownloadBehaviorSettings behavior = committed.DownloadBehavior ?? DownloadBehaviorSettings.Default;
-        if (!behavior.AutoSelectCategory)
-        {
-            return selectedCategoryId;
-        }
-        string extension = Path.GetExtension(source.AbsolutePath).TrimStart('.');
-        if (extension.Length == 0)
-        {
-            return selectedCategoryId;
-        }
-        DownloadCategoryDefinition? category = committed.Categories.FirstOrDefault(item =>
-            item.Extensions.Any(value => string.Equals(value, extension, StringComparison.OrdinalIgnoreCase)));
-        return category?.Id ?? selectedCategoryId;
-    }
+        => DownloadCategoryRouting.Resolve(
+            _settingsService.Current,
+            source,
+            selectedCategoryId,
+            DestinationFolder).CategoryId;
 
     private (string? Username, string? Password) ResolveServerCredential(Uri source)
         => ServerCredentialResolver.Resolve(_settingsService.Current, source);
