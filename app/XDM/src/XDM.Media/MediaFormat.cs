@@ -14,7 +14,12 @@ public sealed record MediaFormat(
     string? Name,
     bool IsDefault,
     bool IsEncrypted,
-    string? ProviderData = null)
+    string? ProviderData = null,
+    string? AudioGroupId = null,
+    string? SubtitleGroupId = null,
+    string? PeriodId = null,
+    string? AdaptationSetId = null,
+    string? Role = null)
 {
     public string DisplayName
     {

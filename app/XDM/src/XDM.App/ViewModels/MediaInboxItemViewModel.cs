@@ -20,7 +20,11 @@ public sealed class MediaInboxItemViewModel
         SourcePage = sourcePage;
         Browser = browser;
         DetectedAt = detectedAt;
-        string identity = $"{sourcePage}|{catalog.Source.AbsoluteUri}";
+        string identity = string.Join("\u001f",
+            sourcePage ?? string.Empty,
+            browser ?? string.Empty,
+            catalog.Source.AbsoluteUri,
+            MetadataFingerprint(metadata));
         Id = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))[..16];
     }
 
@@ -73,4 +77,29 @@ public sealed class MediaInboxItemViewModel
 
     public string AccessibleSummary
         => $"{Title}, {ProtocolLabel}, {StatusLabel}, {VariantSummary}, from {SourceLabel}";
+
+    private static string MetadataFingerprint(MediaRequestMetadata metadata)
+    {
+        StringBuilder builder = new();
+        Append(builder, "cookie", metadata.Cookie);
+        Append(builder, "referer", metadata.Referer);
+        Append(builder, "user-agent", metadata.UserAgent);
+        if (metadata.Headers is not null)
+        {
+            foreach ((string name, string value) in metadata.Headers.OrderBy(static pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Append(builder, name.ToLowerInvariant(), value);
+            }
+        }
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+    }
+
+    private static void Append(StringBuilder builder, string name, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            builder.Append(name).Append('=').Append(value).Append('\n');
+        }
+    }
 }

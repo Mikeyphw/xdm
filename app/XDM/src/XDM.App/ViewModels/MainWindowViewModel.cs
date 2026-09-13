@@ -1845,7 +1845,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         string fileName = string.IsNullOrWhiteSpace(MediaDestinationFile)
-            ? "video.mp4"
+            ? (_currentMediaCatalog is null ? "video.mp4" : BuildSuggestedMediaDestinationFileName(_currentMediaCatalog))
             : Path.GetFileName(MediaDestinationFile.Trim());
         string destination = Path.IsPathRooted(MediaDestinationFile)
             ? MediaDestinationFile
@@ -2511,6 +2511,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 SetBrowserCaptureFailure(exception.Message);
             }
             catch (NotSupportedException exception)
+            {
+                Reject(exception.Message);
+                SetBrowserCaptureFailure(exception.Message);
+            }
+            catch (System.Text.Json.JsonException exception)
+            {
+                Reject(exception.Message);
+                SetBrowserCaptureFailure(exception.Message);
+            }
+            catch (IOException exception)
+            {
+                Reject(exception.Message);
+                SetBrowserCaptureFailure(exception.Message);
+            }
+            catch (TimeoutException exception)
             {
                 Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);

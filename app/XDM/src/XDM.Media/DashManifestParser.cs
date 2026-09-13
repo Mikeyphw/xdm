@@ -46,17 +46,24 @@ internal static partial class DashManifestParser
         minimumUpdate = TimeSpan.FromSeconds(Math.Clamp(minimumUpdate.TotalSeconds, 1, 60));
         Uri rootBase = ResolveBase(manifestUri, FirstChildValue(root, "BaseURL"));
         List<DashRepresentation> representations = [];
+        int periodIndex = 0;
         foreach (XElement period in Children(root, "Period"))
         {
+            string periodId = ScopedComponent(Attribute(period, "id"), $"p{periodIndex}");
             TimeSpan? periodDuration = ParseDuration(Attribute(period, "duration")) ?? duration;
             Uri periodBase = ResolveBase(rootBase, FirstChildValue(period, "BaseURL"));
+            int adaptationIndex = 0;
             foreach (XElement adaptation in Children(period, "AdaptationSet"))
             {
+                string adaptationId = ScopedComponent(Attribute(adaptation, "id"), $"a{adaptationIndex}");
                 Uri adaptationBase = ResolveBase(periodBase, FirstChildValue(adaptation, "BaseURL"));
                 string? adaptationMime = Attribute(adaptation, "mimeType");
                 string? adaptationContentType = Attribute(adaptation, "contentType");
                 string? adaptationCodecs = Attribute(adaptation, "codecs");
                 string? language = Attribute(adaptation, "lang");
+                string? adaptationRole = ResolveRole(adaptation);
+                bool adaptationDefault = IsDefaultRole(adaptationRole);
+                bool adaptationEncrypted = HasContentProtection(adaptation);
                 DashSegmentTemplate? adaptationTemplate = ParseTemplate(FirstChild(adaptation, "SegmentTemplate"));
                 DashSegmentList? adaptationList = ParseList(adaptationBase, FirstChild(adaptation, "SegmentList"));
                 foreach (XElement representation in Children(adaptation, "Representation"))
@@ -79,23 +86,37 @@ internal static partial class DashManifestParser
                         list = new DashSegmentList(null, [representationBase]);
                     }
 
+                    string? role = ResolveRole(representation) ?? adaptationRole;
+                    string scopedId = BuildScopedRepresentationId(periodId, adaptationId, id);
                     representations.Add(new DashRepresentation(
                         id,
+                        scopedId,
                         kind,
                         representationBase,
-                        mime,
+                        InferDashContainer(mime, Attribute(representation, "codecs") ?? adaptationCodecs),
                         Attribute(representation, "codecs") ?? adaptationCodecs,
                         ParseLong(Attribute(representation, "bandwidth")),
                         ParseInt(Attribute(representation, "width")),
                         ParseInt(Attribute(representation, "height")),
                         ParseFrameRate(Attribute(representation, "frameRate")),
-                        language,
+                        Attribute(representation, "lang") ?? language,
                         Attribute(representation, "label") ?? Attribute(adaptation, "label"),
                         periodDuration,
+                        periodId,
+                        periodIndex,
+                        adaptationId,
+                        adaptationIndex,
+                        role,
+                        IsDefaultRole(role) || adaptationDefault,
+                        adaptationEncrypted || HasContentProtection(representation),
                         template,
                         list));
                 }
+
+                adaptationIndex++;
             }
+
+            periodIndex++;
         }
 
         if (representations.Count == 0)
@@ -350,6 +371,69 @@ internal static partial class DashManifestParser
             return number.ToString($"D{width}", CultureInfo.InvariantCulture);
         });
         return value.Replace("$$", "$", StringComparison.Ordinal);
+    }
+
+    private static string BuildScopedRepresentationId(string periodId, string adaptationId, string representationId)
+        => $"p:{SanitizeIdentityComponent(periodId)}|a:{SanitizeIdentityComponent(adaptationId)}|r:{SanitizeIdentityComponent(representationId)}";
+
+    private static string ScopedComponent(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
+    private static string SanitizeIdentityComponent(string value)
+    {
+        string normalized = value.Trim();
+        return normalized.Length == 0
+            ? "unknown"
+            : normalized.Replace("|", "%7C", StringComparison.Ordinal).Replace(":", "%3A", StringComparison.Ordinal);
+    }
+
+    private static string? ResolveRole(XElement element)
+    {
+        XElement? role = Children(element, "Role").FirstOrDefault();
+        string? value = role is null ? null : Attribute(role, "value");
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static bool IsDefaultRole(string? role)
+        => role is not null
+            && (role.Equals("main", StringComparison.OrdinalIgnoreCase)
+                || role.Equals("default", StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasContentProtection(XElement element)
+        => FirstChild(element, "ContentProtection") is not null;
+
+    private static string? InferDashContainer(string? mime, string? codecs)
+    {
+        if (string.IsNullOrWhiteSpace(mime))
+        {
+            return null;
+        }
+
+        string value = mime.Trim().ToLowerInvariant();
+        if (value.Contains("webm", StringComparison.Ordinal))
+        {
+            return "webm";
+        }
+
+        if (value.Contains("mp4", StringComparison.Ordinal)
+            || value.Contains("m4s", StringComparison.Ordinal)
+            || (codecs?.Contains("avc", StringComparison.OrdinalIgnoreCase) == true)
+            || (codecs?.Contains("mp4a", StringComparison.OrdinalIgnoreCase) == true))
+        {
+            return "mp4";
+        }
+
+        if (value.Contains("ttml", StringComparison.Ordinal))
+        {
+            return "ttml";
+        }
+
+        if (value.Contains("vtt", StringComparison.Ordinal) || value.Contains("webvtt", StringComparison.Ordinal))
+        {
+            return "vtt";
+        }
+
+        return null;
     }
 
     private static MediaStreamKind ResolveKind(string? contentType, string? mime)

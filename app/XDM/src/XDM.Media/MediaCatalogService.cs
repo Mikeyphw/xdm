@@ -1,4 +1,6 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace XDM.Media;
 
@@ -6,6 +8,10 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
 {
     private static readonly HashSet<string> DirectMediaExtensions = new(
         [".mp4", ".mkv", ".webm", ".mov", ".avi", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".wav", ".opus"],
+        StringComparer.OrdinalIgnoreCase);
+
+    private static readonly HashSet<string> DirectAudioExtensions = new(
+        [".mp3", ".m4a", ".aac", ".flac", ".ogg", ".wav", ".opus"],
         StringComparer.OrdinalIgnoreCase);
 
     public async Task<MediaCatalog> GetCatalogAsync(
@@ -18,12 +24,43 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
         string extension = Path.GetExtension(source.AbsolutePath);
         if (extension.Equals(".m3u8", StringComparison.OrdinalIgnoreCase))
         {
-            return await CreateHlsCatalogAsync(source, requestMetadata, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                MediaManifestResponse manifest = await MediaHttp.ReadManifestResponseAsync(
+                    httpClient,
+                    source,
+                    requestMetadata,
+                    cancellationToken).ConfigureAwait(false);
+                return await CreateHlsCatalogAsync(
+                    source,
+                    manifest.FinalUri,
+                    requestMetadata,
+                    cancellationToken,
+                    manifest.Content).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested && IsProviderFallbackEligible(exception))
+            {
+                MediaCatalog? providerAfterFailure = await TryGetExternalCatalogAsync(source, requestMetadata, cancellationToken).ConfigureAwait(false);
+                return providerAfterFailure ?? UnknownCatalog(source, $"Native HLS discovery failed and provider fallback did not resolve this URL: {exception.Message}");
+            }
         }
 
         if (extension.Equals(".mpd", StringComparison.OrdinalIgnoreCase))
         {
-            return await CreateDashCatalogAsync(source, requestMetadata, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                MediaManifestResponse manifest = await MediaHttp.ReadManifestResponseAsync(
+                    httpClient,
+                    source,
+                    requestMetadata,
+                    cancellationToken).ConfigureAwait(false);
+                return CreateDashCatalog(source, manifest.FinalUri, manifest.Content);
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested && IsProviderFallbackEligible(exception))
+            {
+                MediaCatalog? providerAfterFailure = await TryGetExternalCatalogAsync(source, requestMetadata, cancellationToken).ConfigureAwait(false);
+                return providerAfterFailure ?? UnknownCatalog(source, $"Native DASH discovery failed and provider fallback did not resolve this URL: {exception.Message}");
+            }
         }
 
         if (DirectMediaExtensions.Contains(extension))
@@ -31,68 +68,103 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
             return CreateDirectCatalog(source, null, Path.GetFileName(source.LocalPath));
         }
 
-        using HttpRequestMessage request = MediaHttp.CreateRequest(HttpMethod.Get, source, requestMetadata);
-        using HttpResponseMessage response = await httpClient
-            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        string? contentType = response.Content.Headers.ContentType?.MediaType;
-        string? fileName = ResolveFileName(response.Content.Headers.ContentDisposition, source);
-        if (Contains(contentType, "mpegurl"))
+        HttpResponseMessage? response = null;
+        try
         {
-            string manifest = await ReadBoundedContentAsync(response, cancellationToken).ConfigureAwait(false);
-            return await CreateHlsCatalogAsync(source, requestMetadata, cancellationToken, manifest).ConfigureAwait(false);
+            using HttpRequestMessage request = MediaHttp.CreateRequest(HttpMethod.Get, source, requestMetadata);
+            response = await httpClient
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                .ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                MediaCatalog? providerAfterFailure = await TryGetExternalCatalogAsync(source, requestMetadata, cancellationToken).ConfigureAwait(false);
+                if (providerAfterFailure is not null)
+                {
+                    return providerAfterFailure;
+                }
+
+                response.EnsureSuccessStatusCode();
+            }
+
+            Uri finalUri = response.RequestMessage?.RequestUri ?? source;
+            string? contentType = response.Content.Headers.ContentType?.MediaType;
+            string? fileName = ResolveFileName(response.Content.Headers.ContentDisposition, finalUri);
+            if (Contains(contentType, "mpegurl"))
+            {
+                string manifest = await MediaHttp.ReadManifestContentAsync(response, cancellationToken).ConfigureAwait(false);
+                return await CreateHlsCatalogAsync(source, finalUri, requestMetadata, cancellationToken, manifest).ConfigureAwait(false);
+            }
+
+            if (Contains(contentType, "dash+xml"))
+            {
+                string manifest = await MediaHttp.ReadManifestContentAsync(response, cancellationToken).ConfigureAwait(false);
+                return CreateDashCatalog(source, finalUri, manifest);
+            }
+
+            if (IsDirectMediaEvidence(contentType, fileName ?? finalUri.LocalPath))
+            {
+                return CreateDirectCatalog(finalUri, contentType, fileName);
+            }
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested && IsProviderFallbackEligible(exception))
+        {
+            MediaCatalog? providerAfterFailure = await TryGetExternalCatalogAsync(source, requestMetadata, cancellationToken).ConfigureAwait(false);
+            if (providerAfterFailure is not null)
+            {
+                return providerAfterFailure;
+            }
+
+            return UnknownCatalog(source, $"Media discovery failed before provider fallback could resolve this URL: {exception.Message}");
+        }
+        finally
+        {
+            response?.Dispose();
         }
 
-        if (Contains(contentType, "dash+xml"))
-        {
-            string manifest = await ReadBoundedContentAsync(response, cancellationToken).ConfigureAwait(false);
-            return CreateDashCatalog(source, manifest);
-        }
-
-        if (contentType is not null
-            && (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
-                || contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)))
-        {
-            return CreateDirectCatalog(source, contentType, fileName);
-        }
-
-        MediaCatalog? external = await ytDlpProvider
-            .TryGetCatalogAsync(source, requestMetadata, cancellationToken)
-            .ConfigureAwait(false);
-        return external ?? new MediaCatalog(
+        MediaCatalog? external = await TryGetExternalCatalogAsync(source, requestMetadata, cancellationToken).ConfigureAwait(false);
+        return external ?? UnknownCatalog(
             source,
-            MediaKind.Unknown,
-            source.Host,
-            false,
-            [],
-            "No supported media format was detected and yt-dlp is unavailable or did not recognize the page.",
-            "none");
+            "No supported media format was detected and yt-dlp is unavailable or did not recognize the page.");
     }
 
     private async Task<MediaCatalog> CreateHlsCatalogAsync(
-        Uri source,
+        Uri catalogSource,
+        Uri manifestUri,
         MediaRequestMetadata metadata,
         CancellationToken cancellationToken,
         string? knownManifest = null)
     {
-        string content = knownManifest ?? await FragmentRetryPolicy.ExecuteAsync(
-            token => MediaHttp.ReadManifestAsync(httpClient, source, metadata, token),
-            cancellationToken).ConfigureAwait(false);
-        HlsManifest manifest = HlsManifestParser.Parse(source, content);
+        string content;
+        Uri parseBase = manifestUri;
+        if (knownManifest is null)
+        {
+            MediaManifestResponse response = await MediaHttp.ReadManifestResponseAsync(
+                httpClient,
+                manifestUri,
+                metadata,
+                cancellationToken).ConfigureAwait(false);
+            content = response.Content;
+            parseBase = response.FinalUri;
+        }
+        else
+        {
+            content = knownManifest;
+        }
+
+        HlsManifest manifest = HlsManifestParser.Parse(parseBase, content);
         List<MediaFormat> formats = [];
         bool live = !manifest.EndList;
         if (manifest.IsMaster)
         {
-            int variantIndex = 0;
             foreach (HlsVariant variant in manifest.Variants)
             {
                 bool hasSeparateAudio = !string.IsNullOrWhiteSpace(variant.AudioGroup)
                     && manifest.Renditions.Any(rendition =>
                         rendition.Type.Equals("AUDIO", StringComparison.OrdinalIgnoreCase)
                         && rendition.GroupId.Equals(variant.AudioGroup, StringComparison.Ordinal));
+                string id = $"hls-video-{StableId(variant.Uri.AbsoluteUri, variant.AudioGroup, variant.SubtitleGroup, variant.Bandwidth?.ToString(System.Globalization.CultureInfo.InvariantCulture), variant.Codecs)}";
                 formats.Add(new MediaFormat(
-                    $"hls-video-{variantIndex++}",
+                    id,
                     hasSeparateAudio ? MediaStreamKind.Video : MediaStreamKind.Muxed,
                     variant.Uri,
                     "hls",
@@ -103,18 +175,19 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
                     variant.FrameRate,
                     null,
                     variant.Name,
-                    variantIndex == 1,
-                    false));
+                    formats.Count == 0,
+                    false,
+                    null,
+                    variant.AudioGroup,
+                    variant.SubtitleGroup));
             }
 
-            int audioIndex = 0;
-            int subtitleIndex = 0;
             foreach (HlsRendition rendition in manifest.Renditions.Where(static rendition => rendition.Uri is not null))
             {
                 if (rendition.Type.Equals("AUDIO", StringComparison.OrdinalIgnoreCase))
                 {
                     formats.Add(new MediaFormat(
-                        $"hls-audio-{audioIndex++}",
+                        $"hls-audio-{StableId(rendition.GroupId, rendition.Name, rendition.Language, rendition.Uri!.AbsoluteUri)}",
                         MediaStreamKind.Audio,
                         rendition.Uri!,
                         "hls",
@@ -127,12 +200,13 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
                         rendition.Name,
                         rendition.IsDefault,
                         false,
+                        null,
                         rendition.GroupId));
                 }
                 else if (rendition.Type.Equals("SUBTITLES", StringComparison.OrdinalIgnoreCase))
                 {
                     formats.Add(new MediaFormat(
-                        $"hls-subtitle-{subtitleIndex++}",
+                        $"hls-subtitle-{StableId(rendition.GroupId, rendition.Name, rendition.Language, rendition.Uri!.AbsoluteUri)}",
                         MediaStreamKind.Subtitle,
                         rendition.Uri!,
                         "webvtt",
@@ -145,27 +219,13 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
                         rendition.Name,
                         rendition.IsDefault,
                         false,
+                        null,
+                        null,
                         rendition.GroupId));
                 }
             }
 
-            if (manifest.Variants.Count > 0)
-            {
-                try
-                {
-                    string firstVariant = await FragmentRetryPolicy.ExecuteAsync(
-                        token => MediaHttp.ReadManifestAsync(httpClient, manifest.Variants[0].Uri, metadata, token),
-                        cancellationToken).ConfigureAwait(false);
-                    HlsManifest mediaManifest = HlsManifestParser.Parse(manifest.Variants[0].Uri, firstVariant);
-                    live = !mediaManifest.EndList;
-                }
-                catch (HttpRequestException)
-                {
-                }
-                catch (InvalidDataException)
-                {
-                }
-            }
+            live = await InferHlsMasterLiveStatusAsync(manifest, metadata, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -173,7 +233,7 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
             formats.Add(new MediaFormat(
                 "hls-main",
                 MediaStreamKind.Muxed,
-                source,
+                parseBase,
                 "hls",
                 null,
                 null,
@@ -187,9 +247,9 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
         }
 
         return new MediaCatalog(
-            source,
+            catalogSource,
             MediaKind.Hls,
-            Path.GetFileNameWithoutExtension(source.LocalPath) is { Length: > 0 } title ? title : source.Host,
+            Path.GetFileNameWithoutExtension(parseBase.LocalPath) is { Length: > 0 } title ? title : parseBase.Host,
             live,
             formats,
             $"HLS {(manifest.IsMaster ? "master" : "media")} playlist with {formats.Count} selectable format(s).",
@@ -201,19 +261,21 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
         MediaRequestMetadata metadata,
         CancellationToken cancellationToken)
     {
-        string content = await FragmentRetryPolicy.ExecuteAsync(
-            token => MediaHttp.ReadManifestAsync(httpClient, source, metadata, token),
+        MediaManifestResponse manifest = await MediaHttp.ReadManifestResponseAsync(
+            httpClient,
+            source,
+            metadata,
             cancellationToken).ConfigureAwait(false);
-        return CreateDashCatalog(source, content);
+        return CreateDashCatalog(source, manifest.FinalUri, manifest.Content);
     }
 
-    private static MediaCatalog CreateDashCatalog(Uri source, string content)
+    private static MediaCatalog CreateDashCatalog(Uri catalogSource, Uri manifestUri, string content)
     {
-        DashManifest manifest = DashManifestParser.Parse(source, content);
+        DashManifest manifest = DashManifestParser.Parse(manifestUri, content);
         MediaFormat[] formats = manifest.Representations.Select(representation => new MediaFormat(
-            $"dash-{representation.StreamKind.ToString().ToLowerInvariant()}-{representation.Id}",
+            $"dash-{representation.StreamKind.ToString().ToLowerInvariant()}-{StableId(representation.ScopedId)}",
             representation.StreamKind,
-            source,
+            manifestUri,
             representation.Container,
             representation.Codecs,
             representation.Bandwidth,
@@ -221,37 +283,47 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
             representation.Height,
             representation.FrameRate,
             representation.Language,
-            representation.Name,
-            false,
-            false,
-            representation.Id)).ToArray();
+            BuildDashDisplayName(representation),
+            representation.IsDefault,
+            representation.IsEncrypted,
+            representation.ScopedId,
+            null,
+            null,
+            representation.PeriodId,
+            representation.AdaptationSetId,
+            representation.Role)).ToArray();
         return new MediaCatalog(
-            source,
+            catalogSource,
             MediaKind.Dash,
-            Path.GetFileNameWithoutExtension(source.LocalPath) is { Length: > 0 } title ? title : source.Host,
+            Path.GetFileNameWithoutExtension(manifestUri.LocalPath) is { Length: > 0 } title ? title : manifestUri.Host,
             manifest.IsDynamic,
             formats,
             $"DASH manifest with {formats.Length} selectable representation(s).",
-            "native-dash");
+            "native-dash",
+            manifest.Duration);
     }
 
     private static MediaCatalog CreateDirectCatalog(Uri source, string? contentType, string? fileName)
     {
+        string evidenceName = string.IsNullOrWhiteSpace(fileName) ? source.LocalPath : fileName;
+        string extension = Path.GetExtension(evidenceName);
         MediaStreamKind kind = contentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true
-            ? MediaStreamKind.Audio
-            : MediaStreamKind.Muxed;
+            || DirectAudioExtensions.Contains(extension)
+                ? MediaStreamKind.Audio
+                : MediaStreamKind.Muxed;
+        string? container = extension.Length > 1 ? extension.TrimStart('.') : null;
         MediaFormat format = new(
             "direct",
             kind,
             source,
-            Path.GetExtension(source.AbsolutePath).TrimStart('.'),
+            container,
             null,
             null,
             null,
             null,
             null,
             null,
-            "Direct media",
+            kind == MediaStreamKind.Audio ? "Direct audio" : "Direct media",
             true,
             false);
         return new MediaCatalog(
@@ -264,35 +336,100 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
             "direct");
     }
 
-    private static async Task<string> ReadBoundedContentAsync(
-        HttpResponseMessage response,
+    private async Task<bool> InferHlsMasterLiveStatusAsync(
+        HlsManifest manifest,
+        MediaRequestMetadata metadata,
         CancellationToken cancellationToken)
     {
-        await using Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using MemoryStream destination = new();
-        byte[] buffer = new byte[64 * 1024];
-        int total = 0;
-        while (true)
+        bool sawProbe = false;
+        bool anyLive = false;
+        foreach (HlsVariant variant in manifest.Variants)
         {
-            int read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            if (read == 0)
+            try
             {
-                break;
+                string variantManifest = await FragmentRetryPolicy.ExecuteAsync(
+                    token => MediaHttp.ReadManifestAsync(httpClient, variant.Uri, metadata, token),
+                    cancellationToken).ConfigureAwait(false);
+                HlsManifest mediaManifest = HlsManifestParser.Parse(variant.Uri, variantManifest);
+                sawProbe = true;
+                anyLive |= !mediaManifest.EndList;
+                if (anyLive)
+                {
+                    return true;
+                }
             }
-
-            total = checked(total + read);
-            if (total > MediaHttp.MaximumManifestBytes)
+            catch (HttpRequestException)
             {
-                throw new InvalidDataException("Media manifest exceeded the configured safety limit.");
             }
-
-            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            catch (InvalidDataException)
+            {
+            }
+            catch (NotSupportedException)
+            {
+            }
         }
 
-        destination.Position = 0;
-        using StreamReader reader = new(destination, detectEncodingFromByteOrderMarks: true);
-        return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        return sawProbe && anyLive;
     }
+
+    private static string BuildDashDisplayName(DashRepresentation representation)
+    {
+        List<string> parts = [];
+        if (!string.IsNullOrWhiteSpace(representation.Name))
+        {
+            parts.Add(representation.Name);
+        }
+
+        parts.Add($"Period {representation.PeriodIndex + 1}");
+        if (!string.IsNullOrWhiteSpace(representation.Role))
+        {
+            parts.Add(representation.Role);
+        }
+
+        return string.Join(" • ", parts);
+    }
+
+    private static bool IsDirectMediaEvidence(string? contentType, string evidenceName)
+        => (contentType is not null
+                && (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                    || contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)))
+            || DirectMediaExtensions.Contains(Path.GetExtension(evidenceName));
+
+    private async Task<MediaCatalog?> TryGetExternalCatalogAsync(
+        Uri source,
+        MediaRequestMetadata metadata,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ytDlpProvider.TryGetCatalogAsync(source, metadata, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested
+            && (IsProviderFallbackEligible(exception) || exception is System.Text.Json.JsonException))
+        {
+            return UnknownCatalog(source, $"yt-dlp discovery failed: {exception.Message}");
+        }
+    }
+
+    private static MediaCatalog UnknownCatalog(Uri source, string description)
+        => new(
+            source,
+            MediaKind.Unknown,
+            source.Host,
+            false,
+            [],
+            description,
+            "none");
+
+    private static bool IsProviderFallbackEligible(Exception exception)
+        => exception is HttpRequestException
+            or TaskCanceledException
+            or TimeoutException
+            or IOException
+            or UnauthorizedAccessException
+            or InvalidOperationException
+            or InvalidDataException
+            or NotSupportedException;
 
     private static void ValidateSource(Uri source)
     {
@@ -317,4 +454,10 @@ public sealed class MediaCatalogService(HttpClient httpClient, IYtDlpProvider yt
 
     private static bool Contains(string? value, string fragment)
         => value?.Contains(fragment, StringComparison.OrdinalIgnoreCase) == true;
+
+    private static string StableId(params string?[] components)
+    {
+        string material = string.Join("\u001f", components.Where(static component => !string.IsNullOrWhiteSpace(component)));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant()[..16];
+    }
 }

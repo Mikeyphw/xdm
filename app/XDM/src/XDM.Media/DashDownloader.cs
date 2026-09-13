@@ -25,7 +25,7 @@ internal sealed class DashDownloader(HttpClient httpClient)
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(format);
-        string representationId = string.IsNullOrWhiteSpace(format.ProviderData) ? format.Id : format.ProviderData;
+        string representationId = string.IsNullOrWhiteSpace(format.ProviderData) ? format.Id : format.ProviderData!;
         string formatDirectory = Path.Combine(workspace, Sanitize(format.Id));
         string fragmentsDirectory = Path.Combine(formatDirectory, "fragments");
         Directory.CreateDirectory(fragmentsDirectory);
@@ -51,7 +51,8 @@ internal sealed class DashDownloader(HttpClient httpClient)
             dynamic = manifest.IsDynamic;
             updatePeriod = manifest.MinimumUpdatePeriod;
             DashRepresentation representation = manifest.Representations.FirstOrDefault(candidate =>
-                string.Equals(candidate.Id, representationId, StringComparison.Ordinal))
+                string.Equals(candidate.ScopedId, representationId, StringComparison.Ordinal)
+                || string.Equals(candidate.Id, representationId, StringComparison.Ordinal))
                 ?? throw new InvalidDataException($"DASH representation '{representationId}' is no longer present in the manifest.");
             IReadOnlyList<DashSegmentReference> segments = DashManifestParser.BuildSegments(
                 representation,

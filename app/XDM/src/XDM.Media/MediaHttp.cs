@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 
 namespace XDM.Media;
 
+internal sealed record MediaManifestResponse(string Content, Uri FinalUri);
+
 internal static class MediaHttp
 {
     public const int MaximumManifestBytes = 8 * 1024 * 1024;
@@ -32,11 +34,34 @@ internal static class MediaHttp
         MediaRequestMetadata metadata,
         CancellationToken cancellationToken)
     {
+        MediaManifestResponse response = await ReadManifestResponseAsync(
+            client,
+            uri,
+            metadata,
+            cancellationToken).ConfigureAwait(false);
+        return response.Content;
+    }
+
+    public static async Task<MediaManifestResponse> ReadManifestResponseAsync(
+        HttpClient client,
+        Uri uri,
+        MediaRequestMetadata metadata,
+        CancellationToken cancellationToken)
+    {
         using HttpRequestMessage request = CreateRequest(HttpMethod.Get, uri, metadata);
         using HttpResponseMessage response = await client
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
+        string content = await ReadManifestContentAsync(response, cancellationToken).ConfigureAwait(false);
+        Uri finalUri = response.RequestMessage?.RequestUri ?? uri;
+        return new MediaManifestResponse(content, finalUri);
+    }
+
+    public static async Task<string> ReadManifestContentAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
         await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using MemoryStream buffer = new();
         await CopyBoundedAsync(stream, buffer, MaximumManifestBytes, cancellationToken).ConfigureAwait(false);

@@ -9,7 +9,7 @@ public static class MediaSelectionPolicy
 
         MediaFormat? video = SelectVideo(catalog.VideoFormats, request);
         MediaFormat? audio = SelectAudio(catalog.AudioFormats, video, request.AudioLanguage);
-        MediaFormat[] subtitles = SelectSubtitles(catalog.SubtitleFormats, request.SubtitleLanguage);
+        MediaFormat[] subtitles = SelectSubtitles(catalog.SubtitleFormats, video, request.SubtitleLanguage);
         return new MediaSelectionResult(video, audio, subtitles);
     }
 
@@ -22,23 +22,27 @@ public static class MediaSelectionPolicy
             return null;
         }
 
+        IEnumerable<MediaFormat> eligible = formats;
+        if (request.MaximumHeight is int height)
+        {
+            eligible = eligible.Where(format => format.Height is int formatHeight && formatHeight <= height);
+        }
+
+        MediaFormat[] candidates = eligible.ToArray();
         if (request.PreferSmallest)
         {
-            return formats
+            return candidates
                 .OrderBy(static format => format.Height ?? int.MaxValue)
                 .ThenBy(static format => format.Bandwidth ?? long.MaxValue)
                 .FirstOrDefault();
         }
 
-        IEnumerable<MediaFormat> eligible = request.MaximumHeight is int height
-            ? formats.Where(format => (format.Height ?? 0) <= height)
-            : formats;
-        return eligible
+        return candidates
             .OrderByDescending(static format => format.IsDefault)
+            .ThenBy(static format => IsNonPrimaryRole(format.Role))
             .ThenByDescending(static format => format.Height ?? 0)
             .ThenByDescending(static format => format.Bandwidth ?? 0)
-            .FirstOrDefault()
-            ?? formats.OrderBy(static format => format.Height ?? int.MaxValue).FirstOrDefault();
+            .FirstOrDefault();
     }
 
     private static MediaFormat? SelectAudio(
@@ -53,7 +57,10 @@ public static class MediaSelectionPolicy
             return null;
         }
 
-        IEnumerable<MediaFormat> candidates = formats;
+        IEnumerable<MediaFormat> candidates = FilterByAssociatedGroup(
+            formats,
+            video?.AudioGroupId,
+            static format => format.AudioGroupId);
         if (!anyLanguage)
         {
             MediaFormat[] languageMatches = candidates
@@ -67,12 +74,14 @@ public static class MediaSelectionPolicy
 
         return candidates
             .OrderByDescending(static format => format.IsDefault)
+            .ThenBy(static format => IsNonPrimaryRole(format.Role))
             .ThenByDescending(static format => format.Bandwidth ?? 0)
             .FirstOrDefault();
     }
 
     private static MediaFormat[] SelectSubtitles(
         IReadOnlyList<MediaFormat> formats,
+        MediaFormat? video,
         string? language)
     {
         if (string.Equals(language, "None", StringComparison.OrdinalIgnoreCase))
@@ -80,14 +89,46 @@ public static class MediaSelectionPolicy
             return [];
         }
 
+        IEnumerable<MediaFormat> candidates = FilterByAssociatedGroup(
+            formats,
+            video?.SubtitleGroupId,
+            static format => format.SubtitleGroupId);
+
         if (string.IsNullOrWhiteSpace(language)
             || string.Equals(language, "Default", StringComparison.OrdinalIgnoreCase))
         {
-            return formats.Where(static format => format.IsDefault).ToArray();
+            return candidates
+                .Where(static format => format.IsDefault)
+                .OrderBy(static format => IsNonPrimaryRole(format.Role))
+                .ToArray();
         }
 
-        return formats
+        return candidates
             .Where(format => string.Equals(format.Language, language, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(static format => format.IsDefault)
+            .ThenBy(static format => IsNonPrimaryRole(format.Role))
             .ToArray();
     }
+
+    private static IEnumerable<MediaFormat> FilterByAssociatedGroup(
+        IReadOnlyList<MediaFormat> formats,
+        string? requiredGroup,
+        Func<MediaFormat, string?> groupSelector)
+    {
+        if (string.IsNullOrWhiteSpace(requiredGroup))
+        {
+            return formats;
+        }
+
+        MediaFormat[] matching = formats
+            .Where(format => string.Equals(groupSelector(format), requiredGroup, StringComparison.Ordinal))
+            .ToArray();
+        return matching.Length > 0 ? matching : formats;
+    }
+
+    private static bool IsNonPrimaryRole(string? role)
+        => role is not null
+            && (role.Equals("commentary", StringComparison.OrdinalIgnoreCase)
+                || role.Equals("alternate", StringComparison.OrdinalIgnoreCase)
+                || role.Equals("dub", StringComparison.OrdinalIgnoreCase));
 }

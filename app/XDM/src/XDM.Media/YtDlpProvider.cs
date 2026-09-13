@@ -1,4 +1,7 @@
+using System.ComponentModel;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace XDM.Media;
@@ -6,17 +9,33 @@ namespace XDM.Media;
 public sealed class YtDlpProvider : IYtDlpProvider
 {
     private const int CatalogOutputLimitBytes = 16 * 1024 * 1024;
+    private const int DiagnosticLimitCharacters = 2048;
     private readonly IExternalToolRunner _runner;
+    private readonly IYtDlpNetworkPolicyProvider _networkPolicyProvider;
     private readonly string? _configuredExecutablePath;
 
     public YtDlpProvider(IExternalToolRunner runner)
-        : this(runner, null)
+        : this(runner, StaticYtDlpNetworkPolicyProvider.SystemDefault, null)
+    {
+    }
+
+    public YtDlpProvider(IExternalToolRunner runner, IYtDlpNetworkPolicyProvider networkPolicyProvider)
+        : this(runner, networkPolicyProvider, null)
     {
     }
 
     internal YtDlpProvider(IExternalToolRunner runner, string? executablePath)
+        : this(runner, StaticYtDlpNetworkPolicyProvider.SystemDefault, executablePath)
+    {
+    }
+
+    internal YtDlpProvider(
+        IExternalToolRunner runner,
+        IYtDlpNetworkPolicyProvider networkPolicyProvider,
+        string? executablePath)
     {
         _runner = runner;
+        _networkPolicyProvider = networkPolicyProvider;
         _configuredExecutablePath = executablePath;
     }
 
@@ -41,23 +60,7 @@ public sealed class YtDlpProvider : IYtDlpProvider
                 ? new ExternalToolHealth("yt-dlp", true, path, version, "yt-dlp is available for supported media pages.")
                 : new ExternalToolHealth("yt-dlp", false, path, version, "yt-dlp was found but its health check failed.");
         }
-        catch (IOException exception)
-        {
-            return new ExternalToolHealth("yt-dlp", false, path, null, exception.Message);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return new ExternalToolHealth("yt-dlp", false, path, null, exception.Message);
-        }
-        catch (UnauthorizedAccessException exception)
-        {
-            return new ExternalToolHealth("yt-dlp", false, path, null, exception.Message);
-        }
-        catch (System.ComponentModel.Win32Exception exception)
-        {
-            return new ExternalToolHealth("yt-dlp", false, path, null, exception.Message);
-        }
-        catch (TimeoutException exception)
+        catch (Exception exception) when (IsToolBoundaryException(exception))
         {
             return new ExternalToolHealth("yt-dlp", false, path, null, exception.Message);
         }
@@ -76,9 +79,13 @@ public sealed class YtDlpProvider : IYtDlpProvider
             return null;
         }
 
-        string? metadataConfigPath = await CreateMetadataConfigAsync(metadata, cancellationToken).ConfigureAwait(false);
+        string? metadataConfigPath = null;
         try
         {
+            metadataConfigPath = await CreateMetadataConfigAsync(
+                metadata,
+                _networkPolicyProvider.Current,
+                cancellationToken).ConfigureAwait(false);
             List<string> arguments =
             [
                 "--ignore-config",
@@ -101,12 +108,24 @@ public sealed class YtDlpProvider : IYtDlpProvider
                 TimeSpan.FromMinutes(2),
                 CatalogOutputLimitBytes,
                 cancellationToken).ConfigureAwait(false);
-            if (!result.Succeeded || string.IsNullOrWhiteSpace(result.StandardOutput))
+            if (!result.Succeeded)
             {
-                return null;
+                return CreateFailureCatalog(source, result.StandardError, "yt-dlp could not extract this URL");
+            }
+
+            if (string.IsNullOrWhiteSpace(result.StandardOutput))
+            {
+                return CreateFailureCatalog(source, result.StandardError, "yt-dlp returned no catalog output");
             }
 
             return ParseCatalog(source, result.StandardOutput);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested
+            && (IsToolBoundaryException(exception)
+                || exception is JsonException
+                || exception is InvalidDataException))
+        {
+            return CreateFailureCatalog(source, exception.Message, "yt-dlp discovery failed");
         }
         finally
         {
@@ -189,6 +208,11 @@ public sealed class YtDlpProvider : IYtDlpProvider
         string? audioCodec = GetString(format, "acodec");
         bool hasVideo = !string.IsNullOrWhiteSpace(videoCodec) && !string.Equals(videoCodec, "none", StringComparison.OrdinalIgnoreCase);
         bool hasAudio = !string.IsNullOrWhiteSpace(audioCodec) && !string.Equals(audioCodec, "none", StringComparison.OrdinalIgnoreCase);
+        if (!hasVideo && !hasAudio)
+        {
+            return null;
+        }
+
         MediaStreamKind kind = hasVideo && hasAudio
             ? MediaStreamKind.Muxed
             : hasVideo
@@ -199,14 +223,14 @@ public sealed class YtDlpProvider : IYtDlpProvider
         if (format.TryGetProperty("fragments", out JsonElement fragmentElements)
             && fragmentElements.ValueKind == JsonValueKind.Array)
         {
-            int fragmentIndex = 0;
             foreach (JsonElement fragment in fragmentElements.EnumerateArray())
             {
                 string? fragmentUrl = GetString(fragment, "url");
                 if (Uri.TryCreate(fragmentUrl, UriKind.Absolute, out Uri? fragmentUri)
                     && fragmentUri.Scheme is "http" or "https")
                 {
-                    fragments.Add(new ExternalMediaFragment($"fragment-{fragmentIndex++:D10}", fragmentUri));
+                    string fragmentId = StableId(id, fragmentUri.AbsoluteUri, fragments.Count.ToString(CultureInfo.InvariantCulture));
+                    fragments.Add(new ExternalMediaFragment($"fragment-{fragmentId}", fragmentUri));
                 }
             }
         }
@@ -220,9 +244,9 @@ public sealed class YtDlpProvider : IYtDlpProvider
             id,
             kind,
             url,
-            GetString(format, "ext"),
-            string.Join(",", new[] { videoCodec, audioCodec }.Where(static codec => !string.IsNullOrWhiteSpace(codec) && codec != "none")),
-            GetLong(format, "tbr") is long tbr ? tbr * 1000 : null,
+            NormalizeContainer(GetString(format, "ext"), GetString(format, "container"), videoCodec, audioCodec),
+            string.Join(",", new[] { videoCodec, audioCodec }.Where(static codec => !string.IsNullOrWhiteSpace(codec) && !string.Equals(codec, "none", StringComparison.OrdinalIgnoreCase))),
+            ResolveBandwidth(format, kind),
             GetInt(format, "width"),
             GetInt(format, "height"),
             GetDouble(format, "fps"),
@@ -235,6 +259,7 @@ public sealed class YtDlpProvider : IYtDlpProvider
 
     private static async Task<string?> CreateMetadataConfigAsync(
         MediaRequestMetadata metadata,
+        YtDlpNetworkPolicy networkPolicy,
         CancellationToken cancellationToken)
     {
         List<string> lines = [];
@@ -252,6 +277,15 @@ public sealed class YtDlpProvider : IYtDlpProvider
         {
             string cookieHeader = $"Cookie:{metadata.Cookie}";
             lines.Add($"--add-header {EscapeConfigValue(cookieHeader)}");
+        }
+
+        if (networkPolicy.ForceDirect)
+        {
+            lines.Add("--proxy \"\"");
+        }
+        else if (IsSafeConfigValue(networkPolicy.ProxyUri))
+        {
+            lines.Add($"--proxy {EscapeConfigValue(networkPolicy.ProxyUri!)}");
         }
 
         if (metadata.Headers is not null)
@@ -286,13 +320,27 @@ public sealed class YtDlpProvider : IYtDlpProvider
         string directory = Path.Combine(Path.GetTempPath(), "xdm-media");
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, $"yt-dlp-{Guid.NewGuid():N}.conf");
-        await File.WriteAllLinesAsync(path, lines, cancellationToken).ConfigureAwait(false);
-        if (!OperatingSystem.IsWindows())
+        bool created = false;
+        try
         {
-            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-        }
+            await File.WriteAllLinesAsync(path, lines, cancellationToken).ConfigureAwait(false);
+            created = true;
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
 
-        return path;
+            return path;
+        }
+        catch
+        {
+            if (created || File.Exists(path))
+            {
+                TryDelete(path);
+            }
+
+            throw;
+        }
     }
 
     private static void AddSubtitleFormats(JsonElement root, string propertyName, List<MediaFormat> formats)
@@ -303,7 +351,6 @@ public sealed class YtDlpProvider : IYtDlpProvider
             return;
         }
 
-        int index = 0;
         foreach (JsonProperty language in subtitles.EnumerateObject())
         {
             if (language.Value.ValueKind != JsonValueKind.Array)
@@ -320,25 +367,86 @@ public sealed class YtDlpProvider : IYtDlpProvider
                     continue;
                 }
 
-                string id = $"subtitle-{language.Name}-{index++}";
+                string ext = GetString(subtitle, "ext") ?? "vtt";
+                string? name = GetString(subtitle, "name") ?? GetString(subtitle, "format_id") ?? language.Name;
+                string id = $"subtitle-{language.Name}-{StableId(language.Name, ext, name, uri.AbsoluteUri)}";
                 formats.Add(new MediaFormat(
                     id,
                     MediaStreamKind.Subtitle,
                     uri,
-                    GetString(subtitle, "ext") ?? "vtt",
+                    ext,
                     null,
                     null,
                     null,
                     null,
                     null,
                     language.Name,
-                    GetString(subtitle, "name") ?? language.Name,
+                    name,
                     false,
                     false,
                     JsonSerializer.Serialize(new ExternalMediaFormatData(uri.AbsoluteUri, "https", id, []))));
             }
         }
     }
+
+    private static long? ResolveBandwidth(JsonElement format, MediaStreamKind kind)
+    {
+        long? bitrateKbps = GetLong(format, "tbr")
+            ?? (kind == MediaStreamKind.Audio ? GetLong(format, "abr") : null)
+            ?? (kind == MediaStreamKind.Video ? GetLong(format, "vbr") : null)
+            ?? GetLong(format, "abr")
+            ?? GetLong(format, "vbr");
+        return bitrateKbps is long kbps and > 0 ? kbps * 1000 : null;
+    }
+
+    private static string? NormalizeContainer(string? ext, string? container, string? videoCodec, string? audioCodec)
+    {
+        string? value = !string.IsNullOrWhiteSpace(ext) ? ext : container;
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value.Trim().TrimStart('.').ToLowerInvariant();
+        }
+
+        if (audioCodec?.Contains("opus", StringComparison.OrdinalIgnoreCase) == true
+            || videoCodec?.Contains("vp9", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "webm";
+        }
+
+        return null;
+    }
+
+    private static MediaCatalog CreateFailureCatalog(Uri source, string? diagnostic, string prefix)
+    {
+        string message = SanitizeDiagnostic(diagnostic);
+        string description = string.IsNullOrWhiteSpace(message) ? prefix : $"{prefix}: {message}";
+        return new MediaCatalog(source, MediaKind.Unknown, source.Host, false, [], description, "yt-dlp");
+    }
+
+    private static string SanitizeDiagnostic(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        string collapsed = value
+            .Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal)
+            .Replace("\0", string.Empty, StringComparison.Ordinal)
+            .Trim();
+        return collapsed.Length > DiagnosticLimitCharacters
+            ? collapsed[..DiagnosticLimitCharacters]
+            : collapsed;
+    }
+
+    private static bool IsToolBoundaryException(Exception exception)
+        => exception is IOException
+            or InvalidOperationException
+            or UnauthorizedAccessException
+            or Win32Exception
+            or TimeoutException
+            or NotSupportedException;
 
     private static bool IsSafeConfigValue(string? value)
         => !string.IsNullOrWhiteSpace(value)
@@ -348,7 +456,10 @@ public sealed class YtDlpProvider : IYtDlpProvider
             && !value.Contains('\0');
 
     private static string EscapeConfigValue(string value)
-        => $"\"{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
+        => "\"" + value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal)
+            + "\"";
 
     private static void TryDelete(string path)
     {
@@ -406,4 +517,10 @@ public sealed class YtDlpProvider : IYtDlpProvider
         => element.TryGetProperty(property, out JsonElement value) && value.TryGetDouble(out double parsed)
             ? parsed
             : null;
+
+    private static string StableId(params string?[] components)
+    {
+        string material = string.Join("\u001f", components.Where(static component => !string.IsNullOrWhiteSpace(component)));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant()[..16];
+    }
 }

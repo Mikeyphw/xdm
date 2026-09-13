@@ -10,6 +10,7 @@ internal sealed record DashManifest(
 
 internal sealed record DashRepresentation(
     string Id,
+    string ScopedId,
     MediaStreamKind StreamKind,
     Uri BaseUri,
     string? Container,
@@ -21,6 +22,13 @@ internal sealed record DashRepresentation(
     string? Language,
     string? Name,
     TimeSpan? PeriodDuration,
+    string PeriodId,
+    int PeriodIndex,
+    string AdaptationSetId,
+    int AdaptationSetIndex,
+    string? Role,
+    bool IsDefault,
+    bool IsEncrypted,
     DashSegmentTemplate? SegmentTemplate,
     DashSegmentList? SegmentList);
 
