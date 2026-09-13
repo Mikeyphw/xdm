@@ -1,5 +1,5 @@
-using System.Text;
 using System.Text.Json;
+using XDM.Core.Persistence;
 
 namespace XDM.Diagnostics;
 
@@ -46,19 +46,29 @@ public sealed class RecoveryService : IRecoveryService
     public void Initialize(StartupOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        Directory.CreateDirectory(_stateDirectory);
         SafeMode = options.SafeMode;
-        PreviousSession = LoadSession(_sessionMarkerPath);
-        PreviousSessionWasUnclean = File.Exists(_sessionMarkerPath)
-            && PreviousSession?.IsClean != true;
-        if (PreviousSessionWasUnclean)
-        {
-            File.Copy(_sessionMarkerPath, _previousUncleanSessionPath, overwrite: true);
-        }
 
-        if (options.ResetWindowState && File.Exists(_windowStatePath))
+        try
         {
-            File.Delete(_windowStatePath);
+            Directory.CreateDirectory(_stateDirectory);
+            bool markerExisted = File.Exists(_sessionMarkerPath);
+            PreviousSession = LoadSession(_sessionMarkerPath);
+            PreviousSessionWasUnclean = markerExisted
+                && PreviousSession?.IsClean != true;
+            if (PreviousSessionWasUnclean && File.Exists(_sessionMarkerPath))
+            {
+                TryCopy(_sessionMarkerPath, _previousUncleanSessionPath);
+            }
+
+            if (options.ResetWindowState)
+            {
+                TryDelete(_windowStatePath);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            PreviousSession = null;
+            PreviousSessionWasUnclean = false;
         }
 
         _currentSession = new ApplicationSessionState(
@@ -137,8 +147,8 @@ public sealed class RecoveryService : IRecoveryService
             }
             _currentSession = _currentSession with { CleanShutdownAt = DateTimeOffset.UtcNow };
             SaveCurrentSessionLocked();
-            File.Copy(_sessionMarkerPath, _lastSessionPath, overwrite: true);
-            File.Delete(_sessionMarkerPath);
+            TryCopy(_sessionMarkerPath, _lastSessionPath);
+            TryDelete(_sessionMarkerPath);
         }
     }
 
@@ -153,23 +163,35 @@ public sealed class RecoveryService : IRecoveryService
     private void SaveCurrentSessionLocked()
     {
         EnsureInitialized();
-        string temporaryPath = $"{_sessionMarkerPath}.tmp";
-        byte[] payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_currentSession, SerializerOptions));
-        using (FileStream stream = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            4096,
-            FileOptions.WriteThrough))
+        try
         {
-            stream.Write(payload);
-            stream.Flush(flushToDisk: true);
+            AtomicFile.WriteAsync(
+                _sessionMarkerPath,
+                stream => JsonSerializer.SerializeAsync(
+                    stream,
+                    _currentSession,
+                    SerializerOptions,
+                    CancellationToken.None),
+                createBackup: true,
+                CancellationToken.None).GetAwaiter().GetResult();
         }
-        File.Move(temporaryPath, _sessionMarkerPath, overwrite: true);
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     private static ApplicationSessionState? LoadSession(string path)
+    {
+        ApplicationSessionState? primary = TryLoadSessionFile(path);
+        if (primary is not null)
+        {
+            return primary;
+        }
+
+        return TryLoadSessionFile($"{path}.bak");
+    }
+
+    private static ApplicationSessionState? TryLoadSessionFile(string path)
     {
         if (!File.Exists(path))
         {
@@ -185,17 +207,57 @@ public sealed class RecoveryService : IRecoveryService
                 || session.ActiveDownloadIds is null
                 || session.FailedCheckpointDownloadIds is null)
             {
+                AtomicFile.Quarantine(path, "incompatible");
                 return null;
             }
             return session;
         }
         catch (JsonException)
         {
+            AtomicFile.Quarantine(path, "corrupt");
             return null;
         }
         catch (IOException)
         {
             return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static void TryCopy(string source, string destination)
+    {
+        try
+        {
+            if (File.Exists(source))
+            {
+                File.Copy(source, destination, overwrite: true);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 

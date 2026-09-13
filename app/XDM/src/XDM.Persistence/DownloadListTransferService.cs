@@ -32,15 +32,15 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
         DownloadListEntry[] entries = downloads
             .OrderByDescending(static item => item.UpdatedAt)
             .Select(static item => new DownloadListEntry(
-                item.Source,
+                SanitizeUriForExport(item.Source),
                 item.FileName,
                 Path.GetDirectoryName(item.DestinationPath),
                 item.QueueId,
                 item.CategoryId,
                 item.ConnectionCount,
                 item.Priority,
-                item.SourcePage,
-                item.Mirrors,
+                SanitizeOptionalUriForExport(item.SourcePage),
+                (item.Mirrors ?? []).Select(SanitizeUriForExport).ToArray(),
                 item.ExpectedChecksumAlgorithm,
                 item.ExpectedChecksum,
                 item.TotalBytes,
@@ -62,32 +62,15 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
             Directory.CreateDirectory(directory);
         }
 
-        string temporaryPath = $"{fullPath}.tmp";
-        try
-        {
-            await using (FileStream stream = new(
-                temporaryPath,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                16 * 1024,
-                FileOptions.Asynchronous | FileOptions.WriteThrough))
-            {
-                await JsonSerializer.SerializeAsync(stream, envelope, SerializerOptions, cancellationToken)
-                    .ConfigureAwait(false);
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-                stream.Flush(flushToDisk: true);
-            }
-
-            File.Move(temporaryPath, fullPath, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicFile.WriteAsync(
+            fullPath,
+            stream => JsonSerializer.SerializeAsync(
+                stream,
+                envelope,
+                SerializerOptions,
+                cancellationToken),
+            createBackup: false,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<DownloadListImportResult> ImportAsync(
@@ -185,7 +168,7 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
             Uri[] mirrors = (entry.Mirrors ?? Array.Empty<Uri>())
                 .Where(IsSafeDownloadUri)
                 .Where(uri => uri != entry.Source)
-                .DistinctBy(static uri => uri.AbsoluteUri, StringComparer.OrdinalIgnoreCase)
+                .DistinctBy(static uri => uri.AbsoluteUri, StringComparer.Ordinal)
                 .Take(32)
                 .ToArray();
             (string? checksumAlgorithm, string? checksum) = NormalizeChecksum(
@@ -198,6 +181,9 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
                 QueueId = NormalizeIdentifier(entry.QueueId),
                 CategoryId = NormalizeIdentifier(entry.CategoryId),
                 ConnectionCount = Math.Clamp(entry.ConnectionCount, 1, 32),
+                Priority = Enum.IsDefined(entry.Priority)
+                    ? entry.Priority
+                    : DownloadPriority.Normal,
                 SourcePage = sourcePage,
                 Mirrors = mirrors,
                 ExpectedChecksumAlgorithm = checksumAlgorithm,
@@ -215,6 +201,26 @@ public sealed class DownloadListTransferService : IDownloadListTransferService
         ignored += Math.Max(0, entries.Count - MaximumEntries);
         return new DownloadListImportResult(normalized, ignored, sourceFormat);
     }
+
+    private static Uri SanitizeUriForExport(Uri uri)
+    {
+        if (!uri.IsAbsoluteUri)
+        {
+            return uri;
+        }
+
+        UriBuilder builder = new(uri)
+        {
+            UserName = string.Empty,
+            Password = string.Empty,
+            Query = string.Empty,
+            Fragment = string.Empty
+        };
+        return builder.Uri;
+    }
+
+    private static Uri? SanitizeOptionalUriForExport(Uri? uri)
+        => uri is null ? null : SanitizeUriForExport(uri);
 
     private static (string? Algorithm, string? Checksum) NormalizeChecksum(
         string? algorithm,

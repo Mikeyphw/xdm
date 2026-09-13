@@ -1299,10 +1299,94 @@ public sealed class DownloadManagerTests
         Assert.Equal(sha512, parsed.Sha512);
     }
 
+
+    [Fact]
+    public async Task MetadataMutationRollsBackWhenHistorySaveFails()
+    {
+        using TemporaryDirectory directory = new();
+        PersistedDownload persisted = new(
+            "priority-rollback",
+            new Uri("https://example.test/file.bin"),
+            Path.Combine(directory.Path, "file.bin"),
+            0,
+            100,
+            DownloadState.Paused,
+            DateTimeOffset.UtcNow,
+            Priority: DownloadPriority.Normal);
+        ApplicationState state = new();
+        ControllableHistoryStore history = new([persisted]);
+        using HttpClient client = new(new RangeHandler(CreatePayload(1024, 29)));
+        using DownloadManager manager = CreateManager(client, state, history);
+        await manager.InitializeAsync(CancellationToken.None);
+        history.FailSaves = true;
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            manager.SetPriorityAsync("priority-rollback", DownloadPriority.High));
+
+        DownloadSnapshot restored = Assert.Single(state.Current.Downloads);
+        Assert.Equal(DownloadPriority.Normal, restored.Priority);
+    }
+
+    [Fact]
+    public async Task DeleteDoesNotRemoveLiveStateWhenHistorySaveFails()
+    {
+        using TemporaryDirectory directory = new();
+        PersistedDownload persisted = new(
+            "delete-rollback",
+            new Uri("https://example.test/file.bin"),
+            Path.Combine(directory.Path, "file.bin"),
+            0,
+            100,
+            DownloadState.Paused,
+            DateTimeOffset.UtcNow);
+        ApplicationState state = new();
+        ControllableHistoryStore history = new([persisted]);
+        using HttpClient client = new(new RangeHandler(CreatePayload(1024, 31)));
+        using DownloadManager manager = CreateManager(client, state, history);
+        await manager.InitializeAsync(CancellationToken.None);
+        history.FailSaves = true;
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            manager.DeleteAsync("delete-rollback", DownloadDeletionScope.HistoryOnly));
+
+        Assert.Equal("delete-rollback", Assert.Single(state.Current.Downloads).Id);
+        Assert.Equal("delete-rollback", Assert.Single(history.Downloads).Id);
+    }
+
+    [Fact]
+    public async Task RelocateMovesFileBackWhenHistorySaveFails()
+    {
+        using TemporaryDirectory directory = new();
+        string source = Path.Combine(directory.Path, "source.bin");
+        string target = Path.Combine(directory.Path, "target.bin");
+        await File.WriteAllBytesAsync(source, CreatePayload(128, 37));
+        PersistedDownload persisted = new(
+            "relocate-rollback",
+            new Uri("https://example.test/file.bin"),
+            source,
+            128,
+            128,
+            DownloadState.Completed,
+            DateTimeOffset.UtcNow);
+        ApplicationState state = new();
+        ControllableHistoryStore history = new([persisted]);
+        using HttpClient client = new(new RangeHandler(CreatePayload(1024, 41)));
+        using DownloadManager manager = CreateManager(client, state, history);
+        await manager.InitializeAsync(CancellationToken.None);
+        history.FailSaves = true;
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            manager.RelocateAsync("relocate-rollback", target));
+
+        Assert.True(File.Exists(source));
+        Assert.False(File.Exists(target));
+        Assert.Equal(source, Assert.Single(state.Current.Downloads).DestinationPath);
+    }
+
     private static DownloadManager CreateManager(
         HttpClient client,
         ApplicationState state,
-        InMemoryHistoryStore history,
+        IDownloadHistoryStore history,
         IDiskSpaceProvider? diskSpaceProvider = null,
         DownloadRetryPolicy? retryPolicy = null,
         ISettingsService? settingsService = null,
@@ -1709,6 +1793,35 @@ public sealed class DownloadManagerTests
     {
         public long? GetAvailableBytes(string path)
             => availableBytes;
+    }
+
+
+    private sealed class ControllableHistoryStore : IDownloadHistoryStore
+    {
+        public ControllableHistoryStore(IReadOnlyList<PersistedDownload>? downloads = null)
+        {
+            Downloads = downloads ?? [];
+        }
+
+        public bool FailSaves { get; set; }
+
+        public IReadOnlyList<PersistedDownload> Downloads { get; private set; }
+
+        public Task<IReadOnlyList<PersistedDownload>> LoadAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(Downloads);
+
+        public Task SaveAsync(
+            IReadOnlyCollection<PersistedDownload> downloads,
+            CancellationToken cancellationToken = default)
+        {
+            if (FailSaves)
+            {
+                throw new IOException("Simulated durable-history failure.");
+            }
+
+            Downloads = downloads.ToArray();
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class InMemoryHistoryStore : IDownloadHistoryStore

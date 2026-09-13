@@ -1,8 +1,10 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 using XDM.Core.Localization;
+using XDM.Core.Persistence;
 using XDM.Core.Settings;
 
 namespace XDM.Persistence;
@@ -12,7 +14,6 @@ public sealed class SettingsTransferService : ISettingsTransferService
     private const string EnvelopeFormat = "xdm-modern-settings";
     private const long MaximumImportBytes = 4L * 1024 * 1024;
     private static readonly char[] LegacyListSeparators = [',', ';', ' '];
-    private static readonly char[] PropertySeparators = ['=', ':'];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -51,20 +52,15 @@ public sealed class SettingsTransferService : ISettingsTransferService
         }
 
         SettingsEnvelope envelope = new(EnvelopeFormat, 1, DateTimeOffset.UtcNow, includeSecrets, normalized);
-        string temporaryPath = $"{fullPath}.tmp";
-        await using (FileStream stream = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            16 * 1024,
-            FileOptions.Asynchronous | FileOptions.WriteThrough))
-        {
-            await JsonSerializer.SerializeAsync(stream, envelope, JsonOptions, cancellationToken).ConfigureAwait(false);
-            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(temporaryPath, fullPath, overwrite: true);
+        await AtomicFile.WriteAsync(
+            fullPath,
+            stream => JsonSerializer.SerializeAsync(
+                stream,
+                envelope,
+                JsonOptions,
+                cancellationToken),
+            createBackup: false,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<SettingsImportResult> ImportAsync(
@@ -123,7 +119,20 @@ public sealed class SettingsTransferService : ISettingsTransferService
             }
             ApplicationSettings settings = settingsElement.Deserialize<ApplicationSettings>(JsonOptions)
                 ?? throw new InvalidDataException("The settings export does not contain valid settings.");
+            if (settings.SchemaVersion > ApplicationSettings.CurrentSchemaVersion)
+            {
+                throw new InvalidDataException(
+                    $"The imported settings schema {settings.SchemaVersion} is newer than supported schema {ApplicationSettings.CurrentSchemaVersion}.");
+            }
+
+            bool includesSecrets = document.RootElement.TryGetProperty("includesSecrets", out JsonElement includesSecretsElement)
+                && includesSecretsElement.ValueKind is JsonValueKind.True or JsonValueKind.False
+                && includesSecretsElement.GetBoolean();
             ApplicationSettings normalized = settings.Normalize();
+            if (!includesSecrets)
+            {
+                normalized = RestoreRedactedSecrets(normalized, baseline.Normalize());
+            }
             return CreateResult(normalized, "modern-json", new List<string>(), normalized);
         }
 
@@ -132,6 +141,11 @@ public sealed class SettingsTransferService : ISettingsTransferService
             ApplicationSettings? settings = JsonSerializer.Deserialize<ApplicationSettings>(json, JsonOptions);
             if (settings is not null && settings.Categories is not null && settings.Queues is not null)
             {
+                if (settings.SchemaVersion > ApplicationSettings.CurrentSchemaVersion)
+                {
+                    throw new InvalidDataException(
+                        $"The imported settings schema {settings.SchemaVersion} is newer than supported schema {ApplicationSettings.CurrentSchemaVersion}.");
+                }
                 ApplicationSettings normalized = settings.Normalize();
                 return CreateResult(normalized, "modern-json", new List<string>(), normalized);
             }
@@ -283,6 +297,8 @@ public sealed class SettingsTransferService : ISettingsTransferService
 
         DownloadCategoryDefinition[] categories = ParseCategories(values, downloadDirectory);
         DownloadQueueDefinition[] queues = ParseQueues(values);
+        int importedCategoryCount = categories.Length;
+        int importedQueueCount = queues.Length;
         if (categories.Length == 0)
         {
             categories = current.Categories.ToArray();
@@ -309,7 +325,13 @@ public sealed class SettingsTransferService : ISettingsTransferService
             Accessibility = accessibility,
             Aria2 = aria2
         }).Normalize();
-        return CreateResult(imported, sourceFormat, warnings, imported);
+        return new SettingsImportResult(
+            imported,
+            sourceFormat,
+            warnings,
+            importedCategoryCount,
+            importedQueueCount,
+            0);
     }
 
     private static SettingsImportResult CreateResult(
@@ -413,21 +435,145 @@ public sealed class SettingsTransferService : ISettingsTransferService
     private static Dictionary<string, string> ParseProperties(string[] lines)
     {
         Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase);
-        foreach (string rawLine in lines)
+        StringBuilder logical = new();
+        foreach (string physical in lines)
         {
-            string line = rawLine.Trim();
-            if (line.Length == 0 || line.StartsWith('#') || line.StartsWith('!'))
+            string current = physical;
+            if (logical.Length > 0)
             {
+                current = current.TrimStart();
+            }
+
+            logical.Append(current);
+            int trailingSlashes = 0;
+            for (int index = logical.Length - 1; index >= 0 && logical[index] == '\\'; index--)
+            {
+                trailingSlashes++;
+            }
+
+            if ((trailingSlashes & 1) == 1)
+            {
+                logical.Length--;
                 continue;
             }
-            int separator = line.IndexOfAny(PropertySeparators);
-            if (separator <= 0)
-            {
-                continue;
-            }
-            values[line[..separator].Trim()] = line[(separator + 1)..].Trim();
+
+            ParseJavaPropertyLine(logical.ToString(), values);
+            logical.Clear();
         }
+
+        if (logical.Length > 0)
+        {
+            ParseJavaPropertyLine(logical.ToString(), values);
+        }
+
         return values;
+    }
+
+    private static void ParseJavaPropertyLine(string rawLine, Dictionary<string, string> values)
+    {
+        int index = 0;
+        while (index < rawLine.Length && char.IsWhiteSpace(rawLine[index]))
+        {
+            index++;
+        }
+        if (index >= rawLine.Length || rawLine[index] is '#' or '!')
+        {
+            return;
+        }
+
+        int keyStart = index;
+        bool escaped = false;
+        int separator = rawLine.Length;
+        for (; index < rawLine.Length; index++)
+        {
+            char character = rawLine[index];
+            if (!escaped && (character is '=' or ':' || char.IsWhiteSpace(character)))
+            {
+                separator = index;
+                break;
+            }
+            if (character == '\\' && !escaped)
+            {
+                escaped = true;
+            }
+            else
+            {
+                escaped = false;
+            }
+        }
+
+        int valueStart = separator;
+        while (valueStart < rawLine.Length && char.IsWhiteSpace(rawLine[valueStart]))
+        {
+            valueStart++;
+        }
+        if (valueStart < rawLine.Length && rawLine[valueStart] is '=' or ':')
+        {
+            valueStart++;
+        }
+        while (valueStart < rawLine.Length && char.IsWhiteSpace(rawLine[valueStart]))
+        {
+            valueStart++;
+        }
+
+        string key = UnescapeJavaProperty(rawLine[keyStart..separator]);
+        if (key.Length == 0)
+        {
+            return;
+        }
+        string value = UnescapeJavaProperty(valueStart < rawLine.Length ? rawLine[valueStart..] : string.Empty);
+        values[key] = value;
+    }
+
+    private static string UnescapeJavaProperty(string value)
+    {
+        StringBuilder builder = new(value.Length);
+        for (int index = 0; index < value.Length; index++)
+        {
+            char character = value[index];
+            if (character != '\\' || index + 1 >= value.Length)
+            {
+                builder.Append(character);
+                continue;
+            }
+
+            char escaped = value[++index];
+            switch (escaped)
+            {
+                case 't':
+                    builder.Append('\t');
+                    break;
+                case 'n':
+                    builder.Append('\n');
+                    break;
+                case 'r':
+                    builder.Append('\r');
+                    break;
+                case 'f':
+                    builder.Append('\f');
+                    break;
+                case 'u':
+                    if (index + 4 < value.Length
+                        && int.TryParse(
+                            value.AsSpan(index + 1, 4),
+                            NumberStyles.HexNumber,
+                            CultureInfo.InvariantCulture,
+                            out int codePoint))
+                    {
+                        builder.Append((char)codePoint);
+                        index += 4;
+                    }
+                    else
+                    {
+                        builder.Append('u');
+                    }
+                    break;
+                default:
+                    builder.Append(escaped);
+                    break;
+            }
+        }
+        return builder.ToString();
     }
 
     private static Dictionary<string, string> ParseXml(string xml)
@@ -575,6 +721,44 @@ public sealed class SettingsTransferService : ISettingsTransferService
 
     private static string? Value(Dictionary<string, string> values, string key)
         => values.TryGetValue(key, out string? value) ? value : null;
+
+    private static ApplicationSettings RestoreRedactedSecrets(
+        ApplicationSettings imported,
+        ApplicationSettings baseline)
+    {
+        ProxySettings importedProxy = imported.Network?.Proxy ?? ProxySettings.SystemDefault;
+        ProxySettings baselineProxy = baseline.Network?.Proxy ?? ProxySettings.SystemDefault;
+
+        Dictionary<string, ServerCredentialDefinition> baselineCredentials = (baseline.Credentials ?? [])
+            .ToDictionary(
+                static credential => credential.Host,
+                StringComparer.OrdinalIgnoreCase);
+        ServerCredentialDefinition[] credentials = (imported.Credentials ?? [])
+            .Select(credential =>
+                string.IsNullOrEmpty(credential.Password)
+                && baselineCredentials.TryGetValue(credential.Host, out ServerCredentialDefinition? existing)
+                    ? credential with { Password = existing.Password }
+                    : credential)
+            .ToArray();
+
+        return imported with
+        {
+            Network = (imported.Network ?? NetworkSettings.Default) with
+            {
+                Proxy = importedProxy with
+                {
+                    Password = importedProxy.Password ?? baselineProxy.Password
+                }
+            },
+            Credentials = credentials,
+            Aria2 = (imported.Aria2 ?? Aria2IntegrationSettings.Default) with
+            {
+                RpcSecret = string.IsNullOrEmpty(imported.Aria2?.RpcSecret)
+                    ? baseline.Aria2?.RpcSecret ?? string.Empty
+                    : imported.Aria2!.RpcSecret
+            }
+        };
+    }
 
     private sealed record SettingsEnvelope(
         string Format,

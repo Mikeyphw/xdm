@@ -186,11 +186,11 @@ public partial class MainWindowViewModel
             SettingsImportResult result = await _settingsTransferService.ImportAsync(
                 SettingsTransferPath,
                 _settingsService.Current);
-            await _settingsService.UpdateAsync(result.Settings);
+            ApplySettings(result.Settings);
             string warnings = result.Warnings.Count == 0
                 ? string.Empty
                 : $" {string.Join(" ", result.Warnings)}";
-            SettingsTransferStatus = $"Imported {result.SourceFormat}: {result.ImportedCategoryCount} categories, {result.ImportedQueueCount} queues, {result.ImportedCredentialCount} credentials.{warnings}";
+            SettingsTransferStatus = $"Loaded {result.SourceFormat} for review: {result.ImportedCategoryCount} categories, {result.ImportedQueueCount} queues, {result.ImportedCredentialCount} credentials. Review the editor and choose Save settings to persist it.{warnings}";
         }
         catch (JsonException exception)
         {

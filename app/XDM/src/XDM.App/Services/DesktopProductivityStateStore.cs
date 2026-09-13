@@ -1,4 +1,5 @@
 using System.Text.Json;
+using XDM.Core.Persistence;
 
 namespace XDM.App.Services;
 
@@ -118,28 +119,15 @@ public sealed class DesktopProductivityStateStore : IDisposable
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            string? directory = Path.GetDirectoryName(_statePath);
-            if (!string.IsNullOrWhiteSpace(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            string temporaryPath = _statePath + ".tmp";
-            await using (FileStream stream = new(
-                temporaryPath,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                8 * 1024,
-                FileOptions.Asynchronous | FileOptions.WriteThrough))
-            {
-                await JsonSerializer
-                    .SerializeAsync(stream, state.Normalize(), SerializerOptions, cancellationToken)
-                    .ConfigureAwait(false);
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            File.Move(temporaryPath, _statePath, overwrite: true);
+            await AtomicFile.WriteAsync(
+                _statePath,
+                stream => JsonSerializer.SerializeAsync(
+                    stream,
+                    state.Normalize(),
+                    SerializerOptions,
+                    cancellationToken),
+                createBackup: true,
+                cancellationToken).ConfigureAwait(false);
         }
         finally
         {

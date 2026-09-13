@@ -1,4 +1,5 @@
 using System.Text.Json;
+using XDM.Core.Persistence;
 
 namespace XDM.App.Services;
 
@@ -20,10 +21,7 @@ public sealed class WindowStateStore
 
     public WindowStateStore()
     {
-        string stateDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "xdm-modern");
-        _statePath = Path.Combine(stateDirectory, "window-state.json");
+        _statePath = Path.Combine(GetStateDirectory(), "window-state.json");
     }
 
     public async Task<WindowPlacementState?> LoadAsync(CancellationToken cancellationToken = default)
@@ -55,32 +53,18 @@ public sealed class WindowStateStore
         }
     }
 
-    public async Task SaveAsync(WindowPlacementState state, CancellationToken cancellationToken = default)
+    public Task SaveAsync(WindowPlacementState state, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
-        string? directory = Path.GetDirectoryName(_statePath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-        string temporaryPath = _statePath + ".tmp";
-        await using (FileStream stream = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            bufferSize: 4096,
-            FileOptions.Asynchronous | FileOptions.WriteThrough))
-        {
-            await JsonSerializer.SerializeAsync(
+        return AtomicFile.WriteAsync(
+            _statePath,
+            stream => JsonSerializer.SerializeAsync(
                 stream,
                 state,
                 SerializerOptions,
-                cancellationToken).ConfigureAwait(false);
-            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(temporaryPath, _statePath, overwrite: true);
+                cancellationToken),
+            createBackup: true,
+            cancellationToken);
     }
 
     public async Task<bool> SaveBestEffortAsync(WindowPlacementState state, CancellationToken cancellationToken = default)
@@ -98,6 +82,18 @@ public sealed class WindowStateStore
         {
             return false;
         }
+    }
+
+    private static string GetStateDirectory()
+    {
+        string? xdgStateHome = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
+        if (!string.IsNullOrWhiteSpace(xdgStateHome))
+        {
+            return Path.Combine(xdgStateHome, "xdm");
+        }
+
+        string localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(localData, "XDM", "State");
     }
 
     public Task ResetAsync()

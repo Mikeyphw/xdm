@@ -1191,13 +1191,19 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         DownloadSession session = GetSession(downloadId);
         cancellationToken.ThrowIfCancellationRequested();
+        if (!Enum.IsDefined(priority))
+        {
+            throw new ArgumentOutOfRangeException(nameof(priority));
+        }
+
+        PersistedDownload before = CreatePersistedDownload(session);
         lock (session.Sync)
         {
             session.Priority = priority;
+            session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        _applicationState.UpsertDownload(CreateSnapshot(session));
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
     }
 
     public Task RemoveAsync(
@@ -1237,7 +1243,6 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
             catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
             {
-                // The task is already terminal or absent; local deletion can continue.
             }
         }
 
@@ -1249,9 +1254,18 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                // The operation was cancelled above so its files can be removed safely.
             }
         }
+
+        PersistedDownload[] retainedHistory = _sessions.Values
+            .Where(candidate => !ReferenceEquals(candidate, session))
+            .Select(CreatePersistedDownload)
+            .OrderByDescending(static item => item.UpdatedAt)
+            .ToArray();
+        await SaveHistorySnapshotAsync(
+            retainedHistory,
+            cancellationToken,
+            [downloadId]).ConfigureAwait(false);
 
         if (scope != DownloadDeletionScope.HistoryOnly)
         {
@@ -1266,13 +1280,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             File.Delete(session.DestinationPath);
         }
 
-        _sessions.TryRemove(downloadId, out _);
-        _applicationState.RemoveDownload(downloadId);
         if (scope == DownloadDeletionScope.HistoryOnly)
         {
             PushRemovedHistory(session);
         }
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<string?> UndoLastRemovalAsync(CancellationToken cancellationToken = default)
@@ -1315,7 +1326,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         _applicationState.UpsertDownload(CreateSnapshot(session));
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            _sessions.TryRemove(session.Id, out _);
+            _applicationState.RemoveDownload(session.Id);
+            lock (_removedHistorySync)
+            {
+                _removedHistory.Push(session);
+            }
+            throw;
+        }
         return session.Id;
     }
 
@@ -1355,6 +1379,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         cancellationToken.ThrowIfCancellationRequested();
 
+        PersistedDownload before = CreatePersistedDownload(session);
         string sourcePath;
         lock (session.Sync)
         {
@@ -1362,7 +1387,6 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             {
                 throw new InvalidOperationException("Only completed downloads can be moved or renamed.");
             }
-
             sourcePath = session.DestinationPath;
         }
 
@@ -1397,28 +1421,54 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             throw new IOException($"The destination file already exists: {targetPath}");
         }
 
-        await MoveFileAsync(sourcePath, targetPath, overwrite, cancellationToken).ConfigureAwait(false);
         string sourceRepairManifest = TransferArtifactPaths.GetRepairManifestPath(sourcePath);
         string targetRepairManifest = TransferArtifactPaths.GetRepairManifestPath(targetPath);
-        if (File.Exists(sourceRepairManifest))
-        {
-            File.Move(sourceRepairManifest, targetRepairManifest, overwrite: true);
-        }
         string oldChecksumStatePath = TransferArtifactPaths.GetChecksumStatePath(sourcePath);
-        lock (session.Sync)
+        string targetChecksumStatePath = TransferArtifactPaths.GetChecksumStatePath(targetPath);
+        bool fileMoved = false;
+        bool repairManifestMoved = false;
+        try
         {
-            session.DestinationPath = targetPath;
-            session.ErrorMessage = null;
-            session.UpdatedAt = DateTimeOffset.UtcNow;
-        }
+            await MoveFileAsync(sourcePath, targetPath, overwrite, cancellationToken).ConfigureAwait(false);
+            fileMoved = true;
+            if (File.Exists(sourceRepairManifest))
+            {
+                File.Move(sourceRepairManifest, targetRepairManifest, overwrite: true);
+                repairManifestMoved = true;
+            }
 
-        await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
-        if (File.Exists(oldChecksumStatePath))
-        {
-            File.Delete(oldChecksumStatePath);
+            lock (session.Sync)
+            {
+                session.DestinationPath = targetPath;
+                session.ErrorMessage = null;
+                session.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+
+            await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
+            await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
+            DeleteIfExists(oldChecksumStatePath);
         }
-        _applicationState.UpsertDownload(CreateSnapshot(session));
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        catch
+        {
+            RestorePersistedState(session, before);
+            _applicationState.UpsertDownload(CreateSnapshot(session));
+            try
+            {
+                DeleteIfExists(targetChecksumStatePath);
+                if (repairManifestMoved && File.Exists(targetRepairManifest))
+                {
+                    File.Move(targetRepairManifest, sourceRepairManifest, overwrite: true);
+                }
+                if (fileMoved && File.Exists(targetPath))
+                {
+                    await MoveFileAsync(targetPath, sourcePath, overwrite: true, CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            catch (Exception rollbackException) when (rollbackException is IOException or UnauthorizedAccessException)
+            {
+            }
+            throw;
+        }
     }
 
     public Task<string> RedownloadAsync(
@@ -1480,18 +1530,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        PersistedDownload before = CreatePersistedDownload(session);
         lock (session.Sync)
         {
             if (session.Method != "GET")
             {
                 throw new InvalidOperationException("Only GET downloads can refresh their source URL.");
             }
-
             if (session.State == DownloadState.Completed)
             {
                 throw new InvalidOperationException("Completed downloads should be queued again with Re-download.");
             }
-
             if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
             {
                 throw new InvalidOperationException("Pause or cancel the download before refreshing its URL.");
@@ -1499,10 +1548,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
             session.Source = source;
             session.SourcePage = sourcePage;
-            session.Mirrors = new[] { source }
-                .Concat(session.Mirrors)
-                .Distinct()
-                .ToArray();
+            session.Mirrors = new[] { source }.Concat(session.Mirrors).Distinct().ToArray();
             session.MirrorIndex = 1;
             session.EntityTag = null;
             session.LastModified = null;
@@ -1514,8 +1560,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        _applicationState.UpsertDownload(CreateSnapshot(session));
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task SetTagsAsync(
@@ -1524,6 +1569,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         CancellationToken cancellationToken = default)
     {
         DownloadSession session = GetSession(downloadId);
+        PersistedDownload before = CreatePersistedDownload(session);
         string[] normalized = DownloadMetadata.NormalizeTags(tags);
         lock (session.Sync)
         {
@@ -1531,8 +1577,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        _applicationState.UpsertDownload(CreateSnapshot(session));
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task SetArchivedAsync(
@@ -1541,6 +1586,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         CancellationToken cancellationToken = default)
     {
         DownloadSession session = GetSession(downloadId);
+        PersistedDownload before = CreatePersistedDownload(session);
         lock (session.Sync)
         {
             if (archived && session.State is not (DownloadState.Completed or DownloadState.Failed or DownloadState.Cancelled))
@@ -1552,8 +1598,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        _applicationState.UpsertDownload(CreateSnapshot(session));
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task RelinkAsync(
@@ -1577,6 +1622,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             throw new IOException("Another download already references that file.");
         }
 
+        PersistedDownload before = CreatePersistedDownload(session);
         lock (session.Sync)
         {
             if (session.State is DownloadState.Connecting or DownloadState.Downloading or DownloadState.Finalizing)
@@ -1598,8 +1644,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         await RefreshContentIdentityAsync(session, cancellationToken).ConfigureAwait(false);
-        _applicationState.UpsertDownload(CreateSnapshot(session));
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<int> PruneHistoryAsync(CancellationToken cancellationToken = default)
@@ -1619,15 +1664,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             .Where(item => !retainedIds.Contains(item.Id))
             .Select(static item => item.Id)
             .ToArray();
-        foreach (string id in removeIds)
-        {
-            _sessions.TryRemove(id, out _);
-            _applicationState.RemoveDownload(id);
-        }
 
         if (removeIds.Length > 0)
         {
-            await _historyStore.SaveAsync(retained.ToArray(), cancellationToken).ConfigureAwait(false);
+            await SaveHistorySnapshotAsync(
+                retained.ToArray(),
+                cancellationToken,
+                removeIds).ConfigureAwait(false);
         }
 
         return removeIds.Length;
@@ -1674,6 +1717,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             previousQueueId = session.QueueId;
         }
 
+        Dictionary<string, PersistedDownload> before = _sessions.Values
+            .ToDictionary(static item => item.Id, CreatePersistedDownload, StringComparer.Ordinal);
+
         List<DownloadSession> target = _sessions.Values
             .Where(item => !ReferenceEquals(item, session)
                 && string.Equals(item.QueueId, queueId, StringComparison.Ordinal))
@@ -1690,7 +1736,6 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 target[index].QueueId = queueId;
                 target[index].QueueOrder = index;
             }
-
             _applicationState.UpsertDownload(CreateSnapshot(target[index]));
         }
 
@@ -1705,7 +1750,23 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         PublishQueueRuntime();
-        await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            foreach (DownloadSession candidate in _sessions.Values)
+            {
+                if (before.TryGetValue(candidate.Id, out PersistedDownload persisted))
+                {
+                    RestorePersistedState(candidate, persisted);
+                    _applicationState.UpsertDownload(CreateSnapshot(candidate));
+                }
+            }
+            PublishQueueRuntime();
+            throw;
+        }
     }
 
     public void FreezeAdmission()
@@ -3965,17 +4026,121 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 return;
             }
 
-            PersistedDownload[] downloads = _sessions.Values
+            PersistedDownload[] current = _sessions.Values
                 .Select(CreatePersistedDownload)
                 .OrderByDescending(static item => item.UpdatedAt)
                 .ToArray();
+            IReadOnlyList<PersistedDownload> retained = HistoryRetentionPolicy.Apply(
+                current,
+                _settingsService.Current.History ?? HistoryRetentionSettings.Default,
+                now);
 
-            await _historyStore.SaveAsync(downloads, cancellationToken).ConfigureAwait(false);
+            await _historyStore.SaveAsync(retained.ToArray(), cancellationToken).ConfigureAwait(false);
             _lastPersistence = now;
+
+            if (retained.Count != current.Length)
+            {
+                HashSet<string> retainedIds = retained
+                    .Select(static item => item.Id)
+                    .ToHashSet(StringComparer.Ordinal);
+                foreach (PersistedDownload expired in current.Where(item => !retainedIds.Contains(item.Id)))
+                {
+                    _sessions.TryRemove(expired.Id, out _);
+                    _applicationState.RemoveDownload(expired.Id);
+                }
+            }
         }
         finally
         {
             _persistenceGate.Release();
+        }
+    }
+
+    private async Task SaveHistorySnapshotAsync(
+        IReadOnlyCollection<PersistedDownload> downloads,
+        CancellationToken cancellationToken,
+        IReadOnlyCollection<string>? removeIds = null)
+    {
+        await _persistenceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _historyStore.SaveAsync(downloads, cancellationToken).ConfigureAwait(false);
+            _lastPersistence = DateTimeOffset.UtcNow;
+            if (removeIds is not null)
+            {
+                foreach (string id in removeIds)
+                {
+                    _sessions.TryRemove(id, out _);
+                    _applicationState.RemoveDownload(id);
+                }
+            }
+        }
+        finally
+        {
+            _persistenceGate.Release();
+        }
+    }
+
+    private async Task PersistMutationAsync(
+        DownloadSession session,
+        PersistedDownload before,
+        CancellationToken cancellationToken)
+    {
+        _applicationState.UpsertDownload(CreateSnapshot(session));
+        try
+        {
+            await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            RestorePersistedState(session, before);
+            _applicationState.UpsertDownload(CreateSnapshot(session));
+            throw;
+        }
+    }
+
+    private static void RestorePersistedState(DownloadSession session, PersistedDownload item)
+    {
+        lock (session.Sync)
+        {
+            session.Source = item.Source;
+            session.DestinationPath = item.DestinationPath;
+            session.DownloadedBytes = item.DownloadedBytes;
+            session.TotalBytes = item.TotalBytes;
+            session.State = item.State;
+            session.UpdatedAt = item.UpdatedAt;
+            session.ErrorMessage = item.ErrorMessage;
+            session.QueueId = item.QueueId;
+            session.CategoryId = item.CategoryId;
+            session.QueueOrder = item.QueueOrder;
+            session.EntityTag = item.EntityTag;
+            session.LastModified = item.LastModified;
+            session.ConnectionCount = item.ConnectionCount;
+            session.Priority = item.Priority;
+            session.SourcePage = item.SourcePage;
+            session.ExpectedChecksumAlgorithm = item.ExpectedChecksumAlgorithm;
+            session.ExpectedChecksum = item.ExpectedChecksum;
+            session.ActualChecksum = item.ActualChecksum;
+            session.LastVerifiedAt = item.LastVerifiedAt;
+            session.IntegrityStatus = item.IntegrityStatus;
+            session.RecoveryRequired = item.RecoveryRequired;
+            session.RecoveryMessage = item.RecoveryMessage;
+            session.Mirrors = new[] { item.Source }
+                .Concat(item.Mirrors ?? Array.Empty<Uri>())
+                .Distinct()
+                .Take(32)
+                .ToArray();
+            session.MirrorIndex = 1;
+            session.BackendPreference = item.BackendPreference;
+            session.Backend = item.Backend;
+            session.BackendTaskId = item.BackendTaskId;
+            session.BackendDecisionReason = item.BackendDecisionReason;
+            session.AllowBackendFallback = item.AllowBackendFallback;
+            session.Tags = DownloadMetadata.NormalizeTags(item.Tags);
+            session.IsArchived = item.IsArchived;
+            session.ContentHashSha256 = item.ContentHashSha256;
+            session.DuplicateOfDownloadId = item.DuplicateOfDownloadId;
+            session.DuplicateReason = item.DuplicateReason;
         }
     }
 

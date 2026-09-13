@@ -1,5 +1,6 @@
 using System.Text.Json;
 using XDM.Core.Scheduling;
+using XDM.Core.Persistence;
 
 namespace XDM.Persistence;
 
@@ -54,31 +55,18 @@ public sealed class JsonSchedulerStateStore : ISchedulerStateStore
         }
     }
 
-    public async Task SaveAsync(SchedulerRuntimeState state, CancellationToken cancellationToken = default)
+    public Task SaveAsync(SchedulerRuntimeState state, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
-        string? directory = Path.GetDirectoryName(_statePath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        string temporaryPath = $"{_statePath}.tmp";
-        await using (FileStream stream = new(
-            temporaryPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            16 * 1024,
-            FileOptions.Asynchronous | FileOptions.WriteThrough))
-        {
-            await JsonSerializer
-                .SerializeAsync(stream, state, SerializerOptions, cancellationToken)
-                .ConfigureAwait(false);
-            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(temporaryPath, _statePath, overwrite: true);
+        return AtomicFile.WriteAsync(
+            _statePath,
+            stream => JsonSerializer.SerializeAsync(
+                stream,
+                state,
+                SerializerOptions,
+                cancellationToken),
+            createBackup: true,
+            cancellationToken);
     }
 
     private static string GetDefaultStatePath()
