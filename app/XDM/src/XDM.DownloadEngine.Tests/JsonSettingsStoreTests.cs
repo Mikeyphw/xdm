@@ -37,4 +37,26 @@ public sealed class JsonSettingsStoreTests
             Directory.Delete(directory, recursive: true);
         }
     }
+    [Fact]
+    public async Task CorruptExistingSettingsWithoutValidBackupFailsClosed()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-settings-corrupt-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string path = Path.Combine(directory, "settings.json");
+            await File.WriteAllTextAsync(path, "{ not-json");
+            JsonSettingsStore store = new(path);
+
+            InvalidDataException error = await Assert.ThrowsAsync<InvalidDataException>(() => store.LoadAsync());
+
+            Assert.Contains("Network access is disabled", error.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.NotEmpty(Directory.EnumerateFiles(directory, "settings.json.corrupt-*"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
 }

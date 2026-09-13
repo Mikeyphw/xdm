@@ -9,8 +9,14 @@ public sealed partial class PacProxy : IWebProxy
     private const int MaximumScriptBytes = 1024 * 1024;
     private readonly PacRule[] _rules;
     private readonly string? _defaultDirective;
+    private readonly bool _bypassLocal;
+    private readonly string[] _bypassList;
 
-    public PacProxy(string script, ICredentials? credentials = null)
+    public PacProxy(
+        string script,
+        ICredentials? credentials = null,
+        bool bypassLocal = false,
+        IReadOnlyList<string>? bypassList = null)
     {
         ArgumentNullException.ThrowIfNull(script);
         if (System.Text.Encoding.UTF8.GetByteCount(script) > MaximumScriptBytes)
@@ -19,6 +25,12 @@ public sealed partial class PacProxy : IWebProxy
         }
 
         Credentials = credentials;
+        _bypassLocal = bypassLocal;
+        _bypassList = bypassList?
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Select(static value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray() ?? [];
         (_rules, _defaultDirective) = Parse(script);
     }
 
@@ -27,6 +39,11 @@ public sealed partial class PacProxy : IWebProxy
     public Uri GetProxy(Uri destination)
     {
         ArgumentNullException.ThrowIfNull(destination);
+        if (ShouldBypass(destination))
+        {
+            return destination;
+        }
+
         foreach (PacRule rule in _rules)
         {
             if (rule.Matches(destination))
@@ -45,7 +62,9 @@ public sealed partial class PacProxy : IWebProxy
         Uri scriptUri,
         ICredentials? credentials,
         TimeSpan timeout,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool bypassLocal = false,
+        IReadOnlyList<string>? bypassList = null)
     {
         ArgumentNullException.ThrowIfNull(scriptUri);
         if (!scriptUri.IsAbsoluteUri || scriptUri.Scheme is not ("http" or "https" or "file"))
@@ -108,14 +127,14 @@ public sealed partial class PacProxy : IWebProxy
             script = System.Text.Encoding.UTF8.GetString(buffer.ToArray());
         }
 
-        return new PacProxy(script, credentials);
+        return new PacProxy(script, credentials, bypassLocal, bypassList);
     }
 
     internal static Uri ResolveDirective(string? directive, Uri destination)
     {
         if (string.IsNullOrWhiteSpace(directive))
         {
-            return destination;
+            throw new InvalidDataException("The PAC script did not return a supported proxy directive for this destination.");
         }
 
         foreach (string item in directive.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -144,7 +163,68 @@ public sealed partial class PacProxy : IWebProxy
             }
         }
 
-        return destination;
+        throw new InvalidDataException(
+            $"The PAC result '{directive}' did not contain a supported DIRECT or HTTP proxy directive.");
+    }
+
+    private bool ShouldBypass(Uri destination)
+    {
+        if (_bypassLocal && IsLocalDestination(destination))
+        {
+            return true;
+        }
+
+        foreach (string pattern in _bypassList)
+        {
+            if (string.Equals(pattern, "<local>", StringComparison.OrdinalIgnoreCase)
+                && IsLocalDestination(destination))
+            {
+                return true;
+            }
+
+            if (MatchesBypassPattern(destination, pattern))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsLocalDestination(Uri destination)
+    {
+        if (!destination.Host.Contains('.'))
+        {
+            return true;
+        }
+
+        return IPAddress.TryParse(destination.Host, out IPAddress? address)
+            && IPAddress.IsLoopback(address);
+    }
+
+    private static bool MatchesBypassPattern(Uri destination, string pattern)
+    {
+        if (string.Equals(destination.Host, pattern, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        string wildcard = "^" + Regex.Escape(pattern)
+            .Replace("\\*", ".*", StringComparison.Ordinal)
+            .Replace("\\?", ".", StringComparison.Ordinal) + "$";
+        try
+        {
+            return Regex.IsMatch(destination.Host, wildcard, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50))
+                || Regex.IsMatch(destination.AbsoluteUri, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50));
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return false;
+        }
     }
 
     private static bool TryCreateProxyUri(string endpoint, [NotNullWhen(true)] out Uri? proxy)

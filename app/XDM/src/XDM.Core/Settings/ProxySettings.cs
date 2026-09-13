@@ -26,16 +26,6 @@ public sealed record ProxySettings(
     {
         string? host = EmptyToNull(Host);
         string? automaticUrl = NormalizeAutomaticUrl(AutomaticConfigurationUrl);
-        ProxyMode mode = Mode;
-        if (mode == ProxyMode.Manual && host is null)
-        {
-            mode = ProxyMode.None;
-        }
-        else if (mode == ProxyMode.AutomaticScript && automaticUrl is null)
-        {
-            mode = ProxyMode.System;
-        }
-
         string? username = EmptyToNull(Username);
         ProxyAuthenticationMode authentication = AuthenticationMode;
         if (authentication == ProxyAuthenticationMode.Basic && username is null)
@@ -45,7 +35,7 @@ public sealed record ProxySettings(
 
         return this with
         {
-            Mode = mode,
+            Mode = Enum.IsDefined(Mode) ? Mode : ProxyMode.System,
             Host = host,
             Port = Math.Clamp(Port, 1, 65535),
             Username = authentication == ProxyAuthenticationMode.Basic ? username : null,

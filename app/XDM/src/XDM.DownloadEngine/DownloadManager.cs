@@ -271,6 +271,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 restoredError = "Captured POST data is intentionally not persisted and cannot be replayed after restart.";
             }
 
+            (string? restoredUsername, string? restoredPassword) =
+                ServerCredentialResolver.Resolve(_settingsService.Current, item.Source);
             DownloadSession session = new(
                 item.Id,
                 item.Source,
@@ -280,8 +282,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.TotalBytes,
                 restoredError,
                 null,
-                null,
-                null,
+                restoredUsername,
+                restoredPassword,
                 null,
                 null,
                 null,
@@ -998,6 +1000,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.State = DownloadState.Paused;
             session.BackendTaskId = null;
             session.Source = session.Mirrors[0];
+            RebindServerCredential(session, session.Source);
             session.MirrorIndex = 1;
         }
         await SaveChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
@@ -1531,8 +1534,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         cancellationToken.ThrowIfCancellationRequested();
         PersistedDownload before = CreatePersistedDownload(session);
+        string? previousUsername;
+        string? previousPassword;
+        Uri? previousCredentialOrigin;
         lock (session.Sync)
         {
+            previousUsername = session.Username;
+            previousPassword = session.Password;
+            previousCredentialOrigin = session.CredentialOrigin;
             if (session.Method != "GET")
             {
                 throw new InvalidOperationException("Only GET downloads can refresh their source URL.");
@@ -1547,6 +1556,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
 
             session.Source = source;
+            RebindServerCredential(session, source);
             session.SourcePage = sourcePage;
             session.Mirrors = new[] { source }.Concat(session.Mirrors).Distinct().ToArray();
             session.MirrorIndex = 1;
@@ -1560,7 +1570,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PersistMutationAsync(session, before, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            lock (session.Sync)
+            {
+                session.Username = previousUsername;
+                session.Password = previousPassword;
+                session.CredentialOrigin = previousCredentialOrigin;
+            }
+            throw;
+        }
     }
 
     public async Task SetTagsAsync(
@@ -2223,7 +2246,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                             session.Password,
                             session.SpeedLimitBytesPerSecond)
                         {
-                            Mirrors = session.Mirrors.Skip(1).ToArray(),
+                            Mirrors = GetCredentialSafeAria2Mirrors(session),
                             ExpectedChecksumAlgorithm = session.ExpectedChecksumAlgorithm,
                             ExpectedChecksum = session.ExpectedChecksum
                         },
@@ -2602,6 +2625,22 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         return Aria2DestinationOwnership.FindCollision(
             session.DestinationPath,
             _aria2Service.Current.Tasks);
+    }
+
+    private static Uri[] GetCredentialSafeAria2Mirrors(DownloadSession session)
+    {
+        lock (session.Sync)
+        {
+            IEnumerable<Uri> mirrors = session.Mirrors.Skip(1);
+            if (session.CredentialOrigin is not null
+                && (!string.IsNullOrWhiteSpace(session.Username) || !string.IsNullOrWhiteSpace(session.Password)))
+            {
+                mirrors = mirrors.Where(mirror =>
+                    ServerCredentialResolver.IsSameOrigin(session.CredentialOrigin, mirror));
+            }
+
+            return mirrors.ToArray();
+        }
     }
 
     private static Dictionary<string, string> BuildAria2Headers(DownloadSession session)
@@ -5112,6 +5151,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     .ToArray();
             }
             session.Source = checkpoint.Source;
+            RebindServerCredential(session, checkpoint.Source);
             session.Mirrors = restoredMirrors;
             int restoredMirrorIndex = Array.FindIndex(restoredMirrors, mirror => mirror == session.Source);
             session.MirrorIndex = restoredMirrorIndex >= 0 ? restoredMirrorIndex + 1 : 0;
@@ -5160,7 +5200,21 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
     }
 
-    private static bool TrySwitchToNextMirror(DownloadSession session)
+    private void RebindServerCredential(DownloadSession session, Uri source)
+    {
+        if (session.CredentialOrigin is not null
+            && ServerCredentialResolver.IsSameOrigin(session.CredentialOrigin, source))
+        {
+            return;
+        }
+
+        (string? username, string? password) = ServerCredentialResolver.Resolve(_settingsService.Current, source);
+        session.Username = username;
+        session.Password = password;
+        session.CredentialOrigin = username is null && password is null ? null : source;
+    }
+
+    private bool TrySwitchToNextMirror(DownloadSession session)
     {
         lock (session.Sync)
         {
@@ -5172,6 +5226,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             Uri previous = session.Source;
             Uri next = session.Mirrors[session.MirrorIndex++];
             session.Source = next;
+            RebindServerCredential(session, next);
             session.EntityTag = null;
             session.LastModified = null;
             session.ActualChecksum = null;
@@ -5667,6 +5722,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             Headers = headers;
             Username = username;
             Password = password;
+            CredentialOrigin = username is null && password is null ? null : source;
             Cookie = cookie;
             Referer = referer;
             UserAgent = userAgent;
@@ -5742,9 +5798,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         public IReadOnlyDictionary<string, string>? Headers { get; }
 
-        public string? Username { get; }
+        public string? Username { get; set; }
 
-        public string? Password { get; }
+        public string? Password { get; set; }
+
+        public Uri? CredentialOrigin { get; set; }
 
         public string? Cookie { get; }
 

@@ -320,7 +320,7 @@ public partial class App : Application
         });
 
         services.AddSingleton(static provider =>
-            ConfiguredHttpClientFactory.Create(provider.GetRequiredService<ISettingsService>().Current));
+            ConfiguredHttpClientFactory.Create(provider.GetRequiredService<ISettingsService>()));
 
         services.AddSingleton<IDiagnosticEventStore, DiagnosticEventStore>();
         services.AddSingleton<TransferDiagnosticStore>();

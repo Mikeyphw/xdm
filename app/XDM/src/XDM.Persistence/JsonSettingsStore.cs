@@ -26,9 +26,19 @@ public sealed class JsonSettingsStore : ISettingsStore
 
     public async Task<ApplicationSettings?> LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(_settingsPath))
+        string backupPath = $"{_settingsPath}.bak";
+        bool primaryExists = File.Exists(_settingsPath);
+        bool backupExists = File.Exists(backupPath);
+        if (!primaryExists)
         {
-            return await TryLoadBackupAsync(cancellationToken).ConfigureAwait(false);
+            if (!backupExists)
+            {
+                return null;
+            }
+
+            ApplicationSettings? backupOnly = await TryLoadBackupAsync(cancellationToken).ConfigureAwait(false);
+            return backupOnly ?? throw new InvalidDataException(
+                "XDM found a previous settings backup but could not load it. Network access is disabled until settings are reviewed and saved.");
         }
 
         try
@@ -43,7 +53,10 @@ public sealed class JsonSettingsStore : ISettingsStore
         catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
         {
             AtomicFile.Quarantine(_settingsPath, "corrupt");
-            return await TryLoadBackupAsync(cancellationToken).ConfigureAwait(false);
+            ApplicationSettings? recovered = await TryLoadBackupAsync(cancellationToken).ConfigureAwait(false);
+            return recovered ?? throw new InvalidDataException(
+                "XDM could not load the saved settings or a valid backup. Network access is disabled until settings are reviewed and saved.",
+                exception);
         }
     }
 

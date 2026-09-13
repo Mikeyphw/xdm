@@ -4,6 +4,10 @@ public interface ISettingsService
 {
     ApplicationSettings Current { get; }
 
+    bool IsOperational => true;
+
+    string? LoadFailureMessage => null;
+
     event EventHandler<ApplicationSettings>? Changed;
 
     Task InitializeAsync(CancellationToken cancellationToken = default);

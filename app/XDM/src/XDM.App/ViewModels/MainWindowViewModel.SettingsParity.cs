@@ -157,7 +157,7 @@ public partial class MainWindowViewModel
         {
             await _settingsTransferService.ExportAsync(
                 SettingsTransferPath,
-                BuildSettingsFromEditor(),
+                _settingsService.Current,
                 IncludeSecretsInSettingsExport);
             SettingsTransferStatus = IncludeSecretsInSettingsExport
                 ? "Settings exported with credentials. Protect the file as sensitive data."
@@ -168,6 +168,18 @@ public partial class MainWindowViewModel
             SettingsTransferStatus = exception.Message;
         }
         catch (UnauthorizedAccessException exception)
+        {
+            SettingsTransferStatus = exception.Message;
+        }
+        catch (ArgumentException exception)
+        {
+            SettingsTransferStatus = exception.Message;
+        }
+        catch (NotSupportedException exception)
+        {
+            SettingsTransferStatus = exception.Message;
+        }
+        catch (JsonException exception)
         {
             SettingsTransferStatus = exception.Message;
         }
@@ -212,11 +224,30 @@ public partial class MainWindowViewModel
 
     private bool TryValidateSettingsEditor(out string message)
     {
+        int connectTimeout = ParseInteger(ConnectTimeoutSeconds, -1);
+        int requestTimeout = ParseInteger(RequestTimeoutSeconds, -1);
+        int retries = ParseInteger(MaximumRetryAttempts, -1);
+        int retryDelay = ParseInteger(RetryBaseDelayMilliseconds, -1);
         int defaultConnections = ParseInteger(DefaultConnectionCount, -1);
         int maximumConnections = ParseInteger(MaximumConnectionCount, -1);
-        if (defaultConnections < 1 || maximumConnections < defaultConnections)
+        double minimumSegmentedMiB = ParseDouble(MinimumSegmentedSizeMegabytes, -1);
+        int proxyPort = ParseInteger(ProxyPort, -1);
+        if (connectTimeout is < 1 or > 300
+            || requestTimeout is < 0 or > 86400
+            || retries is < 1 or > 20
+            || retryDelay is < 100 or > 60000
+            || maximumConnections is < 1 or > 32
+            || defaultConnections < 1
+            || defaultConnections > maximumConnections
+            || minimumSegmentedMiB is < 0.0625 or > 1024)
         {
-            message = _localization["settings_validation_connections"];
+            message = "Network values are outside the supported ranges. Review timeouts, retries, connections, and segmented-transfer size.";
+            return false;
+        }
+
+        if (proxyPort is < 1 or > 65535)
+        {
+            message = "Proxy port must be between 1 and 65535.";
             return false;
         }
 
@@ -335,7 +366,9 @@ public partial class MainWindowViewModel
 
     private string? ResolveCategoryId(Uri source, string? selectedCategoryId)
     {
-        if (!AutoSelectCategory)
+        ApplicationSettings committed = _settingsService.Current;
+        DownloadBehaviorSettings behavior = committed.DownloadBehavior ?? DownloadBehaviorSettings.Default;
+        if (!behavior.AutoSelectCategory)
         {
             return selectedCategoryId;
         }
@@ -344,16 +377,13 @@ public partial class MainWindowViewModel
         {
             return selectedCategoryId;
         }
-        DownloadCategoryDefinition? category = CategoryDefinitions.FirstOrDefault(item =>
+        DownloadCategoryDefinition? category = committed.Categories.FirstOrDefault(item =>
             item.Extensions.Any(value => string.Equals(value, extension, StringComparison.OrdinalIgnoreCase)));
         return category?.Id ?? selectedCategoryId;
     }
 
     private (string? Username, string? Password) ResolveServerCredential(Uri source)
-    {
-        ServerCredentialDefinition? credential = ServerCredentials.FirstOrDefault(item => item.Matches(source));
-        return credential is null ? (null, null) : (credential.Username, credential.Password);
-    }
+        => ServerCredentialResolver.Resolve(_settingsService.Current, source);
 
     private static int ParseInteger(string value, int fallback)
         => int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int result)

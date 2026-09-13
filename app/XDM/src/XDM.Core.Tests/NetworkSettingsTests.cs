@@ -26,7 +26,7 @@ public sealed class NetworkSettingsTests
         Assert.Equal(2, normalized.DefaultConnectionCount);
         Assert.Equal(2, normalized.MaximumConnectionCount);
         Assert.Equal(64L * 1024, normalized.MinimumSegmentedSizeBytes);
-        Assert.Equal(ProxyMode.None, normalized.Proxy!.Mode);
+        Assert.Equal(ProxyMode.Manual, normalized.Proxy!.Mode);
     }
 
     [Theory]
@@ -58,6 +58,34 @@ public sealed class NetworkSettingsTests
         using HttpClient client = XDM.Platform.ConfiguredHttpClientFactory.Create(settings);
 
         Assert.Equal(TimeSpan.FromSeconds(75), client.Timeout);
+    }
+
+    [Fact]
+    public void SavedCredentialResolverBindsCredentialsToMatchingHostOnly()
+    {
+        ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+        {
+            Credentials = [new ServerCredentialDefinition("origin.example", "alice", "secret", false)]
+        };
+
+        Assert.Equal(("alice", "secret"), ServerCredentialResolver.Resolve(settings, new Uri("https://origin.example/file")));
+        Assert.Equal<(string? Username, string? Password)>(
+            (null, null),
+            ServerCredentialResolver.Resolve(settings, new Uri("https://mirror.example/file")));
+    }
+
+    [Fact]
+    public void CredentialOriginComparisonIncludesSchemeAndPort()
+    {
+        Assert.True(ServerCredentialResolver.IsSameOrigin(
+            new Uri("https://example.test/a"),
+            new Uri("https://example.test/b")));
+        Assert.False(ServerCredentialResolver.IsSameOrigin(
+            new Uri("https://example.test/a"),
+            new Uri("http://example.test/a")));
+        Assert.False(ServerCredentialResolver.IsSameOrigin(
+            new Uri("https://example.test:8443/a"),
+            new Uri("https://example.test/a")));
     }
 
 }

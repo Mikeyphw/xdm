@@ -66,4 +66,26 @@ public sealed class PacProxyTests
         Assert.Equal("https://proxy.example/config.pac", normalized.AutomaticConfigurationUrl);
         Assert.Equal(ProxyAuthenticationMode.Integrated, normalized.AuthenticationMode);
     }
+    [Fact]
+    public void PacWithoutUsableDirectiveFailsClosed()
+    {
+        PacProxy proxy = new("function FindProxyForURL(url, host) { return \"SOCKS proxy.example:1080\"; }");
+
+        Assert.Throws<InvalidDataException>(() => proxy.GetProxy(new Uri("https://public.example/file")));
+    }
+
+    [Theory]
+    [InlineData("http://printer/status")]
+    [InlineData("https://cdn.bypass.example/file")]
+    public void PacHonorsConfiguredBypassControls(string destination)
+    {
+        PacProxy proxy = new(
+            "function FindProxyForURL(url, host) { return \"PROXY proxy.example:3128\"; }",
+            bypassLocal: true,
+            bypassList: ["*.bypass.example"]);
+
+        Uri uri = new(destination);
+        Assert.Equal(uri, proxy.GetProxy(uri));
+    }
+
 }

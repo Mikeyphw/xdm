@@ -920,6 +920,77 @@ public sealed class DownloadManagerTests
         Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath, CancellationToken.None));
     }
 
+
+    [Fact]
+    public async Task RestoredDownloadReResolvesSavedCredentialForItsCurrentSource()
+    {
+        byte[] payload = CreatePayload(512, 29);
+        using TemporaryDirectory directory = new();
+        Uri source = new("https://secure.example.test/restored.bin");
+        PersistedDownload persisted = new(
+            "credential-restore",
+            source,
+            Path.Combine(directory.Path, "restored.bin"),
+            0,
+            payload.Length,
+            DownloadState.Paused,
+            DateTimeOffset.UtcNow,
+            ConnectionCount: 1);
+        ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+        {
+            Credentials = [new ServerCredentialDefinition("secure.example.test", "restored-user", "restored-secret", false)]
+        };
+        RangeHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(
+            client,
+            state,
+            new InMemoryHistoryStore([persisted]),
+            settingsService: new TestSettingsService(settings));
+
+        await manager.InitializeAsync();
+        await manager.ResumeAsync(persisted.Id);
+        await WaitForStateAsync(state, persisted.Id, DownloadState.Completed);
+
+        Assert.Equal("Basic", handler.LastAuthorizationScheme);
+        Assert.Equal("restored-user:restored-secret", handler.LastBasicCredential);
+    }
+
+    [Fact]
+    public async Task MirrorFailoverDropsPrimaryCredentialAndResolvesCredentialForMirrorHost()
+    {
+        byte[] payload = CreatePayload(1024, 31);
+        using TemporaryDirectory directory = new();
+        CredentialMirrorFailoverHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+        {
+            Credentials = [new ServerCredentialDefinition("mirror.example.test", "mirror-user", "mirror-secret", false)]
+        };
+        using DownloadManager manager = CreateManager(
+            client,
+            state,
+            new InMemoryHistoryStore(),
+            retryPolicy: new DownloadRetryPolicy(1, TimeSpan.FromMilliseconds(1), 0),
+            settingsService: new TestSettingsService(settings));
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://primary.example.test/file.bin"),
+            directory.Path,
+            "credential-mirror.bin",
+            Username: "primary-user",
+            Password: "primary-secret",
+            ConnectionCount: 1,
+            Mirrors: [new Uri("https://mirror.example.test/file.bin")]));
+
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+
+        Assert.Equal("primary-user:primary-secret", handler.PrimaryCredential);
+        Assert.Equal("mirror-user:mirror-secret", handler.MirrorCredential);
+    }
+
     [Fact]
     public async Task ForcedAria2DownloadIsOwnedAndCompletedThroughUnifiedManager()
     {
@@ -1598,6 +1669,8 @@ public sealed class DownloadManagerTests
 
         public string? LastAuthorizationScheme { get; private set; }
 
+        public string? LastBasicCredential { get; private set; }
+
         public string? LastCookie { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(
@@ -1610,6 +1683,7 @@ public sealed class DownloadManagerTests
                 ? testValues.Single()
                 : null;
             LastAuthorizationScheme = request.Headers.Authorization?.Scheme;
+            LastBasicCredential = DecodeBasicCredential(request.Headers.Authorization);
             LastCookie = request.Headers.TryGetValues("Cookie", out IEnumerable<string>? cookieValues)
                 ? cookieValues.Single()
                 : null;
@@ -1681,6 +1755,40 @@ public sealed class DownloadManagerTests
             response.Headers.ETag = EntityTagHeaderValue.Parse("\"mirror-v1\"");
             return Task.FromResult(response);
         }
+    }
+
+    private sealed class CredentialMirrorFailoverHandler(byte[] payload) : HttpMessageHandler
+    {
+        public string? PrimaryCredential { get; private set; }
+        public string? MirrorCredential { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string? credential = DecodeBasicCredential(request.Headers.Authorization);
+            if (string.Equals(request.RequestUri?.Host, "primary.example.test", StringComparison.Ordinal))
+            {
+                PrimaryCredential = credential;
+                throw new HttpRequestException("Primary unavailable");
+            }
+
+            MirrorCredential = credential;
+            ByteArrayContent content = new(payload);
+            content.Headers.ContentLength = payload.Length;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        }
+    }
+
+    private static string? DecodeBasicCredential(AuthenticationHeaderValue? authorization)
+    {
+        if (authorization?.Scheme != "Basic" || string.IsNullOrWhiteSpace(authorization.Parameter))
+        {
+            return null;
+        }
+
+        return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Parameter));
     }
 
     private sealed class PostHandler(byte[] payload) : HttpMessageHandler

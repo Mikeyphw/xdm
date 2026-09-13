@@ -8,6 +8,10 @@ public sealed class SettingsService(ISettingsStore store) : ISettingsService, ID
 
     public ApplicationSettings Current { get; private set; } = ApplicationSettings.CreateDefault();
 
+    public bool IsOperational { get; private set; }
+
+    public string? LoadFailureMessage { get; private set; }
+
     public event EventHandler<ApplicationSettings>? Changed;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -17,6 +21,14 @@ public sealed class SettingsService(ISettingsStore store) : ISettingsService, ID
         {
             Current = (await store.LoadAsync(cancellationToken).ConfigureAwait(false)
                 ?? ApplicationSettings.CreateDefault()).Normalize();
+            IsOperational = true;
+            LoadFailureMessage = null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            IsOperational = false;
+            LoadFailureMessage = exception.Message;
+            throw;
         }
         finally
         {
@@ -36,6 +48,8 @@ public sealed class SettingsService(ISettingsStore store) : ISettingsService, ID
         {
             await store.SaveAsync(normalized, cancellationToken).ConfigureAwait(false);
             Current = normalized;
+            IsOperational = true;
+            LoadFailureMessage = null;
         }
         finally
         {

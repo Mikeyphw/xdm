@@ -149,6 +149,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         RefreshDownloadStatusFilters();
         SelectedSection = Sections[0];
         ApplySettings(settingsService.Current);
+        if (!settingsService.IsOperational)
+        {
+            OperationMessage = settingsService.LoadFailureMessage is { Length: > 0 } failure
+                ? $"Saved settings could not be loaded. Network transfers are disabled: {failure}"
+                : "Saved settings could not be loaded. Network transfers are disabled until settings are reviewed and saved.";
+            SettingsTransferStatus = OperationMessage;
+        }
         ApplyAria2Snapshot(aria2Service.Current);
         ApplySnapshot(applicationState.Current);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
@@ -889,7 +896,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     ResolveCategoryId(source, SelectedCategory?.Id),
                     speedLimit,
                     duplicateBehavior,
-                    ConnectionCount: ParseInteger(DefaultConnectionCount, 4),
+                    ConnectionCount: (_settingsService.Current.Network ?? NetworkSettings.Default).Normalize().DefaultConnectionCount,
                     Priority: NewDownloadPriority,
                     SourcePage: ParseOptionalHttpUri(Referer),
                     Mirrors: DownloadInputParser.ParseUrls(MirrorUrls),
@@ -1387,8 +1394,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Organization = BuildOrganizationSettings()
         };
 
-        await _settingsService.UpdateAsync(updated);
-        OperationMessage = _localization["operation_settings_saved"];
+        bool settingsWereDegraded = !_settingsService.IsOperational;
+        try
+        {
+            await _settingsService.UpdateAsync(updated);
+            OperationMessage = settingsWereDegraded
+                ? "Settings were saved successfully. Restart XDM before starting network transfers so the recovered proxy/network policy becomes active."
+                : _localization["operation_settings_saved"];
+        }
+        catch (IOException exception)
+        {
+            SettingsValidationMessage = exception.Message;
+            OperationMessage = $"Could not save settings: {exception.Message}";
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            SettingsValidationMessage = exception.Message;
+            OperationMessage = $"Could not save settings: {exception.Message}";
+        }
+
     }
 
     [RelayCommand]

@@ -5,6 +5,20 @@ namespace XDM.Platform;
 
 public static class ConfiguredHttpClientFactory
 {
+    public static HttpClient Create(ISettingsService settingsService)
+    {
+        ArgumentNullException.ThrowIfNull(settingsService);
+        if (!settingsService.IsOperational)
+        {
+            return new HttpClient(new SettingsUnavailableHandler(settingsService), disposeHandler: true)
+            {
+                Timeout = Timeout.InfiniteTimeSpan
+            };
+        }
+
+        return Create(settingsService.Current);
+    }
+
     public static HttpClient Create(ApplicationSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -19,24 +33,37 @@ public static class ConfiguredHttpClientFactory
             PooledConnectionLifetime = TimeSpan.FromMinutes(10)
         };
 
-        switch (proxy.Mode)
+        try
         {
-            case ProxyMode.None:
-                handler.UseProxy = false;
-                break;
-            case ProxyMode.Manual:
-                handler.UseProxy = true;
-                handler.Proxy = CreateManualProxy(proxy);
-                break;
-            case ProxyMode.AutomaticScript:
-                handler.UseProxy = true;
-                handler.Proxy = LoadPacProxy(proxy, network.ConnectTimeoutSeconds);
-                break;
-            default:
-                handler.UseProxy = true;
-                handler.Proxy = null;
-                handler.DefaultProxyCredentials = ResolveCredentials(proxy);
-                break;
+            switch (proxy.Mode)
+            {
+                case ProxyMode.None:
+                    handler.UseProxy = false;
+                    break;
+                case ProxyMode.Manual:
+                    handler.UseProxy = true;
+                    handler.Proxy = CreateManualProxy(proxy);
+                    break;
+                case ProxyMode.AutomaticScript:
+                    handler.UseProxy = true;
+                    handler.Proxy = LoadPacProxy(proxy, network.ConnectTimeoutSeconds);
+                    break;
+                default:
+                    handler.UseProxy = true;
+                    handler.Proxy = null;
+                    handler.DefaultProxyCredentials = ResolveCredentials(proxy);
+                    break;
+            }
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or HttpRequestException
+            or InvalidOperationException
+            or UriFormatException
+            or TaskCanceledException)
+        {
+            handler.Dispose();
+            return CreateProxyConfigurationFailureClient(exception.Message);
         }
 
         return new HttpClient(handler, disposeHandler: true)
@@ -74,7 +101,9 @@ public static class ConfiguredHttpClientFactory
         return PacProxy.LoadAsync(
             scriptUri,
             ResolveCredentials(proxy),
-            TimeSpan.FromSeconds(connectTimeoutSeconds)).GetAwaiter().GetResult();
+            TimeSpan.FromSeconds(connectTimeoutSeconds),
+            bypassLocal: proxy.BypassLocal,
+            bypassList: proxy.BypassList).GetAwaiter().GetResult();
     }
 
     private static Uri BuildProxyUri(ProxySettings proxy)
@@ -87,5 +116,30 @@ public static class ConfiguredHttpClientFactory
             return builder.Uri;
         }
         return new UriBuilder(Uri.UriSchemeHttp, host, proxy.Port).Uri;
+    }
+    private static HttpClient CreateProxyConfigurationFailureClient(string message)
+        => new(new ProxyConfigurationFailureHandler(message), disposeHandler: true)
+        {
+            Timeout = Timeout.InfiniteTimeSpan
+        };
+
+    private sealed class ProxyConfigurationFailureHandler(string message) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => Task.FromException<HttpResponseMessage>(new InvalidOperationException(
+                $"Network access is disabled because the configured proxy policy could not be initialized: {message}"));
+    }
+
+    private sealed class SettingsUnavailableHandler(ISettingsService settingsService) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => Task.FromException<HttpResponseMessage>(new InvalidOperationException(
+                settingsService.LoadFailureMessage is { Length: > 0 } message
+                    ? $"Network access is disabled because saved settings could not be loaded: {message} Save valid settings and restart XDM before starting transfers."
+                    : "Network access is disabled because saved settings could not be loaded. Save valid settings and restart XDM before starting transfers."));
     }
 }

@@ -31,11 +31,11 @@
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_default_connections]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding DefaultConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="64" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_default_connections]}" AutomationProperties.AutomationId="DefaultConnectionCount"/>
+                    <NumericUpDown Value="{Binding DefaultConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="32" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_default_connections]}" AutomationProperties.AutomationId="DefaultConnectionCount"/>
                   </StackPanel>
                   <StackPanel Grid.Column="2" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_maximum_connections]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding MaximumConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="128" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_connections]}" AutomationProperties.AutomationId="MaximumConnectionCount"/>
+                    <NumericUpDown Value="{Binding MaximumConnectionCount, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="32" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_connections]}" AutomationProperties.AutomationId="MaximumConnectionCount"/>
                   </StackPanel>
                 </Grid>
                 <CheckBox Content="{Binding Localization[ui_create_destination_directories_when_missing]}" IsChecked="{Binding CreateDestinationDirectory}"/>
@@ -128,7 +128,7 @@
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_connect_timeout_seconds]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding ConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="3600" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_connect_timeout_seconds]}" AutomationProperties.AutomationId="ConnectTimeoutSeconds"/>
+                    <NumericUpDown Value="{Binding ConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="300" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_connect_timeout_seconds]}" AutomationProperties.AutomationId="ConnectTimeoutSeconds"/>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_whole_request_timeout_seconds_0_unlimited]}" Classes="form-label"/>
@@ -136,17 +136,17 @@
                   </StackPanel>
                   <StackPanel Grid.Column="2" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_maximum_retry_attempts]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding MaximumRetryAttempts, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="100" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_retry_attempts]}" AutomationProperties.AutomationId="MaximumRetryAttempts"/>
+                    <NumericUpDown Value="{Binding MaximumRetryAttempts, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="20" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_maximum_retry_attempts]}" AutomationProperties.AutomationId="MaximumRetryAttempts"/>
                   </StackPanel>
                 </Grid>
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_retry_base_delay_milliseconds]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding RetryBaseDelayMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="600000" Increment="250" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retry_base_delay_milliseconds]}" AutomationProperties.AutomationId="RetryBaseDelayMilliseconds"/>
+                    <NumericUpDown Value="{Binding RetryBaseDelayMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="100" Maximum="60000" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retry_base_delay_milliseconds]}" AutomationProperties.AutomationId="RetryBaseDelayMilliseconds"/>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_minimum_segmented_size_mib]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding MinimumSegmentedSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0" Maximum="1048576" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_minimum_segmented_size_mib]}" AutomationProperties.AutomationId="MinimumSegmentedSizeMegabytes"/>
+                    <NumericUpDown Value="{Binding MinimumSegmentedSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="0.0625" Maximum="1024" Increment="0.0625" FormatString="0.####" AutomationProperties.Name="{Binding Localization[ui_minimum_segmented_size_mib]}" AutomationProperties.AutomationId="MinimumSegmentedSizeMegabytes"/>
                   </StackPanel>
                 </Grid>
                 <TextBlock Text="{Binding Localization[ui_network_handler_proxy_retry_and_segment_settings_apply_to_new_processes]}" TextWrapping="Wrap" Foreground="{DynamicResource XdmMutedForeground}"/>
