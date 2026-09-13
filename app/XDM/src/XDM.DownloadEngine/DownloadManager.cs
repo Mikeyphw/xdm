@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -318,7 +319,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.ContentHashSha256,
                 item.DuplicateOfDownloadId,
                 item.DuplicateReason,
-                item.AllowDestinationOverwrite);
+                item.AllowDestinationOverwrite,
+                item.BackendRequestIdentity);
 
             await LoadChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
 
@@ -545,8 +547,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             .DefaultIfEmpty(-1)
             .Max() + 1;
 
+        string sessionId = Guid.NewGuid().ToString("N");
+        string backendRequestIdentity = CreateBackendRequestIdentity(
+            sessionId,
+            request.Source,
+            destinationPath,
+            method);
         DownloadSession session = new(
-            Guid.NewGuid().ToString("N"),
+            sessionId,
             recoveryCheckpoint?.Source ?? request.Source,
             destinationPath,
             DownloadState.Queued,
@@ -593,7 +601,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             null,
             duplicateUrl?.Id,
             duplicateUrl is null ? null : "The source URL matches an existing download.",
-            effectiveRequest.DuplicateBehavior == DuplicateFileBehavior.Overwrite);
+            effectiveRequest.DuplicateBehavior == DuplicateFileBehavior.Overwrite,
+            backendRequestIdentity);
         session.ExpectedSha256 = normalizedExpectedSha256;
         session.ExpectedSha512 = normalizedExpectedSha512;
 
@@ -1085,7 +1094,18 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         if (aria2Owned && aria2Gid is not null && _aria2Service is not null)
         {
-            await _aria2Service.PauseAsync(aria2Gid, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await _aria2Service.PauseAsync(aria2Gid, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                lock (session.Sync)
+                {
+                    session.PauseRequested = false;
+                }
+                throw;
+            }
         }
     }
 
@@ -1807,9 +1827,37 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         cancellationToken.ThrowIfCancellationRequested();
 
         string previousQueueId;
+        bool wasRunning;
         lock (session.Sync)
         {
             previousQueueId = session.QueueId;
+            wasRunning = session.State is DownloadState.Connecting or DownloadState.Downloading;
+        }
+
+        if (wasRunning && !string.Equals(previousQueueId, queueId, StringComparison.Ordinal))
+        {
+            await PauseAsync(downloadId, cancellationToken).ConfigureAwait(false);
+            Task? priorTask;
+            lock (session.Sync)
+            {
+                priorTask = session.ActiveTask;
+            }
+            if (priorTask is { IsCompleted: false })
+            {
+                await priorTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            lock (session.Sync)
+            {
+                if (session.Aria2OwnershipUncertain)
+                {
+                    throw new InvalidOperationException(
+                        "The download cannot move queues until aria2 confirms that the current transfer is paused or stopped.");
+                }
+                session.State = DownloadState.Queued;
+                session.PauseRequested = false;
+                session.QueueStopRequested = false;
+            }
         }
 
         Dictionary<string, PersistedDownload> before = _sessions.Values
@@ -1861,6 +1909,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             }
             PublishQueueRuntime();
             throw;
+        }
+
+        if (wasRunning && IsQueueActive(queueId))
+        {
+            Start(session);
         }
     }
 
@@ -1928,6 +1981,16 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         List<string> failedIds = operationDrainTimedOut
             ? activeIds.ToList()
             : [];
+        foreach (DownloadSession uncertain in _sessions.Values)
+        {
+            lock (uncertain.Sync)
+            {
+                if (uncertain.Aria2OwnershipUncertain && !failedIds.Contains(uncertain.Id))
+                {
+                    failedIds.Add(uncertain.Id);
+                }
+            }
+        }
         int attempted = 0;
         int written = 0;
         foreach (DownloadSession session in activeSessions)
@@ -1938,10 +2001,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             {
                 lock (session.Sync)
                 {
-                    if (session.State is DownloadState.Connecting
-                        or DownloadState.Downloading
-                        or DownloadState.Finalizing
-                        or DownloadState.Cancelled)
+                    if (!session.Aria2OwnershipUncertain
+                        && session.State is (DownloadState.Connecting
+                            or DownloadState.Downloading
+                            or DownloadState.Finalizing
+                            or DownloadState.Cancelled))
                     {
                         session.State = DownloadState.Paused;
                         session.BytesPerSecond = 0;
@@ -2013,6 +2077,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 {
                     activeTasks.Add(session.ActiveTask);
                 }
+
+                session.Aria2OwnershipLease?.Dispose();
+                session.Aria2OwnershipLease = null;
             }
         }
 
@@ -2130,7 +2197,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             or IOException
             or UnauthorizedAccessException
             or InvalidOperationException
-            or Aria2RpcException)
+            or Aria2RpcException
+            or InvalidDataException
+            or JsonException)
         {
             Fail(session, exception);
         }
@@ -2140,9 +2209,10 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         DownloadSession session,
         CancellationToken cancellationToken)
     {
-        DownloadRequest request = CreateBackendRequest(session);
         Aria2IntegrationSettings settings = (_settingsService.Current.Aria2 ?? Aria2IntegrationSettings.Default)
             .Normalize();
+        await ProbeAutomaticRoutingLengthAsync(session, settings, cancellationToken).ConfigureAwait(false);
+        DownloadRequest request = CreateBackendRequest(session);
         Aria2ServiceSnapshot snapshot = _aria2Service?.Current ?? Aria2ServiceSnapshot.Disabled;
         string? ownedGid;
         lock (session.Sync)
@@ -2236,121 +2306,214 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         IAria2Service service = _aria2Service
             ?? throw new InvalidOperationException("aria2 is not configured.");
-        IDisposable? queueLease = null;
-        IDisposable? policyLease = null;
-        IDisposable? hostLease = null;
+        Aria2LeaseBundle? leaseBundle = null;
+        Aria2LeaseBundle? retainedLease = null;
         try
         {
-            queueLease = await _queueConcurrencyLimiter
-                .AcquireAsync(session.QueueId, () => ResolveQueueConcurrency(session.QueueId), cancellationToken)
-                .ConfigureAwait(false);
-            policyLease = await _policyConcurrencyLimiter
-                .AcquireAsync("global", ResolveConcurrentDownloadLimit, cancellationToken)
-                .ConfigureAwait(false);
-            hostLease = await _hostConcurrencyLimiter
-                .AcquireAsync(
-                    session.Source.IdnHost,
-                    () => _transferPolicyRuntime.Current.EffectiveProfile.MaxConcurrentPerHost,
-                    cancellationToken)
-                .ConfigureAwait(false);
-
             TaskCompletionSource<Aria2TaskStatus> signal = new(
                 TaskCreationOptions.RunContinuationsAsynchronously);
-            string? existingGid;
+            string intendedGid;
             lock (session.Sync)
             {
                 session.Aria2TerminalSignal = signal;
                 session.State = DownloadState.Connecting;
                 session.ErrorMessage = null;
-                existingGid = session.BackendTaskId;
+                session.BackendRequestIdentity = string.IsNullOrWhiteSpace(session.BackendRequestIdentity)
+                    ? CreateBackendRequestIdentity(session.Id, session.Source, session.DestinationPath, session.Method)
+                    : session.BackendRequestIdentity;
+                intendedGid = session.BackendTaskId ?? CreateAria2Gid(session.BackendRequestIdentity);
+                session.BackendTaskId = intendedGid;
+                session.Backend = DownloadBackendKind.Aria2;
+                retainedLease = session.Aria2OwnershipLease;
+                session.Aria2OwnershipLease = null;
+                session.Aria2OwnershipUncertain = false;
             }
-            Publish(session, forcePersist: true);
+            _applicationState.UpsertDownload(CreateSnapshot(session));
+            await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
 
-            Aria2TaskSnapshot? existingTask = existingGid is null
-                ? null
-                : service.Current.Tasks.FirstOrDefault(task =>
-                    string.Equals(task.Gid, existingGid, StringComparison.Ordinal));
-            if (existingGid is not null && existingTask is null)
+            if (!service.Current.Health.IsAvailable)
             {
-                await service.RefreshAsync(cancellationToken).ConfigureAwait(false);
-                if (!service.Current.Health.IsAvailable)
-                {
-                    throw new InvalidOperationException(
-                        $"Could not confirm ownership of aria2 task {existingGid}: {service.Current.Health.Message}");
-                }
+                MarkAria2OwnershipUncertain(
+                    session,
+                    $"Could not confirm ownership of aria2 task {intendedGid}: {service.Current.Health.Message}");
+                throw new InvalidOperationException(session.RecoveryMessage);
+            }
 
-                existingTask = service.Current.Tasks.FirstOrDefault(task =>
-                    string.Equals(task.Gid, existingGid, StringComparison.Ordinal));
-                if (existingTask is null)
+            Aria2TaskSnapshot? existingTask = await service.GetTaskAsync(intendedGid, cancellationToken)
+                .ConfigureAwait(false);
+            if (existingTask is not null && !MatchesOwnedAria2Task(session, existingTask))
+            {
+                MarkAria2OwnershipUncertain(
+                    session,
+                    $"aria2 task {existingTask.Gid} does not match XDM's durable request identity.");
+                throw new InvalidOperationException(session.RecoveryMessage);
+            }
+
+            if (existingTask is null)
+            {
+                bool adoptExisting = (_settingsService.Current.Aria2 ?? Aria2IntegrationSettings.Default)
+                    .Normalize()
+                    .AdoptExistingTasks;
+                Aria2TaskSnapshot? adoptable = adoptExisting
+                    ? FindAdoptableAria2Task(session, service.Current.Tasks)
+                    : null;
+                if (adoptable is not null)
                 {
+                    intendedGid = adoptable.Gid;
+                    existingTask = adoptable;
                     lock (session.Sync)
                     {
-                        session.BackendTaskId = null;
-                        session.BackendDecisionReason =
-                            $"The previous aria2 task {existingGid} no longer exists; a replacement task will be created.";
+                        session.BackendTaskId = adoptable.Gid;
+                        session.BackendDecisionReason = "Adopted an aria2 task whose source and destination match XDM's durable request identity.";
                     }
+                    await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    Aria2TaskSnapshot? destinationCollision = Aria2DestinationOwnership.FindCollision(
+                        session.DestinationPath,
+                        service.Current.Tasks,
+                        intendedGid);
+                    if (destinationCollision is not null)
+                    {
+                        throw new IOException(
+                            $"aria2 task {destinationCollision.Gid} already owns the destination '{session.DestinationPath}'.");
+                    }
+
+                    IReadOnlyDictionary<string, string> headers = BuildAria2Headers(session);
+                    Aria2IntegrationSettings settings = (_settingsService.Current.Aria2 ?? Aria2IntegrationSettings.Default)
+                        .Normalize();
+                    string gid;
+                    try
+                    {
+                        gid = await service.AddAsync(
+                            new Aria2AddRequest(
+                                session.Source,
+                                Path.GetDirectoryName(session.DestinationPath)
+                                    ?? _settingsService.Current.DefaultDownloadDirectory,
+                                Path.GetFileName(session.DestinationPath),
+                                headers,
+                                session.Username,
+                                session.Password,
+                                ResolveSpeedLimit(session))
+                            {
+                                Mirrors = GetCredentialSafeAria2Mirrors(session),
+                                ExpectedChecksumAlgorithm = session.ExpectedChecksumAlgorithm,
+                                ExpectedChecksum = session.ExpectedChecksum,
+                                Gid = intendedGid,
+                                ConnectionCount = session.ConnectionCount,
+                                ContinueDownloads = settings.ContinueDownloads,
+                                StartPaused = true,
+                                CheckCertificate = settings.CheckCertificate
+                            },
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception exception) when (exception is HttpRequestException
+                        or Aria2RpcException
+                        or InvalidDataException
+                        or JsonException
+                        or OperationCanceledException)
+                    {
+                        Aria2TaskSnapshot? recovered = await TryRecoverUncertainAria2AddAsync(
+                            session,
+                            intendedGid,
+                            CancellationToken.None).ConfigureAwait(false);
+                        if (recovered is null)
+                        {
+                            MarkAria2OwnershipUncertain(
+                                session,
+                                $"The aria2 add result is uncertain for owned task {intendedGid}; native fallback is blocked until ownership is reconciled.");
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                throw new OperationCanceledException(session.RecoveryMessage, exception, cancellationToken);
+                            }
+                            throw new InvalidOperationException(session.RecoveryMessage, exception);
+                        }
+
+                        gid = recovered.Gid;
+                        existingTask = recovered;
+                        lock (session.Sync)
+                        {
+                            session.BackendDecisionReason =
+                                "Recovered the deterministic aria2 task after an uncertain add response.";
+                        }
+                    }
+
+                    lock (session.Sync)
+                    {
+                        session.BackendTaskId = gid;
+                    }
+                    _applicationState.UpsertDownload(CreateSnapshot(session));
+                    await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
+                    intendedGid = gid;
+                    existingTask ??= await service.GetTaskAsync(gid, cancellationToken).ConfigureAwait(false);
                 }
             }
 
             if (existingTask is null)
             {
-                Aria2TaskSnapshot? destinationCollision = Aria2DestinationOwnership.FindCollision(
-                    session.DestinationPath,
-                    service.Current.Tasks);
-                if (destinationCollision is not null)
-                {
-                    throw new IOException(
-                        $"aria2 task {destinationCollision.Gid} already owns the destination '{session.DestinationPath}'.");
-                }
+                throw new InvalidOperationException($"aria2 task {intendedGid} could not be observed after ownership was established.");
+            }
 
-                IReadOnlyDictionary<string, string> headers = BuildAria2Headers(session);
-                string gid;
-                try
+            if (retainedLease is not null)
+            {
+                if (existingTask.Status == Aria2TaskStatus.Active)
                 {
-                    gid = await service.AddAsync(
-                        new Aria2AddRequest(
-                            session.Source,
-                            Path.GetDirectoryName(session.DestinationPath)
-                                ?? _settingsService.Current.DefaultDownloadDirectory,
-                            Path.GetFileName(session.DestinationPath),
-                            headers,
-                            session.Username,
-                            session.Password,
-                            session.SpeedLimitBytesPerSecond)
-                        {
-                            Mirrors = GetCredentialSafeAria2Mirrors(session),
-                            ExpectedChecksumAlgorithm = session.ExpectedChecksumAlgorithm,
-                            ExpectedChecksum = session.ExpectedChecksum
-                        },
-                        cancellationToken).ConfigureAwait(false);
+                    leaseBundle = retainedLease;
+                    retainedLease = null;
                 }
-                catch (Exception exception) when (exception is HttpRequestException or Aria2RpcException)
+                else
                 {
-                    Aria2TaskSnapshot? recovered = await TryRecoverUncertainAria2AddAsync(
-                        session,
-                        cancellationToken).ConfigureAwait(false);
-                    if (recovered is null)
-                    {
-                        throw;
-                    }
-
-                    gid = recovered.Gid;
-                    existingTask = recovered;
-                    lock (session.Sync)
-                    {
-                        session.BackendDecisionReason =
-                            "Adopted the aria2 task discovered after an uncertain add response.";
-                    }
-                }
-
-                lock (session.Sync)
-                {
-                    session.BackendTaskId = gid;
+                    retainedLease.Dispose();
+                    retainedLease = null;
                 }
             }
-            else if (existingTask.Status == Aria2TaskStatus.Paused)
+
+            if (leaseBundle is null
+                && existingTask.Status is (Aria2TaskStatus.Active or Aria2TaskStatus.Waiting))
             {
-                await service.ResumeAsync(existingTask.Gid, cancellationToken).ConfigureAwait(false);
+                await service.PauseAsync(existingTask.Gid, cancellationToken).ConfigureAwait(false);
+                existingTask = await service.GetTaskAsync(existingTask.Gid, cancellationToken).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException($"aria2 task {existingTask.Gid} disappeared while XDM was taking scheduling ownership.");
+            }
+
+            while (leaseBundle is null
+                && existingTask.Status is (Aria2TaskStatus.Paused or Aria2TaskStatus.Waiting))
+            {
+                leaseBundle = await AcquireAria2LeasesAsync(session, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await service.ChangeOptionsAsync(
+                        existingTask.Gid,
+                        CreateAria2RuntimeOptions(session),
+                        cancellationToken).ConfigureAwait(false);
+                    await service.ResumeAsync(existingTask.Gid, cancellationToken).ConfigureAwait(false);
+                    existingTask = await service.GetTaskAsync(existingTask.Gid, cancellationToken).ConfigureAwait(false)
+                        ?? throw new InvalidOperationException($"aria2 task {intendedGid} disappeared after resume.");
+                    if (existingTask.Status == Aria2TaskStatus.Waiting)
+                    {
+                        await service.PauseAsync(existingTask.Gid, cancellationToken).ConfigureAwait(false);
+                        leaseBundle.Dispose();
+                        leaseBundle = null;
+                        await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken).ConfigureAwait(false);
+                        existingTask = await service.GetTaskAsync(intendedGid, cancellationToken).ConfigureAwait(false)
+                            ?? throw new InvalidOperationException($"aria2 task {intendedGid} disappeared while waiting for an XDM concurrency lease.");
+                    }
+                }
+                catch
+                {
+                    leaseBundle?.Dispose();
+                    leaseBundle = null;
+                    throw;
+                }
+            }
+
+            if (existingTask.Status is Aria2TaskStatus.Paused
+                or Aria2TaskStatus.Complete
+                or Aria2TaskStatus.Error
+                or Aria2TaskStatus.Removed)
+            {
+                signal.TrySetResult(existingTask.Status);
             }
 
             ApplyAria2Snapshot(service.Current);
@@ -2400,6 +2563,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 queueStop = session.QueueStopRequested;
             }
 
+            bool stopConfirmed = gid is null;
+            Exception? stopFailure = null;
             if (gid is not null)
             {
                 try
@@ -2412,22 +2577,49 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     {
                         await service.RemoveAsync(gid, CancellationToken.None).ConfigureAwait(false);
                     }
+                    stopConfirmed = true;
                 }
-                catch (Exception exception) when (exception is HttpRequestException or Aria2RpcException or InvalidOperationException)
+                catch (Exception exception) when (exception is HttpRequestException
+                    or Aria2RpcException
+                    or InvalidOperationException
+                    or InvalidDataException
+                    or JsonException)
                 {
+                    stopFailure = exception;
                     DownloadEngineLog.DownloadFailed(_logger, session.Id, exception.Message, exception);
                 }
             }
 
             lock (session.Sync)
             {
-                session.State = queueStop
-                    ? DownloadState.Queued
-                    : pause
-                        ? DownloadState.Paused
-                        : DownloadState.Cancelled;
+                if (stopConfirmed)
+                {
+                    session.State = queueStop
+                        ? DownloadState.Queued
+                        : pause
+                            ? DownloadState.Paused
+                            : DownloadState.Cancelled;
+                    session.RecoveryRequired = false;
+                    session.RecoveryMessage = null;
+                    session.Aria2OwnershipUncertain = false;
+                }
+                else
+                {
+                    session.State = DownloadState.Failed;
+                    session.RecoveryRequired = true;
+                    session.Aria2OwnershipUncertain = true;
+                    session.ErrorMessage =
+                        $"XDM could not confirm that aria2 stopped task {gid}: {stopFailure?.Message ?? "unknown RPC failure"}";
+                    session.RecoveryMessage =
+                        "The aria2 task may still be running. XDM retained concurrency ownership and will not claim it stopped until aria2 confirms a terminal or paused state.";
+                }
                 session.QueueStopRequested = false;
                 session.BytesPerSecond = 0;
+                if (!stopConfirmed && leaseBundle is not null)
+                {
+                    session.Aria2OwnershipLease ??= leaseBundle;
+                    leaseBundle = null;
+                }
             }
             Publish(session, forcePersist: true);
         }
@@ -2436,11 +2628,243 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             lock (session.Sync)
             {
                 session.Aria2TerminalSignal = null;
+                if (session.Aria2OwnershipUncertain)
+                {
+                    if (leaseBundle is not null)
+                    {
+                        session.Aria2OwnershipLease ??= leaseBundle;
+                        leaseBundle = null;
+                    }
+                    if (retainedLease is not null)
+                    {
+                        session.Aria2OwnershipLease ??= retainedLease;
+                        retainedLease = null;
+                    }
+                }
             }
-            hostLease?.Dispose();
-            policyLease?.Dispose();
-            queueLease?.Dispose();
+            leaseBundle?.Dispose();
+            retainedLease?.Dispose();
             PublishQueueRuntime();
+        }
+    }
+
+    private async Task<Aria2LeaseBundle> AcquireAria2LeasesAsync(
+        DownloadSession session,
+        CancellationToken cancellationToken)
+    {
+        string queueId;
+        string host;
+        lock (session.Sync)
+        {
+            queueId = session.QueueId;
+            host = session.Source.IdnHost;
+        }
+
+        IDisposable queueLease = await _queueConcurrencyLimiter
+            .AcquireAsync(queueId, () => ResolveQueueConcurrency(queueId), cancellationToken)
+            .ConfigureAwait(false);
+        try
+        {
+            IDisposable policyLease = await _policyConcurrencyLimiter
+                .AcquireAsync("global", ResolveConcurrentDownloadLimit, cancellationToken)
+                .ConfigureAwait(false);
+            try
+            {
+                IDisposable hostLease = await _hostConcurrencyLimiter
+                    .AcquireAsync(
+                        host,
+                        () => _transferPolicyRuntime.Current.EffectiveProfile.MaxConcurrentPerHost,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                return new Aria2LeaseBundle(queueId, host, queueLease, policyLease, hostLease);
+            }
+            catch
+            {
+                policyLease.Dispose();
+                throw;
+            }
+        }
+        catch
+        {
+            queueLease.Dispose();
+            throw;
+        }
+    }
+
+    private Aria2RuntimeOptions CreateAria2RuntimeOptions(DownloadSession session)
+    {
+        Aria2IntegrationSettings settings = (_settingsService.Current.Aria2 ?? Aria2IntegrationSettings.Default)
+            .Normalize();
+        lock (session.Sync)
+        {
+            return new Aria2RuntimeOptions(
+                ResolveSpeedLimit(session),
+                session.ConnectionCount,
+                settings.ContinueDownloads,
+                settings.CheckCertificate);
+        }
+    }
+
+    private static string CreateBackendRequestIdentity(
+        string sessionId,
+        Uri source,
+        string destinationPath,
+        string method)
+    {
+        string normalizedPath = Path.GetFullPath(destinationPath);
+        if (OperatingSystem.IsWindows())
+        {
+            normalizedPath = normalizedPath.ToUpperInvariant();
+        }
+        return string.Join(
+            "|",
+            "xdm-aria2-v1",
+            sessionId,
+            method.Trim().ToUpperInvariant(),
+            DownloadMetadata.NormalizeSourceIdentity(source),
+            normalizedPath);
+    }
+
+    private static string CreateAria2Gid(string requestIdentity)
+    {
+        byte[] digest = SHA256.HashData(Encoding.UTF8.GetBytes(requestIdentity));
+        return Convert.ToHexString(digest.AsSpan(0, 8)).ToLowerInvariant();
+    }
+
+    private static bool MatchesOwnedAria2Task(DownloadSession session, Aria2TaskSnapshot task)
+    {
+        lock (session.Sync)
+        {
+            if (!string.IsNullOrWhiteSpace(task.DestinationPath)
+                && !PathsEqual(task.DestinationPath, session.DestinationPath))
+            {
+                return false;
+            }
+
+            if (task.EffectiveSources.Count == 0)
+            {
+                return string.Equals(task.Gid, session.BackendTaskId, StringComparison.Ordinal);
+            }
+
+            string sourceIdentity = DownloadMetadata.NormalizeSourceIdentity(session.Source);
+            return task.EffectiveSources.Any(source =>
+                string.Equals(
+                    DownloadMetadata.NormalizeSourceIdentity(source),
+                    sourceIdentity,
+                    StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private static Aria2TaskSnapshot? FindAdoptableAria2Task(
+        DownloadSession session,
+        IEnumerable<Aria2TaskSnapshot> tasks)
+    {
+        lock (session.Sync)
+        {
+            string sourceIdentity = DownloadMetadata.NormalizeSourceIdentity(session.Source);
+            return tasks.FirstOrDefault(task =>
+                task.Status is (Aria2TaskStatus.Waiting
+                    or Aria2TaskStatus.Active
+                    or Aria2TaskStatus.Paused
+                    or Aria2TaskStatus.Complete)
+                && !string.IsNullOrWhiteSpace(task.DestinationPath)
+                && PathsEqual(task.DestinationPath, session.DestinationPath)
+                && task.EffectiveSources.Any(source =>
+                    string.Equals(
+                        DownloadMetadata.NormalizeSourceIdentity(source),
+                        sourceIdentity,
+                        StringComparison.OrdinalIgnoreCase))
+                && (session.TotalBytes is null
+                    || task.TotalBytes <= 0
+                    || session.TotalBytes == task.TotalBytes));
+        }
+    }
+
+    private static void MarkAria2OwnershipUncertain(DownloadSession session, string message)
+    {
+        lock (session.Sync)
+        {
+            session.State = DownloadState.Failed;
+            session.BytesPerSecond = 0;
+            session.ErrorMessage = message;
+            session.RecoveryRequired = true;
+            session.RecoveryMessage = message;
+            session.Aria2OwnershipUncertain = true;
+            session.Aria2TerminalSignal?.TrySetResult(Aria2TaskStatus.Error);
+        }
+    }
+
+    private async Task ProbeAutomaticRoutingLengthAsync(
+        DownloadSession session,
+        Aria2IntegrationSettings settings,
+        CancellationToken cancellationToken)
+    {
+        Uri source;
+        bool shouldProbe;
+        lock (session.Sync)
+        {
+            source = session.Source;
+            shouldProbe = session.BackendTaskId is null
+                && session.BackendPreference == DownloadBackendPreference.Automatic
+                && string.Equals(session.Method, "GET", StringComparison.Ordinal)
+                && session.TotalBytes is null
+                && settings.Enabled
+                && settings.AutomaticRoutingEnabled
+                && source.Scheme is "http" or "https";
+        }
+        if (!shouldProbe)
+        {
+            return;
+        }
+
+        try
+        {
+            long? discoveredLength = null;
+            using (HttpRequestMessage head = new(HttpMethod.Head, source))
+            {
+                ApplyRequestMetadata(head, session);
+                using HttpResponseMessage response = await _httpClient.SendAsync(
+                    head,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode && response.Content.Headers.ContentLength is long headLength && headLength > 0)
+                {
+                    discoveredLength = headLength;
+                }
+            }
+
+            if (discoveredLength is null)
+            {
+                using HttpRequestMessage rangeProbe = new(HttpMethod.Get, source);
+                rangeProbe.Headers.Range = new RangeHeaderValue(0, 0);
+                ApplyRequestMetadata(rangeProbe, session);
+                using HttpResponseMessage response = await _httpClient.SendAsync(
+                    rangeProbe,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken).ConfigureAwait(false);
+                discoveredLength = response.Content.Headers.ContentRange?.Length;
+                if (discoveredLength is null
+                    && response.StatusCode == HttpStatusCode.OK
+                    && response.Content.Headers.ContentLength is long responseLength
+                    && responseLength > 0)
+                {
+                    discoveredLength = responseLength;
+                }
+            }
+
+            if (discoveredLength is long length && length > 0)
+            {
+                lock (session.Sync)
+                {
+                    session.TotalBytes ??= length;
+                }
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException
+            or InvalidOperationException
+            or TaskCanceledException)
+        {
+            // Length probing only informs backend routing. Normal transfer execution remains authoritative.
         }
     }
 
@@ -2523,7 +2947,50 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
     private void ApplyAria2Snapshot(Aria2ServiceSnapshot snapshot)
     {
-        HashSet<string> ownedGids = _sessions.Values
+        DownloadSession[] aria2Sessions = _sessions.Values
+            .Where(static item => item.Backend == DownloadBackendKind.Aria2
+                && item.State != DownloadState.Completed)
+            .ToArray();
+
+        if (!snapshot.Health.IsAvailable)
+        {
+            foreach (DownloadSession session in aria2Sessions)
+            {
+                bool publish = false;
+                lock (session.Sync)
+                {
+                    if (session.BackendTaskId is null)
+                    {
+                        continue;
+                    }
+
+                    if (session.State is DownloadState.Connecting
+                        or DownloadState.Downloading
+                        or DownloadState.Finalizing
+                        or DownloadState.Queued)
+                    {
+                        session.State = DownloadState.Failed;
+                        session.BytesPerSecond = 0;
+                        session.RecoveryRequired = true;
+                        session.Aria2OwnershipUncertain = true;
+                        session.ErrorMessage =
+                            $"aria2 ownership cannot currently be observed: {snapshot.Health.Message}";
+                        session.RecoveryMessage =
+                            "The owned aria2 task is retained for recovery. Native fallback and new concurrency admission remain blocked until aria2 ownership is reconciled.";
+                        session.Aria2TerminalSignal?.TrySetResult(Aria2TaskStatus.Error);
+                        publish = true;
+                    }
+                }
+
+                if (publish)
+                {
+                    Publish(session, forcePersist: true);
+                }
+            }
+            return;
+        }
+
+        HashSet<string> ownedGids = aria2Sessions
             .Select(static session => session.BackendTaskId)
             .Where(static gid => !string.IsNullOrWhiteSpace(gid))
             .Cast<string>()
@@ -2532,8 +2999,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             .Normalize()
             .AdoptExistingTasks;
 
-        foreach (DownloadSession session in _sessions.Values.Where(static item =>
-            item.Backend == DownloadBackendKind.Aria2 && item.State != DownloadState.Completed))
+        foreach (DownloadSession session in aria2Sessions)
         {
             Aria2TaskSnapshot? task;
             lock (session.Sync)
@@ -2544,18 +3010,27 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                         string.Equals(candidate.Gid, session.BackendTaskId, StringComparison.Ordinal));
             }
 
+            if (task is not null && !MatchesOwnedAria2Task(session, task))
+            {
+                MarkAria2OwnershipUncertain(
+                    session,
+                    $"aria2 task {task.Gid} no longer matches XDM's durable source/destination identity.");
+                Publish(session, forcePersist: true);
+                continue;
+            }
+
             if (task is null && adoptExisting)
             {
-                task = snapshot.Tasks.FirstOrDefault(candidate =>
-                    !ownedGids.Contains(candidate.Gid)
-                    && !string.IsNullOrWhiteSpace(candidate.DestinationPath)
-                    && PathsEqual(candidate.DestinationPath, session.DestinationPath));
+                task = FindAdoptableAria2Task(
+                    session,
+                    snapshot.Tasks.Where(candidate => !ownedGids.Contains(candidate.Gid)));
                 if (task is not null)
                 {
                     lock (session.Sync)
                     {
                         session.BackendTaskId = task.Gid;
-                        session.BackendDecisionReason = "Adopted the matching aria2 task after restart.";
+                        session.BackendDecisionReason =
+                            "Adopted an aria2 task after source, destination, and length identity checks.";
                     }
                     ownedGids.Add(task.Gid);
                 }
@@ -2569,13 +3044,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             bool publish;
             bool startMonitor = false;
             bool finalizeAdopted = false;
+            bool releaseRetainedLease = false;
             lock (session.Sync)
             {
-                if (!string.IsNullOrWhiteSpace(task.DestinationPath)
-                    && !PathsEqual(task.DestinationPath, session.DestinationPath))
+                if (session.TotalBytes is long expectedLength
+                    && task.TotalBytes > 0
+                    && task.TotalBytes != expectedLength)
                 {
                     session.State = DownloadState.Failed;
-                    session.ErrorMessage = "The aria2 task destination no longer matches the XDM-owned destination.";
+                    session.BytesPerSecond = 0;
+                    session.ErrorMessage =
+                        $"aria2 reported a total length of {task.TotalBytes}, but XDM expected {expectedLength}.";
                     session.RecoveryRequired = true;
                     session.RecoveryMessage = session.ErrorMessage;
                     session.Aria2TerminalSignal?.TrySetResult(Aria2TaskStatus.Error);
@@ -2583,24 +3062,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 }
                 else
                 {
-                    if (session.TotalBytes is long expectedLength
-                        && task.TotalBytes > 0
-                        && task.TotalBytes != expectedLength)
+                    session.DownloadedBytes = task.CompletedBytes;
+                    session.TotalBytes = task.TotalBytes > 0 ? task.TotalBytes : session.TotalBytes;
+                    session.BytesPerSecond = task.DownloadSpeedBytesPerSecond;
+                    if (!session.Aria2OwnershipUncertain
+                        || task.Status is Aria2TaskStatus.Paused
+                            or Aria2TaskStatus.Complete
+                            or Aria2TaskStatus.Error
+                            or Aria2TaskStatus.Removed)
                     {
-                        session.State = DownloadState.Failed;
-                        session.BytesPerSecond = 0;
-                        session.ErrorMessage =
-                            $"aria2 reported a total length of {task.TotalBytes}, but XDM expected {expectedLength}.";
-                        session.RecoveryRequired = true;
-                        session.RecoveryMessage = session.ErrorMessage;
-                        session.Aria2TerminalSignal?.TrySetResult(Aria2TaskStatus.Error);
-                        publish = true;
-                    }
-                    else
-                    {
-                        session.DownloadedBytes = task.CompletedBytes;
-                        session.TotalBytes = task.TotalBytes > 0 ? task.TotalBytes : session.TotalBytes;
-                        session.BytesPerSecond = task.DownloadSpeedBytesPerSecond;
                         session.ErrorMessage = task.ErrorMessage;
                         session.State = task.Status switch
                         {
@@ -2612,29 +3082,41 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                             Aria2TaskStatus.Removed => DownloadState.Cancelled,
                             _ => session.State
                         };
-                        if (task.Status is Aria2TaskStatus.Paused
-                            or Aria2TaskStatus.Complete
-                            or Aria2TaskStatus.Error
-                            or Aria2TaskStatus.Removed)
-                        {
-                            session.Aria2TerminalSignal?.TrySetResult(task.Status);
-                        }
-
-                        startMonitor = (task.Status is Aria2TaskStatus.Active or Aria2TaskStatus.Waiting)
-                            && session.ActiveTask is not { IsCompleted: false }
-                            && IsQueueActive(session.QueueId);
-                        finalizeAdopted = task.Status == Aria2TaskStatus.Complete
-                            && session.Aria2TerminalSignal is null
-                            && !session.Aria2FinalizationScheduled;
-                        if (finalizeAdopted)
-                        {
-                            session.Aria2FinalizationScheduled = true;
-                        }
-                        publish = true;
                     }
+
+                    if (task.Status is Aria2TaskStatus.Paused
+                        or Aria2TaskStatus.Complete
+                        or Aria2TaskStatus.Error
+                        or Aria2TaskStatus.Removed)
+                    {
+                        session.Aria2OwnershipUncertain = false;
+                        session.RecoveryRequired = task.Status == Aria2TaskStatus.Error;
+                        session.RecoveryMessage = task.Status == Aria2TaskStatus.Error
+                            ? task.ErrorMessage ?? "aria2 reported a transfer failure."
+                            : null;
+                        session.Aria2TerminalSignal?.TrySetResult(task.Status);
+                        releaseRetainedLease = session.Aria2OwnershipLease is not null;
+                    }
+
+                    startMonitor = !session.Aria2OwnershipUncertain
+                        && (task.Status is Aria2TaskStatus.Active or Aria2TaskStatus.Waiting)
+                        && session.ActiveTask is not { IsCompleted: false }
+                        && IsQueueActive(session.QueueId);
+                    finalizeAdopted = task.Status == Aria2TaskStatus.Complete
+                        && session.Aria2TerminalSignal is null
+                        && !session.Aria2FinalizationScheduled;
+                    if (finalizeAdopted)
+                    {
+                        session.Aria2FinalizationScheduled = true;
+                    }
+                    publish = true;
                 }
             }
 
+            if (releaseRetainedLease)
+            {
+                ReleaseAria2OwnershipLease(session);
+            }
             if (publish)
             {
                 Publish(session, forcePersist: task.Status is not Aria2TaskStatus.Active);
@@ -2673,6 +3155,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
     private async Task<Aria2TaskSnapshot?> TryRecoverUncertainAria2AddAsync(
         DownloadSession session,
+        string expectedGid,
         CancellationToken cancellationToken)
     {
         if (_aria2Service is null)
@@ -2682,9 +3165,21 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         try
         {
+            Aria2TaskSnapshot? direct = await _aria2Service.GetTaskAsync(expectedGid, cancellationToken)
+                .ConfigureAwait(false);
+            if (direct is not null)
+            {
+                return MatchesOwnedAria2Task(session, direct) ? direct : null;
+            }
+
             await _aria2Service.RefreshAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is HttpRequestException or Aria2RpcException or InvalidOperationException)
+        catch (Exception exception) when (exception is HttpRequestException
+            or Aria2RpcException
+            or InvalidOperationException
+            or InvalidDataException
+            or JsonException
+            or OperationCanceledException)
         {
             return null;
         }
@@ -2694,9 +3189,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             return null;
         }
 
-        return Aria2DestinationOwnership.FindCollision(
-            session.DestinationPath,
-            _aria2Service.Current.Tasks);
+        return _aria2Service.Current.Tasks.FirstOrDefault(task =>
+            string.Equals(task.Gid, expectedGid, StringComparison.Ordinal)
+            && MatchesOwnedAria2Task(session, task));
+    }
+
+    private static void ReleaseAria2OwnershipLease(DownloadSession session)
+    {
+        Aria2LeaseBundle? lease;
+        lock (session.Sync)
+        {
+            lease = session.Aria2OwnershipLease;
+            session.Aria2OwnershipLease = null;
+        }
+        lease?.Dispose();
     }
 
     private static Uri[] GetCredentialSafeAria2Mirrors(DownloadSession session)
@@ -4330,6 +4836,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.ContentHashSha256 = item.ContentHashSha256;
             session.DuplicateOfDownloadId = item.DuplicateOfDownloadId;
             session.DuplicateReason = item.DuplicateReason;
+            session.BackendRequestIdentity = string.IsNullOrWhiteSpace(item.BackendRequestIdentity)
+                ? CreateBackendRequestIdentity(session.Id, session.Source, session.DestinationPath, session.Method)
+                : item.BackendRequestIdentity;
         }
     }
 
@@ -4770,6 +5279,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     {
         _policyConcurrencyLimiter.NotifyLimitsChanged();
         _hostConcurrencyLimiter.NotifyLimitsChanged();
+        TrackBackgroundTask(ApplyAria2RuntimeOptionsAsync());
         if (snapshot.IsPaused)
         {
             foreach (DownloadSession session in _sessions.Values)
@@ -4812,9 +5322,53 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         _policyConcurrencyLimiter.NotifyLimitsChanged();
         _queueConcurrencyLimiter.NotifyLimitsChanged();
         _hostConcurrencyLimiter.NotifyLimitsChanged();
+        TrackBackgroundTask(ApplyAria2RuntimeOptionsAsync());
         RebuildRequestedQueues();
         ReconcileRequestedQueues();
         PublishQueueRuntime(reconcile: false);
+    }
+
+    private async Task ApplyAria2RuntimeOptionsAsync()
+    {
+        IAria2Service? service = _aria2Service;
+        if (service is null || !service.Current.Health.IsAvailable)
+        {
+            return;
+        }
+
+        DownloadSession[] sessions = _sessions.Values
+            .Where(static session => session.Backend == DownloadBackendKind.Aria2)
+            .ToArray();
+        foreach (DownloadSession session in sessions)
+        {
+            string? gid;
+            DownloadState state;
+            lock (session.Sync)
+            {
+                gid = session.BackendTaskId;
+                state = session.State;
+            }
+            if (gid is null || state is DownloadState.Completed or DownloadState.Cancelled)
+            {
+                continue;
+            }
+
+            try
+            {
+                await service.ChangeOptionsAsync(
+                    gid,
+                    CreateAria2RuntimeOptions(session),
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is HttpRequestException
+                or Aria2RpcException
+                or InvalidOperationException
+                or InvalidDataException
+                or JsonException)
+            {
+                DownloadEngineLog.DownloadFailed(_logger, session.Id, exception.Message, exception);
+            }
+        }
     }
 
     private static void DeleteTransferArtifacts(string destinationPath)
@@ -5031,7 +5585,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.ContentHashSha256,
                 session.DuplicateOfDownloadId,
                 session.DuplicateReason,
-                session.AllowDestinationOverwrite);
+                session.AllowDestinationOverwrite,
+                session.BackendRequestIdentity);
         }
     }
 
@@ -5841,6 +6396,38 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private void ThrowIfDisposed()
         => ObjectDisposedException.ThrowIf(_disposed, this);
 
+    private sealed class Aria2LeaseBundle : IDisposable
+    {
+        private IDisposable? _queueLease;
+        private IDisposable? _policyLease;
+        private IDisposable? _hostLease;
+
+        public Aria2LeaseBundle(
+            string queueId,
+            string host,
+            IDisposable queueLease,
+            IDisposable policyLease,
+            IDisposable hostLease)
+        {
+            QueueId = queueId;
+            Host = host;
+            _queueLease = queueLease;
+            _policyLease = policyLease;
+            _hostLease = hostLease;
+        }
+
+        public string QueueId { get; }
+
+        public string Host { get; }
+
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _hostLease, null)?.Dispose();
+            Interlocked.Exchange(ref _policyLease, null)?.Dispose();
+            Interlocked.Exchange(ref _queueLease, null)?.Dispose();
+        }
+    }
+
     private sealed class DownloadSession
     {
         public DownloadSession(
@@ -5888,7 +6475,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             string? contentHashSha256 = null,
             string? duplicateOfDownloadId = null,
             string? duplicateReason = null,
-            bool allowDestinationOverwrite = false)
+            bool allowDestinationOverwrite = false,
+            string? backendRequestIdentity = null)
         {
             Id = id;
             Source = source;
@@ -5947,6 +6535,9 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             DuplicateOfDownloadId = string.IsNullOrWhiteSpace(duplicateOfDownloadId) ? null : duplicateOfDownloadId.Trim();
             DuplicateReason = string.IsNullOrWhiteSpace(duplicateReason) ? null : duplicateReason.Trim();
             AllowDestinationOverwrite = allowDestinationOverwrite;
+            BackendRequestIdentity = string.IsNullOrWhiteSpace(backendRequestIdentity)
+                ? CreateBackendRequestIdentity(id, source, destinationPath, method)
+                : backendRequestIdentity.Trim();
             int currentMirrorIndex = Array.FindIndex(normalizedMirrors, mirror => mirror == source);
             MirrorIndex = currentMirrorIndex + 1;
         }
@@ -6028,6 +6619,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? BackendTaskId { get; set; }
 
         public string? BackendDecisionReason { get; set; }
+
+        public string BackendRequestIdentity { get; set; }
+
+        public bool Aria2OwnershipUncertain { get; set; }
+
+        public Aria2LeaseBundle? Aria2OwnershipLease { get; set; }
 
         public bool AllowBackendFallback { get; set; }
 

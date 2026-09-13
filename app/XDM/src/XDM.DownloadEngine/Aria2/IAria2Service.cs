@@ -18,6 +18,10 @@ public interface IAria2Service
 
     Task<string> AddAsync(Aria2AddRequest request, CancellationToken cancellationToken = default);
 
+    Task<Aria2TaskSnapshot?> GetTaskAsync(string gid, CancellationToken cancellationToken = default);
+
+    Task ChangeOptionsAsync(string gid, Aria2RuntimeOptions options, CancellationToken cancellationToken = default);
+
     Task PauseAsync(string gid, CancellationToken cancellationToken = default);
 
     Task ResumeAsync(string gid, CancellationToken cancellationToken = default);

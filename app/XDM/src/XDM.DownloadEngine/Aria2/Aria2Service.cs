@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using System.Text.Json;
 using XDM.Core.Settings;
 
 namespace XDM.DownloadEngine.Aria2;
@@ -37,10 +38,18 @@ public sealed class Aria2Service : IAria2Service, IDisposable
             return;
         }
 
-        _initialized = true;
         _settingsService.Changed += OnSettingsChanged;
-        await ConfigureCoreAsync(_settingsService.Current.Aria2, cancellationToken).ConfigureAwait(false);
-        _pollingTask = PollAsync(_lifetime.Token);
+        try
+        {
+            await ConfigureCoreAsync(_settingsService.Current.Aria2, cancellationToken).ConfigureAwait(false);
+            _pollingTask = PollAsync(_lifetime.Token);
+            _initialized = true;
+        }
+        catch
+        {
+            _settingsService.Changed -= OnSettingsChanged;
+            throw;
+        }
     }
 
     public Task ConfigureAsync(
@@ -138,8 +147,12 @@ public sealed class Aria2Service : IAria2Service, IDisposable
             {
                 string version = await client.GetVersionAsync(cancellationToken).ConfigureAwait(false);
                 Task<IReadOnlyList<Aria2TaskSnapshot>> activeTask = client.TellActiveAsync(cancellationToken);
-                Task<IReadOnlyList<Aria2TaskSnapshot>> waitingTask = client.TellWaitingAsync(cancellationToken: cancellationToken);
-                Task<IReadOnlyList<Aria2TaskSnapshot>> stoppedTask = client.TellStoppedAsync(cancellationToken: cancellationToken);
+                Task<IReadOnlyList<Aria2TaskSnapshot>> waitingTask = LoadPagedTasksAsync(
+                    (offset, count, token) => client.TellWaitingAsync(offset, count, token),
+                    cancellationToken);
+                Task<IReadOnlyList<Aria2TaskSnapshot>> stoppedTask = LoadPagedTasksAsync(
+                    (offset, count, token) => client.TellStoppedAsync(offset, count, token),
+                    cancellationToken);
                 await Task.WhenAll(activeTask, waitingTask, stoppedTask).ConfigureAwait(false);
                 Aria2TaskSnapshot[] tasks = activeTask.Result
                     .Concat(waitingTask.Result)
@@ -172,6 +185,10 @@ public sealed class Aria2Service : IAria2Service, IDisposable
             {
                 PublishFailure($"Invalid aria2 RPC response: {exception.Message}");
             }
+            catch (JsonException exception)
+            {
+                PublishFailure($"Malformed aria2 RPC response: {exception.Message}");
+            }
         }
         finally
         {
@@ -184,13 +201,12 @@ public sealed class Aria2Service : IAria2Service, IDisposable
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        string gid;
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             EnsureEnabled();
             Aria2RpcClient client = _rpcClient ?? throw new InvalidOperationException("aria2 RPC is not configured.");
-            gid = await client.AddUriAsync(
+            return await client.AddUriAsync(
                 request,
                 _settings.SplitCount,
                 _settings.MinimumSplitSizeBytes,
@@ -200,19 +216,76 @@ public sealed class Aria2Service : IAria2Service, IDisposable
         {
             _gate.Release();
         }
+    }
 
-        await RefreshAsync(cancellationToken).ConfigureAwait(false);
-        return gid;
+    public async Task<Aria2TaskSnapshot?> GetTaskAsync(
+        string gid,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureEnabled();
+            Aria2RpcClient client = _rpcClient ?? throw new InvalidOperationException("aria2 RPC is not configured.");
+            try
+            {
+                return await client.TellStatusAsync(gid, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
+            {
+                return null;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task ChangeOptionsAsync(
+        string gid,
+        Aria2RuntimeOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureEnabled();
+            Aria2RpcClient client = _rpcClient ?? throw new InvalidOperationException("aria2 RPC is not configured.");
+            await client.ChangeOptionAsync(gid, options, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     public Task PauseAsync(string gid, CancellationToken cancellationToken = default)
-        => ExecuteTaskCommandAsync(gid, static (client, taskId, token) => client.PauseAsync(taskId, token), cancellationToken);
+        => ExecuteConfirmedTaskCommandAsync(
+            gid,
+            static (client, taskId, token) => client.PauseAsync(taskId, token),
+            static task => task?.Status is Aria2TaskStatus.Paused
+                or Aria2TaskStatus.Complete
+                or Aria2TaskStatus.Error
+                or Aria2TaskStatus.Removed,
+            "pause",
+            cancellationToken);
 
     public Task ResumeAsync(string gid, CancellationToken cancellationToken = default)
-        => ExecuteTaskCommandAsync(gid, static (client, taskId, token) => client.ResumeAsync(taskId, token), cancellationToken);
+        => ExecuteConfirmedTaskCommandAsync(
+            gid,
+            static (client, taskId, token) => client.ResumeAsync(taskId, token),
+            static task => task?.Status is Aria2TaskStatus.Active
+                or Aria2TaskStatus.Waiting
+                or Aria2TaskStatus.Complete
+                or Aria2TaskStatus.Error,
+            "resume",
+            cancellationToken);
 
     public Task RemoveAsync(string gid, CancellationToken cancellationToken = default)
-        => ExecuteTaskCommandAsync(gid, RemoveTaskAsync, cancellationToken);
+        => ExecuteConfirmedRemoveAsync(gid, cancellationToken);
 
     public void Dispose()
     {
@@ -238,9 +311,11 @@ public sealed class Aria2Service : IAria2Service, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private async Task ExecuteTaskCommandAsync(
+    private async Task ExecuteConfirmedTaskCommandAsync(
         string gid,
         Func<Aria2RpcClient, string, CancellationToken, Task> command,
+        Func<Aria2TaskSnapshot?, bool> confirmation,
+        string action,
         CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -250,6 +325,21 @@ public sealed class Aria2Service : IAria2Service, IDisposable
             EnsureEnabled();
             Aria2RpcClient client = _rpcClient ?? throw new InvalidOperationException("aria2 RPC is not configured.");
             await command(client, gid, cancellationToken).ConfigureAwait(false);
+            Aria2TaskSnapshot? task;
+            try
+            {
+                task = await client.TellStatusAsync(gid, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
+            {
+                task = null;
+            }
+
+            if (!confirmation(task))
+            {
+                throw new InvalidOperationException(
+                    $"aria2 did not confirm the requested {action} operation for task {gid}.");
+            }
         }
         finally
         {
@@ -259,18 +349,68 @@ public sealed class Aria2Service : IAria2Service, IDisposable
         await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task RemoveTaskAsync(
-        Aria2RpcClient client,
-        string gid,
-        CancellationToken cancellationToken)
+    private async Task ExecuteConfirmedRemoveAsync(string gid, CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await client.RemoveAsync(gid, cancellationToken).ConfigureAwait(false);
+            EnsureEnabled();
+            Aria2RpcClient client = _rpcClient ?? throw new InvalidOperationException("aria2 RPC is not configured.");
+            try
+            {
+                await client.RemoveAsync(gid, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
+            {
+                try
+                {
+                    await client.ForceRemoveAsync(gid, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Aria2RpcException forceException) when (forceException.Code is 1 or 2)
+                {
+                    // Already absent: continue to refresh so Current cannot retain a stale task.
+                }
+            }
+
+            try
+            {
+                Aria2TaskSnapshot task = await client.TellStatusAsync(gid, cancellationToken).ConfigureAwait(false);
+                if (task.Status != Aria2TaskStatus.Removed)
+                {
+                    throw new InvalidOperationException(
+                        $"aria2 did not confirm removal of task {gid}; current status is {task.Status}.");
+                }
+            }
+            catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
+            {
+                // A task that no longer exists is conclusively removed.
+            }
         }
-        catch (Aria2RpcException exception) when (exception.Code is 1 or 2)
+        finally
         {
-            await client.ForceRemoveAsync(gid, cancellationToken).ConfigureAwait(false);
+            _gate.Release();
+        }
+
+        await RefreshAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    internal static async Task<IReadOnlyList<Aria2TaskSnapshot>> LoadPagedTasksAsync(
+        Func<int, int, CancellationToken, Task<IReadOnlyList<Aria2TaskSnapshot>>> pageLoader,
+        CancellationToken cancellationToken)
+    {
+        const int PageSize = 1000;
+        List<Aria2TaskSnapshot> tasks = [];
+        for (int offset = 0; ; offset += PageSize)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyList<Aria2TaskSnapshot> page = await pageLoader(offset, PageSize, cancellationToken)
+                .ConfigureAwait(false);
+            tasks.AddRange(page);
+            if (page.Count < PageSize)
+            {
+                return tasks;
+            }
         }
     }
 
@@ -310,11 +450,21 @@ public sealed class Aria2Service : IAria2Service, IDisposable
             {
                 await _managedProcess.StartAsync(_settings, cancellationToken).ConfigureAwait(false);
             }
+            else if (_settings.ConnectionMode == Aria2ConnectionMode.ExternalRpc)
+            {
+                Aria2RpcClient client = _rpcClient ?? throw new InvalidOperationException("aria2 RPC is not configured.");
+                await client.ChangeGlobalOptionsAsync(_settings.MaxConcurrentDownloads, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
         catch (Exception exception) when (exception is IOException
             or UnauthorizedAccessException
             or InvalidOperationException
-            or System.ComponentModel.Win32Exception)
+            or System.ComponentModel.Win32Exception
+            or HttpRequestException
+            or Aria2RpcException
+            or InvalidDataException
+            or JsonException)
         {
             PublishFailure($"aria2 configuration failed: {exception.Message}");
             return;
@@ -391,6 +541,14 @@ public sealed class Aria2Service : IAria2Service, IDisposable
             {
                 return;
             }
+            catch (Exception exception) when (exception is HttpRequestException
+                or Aria2RpcException
+                or InvalidDataException
+                or JsonException
+                or InvalidOperationException)
+            {
+                PublishFailure($"aria2 polling failed: {exception.Message}");
+            }
         }
     }
 
@@ -405,6 +563,14 @@ public sealed class Aria2Service : IAria2Service, IDisposable
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
         {
+        }
+        catch (Exception exception) when (exception is HttpRequestException
+            or Aria2RpcException
+            or InvalidDataException
+            or JsonException
+            or InvalidOperationException)
+        {
+            PublishFailure($"aria2 reconfiguration failed: {exception.Message}");
         }
     }
 

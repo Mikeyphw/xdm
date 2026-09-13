@@ -124,6 +124,19 @@ public sealed class SubsystemHealthServiceTests
         public Task<string> AddAsync(Aria2AddRequest request, CancellationToken cancellationToken = default)
             => Task.FromResult("gid");
 
+        public Task<Aria2TaskSnapshot?> GetTaskAsync(string gid, CancellationToken cancellationToken = default)
+        {
+            Aria2TaskSnapshot? task = Current.Tasks.FirstOrDefault(candidate =>
+                string.Equals(candidate.Gid, gid, StringComparison.Ordinal));
+            return Task.FromResult(task);
+        }
+
+        public Task ChangeOptionsAsync(
+            string gid,
+            Aria2RuntimeOptions options,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
         public Task PauseAsync(string gid, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task ResumeAsync(string gid, CancellationToken cancellationToken = default) => Task.CompletedTask;

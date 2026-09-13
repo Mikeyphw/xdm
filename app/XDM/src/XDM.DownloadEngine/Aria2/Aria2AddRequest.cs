@@ -15,6 +15,16 @@ public sealed record Aria2AddRequest(
 
     public string? ExpectedChecksum { get; init; }
 
+    public string? Gid { get; init; }
+
+    public int? ConnectionCount { get; init; }
+
+    public bool ContinueDownloads { get; init; } = true;
+
+    public bool StartPaused { get; init; }
+
+    public bool CheckCertificate { get; init; } = true;
+
     public IReadOnlyList<Uri> GetSources()
         => new[] { Source }
             .Concat(Mirrors ?? Array.Empty<Uri>())
@@ -76,6 +86,13 @@ public sealed record Aria2AddRequest(
             checksum = null;
         }
 
+        string? gid = string.IsNullOrWhiteSpace(Gid) ? null : Gid.Trim().ToLowerInvariant();
+        if (gid is not null
+            && (gid.Length != 16 || gid.Any(static character => !Uri.IsHexDigit(character))))
+        {
+            throw new ArgumentException("aria2 GIDs must be exactly 16 hexadecimal characters.", nameof(Gid));
+        }
+
         return this with
         {
             DestinationDirectory = directory,
@@ -86,7 +103,9 @@ public sealed record Aria2AddRequest(
             SpeedLimitBytesPerSecond = SpeedLimitBytesPerSecond is > 0 ? SpeedLimitBytesPerSecond : null,
             Mirrors = mirrors,
             ExpectedChecksumAlgorithm = checksumAlgorithm,
-            ExpectedChecksum = checksum
+            ExpectedChecksum = checksum,
+            Gid = gid,
+            ConnectionCount = ConnectionCount is null ? null : Math.Clamp(ConnectionCount.Value, 1, 64)
         };
     }
 }

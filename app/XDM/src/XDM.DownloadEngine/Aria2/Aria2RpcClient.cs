@@ -57,14 +57,21 @@ public sealed class Aria2RpcClient
         CancellationToken cancellationToken = default)
     {
         Aria2AddRequest normalized = request.Normalize();
+        int effectiveConnections = normalized.ConnectionCount ?? Math.Clamp(splitCount, 1, 64);
         Dictionary<string, object?> options = new(StringComparer.Ordinal)
         {
             ["dir"] = normalized.DestinationDirectory,
-            ["continue"] = "true",
-            ["split"] = Math.Clamp(splitCount, 1, 64).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            ["max-connection-per-server"] = Math.Clamp(splitCount, 1, 64).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["continue"] = normalized.ContinueDownloads ? "true" : "false",
+            ["pause"] = normalized.StartPaused ? "true" : "false",
+            ["check-certificate"] = normalized.CheckCertificate ? "true" : "false",
+            ["split"] = effectiveConnections.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["max-connection-per-server"] = effectiveConnections.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["min-split-size"] = Math.Max(1024 * 1024, minimumSplitSizeBytes).ToString(System.Globalization.CultureInfo.InvariantCulture)
         };
+        if (normalized.Gid is not null)
+        {
+            options["gid"] = normalized.Gid;
+        }
         if (!string.IsNullOrWhiteSpace(normalized.FileName))
         {
             options["out"] = normalized.FileName;
@@ -97,8 +104,16 @@ public sealed class Aria2RpcClient
             "aria2.addUri",
             [normalized.GetSources().Select(static uri => uri.AbsoluteUri).ToArray(), options],
             cancellationToken).ConfigureAwait(false);
-        return result.GetString()
+        string gid = result.GetString()
             ?? throw new InvalidDataException("aria2.addUri returned an empty task identifier.");
+        if (normalized.Gid is not null
+            && !string.Equals(gid, normalized.Gid, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                $"aria2.addUri returned GID {gid}, but XDM reserved deterministic GID {normalized.Gid}.");
+        }
+
+        return gid;
     }
 
     public async Task<Aria2TaskSnapshot> TellStatusAsync(
@@ -145,6 +160,36 @@ public sealed class Aria2RpcClient
             [offset, Math.Clamp(count, 1, 1000), TaskKeys],
             cancellationToken).ConfigureAwait(false);
         return ParseTasks(result);
+    }
+
+    public async Task ChangeOptionAsync(
+        string gid,
+        Aria2RuntimeOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureGid(gid);
+        Aria2RuntimeOptions normalized = options.Normalize();
+        Dictionary<string, object?> values = new(StringComparer.Ordinal)
+        {
+            ["max-download-limit"] = normalized.SpeedLimitBytesPerSecond.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["split"] = normalized.ConnectionCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["max-connection-per-server"] = normalized.ConnectionCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["continue"] = normalized.ContinueDownloads ? "true" : "false",
+            ["check-certificate"] = normalized.CheckCertificate ? "true" : "false"
+        };
+        _ = await InvokeAsync("aria2.changeOption", [gid, values], cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ChangeGlobalOptionsAsync(
+        int maxConcurrentDownloads,
+        CancellationToken cancellationToken = default)
+    {
+        Dictionary<string, object?> values = new(StringComparer.Ordinal)
+        {
+            ["max-concurrent-downloads"] = Math.Clamp(maxConcurrentDownloads, 1, 64)
+                .ToString(System.Globalization.CultureInfo.InvariantCulture)
+        };
+        _ = await InvokeAsync("aria2.changeGlobalOption", [values], cancellationToken).ConfigureAwait(false);
     }
 
     public Task PauseAsync(string gid, CancellationToken cancellationToken = default)
@@ -246,7 +291,7 @@ public sealed class Aria2RpcClient
         long total = GetLong(task, "totalLength");
         long completed = GetLong(task, "completedLength");
         string? path = null;
-        string? source = null;
+        List<Uri> sources = [];
         if (task.TryGetProperty("files", out JsonElement files)
             && files.ValueKind == JsonValueKind.Array
             && files.GetArrayLength() > 0)
@@ -254,12 +299,19 @@ public sealed class Aria2RpcClient
             JsonElement file = files[0];
             path = GetString(file, "path");
             if (file.TryGetProperty("uris", out JsonElement uris)
-                && uris.ValueKind == JsonValueKind.Array
-                && uris.GetArrayLength() > 0)
+                && uris.ValueKind == JsonValueKind.Array)
             {
-                source = GetString(uris[0], "uri");
+                foreach (JsonElement uriElement in uris.EnumerateArray())
+                {
+                    string? candidate = GetString(uriElement, "uri");
+                    if (Uri.TryCreate(candidate, UriKind.Absolute, out Uri? parsed))
+                    {
+                        sources.Add(parsed);
+                    }
+                }
             }
         }
+        string? source = sources.FirstOrDefault()?.AbsoluteUri;
 
         string? torrentName = null;
         if (task.TryGetProperty("bittorrent", out JsonElement bittorrent)
@@ -285,7 +337,8 @@ public sealed class Aria2RpcClient
             GetLong(task, "uploadSpeed"),
             checked((int)Math.Clamp(GetLong(task, "connections"), 0, int.MaxValue)),
             GetString(task, "errorCode"),
-            GetString(task, "errorMessage"));
+            GetString(task, "errorMessage"),
+            sources.DistinctBy(static uri => uri.AbsoluteUri, StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
     private static Aria2TaskStatus ParseStatus(string? value)

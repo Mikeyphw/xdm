@@ -11,7 +11,8 @@ public sealed record Aria2TaskSnapshot(
     long UploadSpeedBytesPerSecond,
     int Connections,
     string? ErrorCode,
-    string? ErrorMessage)
+    string? ErrorMessage,
+    IReadOnlyList<Uri>? Sources = null)
 {
     public double? ProgressFraction
         => TotalBytes > 0 ? Math.Clamp((double)CompletedBytes / TotalBytes, 0d, 1d) : null;
@@ -26,4 +27,6 @@ public sealed record Aria2TaskSnapshot(
         or Aria2TaskStatus.Complete
         or Aria2TaskStatus.Error
         or Aria2TaskStatus.Removed;
+
+    public IReadOnlyList<Uri> EffectiveSources => Sources ?? Array.Empty<Uri>();
 }

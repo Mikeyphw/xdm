@@ -1044,9 +1044,118 @@ public sealed class DownloadManagerTests
         DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
 
         Assert.Equal(DownloadBackendKind.Aria2, completed.Backend);
-        Assert.Equal("fake-gid", completed.BackendTaskId);
+        Assert.Matches("^[0-9a-f]{16}$", completed.BackendTaskId!);
         Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
         Assert.Equal(1, aria2.AddCount);
+    }
+
+    [Fact]
+    public async Task UncertainAria2AddRecoversDeterministicGidWithoutNativeFallback()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = CreatePayload(3072, 211);
+        ApplicationState state = new();
+        InMemoryHistoryStore history = new();
+        TestSettingsService settings = new(ApplicationSettings.CreateDefault() with
+        {
+            Aria2 = Aria2IntegrationSettings.Default with { Enabled = true }
+        });
+        FakeAria2Service aria2 = new(payload) { ThrowAfterAdd = true };
+        RangeHandler nativeHandler = new(payload);
+        using DownloadManager manager = CreateManager(
+            new HttpClient(nativeHandler),
+            state,
+            history,
+            settingsService: settings,
+            aria2Service: aria2);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/uncertain.bin"),
+            directory.Path,
+            "uncertain.bin",
+            BackendPreference: DownloadBackendPreference.Aria2,
+            AllowBackendFallback: true));
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+        PersistedDownload persisted = Assert.Single(history.Downloads);
+        Assert.Equal(DownloadBackendKind.Aria2, completed.Backend);
+        Assert.Equal(completed.BackendTaskId, persisted.BackendTaskId);
+        Assert.Matches("^[0-9a-f]{16}$", completed.BackendTaskId!);
+        Assert.Equal(1, aria2.AddCount);
+        Assert.Equal(0, nativeHandler.RequestCount);
+    }
+
+    [Fact]
+    public async Task Aria2HealthLossMovesOwnedActiveTaskToRecoveryInsteadOfNativeFallback()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = CreatePayload(4096, 223);
+        ApplicationState state = new();
+        TestSettingsService settings = new(ApplicationSettings.CreateDefault() with
+        {
+            Aria2 = Aria2IntegrationSettings.Default with { Enabled = true }
+        });
+        FakeAria2Service aria2 = new(payload) { HoldActive = true };
+        RangeHandler nativeHandler = new(payload);
+        using DownloadManager manager = CreateManager(
+            new HttpClient(nativeHandler),
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: settings,
+            aria2Service: aria2);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/health-loss.bin"),
+            directory.Path,
+            "health-loss.bin",
+            BackendPreference: DownloadBackendPreference.Aria2,
+            AllowBackendFallback: true));
+        await WaitForStateAsync(state, id, DownloadState.Downloading);
+
+        aria2.PublishUnavailable("simulated aria2 process death");
+        DownloadSnapshot failed = await WaitForStateAsync(state, id, DownloadState.Failed);
+
+        Assert.True(failed.RecoveryRequired);
+        Assert.Equal(DownloadBackendKind.Aria2, failed.Backend);
+        Assert.NotNull(failed.BackendTaskId);
+        Assert.Contains("ownership", failed.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, nativeHandler.RequestCount);
+    }
+
+    [Fact]
+    public async Task FailedDirectAria2PauseDoesNotLeavePauseRequestedLatched()
+    {
+        using TemporaryDirectory directory = new();
+        byte[] payload = CreatePayload(2048, 227);
+        ApplicationState state = new();
+        TestSettingsService settings = new(ApplicationSettings.CreateDefault() with
+        {
+            Aria2 = Aria2IntegrationSettings.Default with { Enabled = true }
+        });
+        FakeAria2Service aria2 = new(payload) { HoldActive = true };
+        using DownloadManager manager = CreateManager(
+            new HttpClient(new RangeHandler(payload)),
+            state,
+            new InMemoryHistoryStore(),
+            settingsService: settings,
+            aria2Service: aria2);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/pause-failure.bin"),
+            directory.Path,
+            "pause-failure.bin",
+            BackendPreference: DownloadBackendPreference.Aria2,
+            AllowBackendFallback: false));
+        await WaitForStateAsync(state, id, DownloadState.Downloading);
+
+        aria2.FailPause = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.PauseAsync(id));
+        DownloadSnapshot current = state.Current.Downloads.Single(download => download.Id == id);
+        Assert.Equal(DownloadState.Downloading, current.State);
+
+        aria2.FailPause = false;
+        await manager.PauseAsync(id);
+        await WaitForStateAsync(state, id, DownloadState.Paused);
     }
 
     [Fact]
@@ -2095,6 +2204,12 @@ public sealed class DownloadManagerTests
 
         public int AddCount { get; private set; }
 
+        public bool ThrowAfterAdd { get; init; }
+
+        public bool HoldActive { get; init; }
+
+        public bool FailPause { get; set; }
+
         public Aria2ServiceSnapshot Current { get; private set; }
 
         public event EventHandler<Aria2ServiceSnapshot>? Changed;
@@ -2114,26 +2229,61 @@ public sealed class DownloadManagerTests
         {
             AddCount++;
             string path = Path.Combine(request.DestinationDirectory, request.FileName ?? "download.bin");
-            await File.WriteAllBytesAsync(path, _payload, cancellationToken);
+            string gid = request.Gid ?? "2089b05ecca3d829";
+            Aria2TaskStatus status = HoldActive ? Aria2TaskStatus.Active : Aria2TaskStatus.Complete;
+            if (!HoldActive)
+            {
+                await File.WriteAllBytesAsync(path, _payload, cancellationToken);
+            }
             Aria2TaskSnapshot task = CreateTask(
-                "fake-gid",
+                gid,
                 path,
-                Aria2TaskStatus.Complete,
+                status,
+                HoldActive ? 0 : _payload.Length,
                 _payload.Length,
-                _payload.Length);
+                request.Source);
             Current = Current with { Tasks = [task], RefreshedAt = DateTimeOffset.UtcNow };
             Changed?.Invoke(this, Current);
+            if (ThrowAfterAdd)
+            {
+                throw new HttpRequestException("Simulated lost aria2.addUri response after remote admission.");
+            }
             return task.Gid;
         }
 
+        public Task<Aria2TaskSnapshot?> GetTaskAsync(string gid, CancellationToken cancellationToken = default)
+        {
+            Aria2TaskSnapshot? task = Current.Tasks.FirstOrDefault(candidate =>
+                string.Equals(candidate.Gid, gid, StringComparison.Ordinal));
+            return Task.FromResult(task);
+        }
+
+        public Task ChangeOptionsAsync(
+            string gid,
+            Aria2RuntimeOptions options,
+            CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
         public Task PauseAsync(string gid, CancellationToken cancellationToken = default)
-            => SetStatusAsync(gid, Aria2TaskStatus.Paused);
+            => FailPause
+                ? Task.FromException(new InvalidOperationException("Simulated aria2 pause confirmation failure."))
+                : SetStatusAsync(gid, Aria2TaskStatus.Paused);
 
         public Task ResumeAsync(string gid, CancellationToken cancellationToken = default)
             => SetStatusAsync(gid, Aria2TaskStatus.Active);
 
         public Task RemoveAsync(string gid, CancellationToken cancellationToken = default)
             => SetStatusAsync(gid, Aria2TaskStatus.Removed);
+
+        public void PublishUnavailable(string message)
+        {
+            Current = Current with
+            {
+                Health = new Aria2Health(false, false, message),
+                RefreshedAt = DateTimeOffset.UtcNow
+            };
+            Changed?.Invoke(this, Current);
+        }
 
         private Task SetStatusAsync(string gid, Aria2TaskStatus status)
         {
@@ -2152,7 +2302,8 @@ public sealed class DownloadManagerTests
             string path,
             Aria2TaskStatus status,
             long completed,
-            long total)
+            long total,
+            Uri? source = null)
             => new(
                 gid,
                 status,
@@ -2164,7 +2315,8 @@ public sealed class DownloadManagerTests
                 0,
                 1,
                 null,
-                null);
+                null,
+                source is null ? null : [source]);
     }
 
     private sealed class TestSettingsService : ISettingsService

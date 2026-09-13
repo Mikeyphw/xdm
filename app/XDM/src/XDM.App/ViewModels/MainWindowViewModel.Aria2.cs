@@ -100,14 +100,20 @@ public partial class MainWindowViewModel
     [ObservableProperty]
     private bool aria2IsRefreshing;
 
+    public bool IsManagedAria2Mode
+        => SelectedAria2ConnectionMode == Aria2ConnectionMode.ManagedProcess;
+
     public bool CanStartManagedAria2
-        => Aria2Enabled && SelectedAria2ConnectionMode == Aria2ConnectionMode.ManagedProcess;
+        => Aria2Enabled && IsManagedAria2Mode;
 
     partial void OnAria2EnabledChanged(bool value)
         => OnPropertyChanged(nameof(CanStartManagedAria2));
 
     partial void OnSelectedAria2ConnectionModeChanged(Aria2ConnectionMode value)
-        => OnPropertyChanged(nameof(CanStartManagedAria2));
+    {
+        OnPropertyChanged(nameof(IsManagedAria2Mode));
+        OnPropertyChanged(nameof(CanStartManagedAria2));
+    }
 
     [RelayCommand]
     private async Task ApplyAria2ConfigurationAsync()
@@ -117,7 +123,10 @@ public partial class MainWindowViewModel
             Aria2IntegrationSettings settings = BuildAria2Settings();
             await _settingsService.UpdateAsync(_settingsService.Current with { Aria2 = settings });
             await _aria2Service.ConfigureAsync(settings);
-            OperationMessage = "aria2 configuration applied.";
+            Aria2ServiceSnapshot snapshot = _aria2Service.Current;
+            OperationMessage = settings.Enabled && !snapshot.Health.IsAvailable
+                ? $"aria2 configuration failed: {snapshot.Health.Message}"
+                : "aria2 configuration applied.";
         }
         catch (Exception exception) when (IsExpectedAria2Exception(exception))
         {
@@ -140,7 +149,9 @@ public partial class MainWindowViewModel
             await _settingsService.UpdateAsync(_settingsService.Current with { Aria2 = settings });
             await _aria2Service.ConfigureAsync(settings);
             await _aria2Service.StartManagedProcessAsync();
-            OperationMessage = "Managed aria2 started.";
+            OperationMessage = _aria2Service.Current.Health.IsAvailable
+                ? "Managed aria2 started."
+                : $"Managed aria2 failed to start: {_aria2Service.Current.Health.Message}";
         }
         catch (Exception exception) when (IsExpectedAria2Exception(exception))
         {

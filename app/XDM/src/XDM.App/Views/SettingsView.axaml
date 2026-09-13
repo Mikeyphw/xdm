@@ -128,7 +128,7 @@
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_connect_timeout_seconds]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding ConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="300" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_connect_timeout_seconds]}" AutomationProperties.AutomationId="ConnectTimeoutSeconds"/>
+                    <NumericUpDown Value="{Binding ConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="120" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_connect_timeout_seconds]}" AutomationProperties.AutomationId="ConnectTimeoutSeconds"/>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_whole_request_timeout_seconds_0_unlimited]}" Classes="form-label"/>
@@ -142,7 +142,7 @@
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_retry_base_delay_milliseconds]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding RetryBaseDelayMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="100" Maximum="60000" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retry_base_delay_milliseconds]}" AutomationProperties.AutomationId="RetryBaseDelayMilliseconds"/>
+                    <NumericUpDown Value="{Binding RetryBaseDelayMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="100" Maximum="30000" Increment="100" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_retry_base_delay_milliseconds]}" AutomationProperties.AutomationId="RetryBaseDelayMilliseconds"/>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_minimum_segmented_size_mib]}" Classes="form-label"/>
@@ -247,29 +247,29 @@
                 <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_executable_path]}" Classes="form-label"/>
-                    <TextBox Text="{Binding Aria2ExecutablePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_executable_path]}" AutomationProperties.AutomationId="Aria2ExecutablePath"/>
+                    <TextBox IsEnabled="{Binding IsManagedAria2Mode}" Text="{Binding Aria2ExecutablePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_executable_path]}" AutomationProperties.AutomationId="Aria2ExecutablePath"/>
                   </StackPanel>
-                  <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Executable_Click" VerticalAlignment="Bottom"/>
+                  <Button Grid.Column="1" IsEnabled="{Binding IsManagedAria2Mode}" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2Executable_Click" VerticalAlignment="Bottom"/>
                 </Grid>
                 <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="9">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_session_file]}" Classes="form-label"/>
-                    <TextBox Text="{Binding Aria2SessionFilePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_session_file]}" AutomationProperties.AutomationId="Aria2SessionFile"/>
+                    <TextBox IsEnabled="{Binding IsManagedAria2Mode}" Text="{Binding Aria2SessionFilePath}" AutomationProperties.Name="{Binding Localization[ui_aria2_session_file]}" AutomationProperties.AutomationId="Aria2SessionFile"/>
                   </StackPanel>
-                  <Button Grid.Column="1" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2SessionFile_Click" VerticalAlignment="Bottom"/>
+                  <Button Grid.Column="1" IsEnabled="{Binding IsManagedAria2Mode}" Classes="secondary" Content="{Binding Localization[ui_browse]}" Click="BrowseAria2SessionFile_Click" VerticalAlignment="Bottom"/>
                 </Grid>
                 <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
                   <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_poll_interval_ms]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding Aria2PollIntervalMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="250" Maximum="60000" Increment="250" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_poll_interval_ms]}" AutomationProperties.AutomationId="Aria2PollInterval"/>
+                    <NumericUpDown Value="{Binding Aria2PollIntervalMilliseconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="250" Maximum="30000" Increment="250" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_poll_interval_ms]}" AutomationProperties.AutomationId="Aria2PollInterval"/>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding Aria2RpcConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="300" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" AutomationProperties.AutomationId="Aria2RpcTimeout"/>
+                    <NumericUpDown Value="{Binding Aria2RpcConnectTimeoutSeconds, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="120" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_rpc_timeout_seconds]}" AutomationProperties.AutomationId="Aria2RpcTimeout"/>
                   </StackPanel>
                   <StackPanel Grid.Column="2" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_max_concurrent]}" Classes="form-label"/>
-                    <NumericUpDown Value="{Binding Aria2MaxConcurrentDownloads, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="1000" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_max_concurrent]}" AutomationProperties.AutomationId="Aria2MaximumConcurrent"/>
+                    <NumericUpDown Value="{Binding Aria2MaxConcurrentDownloads, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="64" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_max_concurrent]}" AutomationProperties.AutomationId="Aria2MaximumConcurrent"/>
                   </StackPanel>
                   <StackPanel Grid.Column="3" Spacing="6">
                     <TextBlock Text="{Binding Localization[ui_aria2_split_count]}" Classes="form-label"/>
@@ -278,15 +278,15 @@
                 </Grid>
                 <StackPanel Spacing="6">
                   <TextBlock Text="{Binding Localization[ui_aria2_minimum_split_mib]}" Classes="form-label"/>
-                  <NumericUpDown Value="{Binding Aria2MinimumSplitSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="1048576" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_minimum_split_mib]}" AutomationProperties.AutomationId="Aria2MinimumSplitSize"/>
+                  <NumericUpDown Value="{Binding Aria2MinimumSplitSizeMegabytes, Mode=TwoWay, Converter={StaticResource InvariantDecimalStringConverter}}" Minimum="1" Maximum="1024" Increment="1" FormatString="0" AutomationProperties.Name="{Binding Localization[ui_aria2_minimum_split_mib]}" AutomationProperties.AutomationId="Aria2MinimumSplitSize"/>
                 </StackPanel>
                 <WrapPanel Orientation="Horizontal">
-                  <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_auto_start]}" IsChecked="{Binding Aria2AutoStartManagedProcess}"/>
+                  <CheckBox IsEnabled="{Binding IsManagedAria2Mode}" Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_auto_start]}" IsChecked="{Binding Aria2AutoStartManagedProcess}"/>
                   <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_continue]}" IsChecked="{Binding Aria2ContinueDownloads}"/>
                   <CheckBox Margin="0,0,18,0" Content="{Binding Localization[ui_aria2_check_certificate]}" IsChecked="{Binding Aria2CheckCertificate}"/>
-                  <CheckBox Content="{Binding Localization[ui_aria2_save_session]}" IsChecked="{Binding Aria2SaveSession}"/>
+                  <CheckBox IsEnabled="{Binding IsManagedAria2Mode}" Content="{Binding Localization[ui_aria2_save_session]}" IsChecked="{Binding Aria2SaveSession}"/>
                 </WrapPanel>
-                <TextBox AcceptsReturn="True" MinHeight="62" PlaceholderText="{Binding Localization[ui_aria2_additional_arguments]}" Text="{Binding Aria2AdditionalArguments}" AutomationProperties.Name="{Binding Localization[ui_aria2_additional_arguments]}" AutomationProperties.AutomationId="Settings_Localization_ui_aria2_additional_arguments"/>
+                <TextBox IsEnabled="{Binding IsManagedAria2Mode}" AcceptsReturn="True" MinHeight="62" PlaceholderText="{Binding Localization[ui_aria2_additional_arguments]}" Text="{Binding Aria2AdditionalArguments}" AutomationProperties.Name="{Binding Localization[ui_aria2_additional_arguments]}" AutomationProperties.AutomationId="Settings_Localization_ui_aria2_additional_arguments"/>
                 <WrapPanel Orientation="Horizontal">
                   <Button Margin="0,0,8,0" Classes="primary" Content="{Binding Localization[ui_apply_and_connect]}" Command="{Binding ApplyAria2ConfigurationCommand}"/>
                   <Button Margin="0,0,8,0" Classes="secondary" Content="{Binding Localization[ui_start_managed_aria2]}" Command="{Binding StartManagedAria2Command}" IsEnabled="{Binding CanStartManagedAria2}"/>

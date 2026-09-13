@@ -35,7 +35,12 @@ public sealed class Aria2RpcClientTests
             Assert.Equal("https://example.test/file.bin", parameters[0][0].GetString());
             JsonElement options = parameters[1];
             Assert.Equal("renamed.bin", options.GetProperty("out").GetString());
-            Assert.Equal("8", options.GetProperty("split").GetString());
+            Assert.Equal("3", options.GetProperty("split").GetString());
+            Assert.Equal("3", options.GetProperty("max-connection-per-server").GetString());
+            Assert.Equal("2089b05ecca3d829", options.GetProperty("gid").GetString());
+            Assert.Equal("false", options.GetProperty("continue").GetString());
+            Assert.Equal("true", options.GetProperty("pause").GetString());
+            Assert.Equal("false", options.GetProperty("check-certificate").GetString());
             Assert.Equal("alice", options.GetProperty("http-user").GetString());
             Assert.Equal("secret", options.GetProperty("http-passwd").GetString());
             Assert.Equal("X-Test: value", options.GetProperty("header")[0].GetString());
@@ -50,7 +55,14 @@ public sealed class Aria2RpcClientTests
             new Dictionary<string, string> { ["X-Test"] = "value" },
             "alice",
             "secret",
-            2048);
+            2048)
+        {
+            Gid = "2089b05ecca3d829",
+            ConnectionCount = 3,
+            ContinueDownloads = false,
+            StartPaused = true,
+            CheckCertificate = false
+        };
 
         string gid = await client.AddUriAsync(request, 8, 1024 * 1024);
 
@@ -87,6 +99,25 @@ public sealed class Aria2RpcClientTests
     }
 
     [Fact]
+    public async Task AddUriRejectsServerGidDifferentFromReservedIdentity()
+    {
+        RecordingHandler handler = new(_ =>
+            """{"jsonrpc":"2.0","id":"1","result":"ffffffffffffffff"}""");
+        Aria2RpcClient client = CreateClient(handler);
+        Aria2AddRequest request = new(
+            new Uri("https://example.test/file.bin"),
+            Path.GetTempPath())
+        {
+            Gid = "2089b05ecca3d829"
+        };
+
+        InvalidDataException error = await Assert.ThrowsAsync<InvalidDataException>(
+            () => client.AddUriAsync(request, 8, 1024 * 1024));
+
+        Assert.Contains("reserved deterministic GID", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TellActiveParsesProgressPathSpeedAndCapabilities()
     {
         RecordingHandler handler = new(_ => """
@@ -102,7 +133,7 @@ public sealed class Aria2RpcClientTests
                 "uploadSpeed":"0",
                 "connections":"4",
                 "dir":"/tmp",
-                "files":[{"path":"/tmp/file.iso","uris":[{"uri":"https://example.test/file.iso","status":"used"}]}]
+                "files":[{"path":"/tmp/file.iso","uris":[{"uri":"https://example.test/file.iso","status":"used"},{"uri":"https://mirror.example.test/file.iso","status":"waiting"}]}]
               }]
             }
             """);
@@ -118,6 +149,8 @@ public sealed class Aria2RpcClientTests
         Assert.Equal(4, task.Connections);
         Assert.True(task.CanPause);
         Assert.False(task.CanResume);
+        Assert.Equal(2, task.EffectiveSources.Count);
+        Assert.Contains(new Uri("https://mirror.example.test/file.iso"), task.EffectiveSources);
     }
 
     [Fact]
