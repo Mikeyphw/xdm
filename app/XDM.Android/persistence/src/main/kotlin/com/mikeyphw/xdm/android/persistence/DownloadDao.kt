@@ -109,6 +109,14 @@ interface QueueDao {
     @Upsert
     suspend fun upsertAll(entities: List<QueueEntity>)
 
+    @Query("""UPDATE queues SET name = :newName, isEnabled = :newEnabled, maxConcurrent = :newMaxConcurrent
+        WHERE id = :id AND name = :expectedName AND isEnabled = :expectedEnabled
+          AND maxConcurrent = :expectedMaxConcurrent AND createdAtEpochMs = :expectedCreatedAtEpochMs""")
+    suspend fun updateIfUnchanged(
+        id: String, expectedName: String, expectedEnabled: Boolean, expectedMaxConcurrent: Int,
+        expectedCreatedAtEpochMs: Long, newName: String, newEnabled: Boolean, newMaxConcurrent: Int,
+    ): Int
+
     @Query("DELETE FROM queues WHERE id = :id")
     suspend fun delete(id: String)
 }
@@ -123,6 +131,15 @@ interface ScheduleDao {
 
     @Upsert
     suspend fun upsertAll(entities: List<ScheduleRuleEntity>)
+
+    @Query("""UPDATE schedule_rules SET queueId = :newQueueId, name = :newName, enabled = :newEnabled, constraintsJson = :newConstraintsJson
+        WHERE id = :id
+          AND ((queueId IS NULL AND :expectedQueueId IS NULL) OR queueId = :expectedQueueId)
+          AND name = :expectedName AND enabled = :expectedEnabled AND constraintsJson = :expectedConstraintsJson""")
+    suspend fun updateIfUnchanged(
+        id: String, expectedQueueId: String?, expectedName: String, expectedEnabled: Boolean, expectedConstraintsJson: String,
+        newQueueId: String?, newName: String, newEnabled: Boolean, newConstraintsJson: String,
+    ): Int
 
     @Query("DELETE FROM schedule_rules WHERE id = :id")
     suspend fun delete(id: String)

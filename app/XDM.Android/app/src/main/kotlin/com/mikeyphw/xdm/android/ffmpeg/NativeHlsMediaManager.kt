@@ -46,6 +46,7 @@ import java.io.IOException
 import java.net.URI
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -57,6 +58,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -91,6 +94,8 @@ class NativeHlsMediaManager(
     )
 
     private enum class RequestedControl { Pause, Cancel }
+    private enum class ControlCommand { Pause, Resume, Cancel }
+    private data class ControlIntent(val sequence: Long, val command: ControlCommand)
 
     private val appContext = context.applicationContext
     private val dao = database.nativeHlsDao()
@@ -100,6 +105,9 @@ class NativeHlsMediaManager(
     private val client = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).build()
     private val running = ConcurrentHashMap<String, Job>()
     private val requestedControl = ConcurrentHashMap<String, RequestedControl>()
+    private val controlSequence = AtomicLong(0L)
+    private val latestControl = ConcurrentHashMap<String, ControlIntent>()
+    private val controlMutexes = ConcurrentHashMap<String, Mutex>()
 
     suspend fun enqueue(
         capture: MediaCaptureRecord,
@@ -196,48 +204,81 @@ class NativeHlsMediaManager(
 
     suspend fun ownsDownload(downloadId: String): Boolean = dao.findByDownloadId(downloadId) != null
 
-    fun pause(downloadId: String) {
-        scope.launch {
-            val job = dao.findByDownloadId(downloadId) ?: return@launch
+    suspend fun pause(downloadId: String) {
+        val intent = registerControlIntent(downloadId, ControlCommand.Pause)
+        controlMutex(downloadId).withLock {
+            if (!isCurrentControl(downloadId, intent)) return@withLock
+            val job = dao.findByDownloadId(downloadId) ?: return@withLock
             requestedControl[downloadId] = RequestedControl.Pause
             val worker = running[downloadId]
             worker?.cancel(CancellationException("Native HLS paused by user"))
             worker?.join()
+            if (!isCurrentControl(downloadId, intent)) return@withLock
             val settled = dao.findByDownloadId(downloadId) ?: job
-            if (settled.stage != NativeHlsExecutionStage.Paused.name) {
+            if (settled.stage !in TERMINAL_NATIVE_HLS_STAGES && settled.stage != NativeHlsExecutionStage.Paused.name) {
                 persistStage(settled, NativeHlsExecutionStage.Paused, NativeHlsFinalizationState.None, "Paused; completed parts are preserved.")
             }
-            repository.findDownload(downloadId)?.let { repository.save(it.copy(state = DownloadState.Paused, speedBytesPerSecond = 0L, updatedAtEpochMs = System.currentTimeMillis())) }
+            repository.findDownload(downloadId)?.let { current ->
+                if (current.state !in setOf(DownloadState.Completed, DownloadState.Cancelled)) {
+                    repository.transitionDownloadStateIfCurrent(
+                        observed = current,
+                        state = DownloadState.Paused,
+                        errorMessage = current.errorMessage,
+                        speedBytesPerSecond = 0L,
+                        allowedStates = setOf(DownloadState.Created, DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Finalizing, DownloadState.RecoveryRequired, DownloadState.Failed),
+                    )
+                }
+            }
         }
     }
 
-    fun resume(downloadId: String) {
-        scope.launch {
-            val job = dao.findByDownloadId(downloadId) ?: return@launch
+    suspend fun resume(downloadId: String) {
+        val intent = registerControlIntent(downloadId, ControlCommand.Resume)
+        controlMutex(downloadId).withLock {
+            if (!isCurrentControl(downloadId, intent)) return@withLock
+            val job = dao.findByDownloadId(downloadId) ?: return@withLock
             requestedControl.remove(downloadId)
+            if (!isCurrentControl(downloadId, intent)) return@withLock
             if (job.stage in setOf(NativeHlsExecutionStage.Paused.name, NativeHlsExecutionStage.Recovering.name, NativeHlsExecutionStage.Failed.name)) {
                 persistStage(job, NativeHlsExecutionStage.Recovering, NativeHlsFinalizationState.None, "Resuming from the durable completed-part ledger.")
+                if (isCurrentControl(downloadId, intent)) launch(job.id)
+            } else if (job.stage !in TERMINAL_NATIVE_HLS_STAGES && running[downloadId]?.isCompleted != false) {
                 launch(job.id)
             }
         }
     }
 
-    fun cancel(downloadId: String) {
-        scope.launch {
-            val job = dao.findByDownloadId(downloadId) ?: return@launch
+    suspend fun cancel(downloadId: String) {
+        val intent = registerControlIntent(downloadId, ControlCommand.Cancel)
+        controlMutex(downloadId).withLock {
+            if (!isCurrentControl(downloadId, intent)) return@withLock
+            val job = dao.findByDownloadId(downloadId) ?: return@withLock
             requestedControl[downloadId] = RequestedControl.Cancel
             val worker = running[downloadId]
             worker?.cancel(CancellationException("Native HLS cancelled by user"))
             worker?.join()
+            if (!isCurrentControl(downloadId, intent)) return@withLock
             withContext(NonCancellable) {
                 val settled = dao.findByDownloadId(downloadId) ?: job
-                if (settled.stage != NativeHlsExecutionStage.Cancelled.name) markCancelled(settled)
+                if (settled.stage !in TERMINAL_NATIVE_HLS_STAGES) markCancelled(settled)
             }
         }
     }
 
-    fun pauseAll() = scope.launch { dao.activeJobs().forEach { pause(it.downloadId) } }
-    fun resumeAll() = scope.launch { dao.pausedJobs().forEach { resume(it.downloadId) } }
+    suspend fun pauseAll() {
+        dao.activeJobs().map(NativeHlsJobEntity::downloadId).distinct().forEach { pause(it) }
+    }
+
+    suspend fun resumeAll() {
+        (dao.activeJobs() + dao.pausedJobs()).map(NativeHlsJobEntity::downloadId).distinct().forEach { resume(it) }
+    }
+
+    private fun registerControlIntent(downloadId: String, command: ControlCommand): ControlIntent =
+        ControlIntent(controlSequence.incrementAndGet(), command).also { latestControl[downloadId] = it }
+
+    private fun isCurrentControl(downloadId: String, intent: ControlIntent): Boolean = latestControl[downloadId] == intent
+
+    private fun controlMutex(downloadId: String): Mutex = controlMutexes.computeIfAbsent(downloadId) { Mutex() }
 
     suspend fun recoverInterruptedJobs() {
         dao.activeJobs().forEach { job ->
@@ -616,7 +657,7 @@ class NativeHlsMediaManager(
         )
         dao.upsertJob(completed)
         repository.findDownload(download.id)?.let { current ->
-            repository.save(current.copy(
+            check(repository.save(current.copy(
                 state = DownloadState.Completed,
                 bytesReceived = bytesCommitted,
                 totalBytes = bytesCommitted,
@@ -626,16 +667,16 @@ class NativeHlsMediaManager(
                 completedArtifactGeneration = current.attemptGeneration,
                 completedArtifactBytes = bytesCommitted,
                 updatedAtEpochMs = now,
-            ))
+            ))) { "Native HLS completed download state changed before completion commit" }
         }
         repository.mediaOutputsForCapture(capture.id)
             .firstOrNull { it.downloadId == download.id }
-            ?.let { repository.saveMediaOutput(it.copy(
+            ?.let { check(repository.saveMediaOutput(it.copy(
                 state = MediaOutputState.Completed,
                 completedArtifactUri = committedUri,
                 completedArtifactGeneration = download.attemptGeneration,
                 updatedAtEpochMs = now,
-            )) }
+            ))) { "Native HLS media output changed before completion commit" } }
         val journal = repository.finalizationForDownload(download.id)
         repository.saveFinalizationJournal(
             (journal ?: FinalizationJournal(
@@ -881,4 +922,9 @@ class NativeHlsMediaManager(
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
     )
+
+    private companion object {
+        val TERMINAL_NATIVE_HLS_STAGES = setOf(NativeHlsExecutionStage.Completed.name, NativeHlsExecutionStage.Cancelled.name)
+    }
+
 }

@@ -36,6 +36,7 @@ internal class SensitivePersistenceMigrator(
                     redactedSummary = "Migrated legacy request URL; approval reset for review",
                     isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(download.sourceUrl),
                     exactUrl = download.sourceUrl,
+                    subjectGeneration = download.attemptGeneration,
                     privateNetworkApproved = false,
                     cleartextCredentialsApproved = false,
                 )
@@ -55,6 +56,7 @@ internal class SensitivePersistenceMigrator(
                     isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(capture.sourceUrl),
                     exactUrl = capture.sourceUrl,
                     pageUrl = capture.pageUrl,
+                    subjectGeneration = capture.rowRevision,
                     privateNetworkApproved = false,
                     cleartextCredentialsApproved = false,
                 )
@@ -68,6 +70,7 @@ internal class SensitivePersistenceMigrator(
                     variantId = variant.id,
                     exactUrl = variant.url,
                     expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                    subjectGeneration = captureOrVariantGeneration(variant.captureId),
                 )
             }
             repository.saveMediaVariants(listOf(variant))
@@ -84,6 +87,7 @@ internal class SensitivePersistenceMigrator(
                     // Historical booleans were not bound to the exact URL and cannot be trusted.
                     privateNetworkApproved = false,
                     cleartextCredentialsApproved = false,
+                    subjectGeneration = command.updatedAtEpochMs,
                 )
             }
             check(repository.saveAutomationCommand(command.copy(privateNetworkApproved = false, cleartextCredentialsApproved = false))) {
@@ -95,6 +99,9 @@ internal class SensitivePersistenceMigrator(
         scrubJsonSidecars(listOf(appContext.filesDir, appContext.cacheDir))
         writeMarkerAtomically()
     }
+
+    private suspend fun captureOrVariantGeneration(captureId: String): Long =
+        repository.findMediaCapture(captureId)?.rowRevision ?: 0L
 
     private fun needsRedaction(value: String?): Boolean {
         val raw = value?.trim().orEmpty()

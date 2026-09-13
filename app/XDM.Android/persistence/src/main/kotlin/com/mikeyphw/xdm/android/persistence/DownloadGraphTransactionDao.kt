@@ -63,60 +63,15 @@ interface DownloadGraphTransactionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertDownloadIgnore(entity: DownloadEntity): Long
 
+    /** Creation-only compatibility entrypoint. Existing rows must use compare-and-set ownership. */
     @Transaction
-    suspend fun upsertDownloadPreservingNewerState(entity: DownloadEntity): Boolean {
-        val inserted = insertDownloadIgnore(entity)
-        if (inserted != -1L) return true
-        return updateDownloadIfNotNewer(
-            id = entity.id,
-            fileName = entity.fileName,
-            sourceUrl = entity.sourceUrl,
-            destinationUri = entity.destinationUri,
-            state = entity.state,
-            backend = entity.backend,
-            requestedBackend = entity.requestedBackend,
-            backendSelectionReason = entity.backendSelectionReason,
-            backendSelectionExplanation = entity.backendSelectionExplanation,
-            allowBackendFallback = entity.allowBackendFallback,
-            bytesReceived = entity.bytesReceived,
-            totalBytes = entity.totalBytes,
-            speedBytesPerSecond = entity.speedBytesPerSecond,
-            queueId = entity.queueId,
-            priority = entity.priority,
-            createdAtEpochMs = entity.createdAtEpochMs,
-            updatedAtEpochMs = entity.updatedAtEpochMs,
-            errorMessage = entity.errorMessage,
-            userLabel = entity.userLabel,
-            conflictPolicy = entity.conflictPolicy,
-            mimeType = entity.mimeType,
-            archived = entity.archived,
-            attemptGeneration = entity.attemptGeneration,
-            completedArtifactUri = entity.completedArtifactUri,
-            completedArtifactGeneration = entity.completedArtifactGeneration,
-            completedArtifactBytes = entity.completedArtifactBytes,
-        ) == 1
-    }
+    suspend fun upsertDownloadPreservingNewerState(entity: DownloadEntity): Boolean =
+        insertDownloadIgnore(entity) != -1L
 
-    @Transaction
-    suspend fun upsertDownloadsPreservingNewerState(entities: List<DownloadEntity>): Boolean {
-        // Preflight the whole batch before mutating anything. Returning false after partial writes
-        // would still commit a Room transaction, so all stale-write checks must happen first.
-        if (entities.any { !canAcceptDownloadWrite(it.id, it.attemptGeneration, it.updatedAtEpochMs) }) return false
-        entities.forEach { entity ->
-            check(upsertDownloadPreservingNewerState(entity)) { "Download batch changed after transactional preflight" }
-        }
-        return true
-    }
-
-    @Query("""SELECT CASE
-        WHEN NOT EXISTS(SELECT 1 FROM downloads WHERE id = :id) THEN 1
-        WHEN EXISTS(SELECT 1 FROM downloads WHERE id = :id AND (
-            attemptGeneration < :attemptGeneration OR
-            (attemptGeneration = :attemptGeneration AND updatedAtEpochMs < :updatedAtEpochMs)
-        )) THEN 1
-        ELSE 0 END""")
-    suspend fun canAcceptDownloadWrite(id: String, attemptGeneration: Long, updatedAtEpochMs: Long): Boolean
-
+    /**
+     * Exact optimistic CAS for an existing Download. The caller supplies the attempt/revision it
+     * actually observed; a newer owner or any intervening row mutation rejects the write.
+     */
     @Query("""UPDATE downloads
         SET fileName = :fileName,
             sourceUrl = :sourceUrl,
@@ -143,11 +98,10 @@ interface DownloadGraphTransactionDao {
             completedArtifactUri = :completedArtifactUri,
             completedArtifactGeneration = :completedArtifactGeneration,
             completedArtifactBytes = :completedArtifactBytes
-        WHERE id = :id AND (
-            attemptGeneration < :attemptGeneration OR
-            (attemptGeneration = :attemptGeneration AND updatedAtEpochMs < :updatedAtEpochMs)
-        )""")
-    suspend fun updateDownloadIfNotNewer(
+        WHERE id = :id
+          AND attemptGeneration = :expectedAttemptGeneration
+          AND updatedAtEpochMs = :expectedUpdatedAtEpochMs""")
+    suspend fun updateDownloadOwnedRevision(
         id: String,
         fileName: String,
         sourceUrl: String,
@@ -174,24 +128,83 @@ interface DownloadGraphTransactionDao {
         completedArtifactUri: String?,
         completedArtifactGeneration: Long?,
         completedArtifactBytes: Long?,
+        expectedAttemptGeneration: Long,
+        expectedUpdatedAtEpochMs: Long,
     ): Int
 
-    @Query("""UPDATE downloads
-        SET state = :state,
-            bytesReceived = :bytesReceived,
-            totalBytes = :totalBytes,
-            speedBytesPerSecond = :speedBytesPerSecond,
-            errorMessage = :errorMessage,
-            updatedAtEpochMs = :newUpdatedAtEpochMs
-        WHERE id = :downloadId AND updatedAtEpochMs = :expectedUpdatedAtEpochMs""")
-    suspend fun updateDownloadCompareAndSwap(
-        downloadId: String,
+    suspend fun updateDownloadOwnedRevision(
+        entity: DownloadEntity,
+        expectedAttemptGeneration: Long,
         expectedUpdatedAtEpochMs: Long,
+    ): Boolean = updateDownloadOwnedRevision(
+        id = entity.id,
+        fileName = entity.fileName,
+        sourceUrl = entity.sourceUrl,
+        destinationUri = entity.destinationUri,
+        state = entity.state,
+        backend = entity.backend,
+        requestedBackend = entity.requestedBackend,
+        backendSelectionReason = entity.backendSelectionReason,
+        backendSelectionExplanation = entity.backendSelectionExplanation,
+        allowBackendFallback = entity.allowBackendFallback,
+        bytesReceived = entity.bytesReceived,
+        totalBytes = entity.totalBytes,
+        speedBytesPerSecond = entity.speedBytesPerSecond,
+        queueId = entity.queueId,
+        priority = entity.priority,
+        createdAtEpochMs = entity.createdAtEpochMs,
+        updatedAtEpochMs = entity.updatedAtEpochMs,
+        errorMessage = entity.errorMessage,
+        userLabel = entity.userLabel,
+        conflictPolicy = entity.conflictPolicy,
+        mimeType = entity.mimeType,
+        archived = entity.archived,
+        attemptGeneration = entity.attemptGeneration,
+        completedArtifactUri = entity.completedArtifactUri,
+        completedArtifactGeneration = entity.completedArtifactGeneration,
+        completedArtifactBytes = entity.completedArtifactBytes,
+        expectedAttemptGeneration = expectedAttemptGeneration,
+        expectedUpdatedAtEpochMs = expectedUpdatedAtEpochMs,
+    ) == 1
+
+    @Query("""SELECT CASE WHEN EXISTS(SELECT 1 FROM downloads
+        WHERE id = :id AND attemptGeneration = :expectedAttemptGeneration
+          AND updatedAtEpochMs = :expectedUpdatedAtEpochMs) THEN 1 ELSE 0 END""")
+    suspend fun isDownloadOwnedRevisionCurrent(
+        id: String,
+        expectedAttemptGeneration: Long,
+        expectedUpdatedAtEpochMs: Long,
+    ): Boolean
+
+    @Query("""UPDATE downloads
+        SET state = :state, speedBytesPerSecond = :speedBytesPerSecond, errorMessage = :errorMessage,
+            updatedAtEpochMs = :newUpdatedAtEpochMs
+        WHERE id = :downloadId
+          AND attemptGeneration = :expectedAttemptGeneration
+          AND updatedAtEpochMs = :expectedUpdatedAtEpochMs
+          AND state IN (:allowedStates)""")
+    suspend fun transitionDownloadStateOwned(
+        downloadId: String,
+        expectedAttemptGeneration: Long,
+        expectedUpdatedAtEpochMs: Long,
+        allowedStates: List<String>,
         state: String,
-        bytesReceived: Long,
-        totalBytes: Long?,
         speedBytesPerSecond: Long,
         errorMessage: String?,
+        newUpdatedAtEpochMs: Long,
+    ): Int
+
+    @Query("""UPDATE downloads SET priority = :priority, updatedAtEpochMs = :newUpdatedAtEpochMs
+        WHERE id = :downloadId
+          AND attemptGeneration = :expectedAttemptGeneration
+          AND updatedAtEpochMs = :expectedUpdatedAtEpochMs
+          AND state IN (:allowedStates)""")
+    suspend fun updateDownloadPriorityOwned(
+        downloadId: String,
+        expectedAttemptGeneration: Long,
+        expectedUpdatedAtEpochMs: Long,
+        allowedStates: List<String>,
+        priority: Int,
         newUpdatedAtEpochMs: Long,
     ): Int
 

@@ -103,7 +103,7 @@ need("catch (cancelled: CancellationException)" in retry_section and "throw canc
 need("onRetryEmbeddedFfmpegOutput = viewModel::retryEmbeddedFfmpegOutput" in xdm_app, "XdmApp does not wire embedded FFmpeg Retry to the ViewModel")
 embedded_retry_marker = "MediaOutputOwnerKind.EmbeddedFfmpeg -> outputs.firstOrNull { it.id == item.outputId }?.let(onRetryEmbeddedFfmpegOutput)"
 need(library_ui.count(embedded_retry_marker) >= 3, "one or more Library embedded-FFmpeg Retry surfaces are still dead actions")
-need("DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(download.id)" in vm, "native-HLS RecoveryRequired retry no longer returns to its durable native owner")
+need(("DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(download.id)" in vm or "DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(current.id)" in vm), "native-HLS RecoveryRequired retry no longer returns to its durable native owner")
 
 need(has(postseal_report, "Second-pass roadmap re-audit", "Literal handoff roadmap closure matrix", "Third-pass roadmap re-audit", "Fourth-pass roadmap re-audit", "Embedded adaptive/live publication crash recovery", "Init-map byte-range recovery identity", "dead Retry action", "No remaining source-level FF01–FF04 promise gap"), "post-seal report does not record the literal v2/v3/v4 roadmap closure audits")
 

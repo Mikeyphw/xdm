@@ -63,10 +63,11 @@ internal object ExternalAutomationDispatch {
                 pageUrl = draft.normalizedPageUrl,
                 headers = headersFor(draft),
                 redactedSummary = "source=${draft.source.name}; host=${draft.originHost ?: "none"}",
+                subjectGeneration = now,
                 privateNetworkApproved = draft.privateNetworkApproved,
                 cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
             )
-        }.isSuccess
+        }.getOrDefault(false)
         if (!envelopeStored) {
             repository.saveAutomationCommand(
                 record.copy(

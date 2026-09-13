@@ -97,4 +97,43 @@ class BrowserHandoffMediaCoordinatorTest {
         assertTrue(rejected)
     }
 
+    @Test fun equalRevisionCannotReplaceExactRequestTruthButMayEnrichFinalHeaders() {
+        val coordinator = BrowserHandoffMediaCoordinator(clock = { 1_000 })
+        val first = coordinator.rememberBrowserRevision(
+            requestUrl = "https://cdn.example/video.mp4?token=one",
+            topPageUrl = "https://site.example/watch",
+            frameUrl = null,
+            kind = MediaSourceKind.ProgressiveMedia,
+            mimeType = "video/mp4",
+            proposedHeaders = mapOf("Cookie" to "sid=one"),
+            finalHeaders = null,
+            revision = 7,
+            expiresAtEpochMs = 10_000,
+            requestFingerprint = "request-aa11bb22",
+        )
+        val enriched = coordinator.rememberBrowserRevision(
+            requestUrl = first.exactRequestUrl,
+            topPageUrl = first.pageUrl,
+            frameUrl = first.frameUrl,
+            kind = MediaSourceKind.ProgressiveMedia,
+            mimeType = "video/mp4",
+            proposedHeaders = first.proposedHeaders.headers,
+            finalHeaders = mapOf("Cookie" to "sid=one", "Referer" to "https://site.example/watch"),
+            revision = 7,
+            expiresAtEpochMs = 20_000,
+            requestFingerprint = first.requestFingerprint,
+        )
+        assertEquals(BrowserHeaderObservationKind.FinalSent, enriched.finalHeaders.kind)
+        assertEquals(20_000L, enriched.expiresAtEpochMs)
+
+        val conflicting = first.copy(
+            exactRequestUrl = "https://cdn.example/video.mp4?token=stale",
+            proposedHeaders = first.proposedHeaders.copy(headers = mapOf("Cookie" to "sid=stale")),
+        )
+        val retained = coordinator.rememberPreparedRevision(conflicting)
+        assertEquals(first.exactRequestUrl, retained.exactRequestUrl)
+        assertEquals("sid=one", retained.usableHeaders["Cookie"])
+        assertEquals(7L, retained.revision)
+    }
+
 }

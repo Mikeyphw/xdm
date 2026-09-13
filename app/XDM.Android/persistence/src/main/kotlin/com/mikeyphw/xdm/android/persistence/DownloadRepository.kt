@@ -145,24 +145,108 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun currentClipboardInbox(): List<ClipboardInboxItem> =
         database.organizationDao().listClipboardInbox().map(ClipboardInboxEntity::toModel)
     suspend fun save(download: Download): Boolean = database.withTransaction {
-        val accepted = database.downloadGraphTransactionDao().upsertDownloadPreservingNewerState(download.redactedForPersistence().toEntity())
-        if (accepted) synchronizeAppMediaOutputLocked(download)
+        val dao = database.downloadGraphTransactionDao()
+        val current = database.downloadDao().findById(download.id)
+        val durable = if (current == null) download else download.copy(
+            updatedAtEpochMs = maxOf(download.updatedAtEpochMs, download.rowRevision + 1L),
+        )
+        val entity = durable.redactedForPersistence().toEntity()
+        val accepted = if (current == null) {
+            dao.upsertDownloadPreservingNewerState(entity)
+        } else if (rejectsTerminalDownloadResurrection(current, entity)) {
+            false
+        } else {
+            dao.updateDownloadOwnedRevision(entity, download.observedAttemptGeneration, download.rowRevision)
+        }
+        if (accepted) synchronizeAppMediaOutputLocked(durable)
         accepted
     }
 
-    /** Persists a coherent download snapshot. A stale row makes the batch fail atomically. */
+    /** Persists a coherent batch only when every caller-observed revision is still current. */
     suspend fun saveAll(downloads: List<Download>): Boolean = database.withTransaction {
-        val accepted = database.downloadGraphTransactionDao()
-            .upsertDownloadsPreservingNewerState(downloads.map { it.redactedForPersistence().toEntity() })
-        if (accepted) downloads.forEach { synchronizeAppMediaOutputLocked(it) }
-        accepted
+        val dao = database.downloadGraphTransactionDao()
+        val currentById = downloads.associate { it.id to database.downloadDao().findById(it.id) }
+        if (downloads.any { item ->
+                val current = currentById[item.id]
+                val entity = item.redactedForPersistence().toEntity()
+                current != null && (
+                    current.attemptGeneration != item.observedAttemptGeneration ||
+                    current.updatedAtEpochMs != item.rowRevision ||
+                    rejectsTerminalDownloadResurrection(current, entity)
+                )
+            }
+        ) return@withTransaction false
+        val durableDownloads = downloads.map { download ->
+            if (currentById[download.id] == null) download else download.copy(
+                updatedAtEpochMs = maxOf(download.updatedAtEpochMs, download.rowRevision + 1L),
+            )
+        }
+        durableDownloads.forEach { download ->
+            val entity = download.redactedForPersistence().toEntity()
+            val current = currentById[download.id]
+            val accepted = if (current == null) dao.upsertDownloadPreservingNewerState(entity)
+            else dao.updateDownloadOwnedRevision(entity, download.observedAttemptGeneration, download.rowRevision)
+            check(accepted) { "Download batch ownership changed during the serialized transaction" }
+        }
+        durableDownloads.forEach { synchronizeAppMediaOutputLocked(it) }
+        true
     }
+
+    suspend fun transitionDownloadStateIfCurrent(
+        observed: Download,
+        state: DownloadState,
+        errorMessage: String?,
+        speedBytesPerSecond: Long = 0L,
+        allowedStates: Set<DownloadState> = setOf(observed.state),
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean = database.downloadGraphTransactionDao().transitionDownloadStateOwned(
+        downloadId = observed.id,
+        expectedAttemptGeneration = observed.observedAttemptGeneration,
+        expectedUpdatedAtEpochMs = observed.rowRevision,
+        allowedStates = allowedStates.map(DownloadState::name),
+        state = state.name,
+        speedBytesPerSecond = speedBytesPerSecond,
+        errorMessage = errorMessage,
+        newUpdatedAtEpochMs = maxOf(updatedAtEpochMs, observed.rowRevision + 1L),
+    ) == 1
+
+    suspend fun reprioritizeDownloads(downloads: List<Download>): Boolean = database.withTransaction {
+        val dao = database.downloadGraphTransactionDao()
+        val movable = listOf(DownloadState.Created, DownloadState.Queued, DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower).map(DownloadState::name)
+        if (downloads.any { !dao.isDownloadOwnedRevisionCurrent(it.id, it.observedAttemptGeneration, it.rowRevision) }) return@withTransaction false
+        downloads.forEach { item ->
+            val changed = dao.updateDownloadPriorityOwned(
+                item.id, item.observedAttemptGeneration, item.rowRevision, movable, item.priority,
+                maxOf(item.updatedAtEpochMs, item.rowRevision + 1L),
+            )
+            if (changed != 1) return@withTransaction false
+        }
+        true
+    }
+
+    private fun rejectsTerminalDownloadResurrection(current: DownloadEntity, next: DownloadEntity): Boolean {
+        val terminal = setOf(DownloadState.Completed.name, DownloadState.Cancelled.name)
+        return current.state in terminal &&
+            next.state !in terminal &&
+            next.attemptGeneration <= current.attemptGeneration
+    }
+
     suspend fun saveQueue(queue: QueueDefinition) = database.queueDao().upsertAll(listOf(queue.toEntity()))
     suspend fun saveQueues(queues: List<QueueDefinition>) = database.queueDao().upsertAll(queues.map { it.toEntity() })
+    suspend fun updateQueueIfUnchanged(observed: QueueDefinition, updated: QueueDefinition): Boolean =
+        database.queueDao().updateIfUnchanged(
+            observed.id, observed.name, observed.isEnabled, observed.maxConcurrent, observed.createdAtEpochMs,
+            updated.name, updated.isEnabled, updated.maxConcurrent,
+        ) == 1
     suspend fun deleteQueue(id: String) = database.downloadGraphTransactionDao().deleteQueueIfUnreferenced(id)
     suspend fun reassignQueueThenDelete(id: String, replacementQueueId: String) = database.downloadGraphTransactionDao().reassignQueueThenDelete(id, replacementQueueId, System.currentTimeMillis())
     suspend fun saveSchedule(rule: ScheduleRule) = database.scheduleDao().upsertAll(listOf(rule.toEntity()))
     suspend fun saveSchedules(rules: List<ScheduleRule>) = database.scheduleDao().upsertAll(rules.map { it.toEntity() })
+    suspend fun updateScheduleIfUnchanged(observed: ScheduleRule, updated: ScheduleRule): Boolean =
+        database.scheduleDao().updateIfUnchanged(
+            observed.id, observed.queueId, observed.name, observed.enabled, observed.constraintsJson,
+            updated.queueId, updated.name, updated.enabled, updated.constraintsJson,
+        ) == 1
     suspend fun deleteSchedule(id: String) = database.scheduleDao().delete(id)
     suspend fun saveRecovery(records: List<RecoveryRecord>) = database.recoveryDao().upsertAll(records.map { it.toEntity() })
     suspend fun saveRecovery(record: RecoveryRecord) = database.recoveryDao().upsert(record.toEntity())
@@ -176,11 +260,28 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun saveChecksumResult(result: ChecksumResult) = database.checksumDao().upsertResult(result.toEntity())
     suspend fun saveVerificationRecord(record: VerificationRecord) = database.checksumDao().upsertVerification(record.toEntity())
     suspend fun saveTrustedManifest(manifest: TrustedBlockManifest) = database.checksumDao().upsertTrustedManifest(manifest.toEntity())
-    suspend fun saveMediaCapture(record: MediaCaptureRecord) = database.withTransaction {
-        database.mediaCaptureDao().upsert(uniqueMediaFileNames(listOf(record)).single().redactedForPersistence().toEntity())
+    suspend fun saveMediaCapture(record: MediaCaptureRecord): Boolean = database.withTransaction {
+        val current = database.mediaCaptureDao().findById(record.id)
+        if (current != null && current.updatedAtEpochMs != record.rowRevision) return@withTransaction false
+        val durable = if (current == null) record else record.copy(
+            updatedAtEpochMs = maxOf(record.updatedAtEpochMs, record.rowRevision + 1L),
+        )
+        val unique = uniqueMediaFileNames(listOf(durable)).single().redactedForPersistence()
+        database.mediaCaptureDao().upsert(unique.toEntity())
+        true
     }
-    suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>) = database.withTransaction {
-        if (records.isNotEmpty()) database.mediaCaptureDao().upsertAll(uniqueMediaFileNames(records).map { it.redactedForPersistence().toEntity() })
+
+    suspend fun saveMediaCaptures(records: List<MediaCaptureRecord>): Boolean = database.withTransaction {
+        if (records.isEmpty()) return@withTransaction true
+        val currentById = records.associate { it.id to database.mediaCaptureDao().findById(it.id) }
+        if (records.any { record -> currentById[record.id]?.updatedAtEpochMs?.let { it != record.rowRevision } == true }) return@withTransaction false
+        val durableRecords = records.map { record ->
+            if (currentById[record.id] == null) record else record.copy(
+                updatedAtEpochMs = maxOf(record.updatedAtEpochMs, record.rowRevision + 1L),
+            )
+        }
+        database.mediaCaptureDao().upsertAll(uniqueMediaFileNames(durableRecords).map { it.redactedForPersistence().toEntity() })
+        true
     }
     suspend fun saveMediaVariants(records: List<MediaVariant>) = database.mediaCaptureDao().upsertVariants(records.map { it.redactedForPersistence().toEntity() })
 
@@ -195,37 +296,66 @@ class DownloadRepository(private val database: AppDatabase) {
 
     suspend fun listMediaObservationEvidence(limit: Int = 384): List<MediaObservationRecord> =
         database.mediaCaptureDao().listObservationEvidence(limit.coerceIn(1, 2048)).map(MediaObservationEntity::toModel)
-    suspend fun replaceMediaVariants(records: List<MediaVariant>) = database.downloadGraphTransactionDao()
-        .replaceMediaVariantsForCaptures(records.map { it.redactedForPersistence().toEntity() }, System.currentTimeMillis())
-    suspend fun replaceMediaVariants(captureId: String, records: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) =
+    suspend fun replaceMediaVariants(
+        capture: MediaCaptureRecord,
+        records: List<MediaVariant>,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean = database.withTransaction {
+        val current = database.mediaCaptureDao().findById(capture.id) ?: return@withTransaction false
+        if (current.updatedAtEpochMs != capture.rowRevision) return@withTransaction false
         database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(
-            captureId,
-            records.filter { it.captureId == captureId }.map { it.redactedForPersistence().toEntity() },
-            updatedAtEpochMs,
+            capture.id,
+            records.filter { it.captureId == capture.id }.map { it.redactedForPersistence().toEntity() },
+            maxOf(updatedAtEpochMs, capture.rowRevision + 1L),
         )
-    suspend fun saveMediaCaptureWithVariants(record: MediaCaptureRecord, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
-        val uniqueRecord = uniqueMediaFileNames(listOf(record)).single()
+        true
+    }
+
+
+    suspend fun saveMediaCaptureWithVariants(
+        record: MediaCaptureRecord,
+        variants: List<MediaVariant>,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean = database.withTransaction {
+        val current = database.mediaCaptureDao().findById(record.id)
+        if (current != null && current.updatedAtEpochMs != record.rowRevision) return@withTransaction false
+        val durableRecord = if (current == null) record else record.copy(
+            updatedAtEpochMs = maxOf(record.updatedAtEpochMs, record.rowRevision + 1L),
+        )
+        val uniqueRecord = uniqueMediaFileNames(listOf(durableRecord)).single()
         database.mediaCaptureDao().upsert(uniqueRecord.redactedForPersistence().toEntity())
-        // Empty is a real replacement result: never leave executable stale variants attached after
-        // a failed/empty refresh or a newer capture revision.
         database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(
             record.id,
             variants.filter { it.captureId == record.id }.map { it.redactedForPersistence().toEntity() },
-            updatedAtEpochMs,
+            maxOf(updatedAtEpochMs, durableRecord.updatedAtEpochMs, record.rowRevision + 1L),
         )
+        true
     }
-    suspend fun saveMediaCapturesWithVariants(records: List<MediaCaptureRecord>, variants: List<MediaVariant>, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.withTransaction {
-        val uniqueRecords = uniqueMediaFileNames(records)
-        if (uniqueRecords.isNotEmpty()) database.mediaCaptureDao().upsertAll(uniqueRecords.map { it.redactedForPersistence().toEntity() })
-        // Replace every capture's variant set inside this transaction, including an explicit empty
-        // set. This prevents a retried/repaired browser import from retaining stale variants from
-        // an earlier partial session revision.
-        records.forEach { record ->
-            database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(record.id,
-                variants.filter { it.captureId == record.id }.map { it.redactedForPersistence().toEntity() },
-                updatedAtEpochMs,
+
+    suspend fun saveMediaCapturesWithVariants(
+        records: List<MediaCaptureRecord>,
+        variants: List<MediaVariant>,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean = database.withTransaction {
+        if (records.isEmpty()) return@withTransaction true
+        val currentById = records.associate { it.id to database.mediaCaptureDao().findById(it.id) }
+        if (records.any { record -> currentById[record.id]?.updatedAtEpochMs?.let { it != record.rowRevision } == true }) return@withTransaction false
+        val durableRecords = records.map { record ->
+            if (currentById[record.id] == null) record else record.copy(
+                updatedAtEpochMs = maxOf(record.updatedAtEpochMs, record.rowRevision + 1L),
             )
         }
+        val uniqueRecords = uniqueMediaFileNames(durableRecords)
+        database.mediaCaptureDao().upsertAll(uniqueRecords.map { it.redactedForPersistence().toEntity() })
+        val grouped = variants.groupBy(MediaVariant::captureId)
+        durableRecords.forEach { record ->
+            database.downloadGraphTransactionDao().replaceMediaVariantsForCapture(
+                record.id,
+                grouped[record.id].orEmpty().map { it.redactedForPersistence().toEntity() },
+                maxOf(updatedAtEpochMs, record.updatedAtEpochMs, record.rowRevision + 1L),
+            )
+        }
+        true
     }
     private suspend fun uniqueMediaFileNames(records: List<MediaCaptureRecord>): List<MediaCaptureRecord> {
         if (records.isEmpty()) return emptyList()
@@ -263,7 +393,62 @@ class DownloadRepository(private val database: AppDatabase) {
 
     suspend fun variantsForMediaCapture(captureId: String): List<MediaVariant> = database.mediaCaptureDao().variantsForCapture(captureId).map { it.toModel() }
     suspend fun mediaOutputsForCapture(captureId: String): List<MediaOutputRecord> = database.mediaCaptureDao().outputsForCapture(captureId).map { it.toModel() }
-    suspend fun saveMediaOutput(record: MediaOutputRecord) = database.mediaCaptureDao().upsertOutput(record.toEntity())
+    suspend fun saveMediaOutput(record: MediaOutputRecord): Boolean = database.withTransaction {
+        val dao = database.mediaCaptureDao()
+        val current = dao.findOutputById(record.id)
+        if (current == null) {
+            dao.upsertOutput(record.toEntity())
+            return@withTransaction true
+        }
+        if (current.attemptGeneration != record.observedAttemptGeneration || current.updatedAtEpochMs != record.rowRevision) return@withTransaction false
+        val terminal = setOf(MediaOutputState.Completed.name, MediaOutputState.Cancelled.name, MediaOutputState.Hidden.name)
+        if (current.state in terminal && record.state.name != current.state) return@withTransaction false
+        val durable = record.copy(updatedAtEpochMs = maxOf(record.updatedAtEpochMs, record.rowRevision + 1L))
+        dao.upsertOutput(durable.toEntity())
+        true
+    }
+    /**
+     * Advances a media output from the currently durable owner/revision. Callers identify the immutable
+     * owner generation; this method resolves the latest row inside the Room transaction and then uses an
+     * exact state+revision compare-and-set. Late callbacks therefore cannot resurrect or downgrade a
+     * terminal output, while a legitimate worker does not need to keep a mutable row snapshot in memory.
+     */
+    suspend fun transitionMediaOutputOwned(
+        id: String,
+        ownerKind: MediaOutputOwnerKind,
+        ownerId: String,
+        attemptGeneration: Long,
+        nextState: MediaOutputState,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+        completedArtifactUri: String? = null,
+        completedArtifactGeneration: Long? = null,
+    ): MediaOutputRecord? = database.withTransaction {
+        val dao = database.mediaCaptureDao()
+        val current = dao.findOutputById(id) ?: return@withTransaction null
+        if (current.ownerKind != ownerKind.name || current.ownerId != ownerId || current.attemptGeneration != attemptGeneration) {
+            return@withTransaction null
+        }
+        val terminal = setOf(MediaOutputState.Completed.name, MediaOutputState.Cancelled.name, MediaOutputState.Hidden.name)
+        if (current.state in terminal && nextState.name != current.state) return@withTransaction null
+        val nextRevision = maxOf(updatedAtEpochMs, current.updatedAtEpochMs + 1L)
+        val replaceArtifact = completedArtifactUri != null || completedArtifactGeneration != null
+        val changed = dao.transitionOutputIfCurrent(
+            id = id,
+            ownerKind = ownerKind.name,
+            ownerId = ownerId,
+            attemptGeneration = attemptGeneration,
+            expectedState = current.state,
+            expectedRevision = current.updatedAtEpochMs,
+            nextState = nextState.name,
+            completedArtifactUri = completedArtifactUri,
+            completedArtifactGeneration = completedArtifactGeneration,
+            replaceArtifact = replaceArtifact,
+            nextRevision = nextRevision,
+        )
+        if (changed != 1) return@withTransaction null
+        dao.findOutputById(id)?.toModel()
+    }
+
     suspend fun deleteMediaOutput(id: String): Boolean = database.mediaCaptureDao().deleteOutput(id) > 0
     suspend fun hideAppMediaOutput(id: String, updatedAtEpochMs: Long = System.currentTimeMillis()): Boolean =
         database.mediaCaptureDao().hideAppOutput(id, updatedAtEpochMs) > 0
@@ -753,6 +938,8 @@ private fun DownloadEntity.toModel() = Download(
     completedArtifactUri = completedArtifactUri,
     completedArtifactGeneration = completedArtifactGeneration,
     completedArtifactBytes = completedArtifactBytes,
+    observedAttemptGeneration = attemptGeneration,
+    rowRevision = updatedAtEpochMs,
 )
 private fun Download.toEntity() = DownloadEntity(
     id = id,
@@ -781,6 +968,8 @@ private fun Download.toEntity() = DownloadEntity(
     completedArtifactUri = completedArtifactUri,
     completedArtifactGeneration = completedArtifactGeneration,
     completedArtifactBytes = completedArtifactBytes,
+    observedAttemptGeneration = attemptGeneration,
+    rowRevision = updatedAtEpochMs,
 )
 private fun QueueEntity.toModel() = QueueDefinition(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun QueueDefinition.toEntity() = QueueEntity(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
@@ -872,6 +1061,7 @@ private fun MediaCaptureEntity.toModel() = MediaCaptureRecord(
     protectionKind = safeEnum(protectionKind, MediaProtectionKind.None),
     nativeCapability = safeEnum(nativeCapability, MediaNativeCapability.Unknown),
     logicalConfidence = logicalConfidence.coerceIn(0, 200),
+    rowRevision = updatedAtEpochMs,
 )
 
 private fun MediaCaptureRecord.toEntity() = MediaCaptureEntity(
@@ -1006,6 +1196,8 @@ private fun MediaOutputEntity.toModel() = MediaOutputRecord(
     completedArtifactGeneration = completedArtifactGeneration,
     createdAtEpochMs = createdAtEpochMs,
     updatedAtEpochMs = updatedAtEpochMs,
+    observedAttemptGeneration = attemptGeneration,
+    rowRevision = updatedAtEpochMs,
 )
 
 private fun MediaOutputRecord.toEntity() = MediaOutputEntity(

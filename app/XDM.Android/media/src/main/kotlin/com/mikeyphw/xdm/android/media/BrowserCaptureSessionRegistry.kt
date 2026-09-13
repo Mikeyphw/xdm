@@ -31,7 +31,8 @@ class BrowserCaptureSessionRegistry(private val root: File) {
             refresh()
             return
         }
-        atomicWrite(target, propertiesFor(summary))
+        val durable = if (existing != null && existing.revision == summary.revision) mergeEqualRevision(existing, summary) else summary
+        atomicWrite(target, propertiesFor(durable))
         refresh()
     }
 
@@ -61,7 +62,29 @@ class BrowserCaptureSessionRegistry(private val root: File) {
         val target = fileFor(summary.sessionId)
         val existing = load(target)
         if (existing != null && existing.revision > summary.revision) return
-        atomicWrite(target, propertiesFor(summary))
+        val durable = if (existing != null && existing.revision == summary.revision) mergeEqualRevision(existing, summary) else summary
+        atomicWrite(target, propertiesFor(durable))
+    }
+
+    private fun mergeEqualRevision(
+        existing: BrowserCaptureSessionSummary,
+        incoming: BrowserCaptureSessionSummary,
+    ): BrowserCaptureSessionSummary {
+        val mergedCandidates = (existing.candidates + incoming.candidates)
+            .groupBy { candidate -> candidate.captureId.ifBlank { candidate.stableMediaId } }
+            .map { (_, revisions) -> revisions.maxByOrNull { it.evidence.size } ?: revisions.first() }
+            .sortedWith(compareBy<BrowserCaptureCandidateSummary>({ it.captureId }, { it.stableMediaId }))
+            .take(MAX_CANDIDATES)
+        return existing.copy(
+            pageTitle = incoming.pageTitle.takeIf(String::isNotBlank) ?: existing.pageTitle,
+            pageHost = incoming.pageHost.takeIf(String::isNotBlank) ?: existing.pageHost,
+            createdAtEpochMs = minOf(existing.createdAtEpochMs, incoming.createdAtEpochMs),
+            updatedAtEpochMs = maxOf(existing.updatedAtEpochMs, incoming.updatedAtEpochMs),
+            totalCandidateCount = maxOf(existing.totalCandidateCount, incoming.totalCandidateCount, mergedCandidates.size),
+            importedCandidateCount = maxOf(existing.importedCandidateCount, incoming.importedCandidateCount, mergedCandidates.size),
+            truncated = existing.truncated || incoming.truncated,
+            candidates = mergedCandidates,
+        )
     }
 
     private fun propertiesFor(summary: BrowserCaptureSessionSummary): Properties = Properties().apply {

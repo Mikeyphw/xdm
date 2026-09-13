@@ -113,6 +113,9 @@ data class MediaOutputRecord(
     val completedArtifactGeneration: Long? = null,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
+    /** Observed durable owner/revision. copy() intentionally preserves these while fields mutate. */
+    val observedAttemptGeneration: Long = attemptGeneration,
+    val rowRevision: Long = updatedAtEpochMs,
 )
 
 data class MediaVariant(
@@ -188,6 +191,8 @@ data class MediaCaptureRecord(
     val protectionKind: MediaProtectionKind = MediaProtectionKind.None,
     val nativeCapability: MediaNativeCapability = MediaNativeCapability.Unknown,
     val logicalConfidence: Int = 0,
+    /** Observed Room row revision used to reject stale capture/variant refreshes. */
+    val rowRevision: Long = updatedAtEpochMs,
 ) {
     val isPlaylist: Boolean get() = kind == MediaSourceKind.HlsPlaylist || kind == MediaSourceKind.DashManifest
     val hasMetadata: Boolean get() = mimeType != null || container != null || durationMs != null || thumbnailUrl != null
@@ -404,6 +409,9 @@ data class Download(
     val completedArtifactUri: String? = null,
     val completedArtifactGeneration: Long? = null,
     val completedArtifactBytes: Long? = null,
+    /** Observed durable owner/revision used by optimistic compare-and-set writes. */
+    val observedAttemptGeneration: Long = attemptGeneration,
+    val rowRevision: Long = updatedAtEpochMs,
 ) {
     val progressFraction: Float
         get() = totalBytes?.takeIf { it > 0 }?.let { (bytesReceived.toDouble() / it).coerceIn(0.0, 1.0).toFloat() } ?: 0f

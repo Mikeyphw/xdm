@@ -63,7 +63,7 @@ class FieldBugfixDownloadActionsStorageContractTest {
         listOf("viewModel::cancelDownload", "viewModel::redownload", "viewModel::moveDownloadInQueue", "viewModel::startNow", "viewModel::deleteSavedFile").forEach { expected ->
             assertTrue("Downloads route must pass $expected", app.contains(expected))
         }
-        listOf("fun cancelDownload", "fun redownloadPreserving", "fun moveDownloadInQueue", "fun startNow", "fun deleteSavedFile", "transferRuntime.cancel", "repository.saveAll(reprioritized)").forEach { expected ->
+        listOf("fun cancelDownload", "fun redownloadPreserving", "fun moveDownloadInQueue", "fun startNow", "fun deleteSavedFile", "transferRuntime.cancel", "repository.reprioritizeDownloads(reprioritized)").forEach { expected ->
             assertTrue("MainViewModel must implement $expected", viewModel.contains(expected))
         }
     }

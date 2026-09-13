@@ -38,6 +38,8 @@ data class SecureRequestEnvelope(
     val isExpiringUrl: Boolean = false,
     val expiresAtEpochMs: Long = Long.MAX_VALUE,
     val attemptGeneration: Long = 0L,
+    /** Monotonic owner of this logical subject sidecar; stale/equal-conflicting writes are rejected. */
+    val subjectGeneration: Long = attemptGeneration,
     val privateNetworkApproved: Boolean = false,
     val cleartextCredentialsApproved: Boolean = false,
     val privateNetworkApprovalScopes: Set<String> = emptySet(),
@@ -48,7 +50,8 @@ data class SecureRequestEnvelope(
 )
 
 interface SecureRequestEnvelopeStore {
-    fun put(envelope: SecureRequestEnvelope)
+    /** Returns false when a stale or equal-generation conflicting owner attempts to replace the sidecar. */
+    fun put(envelope: SecureRequestEnvelope): Boolean
     fun get(subjectId: String, nowEpochMs: Long = System.currentTimeMillis()): SecureRequestEnvelope?
     fun delete(subjectId: String)
     fun deleteExpired(nowEpochMs: Long = System.currentTimeMillis())
@@ -58,12 +61,15 @@ class InMemorySecureRequestEnvelopeStore : SecureRequestEnvelopeStore {
     private val values = linkedMapOf<String, SecureRequestEnvelope>()
 
     @Synchronized
-    override fun put(envelope: SecureRequestEnvelope) {
+    override fun put(envelope: SecureRequestEnvelope): Boolean {
         require(envelope.subjectId.isNotBlank()) { "Secure request subject must not be blank" }
         require(envelope.boundHost == ExternalUrlPolicy.originHost(envelope.exactUrl)) {
             "Secure request envelope host binding does not match its exact URL"
         }
+        val current = values[envelope.subjectId]
+        if (!canReplaceSecureEnvelope(current, envelope)) return false
         values[envelope.subjectId] = envelope
+        return true
     }
 
     @Synchronized
@@ -96,10 +102,12 @@ class AndroidSecureRequestEnvelopeStore(
     private val root = File(context.noBackupFilesDir, "secure-request-envelopes-v1").apply { mkdirs() }
     private val lock = Any()
 
-    override fun put(envelope: SecureRequestEnvelope) = synchronized(lock) {
+    override fun put(envelope: SecureRequestEnvelope): Boolean = synchronized(lock) {
         require(envelope.subjectId.isNotBlank()) { "Secure request subject must not be blank" }
         val exactHost = ExternalUrlPolicy.originHost(envelope.exactUrl)
         require(envelope.boundHost == exactHost) { "Secure request envelope host binding does not match its exact URL" }
+        val current = get(envelope.subjectId, clock())
+        if (!canReplaceSecureEnvelope(current, envelope)) return@synchronized false
         val plaintext = envelope.toJson().toString().toByteArray(Charsets.UTF_8)
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey())
@@ -112,6 +120,7 @@ class AndroidSecureRequestEnvelopeStore(
             .toString()
             .toByteArray(Charsets.UTF_8)
         atomicWrite(fileFor(envelope.subjectId), payload)
+        true
     }
 
     override fun get(subjectId: String, nowEpochMs: Long): SecureRequestEnvelope? = synchronized(lock) {
@@ -221,6 +230,23 @@ class AndroidSecureRequestEnvelopeStore(
     }
 }
 
+private fun canReplaceSecureEnvelope(current: SecureRequestEnvelope?, incoming: SecureRequestEnvelope): Boolean {
+    if (current == null) return true
+    if (incoming.subjectGeneration > current.subjectGeneration) return true
+    if (incoming.subjectGeneration < current.subjectGeneration) return false
+    return current.exactUrl == incoming.exactUrl &&
+        current.boundHost == incoming.boundHost &&
+        current.pageUrl == incoming.pageUrl &&
+        current.headers == incoming.headers &&
+        current.requestKind == incoming.requestKind &&
+        current.transferShape == incoming.transferShape &&
+        current.mirrors == incoming.mirrors &&
+        current.privateNetworkApproved == incoming.privateNetworkApproved &&
+        current.cleartextCredentialsApproved == incoming.cleartextCredentialsApproved &&
+        current.privateNetworkApprovalScopes == incoming.privateNetworkApprovalScopes &&
+        current.cleartextCredentialApprovalScopes == incoming.cleartextCredentialApprovalScopes
+}
+
 private fun SecureRequestEnvelope.toJson(): JSONObject = JSONObject()
     .put("subjectId", subjectId)
     .put("exactUrl", exactUrl)
@@ -234,6 +260,7 @@ private fun SecureRequestEnvelope.toJson(): JSONObject = JSONObject()
     .put("isExpiringUrl", isExpiringUrl)
     .put("expiresAtEpochMs", expiresAtEpochMs)
     .put("attemptGeneration", attemptGeneration)
+    .put("subjectGeneration", subjectGeneration)
     .put("privateNetworkApproved", privateNetworkApproved)
     .put("cleartextCredentialsApproved", cleartextCredentialsApproved)
     .put("privateNetworkApprovalScopes", JSONArray(privateNetworkApprovalScopes.toList().sorted()))
@@ -263,6 +290,7 @@ private fun secureRequestEnvelopeFromJson(json: JSONObject): SecureRequestEnvelo
     isExpiringUrl = json.optBoolean("isExpiringUrl"),
     expiresAtEpochMs = json.optLong("expiresAtEpochMs", Long.MAX_VALUE),
     attemptGeneration = json.optLong("attemptGeneration", 0L),
+    subjectGeneration = json.optLong("subjectGeneration", json.optLong("attemptGeneration", 0L)),
     privateNetworkApproved = json.optBoolean("privateNetworkApproved"),
     cleartextCredentialsApproved = json.optBoolean("cleartextCredentialsApproved"),
     privateNetworkApprovalScopes = json.optJSONArray("privateNetworkApprovalScopes")?.let { array ->

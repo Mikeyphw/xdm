@@ -40,6 +40,7 @@ matrix_owned_validators=(
 # carry-forward seals, run exactly once here.
 validators=(
   tools/validate-xar01-build-provenance.py
+  tools/validate-xar02-concurrency-cas.py
   tools/validate-gradle-task-graph-optimization.py
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
   tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py

@@ -90,4 +90,45 @@ class SecureRequestEnvelopeStoreTest {
         MediaRequestHandoffStore.forget("playlist-source")
         MediaRequestHandoffStore.forget("playlist-clone")
     }
+    @Test
+    fun exactRequestSidecarRejectsStaleAndConflictingEqualGenerations() {
+        val store = InMemorySecureRequestEnvelopeStore()
+        MediaRequestHandoffStore.initialize(store)
+        val id = "capture-generation-owned"
+        assertTrue(
+            MediaRequestHandoffStore.rememberCapture(
+                captureId = id,
+                headers = mapOf("Cookie" to "new"),
+                redactedSummary = "new",
+                isExpiringUrl = true,
+                exactUrl = "https://cdn.example/new?token=2",
+                subjectGeneration = 2L,
+            ),
+        )
+        assertFalse(
+            MediaRequestHandoffStore.rememberCapture(
+                captureId = id,
+                headers = mapOf("Cookie" to "old"),
+                redactedSummary = "old",
+                isExpiringUrl = true,
+                exactUrl = "https://cdn.example/old?token=1",
+                subjectGeneration = 1L,
+            ),
+        )
+        assertFalse(
+            MediaRequestHandoffStore.rememberCapture(
+                captureId = id,
+                headers = mapOf("Cookie" to "conflict"),
+                redactedSummary = "conflict",
+                isExpiringUrl = true,
+                exactUrl = "https://cdn.example/conflict?token=3",
+                subjectGeneration = 2L,
+            ),
+        )
+        val retained = MediaRequestHandoffStore.forCapture(id)
+        assertEquals(2L, retained?.subjectGeneration)
+        assertEquals("new", retained?.headers?.get("Cookie"))
+        MediaRequestHandoffStore.forgetCapture(id)
+    }
+
 }

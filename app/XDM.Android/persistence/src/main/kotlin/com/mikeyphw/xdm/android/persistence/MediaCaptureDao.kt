@@ -25,6 +25,9 @@ interface MediaCaptureDao {
     @Query("SELECT * FROM media_outputs WHERE captureId = :captureId ORDER BY createdAtEpochMs DESC")
     suspend fun outputsForCapture(captureId: String): List<MediaOutputEntity>
 
+    @Query("SELECT * FROM media_outputs WHERE id = :id LIMIT 1")
+    suspend fun findOutputById(id: String): MediaOutputEntity?
+
     @Query("SELECT * FROM media_outputs WHERE ownerKind = 'AppDownload' AND downloadId = :downloadId ORDER BY attemptGeneration DESC, createdAtEpochMs DESC")
     suspend fun appOutputsForDownload(downloadId: String): List<MediaOutputEntity>
 
@@ -54,6 +57,33 @@ interface MediaCaptureDao {
 
     @Upsert
     suspend fun upsertOutput(entity: MediaOutputEntity)
+
+    @Query("""
+        UPDATE media_outputs SET
+            state = :nextState,
+            completedArtifactUri = CASE WHEN :replaceArtifact THEN :completedArtifactUri ELSE completedArtifactUri END,
+            completedArtifactGeneration = CASE WHEN :replaceArtifact THEN :completedArtifactGeneration ELSE completedArtifactGeneration END,
+            updatedAtEpochMs = :nextRevision
+        WHERE id = :id
+          AND ownerKind = :ownerKind
+          AND ownerId = :ownerId
+          AND attemptGeneration = :attemptGeneration
+          AND state = :expectedState
+          AND updatedAtEpochMs = :expectedRevision
+    """)
+    suspend fun transitionOutputIfCurrent(
+        id: String,
+        ownerKind: String,
+        ownerId: String,
+        attemptGeneration: Long,
+        expectedState: String,
+        expectedRevision: Long,
+        nextState: String,
+        completedArtifactUri: String?,
+        completedArtifactGeneration: Long?,
+        replaceArtifact: Boolean,
+        nextRevision: Long,
+    ): Int
 
     @Query("DELETE FROM media_outputs WHERE id = :id")
     suspend fun deleteOutput(id: String): Int

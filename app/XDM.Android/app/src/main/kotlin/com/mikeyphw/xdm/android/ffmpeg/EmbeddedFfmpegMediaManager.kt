@@ -135,14 +135,16 @@ class EmbeddedFfmpegMediaManager(
                 }
                 if (journal != null && journalMatchesOutput(journal, output) && committedPublicationProven(journal)) {
                     val committedUri = requireNotNull(journal.committedUri)
-                    repository.saveMediaOutput(
-                        output.copy(
-                            state = MediaOutputState.Completed,
-                            completedArtifactUri = committedUri,
-                            completedArtifactGeneration = output.attemptGeneration,
-                            updatedAtEpochMs = now,
-                        ),
-                    )
+                    repository.transitionMediaOutputOwned(
+                        id = output.id,
+                        ownerKind = output.ownerKind,
+                        ownerId = output.ownerId,
+                        attemptGeneration = output.attemptGeneration,
+                        nextState = MediaOutputState.Completed,
+                        updatedAtEpochMs = now,
+                        completedArtifactUri = committedUri,
+                        completedArtifactGeneration = output.attemptGeneration,
+                    ) ?: return@forEach
                     updateProgress(
                         output.ownerId,
                         EmbeddedFfmpegJobStage.Completed,
@@ -151,7 +153,14 @@ class EmbeddedFfmpegMediaManager(
                     )
                     cleanupPublicationArtifacts(artifacts.stagingFile, artifacts.checkpointFile, artifacts.journalFile)
                 } else {
-                    repository.saveMediaOutput(output.copy(state = MediaOutputState.RecoveryRequired, updatedAtEpochMs = now))
+                    repository.transitionMediaOutputOwned(
+                        id = output.id,
+                        ownerKind = output.ownerKind,
+                        ownerId = output.ownerId,
+                        attemptGeneration = output.attemptGeneration,
+                        nextState = MediaOutputState.RecoveryRequired,
+                        updatedAtEpochMs = now,
+                    ) ?: return@forEach
                     updateProgress(output.ownerId, EmbeddedFfmpegJobStage.RecoveryRequired, detail = "Processing was interrupted; staged work is preserved for explicit retry/recovery.")
                 }
             }
@@ -188,7 +197,7 @@ class EmbeddedFfmpegMediaManager(
             createdAtEpochMs = now,
             updatedAtEpochMs = now,
         )
-        repository.saveMediaOutput(output)
+        check(repository.saveMediaOutput(output)) { "Embedded FFmpeg output owner changed before queue commit" }
         updateProgress(ownerId, EmbeddedFfmpegJobStage.Queued, percent = 0, detail = spec.postProcessing.userLabel)
         val job = scope.launch(start = CoroutineStart.LAZY) { execute(output, capture, spec, kind) }
         activeJobs[ownerId] = job
@@ -216,7 +225,17 @@ class EmbeddedFfmpegMediaManager(
             fail(seed, MediaOutputState.Failed, "Destination preparation failed: ${safeMessage(error)}")
             return
         }
-        repository.saveMediaOutput(seed.copy(state = MediaOutputState.Active, updatedAtEpochMs = System.currentTimeMillis()))
+        if (repository.transitionMediaOutputOwned(
+                id = seed.id,
+                ownerKind = seed.ownerKind,
+                ownerId = seed.ownerId,
+                attemptGeneration = seed.attemptGeneration,
+                nextState = MediaOutputState.Active,
+            ) == null
+        ) {
+            updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Cancelled, detail = "Output ownership changed before embedded FFmpeg could start.")
+            return
+        }
         var committedPromotion: DestinationPromotionResult? = null
         try {
             prepared.artifacts.stagingFile.parentFile?.mkdirs()
@@ -262,16 +281,22 @@ class EmbeddedFfmpegMediaManager(
             // the crash-recovery journal before Room completion metadata is durable.
             withContext(NonCancellable) {
                 val now = System.currentTimeMillis()
-                repository.saveMediaOutput(
-                    seed.copy(
-                        state = MediaOutputState.Completed,
-                        completedArtifactUri = promotion.committedUri,
-                        completedArtifactGeneration = seed.attemptGeneration,
-                        updatedAtEpochMs = now,
-                    ),
+                val completed = repository.transitionMediaOutputOwned(
+                    id = seed.id,
+                    ownerKind = seed.ownerKind,
+                    ownerId = seed.ownerId,
+                    attemptGeneration = seed.attemptGeneration,
+                    nextState = MediaOutputState.Completed,
+                    updatedAtEpochMs = now,
+                    completedArtifactUri = promotion.committedUri,
+                    completedArtifactGeneration = seed.attemptGeneration,
                 )
-                updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Completed, percent = 100, detail = verification.message)
-                runCatching { prepared.deleteArtifacts() }
+                if (completed != null) {
+                    updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Completed, percent = 100, detail = verification.message)
+                    runCatching { prepared.deleteArtifacts() }
+                } else {
+                    updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.RecoveryRequired, detail = "Publication committed but output ownership changed before metadata reconciliation; startup recovery will retain the journal.")
+                }
             }
         } catch (cancelled: CancellationException) {
             withContext(NonCancellable) {
@@ -279,7 +304,13 @@ class EmbeddedFfmpegMediaManager(
                     fail(seed, MediaOutputState.RecoveryRequired, "Publication committed while cancellation raced metadata reconciliation; startup recovery will adopt the committed artifact.")
                 } else {
                     runCatching { prepared.deleteArtifacts() }
-                    repository.saveMediaOutput(seed.copy(state = MediaOutputState.Cancelled, updatedAtEpochMs = System.currentTimeMillis()))
+                    repository.transitionMediaOutputOwned(
+                        id = seed.id,
+                        ownerKind = seed.ownerKind,
+                        ownerId = seed.ownerId,
+                        attemptGeneration = seed.attemptGeneration,
+                        nextState = MediaOutputState.Cancelled,
+                    )
                     updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Cancelled, detail = "Processing cancelled; staged output removed.")
                 }
             }
@@ -352,7 +383,13 @@ class EmbeddedFfmpegMediaManager(
     }
 
     private suspend fun fail(seed: MediaOutputRecord, state: MediaOutputState, message: String) {
-        repository.saveMediaOutput(seed.copy(state = state, updatedAtEpochMs = System.currentTimeMillis()))
+        repository.transitionMediaOutputOwned(
+            id = seed.id,
+            ownerKind = seed.ownerKind,
+            ownerId = seed.ownerId,
+            attemptGeneration = seed.attemptGeneration,
+            nextState = state,
+        )
         updateProgress(
             seed.ownerId,
             if (state == MediaOutputState.RecoveryRequired) EmbeddedFfmpegJobStage.RecoveryRequired else EmbeddedFfmpegJobStage.Failed,

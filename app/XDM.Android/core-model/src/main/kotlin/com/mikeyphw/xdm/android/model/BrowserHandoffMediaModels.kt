@@ -214,5 +214,36 @@ object BrowserHandoffMediaPolicy {
         return ProtectedMediaClassification(evidence.isNotEmpty(), evidence, evidence.isNotEmpty())
     }
 
-    fun shouldReplaceSession(existingRevision: Long?, incomingRevision: Long): Boolean = existingRevision == null || incomingRevision >= existingRevision
+    fun shouldReplaceSession(existingRevision: Long?, incomingRevision: Long): Boolean = existingRevision == null || incomingRevision > existingRevision
+
+    /**
+     * Equal revisions are not last-writer-wins. They may only enrich the same exact request with
+     * stronger final-header evidence/ack state; conflicting request identity or header truth is
+     * rejected by returning null.
+     */
+    fun mergeEqualRevision(
+        existing: BrowserMediaSessionRevision,
+        incoming: BrowserMediaSessionRevision,
+    ): BrowserMediaSessionRevision? {
+        if (existing.revision != incoming.revision ||
+            existing.stableMediaId != incoming.stableMediaId ||
+            existing.exactRequestUrl != incoming.exactRequestUrl ||
+            existing.pageUrl != incoming.pageUrl ||
+            existing.frameUrl != incoming.frameUrl ||
+            existing.requestFingerprint != incoming.requestFingerprint
+        ) return null
+        if (existing.proposedHeaders.headers != incoming.proposedHeaders.headers) return null
+        val finalHeaders = when {
+            existing.finalHeaders.kind == BrowserHeaderObservationKind.FinalSent &&
+                incoming.finalHeaders.kind == BrowserHeaderObservationKind.FinalSent ->
+                existing.finalHeaders.takeIf { it.headers == incoming.finalHeaders.headers } ?: return null
+            incoming.finalHeaders.kind == BrowserHeaderObservationKind.FinalSent -> incoming.finalHeaders
+            else -> existing.finalHeaders
+        }
+        return existing.copy(
+            finalHeaders = finalHeaders,
+            expiresAtEpochMs = maxOf(existing.expiresAtEpochMs, incoming.expiresAtEpochMs),
+            acknowledgedByAndroid = existing.acknowledgedByAndroid || incoming.acknowledgedByAndroid,
+        )
+    }
 }

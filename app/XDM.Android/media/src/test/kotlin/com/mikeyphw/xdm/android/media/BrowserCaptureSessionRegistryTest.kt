@@ -101,4 +101,41 @@ class BrowserCaptureSessionRegistryTest {
         }
     }
 
+    @Test
+    fun equalRevisionMergesCandidatesInsteadOfReplacingTheSession() {
+        val root = Files.createTempDirectory("browser-capture-session-equal").toFile()
+        try {
+            val registry = BrowserCaptureSessionRegistry(root)
+            val base = BrowserCaptureSessionSummary(
+                sessionId = "browser-session",
+                revision = 12,
+                pageTitle = "Title",
+                pageHost = "example.test",
+                createdAtEpochMs = 10,
+                updatedAtEpochMs = 20,
+                totalCandidateCount = 1,
+                importedCandidateCount = 1,
+                truncated = false,
+                candidates = listOf(BrowserCaptureCandidateSummary("capture-a", "media-a", "strong", "video", "video", listOf("a"))),
+            )
+            registry.record(base)
+            registry.record(
+                base.copy(
+                    updatedAtEpochMs = 30,
+                    totalCandidateCount = 2,
+                    importedCandidateCount = 1,
+                    candidates = listOf(BrowserCaptureCandidateSummary("capture-b", "media-b", "strong", "audio", "audio", listOf("b"))),
+                ),
+            )
+
+            val restored = registry.snapshot().single()
+            assertEquals(12L, restored.revision)
+            assertEquals(setOf("capture-a", "capture-b"), restored.captureIds)
+            assertEquals(2, restored.totalCandidateCount)
+            assertEquals(2, restored.importedCandidateCount)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
 }

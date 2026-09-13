@@ -104,11 +104,16 @@ repo_root = ROOT.parents[1]
 devtool = (repo_root / ".devtool.toml").read_text(encoding="utf-8") if (repo_root / ".devtool.toml").is_file() else ""
 need(
     ":media-ffmpeg:installPinnedFfmpegRuntime" in devtool
+    or (":media-ffmpeg:verifyFfmpegRuntime" in devtool and "verifyFfmpegDebugApkRuntime" in app_gradle)
     or (
         'dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")' in app_gradle
         and "dependsOn(installPinnedFfmpegRuntime)" in module_gradle
+    )
+    or (
+        "requireFfmpegRuntime" in module_gradle
+        and "dependsOn(installPinnedFfmpegRuntime)" in module_gradle
     ),
-    "FFmpeg runtime installation is neither Devtool-owned nor packaging-owned by Gradle",
+    "FFmpeg runtime installation/provenance is neither Devtool-owned nor packaging-owned by Gradle",
 )
 need(":media-ffmpeg:testDebugUnitTest" in devtool, "Devtool unit-test phase does not include media-ffmpeg tests")
 need(":media-ffmpeg:verifyFfmpegRuntime" in devtool, "Devtool preflight does not verify FFmpeg runtime provenance")

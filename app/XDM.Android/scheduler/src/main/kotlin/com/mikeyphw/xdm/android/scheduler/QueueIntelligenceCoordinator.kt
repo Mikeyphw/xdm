@@ -60,6 +60,12 @@ class QueueIntelligenceCoordinator(
         evaluationMutex.lock()
         try {
             val download = repository.findDownload(downloadId) ?: return hold("Download unavailable", "The queued record no longer exists.")
+            if (download.state in TERMINAL_CLEAR_STATES) {
+                val terminal = hold("Download already finished", "Terminal downloads cannot be re-admitted by a stale queue request.")
+                decisionLedger.record(download, terminal, System.currentTimeMillis())
+                refreshStatusMessage(terminal)
+                return terminal
+            }
             admissionGate.currentHold()?.let { durable ->
                 val decision = hold(
                     if (durable.reason == DurableQueueAdmissionGate.REASON_PAUSE_ALL) "Downloads paused" else "Recovery in progress",
@@ -369,9 +375,16 @@ class QueueIntelligenceCoordinator(
         }
         val message = POLICY_PREFIX + decision.detail
         if (download.state != state || download.errorMessage != message) {
-            check(repository.save(download.copy(state = state, errorMessage = message, speedBytesPerSecond = 0, updatedAtEpochMs = maxOf(System.currentTimeMillis(), download.updatedAtEpochMs + 1L)))) {
-                "Queue hold persistence was rejected because a newer durable download state exists."
-            }
+            // Losing this CAS means another owner advanced the row after this decision was made.
+            // That is normal contention: never turn the stale snapshot into a newer whole-row write.
+            repository.transitionDownloadStateIfCurrent(
+                observed = download,
+                state = state,
+                errorMessage = message,
+                speedBytesPerSecond = 0L,
+                allowedStates = CANDIDATE_STATES + setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower),
+                updatedAtEpochMs = System.currentTimeMillis(),
+            )
         }
     }
 

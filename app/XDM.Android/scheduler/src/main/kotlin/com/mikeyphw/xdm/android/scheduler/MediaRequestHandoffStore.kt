@@ -23,6 +23,7 @@ data class MediaRequestHandoff(
     val isExpiringUrl: Boolean,
     val expiresAtEpochMs: Long,
     val attemptGeneration: Long = 0L,
+    val subjectGeneration: Long = attemptGeneration,
     val privateNetworkApproved: Boolean = false,
     val cleartextCredentialsApproved: Boolean = false,
     val privateNetworkApprovalScopes: Set<String> = emptySet(),
@@ -55,6 +56,7 @@ object MediaRequestHandoffStore {
         mirrors: List<String> = emptyList(),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
         attemptGeneration: Long = 0L,
+        subjectGeneration: Long = attemptGeneration,
         privateNetworkApproved: Boolean = false,
         cleartextCredentialsApproved: Boolean = false,
         cleanupActions: List<String> = emptyList(),
@@ -71,6 +73,7 @@ object MediaRequestHandoffStore {
         mirrors = mirrors,
         expiresAtEpochMs = expiresAtEpochMs,
         attemptGeneration = attemptGeneration,
+        subjectGeneration = subjectGeneration,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
         cleanupActions = cleanupActions,
@@ -86,6 +89,7 @@ object MediaRequestHandoffStore {
         pageUrl: String? = null,
         transferShape: MediaTransferShape = inferTransferShape(exactUrl.orEmpty()),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
+        subjectGeneration: Long = 0L,
         privateNetworkApproved: Boolean = false,
         cleartextCredentialsApproved: Boolean = false,
     ) = rememberSubject(
@@ -97,6 +101,7 @@ object MediaRequestHandoffStore {
         pageUrl = pageUrl,
         transferShape = transferShape,
         expiresAtEpochMs = expiresAtEpochMs,
+        subjectGeneration = subjectGeneration,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
     )
@@ -107,6 +112,7 @@ object MediaRequestHandoffStore {
         headers: Map<String, String> = emptyMap(),
         redactedSummary: String = "",
         expiresAtEpochMs: Long = defaultExpiry(true),
+        subjectGeneration: Long = 0L,
     ) = rememberSubject(
         subjectId = subject(VARIANT_PREFIX, variantId),
         headers = headers,
@@ -115,6 +121,7 @@ object MediaRequestHandoffStore {
         exactUrl = exactUrl,
         transferShape = inferTransferShape(exactUrl),
         expiresAtEpochMs = expiresAtEpochMs,
+        subjectGeneration = subjectGeneration,
     )
 
     fun rememberCommand(
@@ -126,6 +133,7 @@ object MediaRequestHandoffStore {
         privateNetworkApproved: Boolean,
         cleartextCredentialsApproved: Boolean,
         expiresAtEpochMs: Long = defaultExpiry(true),
+        subjectGeneration: Long = 0L,
     ) = rememberSubject(
         subjectId = subject(COMMAND_PREFIX, commandId),
         headers = headers,
@@ -135,13 +143,19 @@ object MediaRequestHandoffStore {
         pageUrl = pageUrl,
         transferShape = inferTransferShape(exactUrl.orEmpty()),
         expiresAtEpochMs = expiresAtEpochMs,
+        subjectGeneration = subjectGeneration,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
     )
 
-    fun cloneDownload(sourceDownloadId: String, targetDownloadId: String, replacementExactUrl: String? = null): Boolean {
+    fun cloneDownload(
+        sourceDownloadId: String,
+        targetDownloadId: String,
+        replacementExactUrl: String? = null,
+        targetAttemptGeneration: Long = 1L,
+    ): Boolean {
         val source = forDownload(sourceDownloadId) ?: return false
-        remember(
+        return remember(
             downloadId = targetDownloadId,
             headers = source.headers,
             redactedSummary = source.redactedSummary,
@@ -156,18 +170,18 @@ object MediaRequestHandoffStore {
             transferShape = replacementExactUrl?.let { refreshedTransferShape(source.transferShape, it) } ?: source.transferShape,
             mirrors = if (replacementExactUrl == null) source.mirrors else emptyList(),
             expiresAtEpochMs = source.expiresAtEpochMs,
-            attemptGeneration = 0L,
+            attemptGeneration = targetAttemptGeneration,
+            subjectGeneration = targetAttemptGeneration,
             privateNetworkApproved = replacementExactUrl == null && source.privateNetworkApproved,
             cleartextCredentialsApproved = replacementExactUrl == null && source.cleartextCredentialsApproved,
             cleanupActions = source.cleanupActions,
             tempCookieFileName = source.tempCookieFileName,
         )
-        return true
     }
 
     fun replaceDownloadUrl(downloadId: String, exactUrl: String): Boolean {
         val source = forDownload(downloadId)
-        remember(
+        return remember(
             downloadId = downloadId,
             headers = source?.headers.orEmpty().takeIf { source?.boundHost == ExternalUrlPolicy.originHost(exactUrl) }.orEmpty(),
             redactedSummary = source?.redactedSummary.orEmpty(),
@@ -179,13 +193,13 @@ object MediaRequestHandoffStore {
             mirrors = emptyList(),
             expiresAtEpochMs = source?.expiresAtEpochMs ?: defaultExpiry(true),
             attemptGeneration = source?.attemptGeneration ?: 0L,
+            subjectGeneration = (source?.subjectGeneration ?: 0L) + 1L,
             // Approval is exact-target scoped. Changing the URL always requires a fresh review.
             privateNetworkApproved = false,
             cleartextCredentialsApproved = false,
             cleanupActions = source?.cleanupActions.orEmpty(),
             tempCookieFileName = source?.tempCookieFileName,
         )
-        return true
     }
 
     fun forDownload(downloadId: String): MediaRequestHandoff? = readSubject(subject(DOWNLOAD_PREFIX, downloadId))
@@ -214,6 +228,7 @@ object MediaRequestHandoffStore {
         }
     }
 
+    @Synchronized
     private fun rememberSubject(
         subjectId: String,
         headers: Map<String, String>,
@@ -226,12 +241,13 @@ object MediaRequestHandoffStore {
         mirrors: List<String> = emptyList(),
         expiresAtEpochMs: Long = defaultExpiry(isExpiringUrl),
         attemptGeneration: Long = 0L,
+        subjectGeneration: Long = attemptGeneration,
         privateNetworkApproved: Boolean = false,
         cleartextCredentialsApproved: Boolean = false,
         cleanupActions: List<String> = emptyList(),
         tempCookieFileName: String? = null,
-    ) {
-        if (subjectId.substringAfter(':').isBlank()) return
+    ): Boolean {
+        if (subjectId.substringAfter(':').isBlank()) return false
         val safeHeaders = headers.filterKeys(::isAllowedHeaderName).filterValues(::isSafeHeaderValue)
         val exact = exactUrl?.trim()?.takeIf(String::isNotBlank)
         val exactScope = DownloadRequestApprovalScope.forUrl(exact)
@@ -247,6 +263,7 @@ object MediaRequestHandoffStore {
             isExpiringUrl = isExpiringUrl,
             expiresAtEpochMs = expiresAtEpochMs,
             attemptGeneration = attemptGeneration,
+            subjectGeneration = subjectGeneration,
             privateNetworkApproved = privateNetworkApproved && exactScope != null,
             cleartextCredentialsApproved = cleartextCredentialsApproved && exactScope != null,
             privateNetworkApprovalScopes = if (privateNetworkApproved && exactScope != null) setOf(exactScope) else emptySet(),
@@ -254,12 +271,22 @@ object MediaRequestHandoffStore {
             cleanupActions = cleanupActions.map { it.take(120) },
             tempCookieFileName = tempCookieFileName?.take(96),
         )
-        if (handoff.headers.isEmpty() && handoff.exactUrl == null && handoff.pageUrl == null && handoff.redactedSummary.isBlank()) return
+        if (handoff.headers.isEmpty() && handoff.exactUrl == null && handoff.pageUrl == null && handoff.redactedSummary.isBlank()) return false
+        val existing = readSubject(subjectId)
+        if (existing != null) {
+            if (handoff.subjectGeneration < existing.subjectGeneration) return false
+            if (handoff.subjectGeneration == existing.subjectGeneration) {
+                val samePayload = handoff.copy(createdAtEpochMs = existing.createdAtEpochMs) == existing
+                if (!samePayload) return false
+                return true
+            }
+        }
         // Durable encrypted persistence is authoritative. Never expose the handoff through the
         // process cache until the encrypted write has completed successfully.
-        durableStore.put(handoff.toEnvelope(subjectId))
+        if (!durableStore.put(handoff.toEnvelope(subjectId))) return false
         evictOldestIfNeeded()
         cache[subjectId] = handoff
+        return true
     }
 
     private fun readSubject(subjectId: String): MediaRequestHandoff? {
@@ -302,6 +329,7 @@ object MediaRequestHandoffStore {
         isExpiringUrl = isExpiringUrl,
         expiresAtEpochMs = expiresAtEpochMs,
         attemptGeneration = attemptGeneration,
+        subjectGeneration = subjectGeneration,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
         privateNetworkApprovalScopes = privateNetworkApprovalScopes,
@@ -323,6 +351,7 @@ object MediaRequestHandoffStore {
         isExpiringUrl = isExpiringUrl,
         expiresAtEpochMs = expiresAtEpochMs,
         attemptGeneration = attemptGeneration,
+        subjectGeneration = subjectGeneration,
         privateNetworkApproved = privateNetworkApproved,
         cleartextCredentialsApproved = cleartextCredentialsApproved,
         privateNetworkApprovalScopes = privateNetworkApprovalScopes,

@@ -35,7 +35,15 @@ class InMemoryBrowserHandoffMediaSessionStore : BrowserHandoffMediaSessionStore 
     private val sessions = ConcurrentHashMap<String, BrowserMediaSessionRevision>()
     override fun load(stableMediaId: String): BrowserMediaSessionRevision? = sessions[stableMediaId]
     @Synchronized
-    override fun put(session: BrowserMediaSessionRevision) { sessions[session.stableMediaId] = session }
+    override fun put(session: BrowserMediaSessionRevision) {
+        val existing = sessions[session.stableMediaId]
+        val durable = when {
+            existing == null || session.revision > existing.revision -> session
+            session.revision < existing.revision -> existing
+            else -> BrowserHandoffMediaPolicy.mergeEqualRevision(existing, session) ?: existing
+        }
+        sessions[session.stableMediaId] = durable
+    }
     override fun remove(stableMediaId: String) { sessions.remove(stableMediaId) }
     override fun ids(): Set<String> = sessions.keys.toSet()
 }
@@ -72,24 +80,30 @@ class FileBackedBrowserHandoffMediaSessionStore(private val root: File) : Browse
     @Synchronized
     override fun put(session: BrowserMediaSessionRevision) {
         root.mkdirs()
-        val target = fileFor(session.stableMediaId)
+        val existing = load(session.stableMediaId)
+        val durable = when {
+            existing == null || session.revision > existing.revision -> session
+            session.revision < existing.revision -> existing
+            else -> BrowserHandoffMediaPolicy.mergeEqualRevision(existing, session) ?: existing
+        }
+        val target = fileFor(durable.stableMediaId)
         val temp = File(root, target.name + ".tmp")
         val props = Properties()
-        props["stableMediaId"] = session.stableMediaId
-        props["exactRequestUrl"] = session.exactRequestUrl
-        props["pageUrl"] = session.pageUrl.orEmpty()
-        props["frameUrl"] = session.frameUrl.orEmpty()
-        props["requestFingerprint"] = session.requestFingerprint
-        props["revision"] = session.revision.toString()
-        props["expiresAtEpochMs"] = session.expiresAtEpochMs.toString()
-        props["acknowledgedByAndroid"] = session.acknowledgedByAndroid.toString()
-        writeHeaders(props, "proposed", session.proposedHeaders.headers)
-        if (session.finalHeaders.kind == BrowserHeaderObservationKind.FinalSent) {
+        props["stableMediaId"] = durable.stableMediaId
+        props["exactRequestUrl"] = durable.exactRequestUrl
+        props["pageUrl"] = durable.pageUrl.orEmpty()
+        props["frameUrl"] = durable.frameUrl.orEmpty()
+        props["requestFingerprint"] = durable.requestFingerprint
+        props["revision"] = durable.revision.toString()
+        props["expiresAtEpochMs"] = durable.expiresAtEpochMs.toString()
+        props["acknowledgedByAndroid"] = durable.acknowledgedByAndroid.toString()
+        writeHeaders(props, "proposed", durable.proposedHeaders.headers)
+        if (durable.finalHeaders.kind == BrowserHeaderObservationKind.FinalSent) {
             props["finalAvailable"] = "true"
-            writeHeaders(props, "final", session.finalHeaders.headers)
+            writeHeaders(props, "final", durable.finalHeaders.headers)
         } else {
             props["finalAvailable"] = "false"
-            props["finalUnavailableReason"] = session.finalHeaders.unavailableReason ?: "browser did not provide onSendHeaders data"
+            props["finalUnavailableReason"] = durable.finalHeaders.unavailableReason ?: "browser did not provide onSendHeaders data"
         }
         FileOutputStream(temp).use { out ->
             props.store(out, "XDM browser handoff media session")
@@ -180,14 +194,21 @@ class BrowserHandoffMediaCoordinator(
         )
     }
 
+    @Synchronized
     fun rememberPreparedRevision(prepared: BrowserMediaSessionRevision): BrowserMediaSessionRevision {
         val existing = sessions[prepared.stableMediaId] ?: store.load(prepared.stableMediaId)
-        if (!BrowserHandoffMediaPolicy.shouldReplaceSession(existing?.revision, prepared.revision)) return existing!!
+        val durable = when {
+            existing == null -> prepared
+            prepared.revision > existing.revision -> prepared
+            prepared.revision < existing.revision -> existing
+            else -> BrowserHandoffMediaPolicy.mergeEqualRevision(existing, prepared) ?: existing
+        }
+        if (durable === existing) return existing
         evictExpired(clock())
         evictForCapacity()
-        sessions[prepared.stableMediaId] = prepared
-        store.put(prepared)
-        return prepared
+        sessions[prepared.stableMediaId] = durable
+        store.put(durable)
+        return durable
     }
 
     fun rememberBrowserRevision(

@@ -108,7 +108,7 @@ need("catch (cancelled: CancellationException)" in retry_section and "throw canc
 need("onRetryEmbeddedFfmpegOutput = viewModel::retryEmbeddedFfmpegOutput" in app_ui, "app does not wire embedded FFmpeg Retry")
 retry_marker = "MediaOutputOwnerKind.EmbeddedFfmpeg -> outputs.firstOrNull { it.id == item.outputId }?.let(onRetryEmbeddedFfmpegOutput)"
 need(library_ui.count(retry_marker) >= 3, "Library still renders one or more dead Retry actions for EmbeddedFfmpeg output generations")
-need("DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(download.id)" in vm, "native-HLS RecoveryRequired retry is not intercepted by its durable native owner")
+need(("DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(download.id)" in vm or "DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(current.id)" in vm), "native-HLS RecoveryRequired retry is not intercepted by its durable native owner")
 
 command_tests = text("media-ffmpeg/src/test/kotlin/com/mikeyphw/xdm/android/media/ffmpeg/FfmpegCommandCompilerTest.kt")
 progress_tests = text("media-ffmpeg/src/test/kotlin/com/mikeyphw/xdm/android/media/ffmpeg/FfmpegProgressParserTest.kt")

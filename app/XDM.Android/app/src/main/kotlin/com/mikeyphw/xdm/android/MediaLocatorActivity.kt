@@ -1193,11 +1193,16 @@ class MediaLocatorActivity : ComponentActivity() {
                 status = if (existing?.downloadId != null) existing.status else candidate.record.status,
                 createdAtEpochMs = existing?.createdAtEpochMs ?: candidate.record.createdAtEpochMs,
                 updatedAtEpochMs = now,
+                rowRevision = existing?.rowRevision ?: candidate.record.rowRevision,
             )
             // Persist exactly the variants parsed from the observed response. This avoids a
             // second manifest fetch after review and replaces stale variants even when empty.
-            repository.saveMediaCaptureWithVariants(durable, candidate.variants, now)
-            MediaRequestHandoffStore.rememberCapture(
+            if (!repository.saveMediaCaptureWithVariants(durable, candidate.variants, now)) {
+                withContext(Dispatchers.Main) { showFeedbackToast("XDM refused to overwrite a newer media capture.") }
+                return@launch
+            }
+            val committedRevision = maxOf(now, durable.rowRevision + 1L)
+            check(MediaRequestHandoffStore.rememberCapture(
                 captureId = durable.id,
                 headers = candidate.requestHeaders,
                 redactedSummary = "live locator • ${candidate.kind.name}",
@@ -1211,15 +1216,17 @@ class MediaLocatorActivity : ComponentActivity() {
                     live = durable.manifestIsLive == true,
                     protected = durable.manifestProtected,
                 ),
-            )
+                subjectGeneration = committedRevision,
+            )) { "Exact media capture handoff changed while media locator was committing" }
             candidate.variants.forEach { variant ->
-                MediaRequestHandoffStore.rememberVariant(
+                check(MediaRequestHandoffStore.rememberVariant(
                     variantId = variant.id,
                     exactUrl = variant.url,
                     headers = candidate.requestHeaders,
                     redactedSummary = "live locator variant • ${variant.kind.name}",
                     expiresAtEpochMs = variant.expiresAtEpochMs ?: now + 24L * 60L * 60L * 1000L,
-                )
+                    subjectGeneration = committedRevision,
+                )) { "Exact media variant handoff changed while media locator was committing" }
             }
             withContext(Dispatchers.Main) {
                 val savedMessage = getString(R.string.media_locator_saved)

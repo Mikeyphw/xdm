@@ -183,6 +183,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -415,6 +416,7 @@ class MainViewModel(
         val headers: Map<String, String>,
         val redactedSummary: String,
         val expiresAtEpochMs: Long,
+        val subjectGeneration: Long = 0L,
     )
 
     private data class BrowserCaptureImportHandoff(
@@ -437,6 +439,7 @@ class MainViewModel(
     ) { prefs, runtime, status -> Triple(prefs, runtime, status) }
     private val aria2Capability = MutableStateFlow<Aria2CapabilityReport?>(null)
     private val aria2SmokeMessage = MutableStateFlow<String?>(null)
+    private val uiMutationConcurrency = UiMutationConcurrencyCoordinator()
     private val aria2SmokeRunning = MutableStateFlow(false)
     private val ffmpegCapability = MutableStateFlow<FfmpegRuntimeCapabilityReport?>(null)
     private val ffmpegSelfTestMessage = MutableStateFlow<String?>(null)
@@ -1226,11 +1229,23 @@ class MainViewModel(
             maxConcurrent = maxConcurrent.coerceIn(1, 16),
             isEnabled = enabled,
         )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(updated); queueIntelligenceCoordinator.reconcile() }
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!repository.updateQueueIfUnchanged(queue, updated)) {
+                android.util.Log.w("XDMQueueMutation", "Queue update rejected because a newer queue value exists.")
+                return@launch
+            }
+            queueIntelligenceCoordinator.reconcile()
+        }
     }
 
     fun setQueueEnabled(queue: QueueDefinition, enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) { repository.saveQueue(queue.copy(isEnabled = enabled)); queueIntelligenceCoordinator.reconcile() }
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!repository.updateQueueIfUnchanged(queue, queue.copy(isEnabled = enabled))) {
+                android.util.Log.w("XDMQueueMutation", "Queue enable change rejected because a newer queue value exists.")
+                return@launch
+            }
+            queueIntelligenceCoordinator.reconcile()
+        }
     }
 
     fun deleteQueue(queue: QueueDefinition) {
@@ -1263,11 +1278,23 @@ class MainViewModel(
             enabled = enabled,
             constraintsJson = constraintsJson.ifBlank { "{}" },
         )
-        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(updated); queueIntelligenceCoordinator.reconcile() }
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!repository.updateScheduleIfUnchanged(rule, updated)) {
+                android.util.Log.w("XDMScheduleMutation", "Schedule update rejected because a newer rule value exists.")
+                return@launch
+            }
+            queueIntelligenceCoordinator.reconcile()
+        }
     }
 
     fun setScheduleEnabled(rule: ScheduleRule, enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) { repository.saveSchedule(rule.copy(enabled = enabled)); queueIntelligenceCoordinator.reconcile() }
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!repository.updateScheduleIfUnchanged(rule, rule.copy(enabled = enabled))) {
+                android.util.Log.w("XDMScheduleMutation", "Schedule enable change rejected because a newer rule value exists.")
+                return@launch
+            }
+            queueIntelligenceCoordinator.reconcile()
+        }
     }
 
     fun deleteSchedule(rule: ScheduleRule) {
@@ -1291,9 +1318,9 @@ class MainViewModel(
     }
 
     fun runAria2SmokeTest() {
-        if (aria2SmokeRunning.value) return
+        if (!uiMutationConcurrency.aria2Diagnostics.tryAcquire()) return
+        aria2SmokeRunning.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            aria2SmokeRunning.value = true
             aria2SmokeMessage.value = "Starting an authenticated loopback smoke test."
             try {
                 val result = aria2ProcessManager.smokeTest()
@@ -1309,14 +1336,15 @@ class MainViewModel(
                 capabilitySnapshot.value = transferRuntime.backendCapabilities()
             } finally {
                 aria2SmokeRunning.value = false
+                uiMutationConcurrency.aria2Diagnostics.release()
             }
         }
     }
 
     fun repairEmbeddedAria2() {
-        if (aria2SmokeRunning.value) return
+        if (!uiMutationConcurrency.aria2Diagnostics.tryAcquire()) return
+        aria2SmokeRunning.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            aria2SmokeRunning.value = true
             aria2SmokeMessage.value = "Repairing embedded aria2: stopping the managed process, clearing stale launch configs, and rotating the RPC secret."
             try {
                 val result = aria2ProcessManager.repair()
@@ -1334,14 +1362,15 @@ class MainViewModel(
                 aria2Capability.value = aria2ProcessManager.probe()
             } finally {
                 aria2SmokeRunning.value = false
+                uiMutationConcurrency.aria2Diagnostics.release()
             }
         }
     }
 
     fun runStorageDoctor() {
-        if (storageDoctorRunning.value) return
+        if (!uiMutationConcurrency.storageDoctor.tryAcquire()) return
+        storageDoctorRunning.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            storageDoctorRunning.value = true
             storageDoctorMessage.value = "Checking direct-storage permission and filesystem operations."
             try {
                 val selectedDestination = preferences.values.first().destinationUri
@@ -1394,6 +1423,7 @@ class MainViewModel(
                 storageDoctorMessage.value = "FAIL: Storage doctor failed safely: ${error.message ?: error::class.java.simpleName}"
             } finally {
                 storageDoctorRunning.value = false
+                uiMutationConcurrency.storageDoctor.release()
             }
         }
     }
@@ -1536,6 +1566,7 @@ class MainViewModel(
     }
 
     fun refreshAria2Probe() {
+        if (uiMutationConcurrency.aria2Diagnostics.isHeld()) return
         viewModelScope.launch(Dispatchers.IO) {
             aria2Capability.value = aria2ProcessManager.probe()
             aria2SmokeMessage.value = null
@@ -1544,6 +1575,7 @@ class MainViewModel(
     }
 
     fun refreshFfmpegProbe() {
+        if (uiMutationConcurrency.ffmpegDiagnostics.isHeld()) return
         viewModelScope.launch(Dispatchers.IO) {
             ffmpegCapability.value = embeddedFfmpegMediaManager.runtime.capabilities(force = true)
             ffmpegSelfTestMessage.value = null
@@ -1551,9 +1583,9 @@ class MainViewModel(
     }
 
     fun runFfmpegSelfTest() {
-        if (ffmpegSelfTestRunning.value) return
+        if (!uiMutationConcurrency.ffmpegDiagnostics.tryAcquire()) return
+        ffmpegSelfTestRunning.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            ffmpegSelfTestRunning.value = true
             ffmpegSelfTestMessage.value = "Running app-owned FFmpeg/FFprobe self-test."
             try {
                 val result = embeddedFfmpegMediaManager.runtime.selfTest()
@@ -1570,6 +1602,7 @@ class MainViewModel(
                 ffmpegCapability.value = embeddedFfmpegMediaManager.runtime.capabilities(force = true)
             } finally {
                 ffmpegSelfTestRunning.value = false
+                uiMutationConcurrency.ffmpegDiagnostics.release()
             }
         }
     }
@@ -2190,7 +2223,9 @@ class MainViewModel(
         if (!repository.createReplacementDownloadPreservingMediaLineage(current.id, retry, now)) {
             return "A newer durable state prevented XDM from creating the replacement download. Nothing was restarted." to null
         }
-        MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl)
+        check(MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl, targetAttemptGeneration = retry.attemptGeneration)) {
+            "Could not clone the exact request handoff for the replacement generation"
+        }
         repository.checksumExpectations(current.id).forEach { expectation ->
             repository.saveChecksumExpectation(
                 expectation.copy(
@@ -2233,7 +2268,7 @@ class MainViewModel(
             val reprioritized = reordered.mapIndexed { index, item ->
                 item.copy(priority = (reordered.size - index) * 10, updatedAtEpochMs = now)
             }
-            if (!repository.saveAll(reprioritized)) {
+            if (!repository.reprioritizeDownloads(reprioritized)) {
                 android.util.Log.w(
                     "XDMQueueMutation",
                     "Queue reprioritization was rejected because a newer download generation or state already exists.",
@@ -2409,7 +2444,7 @@ class MainViewModel(
         when (result) {
             is DownloadAdmissionResult.Created -> {
                 pendingDownloadAdmission = null
-                MediaRequestHandoffStore.remember(
+                check(MediaRequestHandoffStore.remember(
                     downloadId = pending.download.id,
                     headers = pending.headers,
                     redactedSummary = pending.redactedHeaderSummary,
@@ -2419,7 +2454,7 @@ class MainViewModel(
                     transferShape = pending.transferShape,
                     privateNetworkApproved = pending.privateNetworkApproved,
                     cleartextCredentialsApproved = pending.cleartextCredentialsApproved,
-                )
+                )) { "Exact download handoff changed while Add Download was committing" }
                 pending.externalDraft?.let { markExternalDraftDownloadCreated(it, pending.download.id) }
                 queueIntelligenceCoordinator.requestStart(pending.download.id, userVisible = true, manual = true)
                 externalAddDraft.value = null
@@ -2878,7 +2913,7 @@ class MainViewModel(
                 linkedCaptureIds += record.id
                 requireNotNull(existing)
             } else {
-                record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
+                record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now, rowRevision = existing?.rowRevision ?: record.rowRevision)
             }
             if (existing?.downloadId != null) {
                 merged to emptyList()
@@ -2917,6 +2952,7 @@ class MainViewModel(
                         headers = requestHeaders,
                         redactedSummary = session.redactedSummary,
                         expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
+                        subjectGeneration = session.revision,
                     )
                 },
                 preserveExistingLinkedCapture = false,
@@ -2937,12 +2973,14 @@ class MainViewModel(
             // Room first: no exact URL/header/session sidecar may become authoritative before the
             // sanitized capture graph exists durably. If a later auxiliary write fails, this command
             // is returned to Received and its encrypted command envelope drives an idempotent retry.
-            if (recordsToPersist.isNotEmpty()) {
-                repository.saveMediaCapturesWithVariants(recordsToPersist, variantsToPersist, now)
+            if (recordsToPersist.isNotEmpty() && !repository.saveMediaCapturesWithVariants(recordsToPersist, variantsToPersist, now)) {
+                throw IllegalStateException("Media capture import was rejected because a newer capture revision exists")
             }
             handoffPlans.forEach { handoff ->
                 val session = browserHandoffMediaCoordinator.rememberPreparedRevision(handoff.session)
-                MediaRequestHandoffStore.rememberCapture(
+                val committedSubjectGeneration = repository.findMediaCapture(handoff.captureId)?.rowRevision
+                    ?: error("Committed media capture ${handoff.captureId} disappeared before exact-request handoff")
+                check(MediaRequestHandoffStore.rememberCapture(
                     captureId = handoff.captureId,
                     headers = session.usableHeaders,
                     redactedSummary = session.redactedSummary,
@@ -2950,17 +2988,19 @@ class MainViewModel(
                     exactUrl = session.exactRequestUrl,
                     pageUrl = session.frameUrl ?: session.pageUrl,
                     transferShape = handoff.transferShape,
+                    subjectGeneration = committedSubjectGeneration,
                     privateNetworkApproved = draft.privateNetworkApproved,
                     cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
-                )
+                )) { "Exact media capture handoff changed while browser import was committing" }
                 handoff.variants.forEach { variant ->
-                    MediaRequestHandoffStore.rememberVariant(
+                    check(MediaRequestHandoffStore.rememberVariant(
                         variantId = variant.variantId,
                         exactUrl = variant.exactUrl,
                         headers = variant.headers,
                         redactedSummary = variant.redactedSummary,
                         expiresAtEpochMs = variant.expiresAtEpochMs,
-                    )
+                        subjectGeneration = committedSubjectGeneration,
+                    )) { "Exact media variant handoff changed while browser import was committing" }
                 }
             }
             repository.saveAutomationCommand(
@@ -3212,7 +3252,7 @@ class MainViewModel(
             backendSelectionExplanation = recommendation.explanation,
             allowBackendFallback = true,
         )
-        MediaRequestHandoffStore.remember(
+        check(MediaRequestHandoffStore.remember(
             downloadId = download.id,
             headers = sessionHeaders,
             redactedSummary = redactedSessionSummary(draft.rawHeaders, draft.pageUrl),
@@ -3222,7 +3262,7 @@ class MainViewModel(
             transferShape = transferShape,
             privateNetworkApproved = draft.privateNetworkApproved,
             cleartextCredentialsApproved = draft.cleartextCredentialsApproved,
-        )
+        )) { "Exact automation download handoff changed while durable download was preparing" }
         val existingDownload = repository.findDownload(durableDownloadId)
         if (existingDownload == null && !repository.save(download)) {
             MediaRequestHandoffStore.forget(download.id)
@@ -3232,7 +3272,7 @@ class MainViewModel(
                     resultMessage = "Download persistence lost the execution claim",
                     rejectionReason = AutomationRejectionReason.ClaimLost,
                     updatedAtEpochMs = System.currentTimeMillis(),
-                ),
+                ) { "Exact automation download handoff changed while durable download was preparing" },
             )
             return
         }
@@ -3339,12 +3379,14 @@ class MainViewModel(
                     val merged = plan.records.map { record ->
                         val existing = repository.findMediaCapture(record.id)
                         if (existing?.downloadId != null) {
-                            record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = now)
+                            record.copy(status = existing.status, downloadId = existing.downloadId, createdAtEpochMs = existing.createdAtEpochMs, updatedAtEpochMs = now, rowRevision = existing.rowRevision)
                         } else {
-                            record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now)
+                            record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs, updatedAtEpochMs = now, rowRevision = existing?.rowRevision ?: record.rowRevision)
                         }
                     }
-                    repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
+                    check(repository.saveMediaCapturesWithVariants(merged, plan.variants, now)) {
+                        "Media capture batch changed while page inspection was resolving"
+                    }
                     publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media ready", "${mediaItemCountLabel(merged.size)} added to Media.", plan.diagnostics.takeLast(4)))
                 }
                 .onFailure { error ->
@@ -3388,15 +3430,19 @@ class MainViewModel(
                             downloadId = existing.downloadId,
                             createdAtEpochMs = existing.createdAtEpochMs,
                             updatedAtEpochMs = now,
+                            rowRevision = existing.rowRevision,
                         )
                     } else {
                         record.copy(
                             createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
                             updatedAtEpochMs = now,
+                            rowRevision = existing?.rowRevision ?: record.rowRevision,
                         )
                     }
                 }
-                repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)
+                check(repository.saveMediaCapturesWithVariants(merged, sniffingPlan.variants, now)) {
+                    "Media capture batch changed while shared-content inspection was resolving"
+                }
                 merged
             }.onSuccess { merged ->
                 publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media ready", "${mediaItemCountLabel(merged.size)} added from shared content.", sniffingPlan.diagnostics.takeLast(4)))
@@ -3655,6 +3701,7 @@ class MainViewModel(
                         headers = facts.finalHeaders.ifEmpty { facts.proposedHeaders },
                         redactedSummary = "browser session ${decoded.sessionId.take(24)} request ${candidate.requestFingerprint.take(24)}",
                         expiresAtEpochMs = source.expiresAtEpochMs ?: decoded.expiresAtEpochMs,
+                        subjectGeneration = candidate.sessionRevision,
                     )
                 }
                 val sanitizedVariants = sourceVariants.zip(rekeyedVariants).map { (source, rekeyed) ->
@@ -3716,6 +3763,7 @@ class MainViewModel(
                     sanitizedRawRecord.copy(
                         createdAtEpochMs = existing?.createdAtEpochMs ?: factualRawRecord.createdAtEpochMs,
                         updatedAtEpochMs = now,
+                        rowRevision = existing?.rowRevision ?: sanitizedRawRecord.rowRevision,
                     )
                 }
                 importedRecords += record
@@ -3763,8 +3811,15 @@ class MainViewModel(
         // auxiliary secure request handoff and the non-secret session index is committed too. A
         // capture already linked to a download is intentionally excluded from replacement so a later
         // browser observation cannot clear/rewrite its exact variant set.
-        if (recordsToPersist.isNotEmpty()) {
-            repository.saveMediaCapturesWithVariants(recordsToPersist, variantsToPersist, now)
+        if (recordsToPersist.isNotEmpty() && !repository.saveMediaCapturesWithVariants(recordsToPersist, variantsToPersist, now)) {
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(
+                    MediaIntakeFeedbackKind.Failed,
+                    "Capture changed while importing",
+                    "XDM refused to overwrite a newer linked media capture or variant set. Refresh the browser capture and try again.",
+                ),
+            )
+            return
         }
 
         handoffByCapture.forEach { handoff ->
@@ -3777,8 +3832,10 @@ class MainViewModel(
             } else {
                 browserHandoffMediaCoordinator.rememberPreparedRevision(handoff.session)
             }
+            val committedSubjectGeneration = repository.findMediaCapture(handoff.captureId)?.rowRevision
+                ?: error("Committed media capture ${handoff.captureId} disappeared before exact-request handoff")
             if (!handoff.preserveExistingLinkedCapture || MediaRequestHandoffStore.forCapture(handoff.captureId) == null) {
-                MediaRequestHandoffStore.rememberCapture(
+                check(MediaRequestHandoffStore.rememberCapture(
                     captureId = handoff.captureId,
                     headers = storedSession.usableHeaders,
                     redactedSummary = storedSession.redactedSummary,
@@ -3787,19 +3844,21 @@ class MainViewModel(
                     pageUrl = storedSession.frameUrl ?: storedSession.pageUrl,
                     transferShape = handoff.transferShape,
                     expiresAtEpochMs = decoded.expiresAtEpochMs,
+                    subjectGeneration = committedSubjectGeneration,
                     privateNetworkApproved = handoff.privateNetworkApproved,
                     cleartextCredentialsApproved = handoff.cleartextCredentialsApproved,
-                )
+                )) { "Exact media capture handoff changed while preserved browser import was committing" }
             }
             handoff.variants.forEach { variant ->
                 if (!handoff.preserveExistingLinkedCapture || MediaRequestHandoffStore.forVariant(variant.variantId) == null) {
-                    MediaRequestHandoffStore.rememberVariant(
+                    check(MediaRequestHandoffStore.rememberVariant(
                         variantId = variant.variantId,
                         exactUrl = variant.exactUrl,
                         headers = variant.headers,
                         redactedSummary = variant.redactedSummary,
                         expiresAtEpochMs = variant.expiresAtEpochMs,
-                    )
+                        subjectGeneration = committedSubjectGeneration,
+                    )) { "Exact media variant handoff changed while preserved browser import was committing" }
                 }
             }
         }
@@ -3901,6 +3960,7 @@ class MainViewModel(
                 val merged = intake.record.copy(
                     createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs,
                     updatedAtEpochMs = now,
+                    rowRevision = existing?.rowRevision ?: intake.record.rowRevision,
                 )
                 val (resolvedRaw, resolvedVariantsRaw) = resolveCapturedPlaylistIfPossible(merged, preparedSession.exactRequestUrl, preparedSession.usableHeaders, now)
                 val capturedVariantsRaw = (intake.candidate.variants + resolvedVariantsRaw).distinctBy(MediaVariant::id)
@@ -3913,9 +3973,14 @@ class MainViewModel(
 
                 // Even the legacy non-sensitive compatibility path commits Room first. Only then may
                 // its exact (non-sensitive) session/variant sidecars become visible.
-                repository.saveMediaCaptureWithVariants(resolved, capturedVariants, now)
+                if (!repository.saveMediaCaptureWithVariants(resolved, capturedVariants, now)) {
+                    publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Capture changed while importing", "XDM refused to overwrite a newer linked media capture or variant set."))
+                    return@launch
+                }
                 val session = browserHandoffMediaCoordinator.rememberPreparedRevision(preparedSession)
-                MediaRequestHandoffStore.rememberCapture(
+                val committedSubjectGeneration = repository.findMediaCapture(resolved.id)?.rowRevision
+                    ?: error("Committed media capture ${resolved.id} disappeared before exact-request handoff")
+                check(MediaRequestHandoffStore.rememberCapture(
                     captureId = resolved.id,
                     headers = session.usableHeaders,
                     redactedSummary = session.redactedSummary,
@@ -3923,15 +3988,17 @@ class MainViewModel(
                     exactUrl = session.exactRequestUrl,
                     pageUrl = session.frameUrl ?: session.pageUrl,
                     transferShape = transferShapeForRecord(resolved),
-                )
+                    subjectGeneration = committedSubjectGeneration,
+                )) { "Exact media capture handoff changed while legacy browser capture was committing" }
                 capturedVariantsRaw.forEach { variant ->
-                    MediaRequestHandoffStore.rememberVariant(
+                    check(MediaRequestHandoffStore.rememberVariant(
                         variantId = variant.id,
                         exactUrl = variant.url,
                         headers = session.usableHeaders,
                         redactedSummary = session.redactedSummary,
                         expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
-                    )
+                        subjectGeneration = committedSubjectGeneration,
+                    )) { "Exact media variant handoff changed while legacy browser capture was committing" }
                 }
                 publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Browser media captured", "The browser-observed media request is ready for review."))
             } catch (error: Throwable) {
@@ -3971,10 +4038,13 @@ class MainViewModel(
                             record.copy(
                                 createdAtEpochMs = existing?.createdAtEpochMs ?: record.createdAtEpochMs,
                                 updatedAtEpochMs = now,
+                                rowRevision = existing?.rowRevision ?: record.rowRevision,
                             )
                         }
                     }
-                    repository.saveMediaCapturesWithVariants(merged, plan.variants, now)
+                    check(repository.saveMediaCapturesWithVariants(merged, plan.variants, now)) {
+                        "Media capture batch changed while batch inspection was resolving"
+                    }
                     publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media batch ready", "${mediaItemCountLabel(merged.size)} added to Media."), navigateToMedia = false)
                 }
                 navigate(AppRoute.Media)
@@ -4020,9 +4090,13 @@ class MainViewModel(
                         downloadId = existing.downloadId,
                         createdAtEpochMs = existing.createdAtEpochMs,
                         updatedAtEpochMs = System.currentTimeMillis(),
+                        rowRevision = existing.rowRevision,
                     )
                 } else {
-                    intake.record.copy(createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs)
+                    intake.record.copy(
+                        createdAtEpochMs = existing?.createdAtEpochMs ?: intake.record.createdAtEpochMs,
+                        rowRevision = existing?.rowRevision ?: intake.record.rowRevision,
+                    )
                 }
                 val inspectNow = System.currentTimeMillis()
                 // A DownloadIntakeDraft is also used by ordinary manual/share intake and therefore
@@ -4046,7 +4120,12 @@ class MainViewModel(
                     privateNetworkApprovalScopes = currentReviewHandoff?.privateNetworkApprovalScopes.orEmpty(),
                     cleartextCredentialApprovalScopes = currentReviewHandoff?.cleartextCredentialApprovalScopes.orEmpty(),
                 )
-                MediaRequestHandoffStore.rememberCapture(
+                val externalVariants = (intake.variants + resolvedVariants).distinctBy(MediaVariant::id)
+                if (!repository.saveMediaCaptureWithVariants(resolved, externalVariants, inspectNow)) {
+                    throw IllegalStateException("Media capture import was rejected because a newer capture revision exists")
+                }
+                val committedRevision = maxOf(inspectNow, resolved.rowRevision + 1L)
+                check(MediaRequestHandoffStore.rememberCapture(
                     captureId = resolved.id,
                     headers = draft.requestHeaders,
                     redactedSummary = draft.redactedHeaderSummary.orEmpty(),
@@ -4054,29 +4133,20 @@ class MainViewModel(
                     exactUrl = intake.record.sourceUrl,
                     pageUrl = resolved.pageUrl,
                     transferShape = transferShapeForRecord(resolved),
+                    subjectGeneration = committedRevision,
                     privateNetworkApproved = privateNetworkApproved,
                     cleartextCredentialsApproved = cleartextCredentialsApproved,
-                )
-                intake.variants.forEach { variant ->
-                    MediaRequestHandoffStore.rememberVariant(
-                        variantId = variant.id,
-                        exactUrl = variant.url,
-                        headers = draft.requestHeaders,
-                        redactedSummary = draft.redactedHeaderSummary.orEmpty(),
-                        expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
-                    )
-                }
-                val externalVariants = (intake.variants + resolvedVariants).distinctBy(MediaVariant::id)
+                )) { "Exact media capture handoff changed while external media was committing" }
                 externalVariants.forEach { variant ->
-                    MediaRequestHandoffStore.rememberVariant(
+                    check(MediaRequestHandoffStore.rememberVariant(
                         variantId = variant.id,
                         exactUrl = variant.url,
                         headers = draft.requestHeaders,
                         redactedSummary = draft.redactedHeaderSummary.orEmpty(),
                         expiresAtEpochMs = variant.expiresAtEpochMs ?: Long.MAX_VALUE,
-                    )
+                        subjectGeneration = committedRevision,
+                    )) { "Exact media variant handoff changed while inspected media was committing" }
                 }
-                repository.saveMediaCaptureWithVariants(resolved, externalVariants, inspectNow)
                 repository.findAutomationCommand(draft.id)?.let { command ->
                     repository.saveAutomationCommand(
                         command.copy(
@@ -4433,7 +4503,7 @@ class MainViewModel(
                 userLabel = spec.userLabel,
             )
             val executionScope = DownloadRequestApprovalScope.forUrl(spec.sourceUrl)
-            MediaRequestHandoffStore.remember(
+            check(MediaRequestHandoffStore.remember(
                 downloadId = download.id,
                 headers = spec.requestHeaders.ifEmpty { captureHandoff?.headers.orEmpty() },
                 redactedSummary = spec.redactedSessionSummary.ifBlank { captureHandoff?.redactedSummary.orEmpty() },
@@ -4445,7 +4515,7 @@ class MainViewModel(
                 cleartextCredentialsApproved = executionScope != null && executionScope in captureHandoff?.cleartextCredentialApprovalScopes.orEmpty(),
                 cleanupActions = enginePlan.cleanupActions,
                 tempCookieFileName = enginePlan.tempCookieFile?.fileName,
-            )
+            )) { "Exact media-output download handoff changed while media download was preparing" }
             val creation = repository.createDownloadFromMediaCapture(
                 record.id,
                 download,
@@ -4514,15 +4584,25 @@ class MainViewModel(
                     lastResolvedAtEpochMs = now,
                     updatedAtEpochMs = now,
                 )
-                repository.saveMediaCapture(ready)
-                publishMediaIntakeFeedback(
-                    MediaIntakeFeedbackUi(
-                        MediaIntakeFeedbackKind.Found,
-                        "Direct media is ready",
-                        "This captured file is already executable. No playlist refresh or quality discovery is required.",
-                    ),
-                    navigateToMedia = false,
-                )
+                if (repository.saveMediaCapture(ready)) {
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(
+                            MediaIntakeFeedbackKind.Found,
+                            "Direct media is ready",
+                            "This captured file is already executable. No playlist refresh or quality discovery is required.",
+                        ),
+                        navigateToMedia = false,
+                    )
+                } else {
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(
+                            MediaIntakeFeedbackKind.Failed,
+                            "Capture changed while resolving",
+                            "A newer media-capture revision won. Refresh the current capture before resolving it again.",
+                        ),
+                        navigateToMedia = false,
+                    )
+                }
             }
             return
         }
@@ -4554,10 +4634,16 @@ class MainViewModel(
                 Triple(now, refreshed, variants)
             }.onSuccess { (now, refreshed, variants) ->
                 if (variants.isEmpty()) {
-                    repository.saveMediaCapture(record.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now))
+                    if (!repository.saveMediaCapture(record.copy(resolutionStatus = MediaResolutionStatus.RequiresRefresh, updatedAtEpochMs = now))) {
+                        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Capture changed while refreshing", "XDM refused to overwrite a newer linked media capture."), navigateToMedia = false)
+                        return@launch
+                    }
                     publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.NeedsBrowserCapture, "No fresh media variants found", "The adaptive/site media request still needs a fresh browser-observed request or resolver result."), navigateToMedia = false)
                 } else {
-                    repository.saveMediaCaptureWithVariants(refreshed.copy(sourceUrl = record.sourceUrl), variants, now)
+                    if (!repository.saveMediaCaptureWithVariants(refreshed.copy(sourceUrl = record.sourceUrl), variants, now)) {
+                        publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Capture changed while refreshing", "XDM refused to replace a newer variant set."), navigateToMedia = false)
+                        return@launch
+                    }
                     publishMediaIntakeFeedback(MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Found, "Media refreshed", "Found ${variants.size} selectable media variant(s)."), navigateToMedia = false)
                 }
             }.onFailure { error ->
@@ -4794,24 +4880,27 @@ class MainViewModel(
     }
 
     fun setDestination(uri: String) {
+        val intentToken = uiMutationConcurrency.nextDestinationIntent()
         viewModelScope.launch(Dispatchers.IO) {
             val health = runCatching { destinationWriter.health(uri) }.getOrElse { error ->
-                _destinationPreflightState.value = DestinationPreflightUi(
-                    destinationUri = uri,
-                    state = DownloadPreflightState.Failed,
-                    displayName = destinationUiLabel(uri),
-                    status = com.mikeyphw.xdm.android.model.DestinationHealthStatus.Unavailable,
-                    message = error.message ?: "Destination check failed",
-                )
+                if (uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) {
+                    _destinationPreflightState.value = DestinationPreflightUi(
+                        destinationUri = uri,
+                        state = DownloadPreflightState.Failed,
+                        displayName = destinationUiLabel(uri),
+                        status = com.mikeyphw.xdm.android.model.DestinationHealthStatus.Unavailable,
+                        message = error.message ?: "Destination check failed",
+                    )
+                }
                 return@launch
             }
+            if (!uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) return@launch
             _destinationPreflightState.value = health.toPreflightUi()
-            refreshSavedDestination(uri, health)
+            refreshSavedDestination(uri, health, intentToken = intentToken)
+            if (!uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) return@launch
             if (health.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.Healthy ||
                 health.status == com.mikeyphw.xdm.android.model.DestinationHealthStatus.LowSpace
-            ) {
-                preferences.setDestination(uri)
-            }
+            ) preferences.setDestination(uri)
         }
     }
 
@@ -4826,9 +4915,12 @@ class MainViewModel(
         uri: String,
         health: com.mikeyphw.xdm.android.storage.DestinationHealth,
         existing: DestinationPermission? = null,
+        intentToken: Long? = null,
     ) {
+        if (intentToken != null && !uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) return
         if (!uri.startsWith("content://", ignoreCase = true)) return
         val permission = existing ?: repository.destinationPermissions.first().firstOrNull { it.uri == uri } ?: return
+        if (intentToken != null && !uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) return
         repository.saveDestinationPermission(
             permission.copy(
                 displayName = health.displayName,
@@ -4839,7 +4931,7 @@ class MainViewModel(
                 lastError = health.message,
             ),
         )
-        liveValidatedDestinationUris.value = liveValidatedDestinationUris.value + uri
+        liveValidatedDestinationUris.update { it + uri }
     }
 
     fun setConflictPolicy(policy: FilenameConflictPolicy) {
@@ -4847,12 +4939,16 @@ class MainViewModel(
     }
 
     fun registerSafDestination(uri: String) {
+        val intentToken = uiMutationConcurrency.nextDestinationIntent()
         viewModelScope.launch(Dispatchers.IO) {
             val parsed = Uri.parse(uri)
             destinationWriter.persistTreePermission(parsed)
+            if (!uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) return@launch
             val health = runCatching { destinationWriter.health(uri) }.getOrNull() ?: return@launch
+            if (!uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) return@launch
             _destinationPreflightState.value = health.toPreflightUi()
             val writable = runCatching { destinationWriter.canWrite(uri) }.getOrDefault(false)
+            if (!uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) return@launch
             repository.saveDestinationPermission(
                 DestinationPermission(
                     uri = uri,
@@ -4865,8 +4961,8 @@ class MainViewModel(
                     lastError = health.message,
                 ),
             )
-            liveValidatedDestinationUris.value = liveValidatedDestinationUris.value + uri
-            if (writable) preferences.setDestination(uri)
+            liveValidatedDestinationUris.update { it + uri }
+            if (writable && uiMutationConcurrency.isCurrentDestinationIntent(intentToken)) preferences.setDestination(uri)
         }
     }
 
@@ -4910,20 +5006,19 @@ class MainViewModel(
 
     fun togglePause(download: Download) {
         viewModelScope.launch(Dispatchers.IO) {
-            if (databaseNativeHlsOwnership(download.id)) {
-                when (download.state) {
-                    DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing, DownloadState.Verifying -> nativeHlsMediaManager.pause(download.id)
-                    DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(download.id)
+            val current = repository.findDownload(download.id) ?: return@launch
+            if (databaseNativeHlsOwnership(current.id)) {
+                when (current.state) {
+                    DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing, DownloadState.Verifying -> nativeHlsMediaManager.pause(current.id)
+                    DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(current.id)
                     else -> Unit
                 }
                 return@launch
             }
-            when (download.state) {
-                DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing -> transferRuntime.pause(download.id)
-                DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> {
-                    repository.save(download.copy(state = DownloadState.Queued, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
-                    queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
-                }
+            when (current.state) {
+                DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing -> transferRuntime.pause(current.id)
+                DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower ->
+                    queueIntelligenceCoordinator.requestStart(current.id, userVisible = true, manual = true)
                 else -> Unit
             }
         }

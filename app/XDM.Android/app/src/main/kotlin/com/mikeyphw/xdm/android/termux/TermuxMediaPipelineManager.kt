@@ -455,7 +455,9 @@ class TermuxMediaPipelineManager(
                     return@withTransaction existing
                 }
                 dao.insertJob(entity)
-                repository.saveMediaOutput(mediaOutputRecord(entity, spec, mediaOutputSeed))
+                check(repository.saveMediaOutput(mediaOutputRecord(entity, spec, mediaOutputSeed))) {
+                    "Termux media output owner changed before queue commit"
+                }
                 database.mediaCaptureDao().markOutputCreated(
                     mediaOutputSeed.captureId,
                     MediaCaptureStatus.DownloadCreated.name,
@@ -555,7 +557,9 @@ class TermuxMediaPipelineManager(
                 )
                 database.withTransaction {
                     dao.insertJob(retryEntity)
-                    repository.saveMediaOutput(mediaOutputRecord(retryEntity, spec, seed))
+                    check(repository.saveMediaOutput(mediaOutputRecord(retryEntity, spec, seed))) {
+                        "Termux media retry output owner changed before queue commit"
+                    }
                 }
             } else {
                 dao.insertJob(retryEntity)
@@ -688,7 +692,9 @@ class TermuxMediaPipelineManager(
                 selectedTrackIds = existing?.selectedTrackIds?.ifEmpty { predecessor?.selectedTrackIds.orEmpty() }
                     ?: predecessor?.selectedTrackIds.orEmpty(),
             )
-            repository.saveMediaOutput(mediaOutputRecord(durableJob, spec, seed, existing))
+            check(repository.saveMediaOutput(mediaOutputRecord(durableJob, spec, seed, existing))) {
+                "Termux media output owner changed before recovery commit"
+            }
         }
     }
 
@@ -720,6 +726,8 @@ class TermuxMediaPipelineManager(
         completedArtifactGeneration = (job.attemptGeneration.toLong()).takeIf { !job.finalOutputUri.isNullOrBlank() } ?: existing?.completedArtifactGeneration,
         createdAtEpochMs = existing?.createdAtEpochMs ?: job.createdAtEpochMs,
         updatedAtEpochMs = job.updatedAtEpochMs,
+        observedAttemptGeneration = existing?.attemptGeneration ?: job.attemptGeneration.toLong(),
+        rowRevision = existing?.rowRevision ?: job.updatedAtEpochMs,
     )
 
     private fun isSensitiveExternalHeader(name: String): Boolean = name.equals("Cookie", ignoreCase = true) ||
@@ -1668,19 +1676,24 @@ class TermuxMediaPipelineManager(
                 position = 0,
                 displayLabel = "Processed • ${imported.displayName}",
             )
-            repository.saveMediaVariants(listOf(variant))
-            repository.saveMediaCapture(
-                capture.copy(
-                    status = MediaCaptureStatus.MetadataReady,
-                    mimeType = spec.output.mimeType,
-                    fileName = imported.displayName,
-                    selectedVariantId = variant.id,
-                    selectedVariantUrl = imported.finalUri,
-                    variantCount = (capture.variantCount + 1).coerceAtLeast(1),
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                    resolutionStatus = MediaResolutionStatus.Resolved,
+            val existingVariants = repository.variantsForMediaCapture(captureId)
+            val updatedAt = System.currentTimeMillis()
+            check(
+                repository.saveMediaCaptureWithVariants(
+                    capture.copy(
+                        status = MediaCaptureStatus.MetadataReady,
+                        mimeType = spec.output.mimeType,
+                        fileName = imported.displayName,
+                        selectedVariantId = variant.id,
+                        selectedVariantUrl = imported.finalUri,
+                        variantCount = (existingVariants.map(MediaVariant::id).toSet() + variant.id).size,
+                        updatedAtEpochMs = updatedAt,
+                        resolutionStatus = MediaResolutionStatus.Resolved,
+                    ),
+                    (existingVariants + variant).distinctBy(MediaVariant::id),
+                    updatedAt,
                 ),
-            )
+            ) { "Media capture changed while processed output metadata was being attached" }
         }
     }
 
@@ -1754,26 +1767,32 @@ class TermuxMediaPipelineManager(
                 )
             }
         }
-        if (variants.isNotEmpty()) repository.replaceMediaVariants(variants)
         val extension = json.optString("ext").takeIf(String::isNotBlank)
         val resolvedThumbnail = PostProcessingExecutionPolicy.sanitizeDurableRemoteUrl(json.optString("thumbnail"))
-        repository.saveMediaCapture(
-            capture.copy(
-                title = json.optString("title").takeIf(String::isNotBlank) ?: capture.title,
-                status = MediaCaptureStatus.MetadataReady,
-                kind = if (json.optBoolean("is_live", false)) MediaSourceKind.VideoStream else capture.kind,
-                container = extension ?: capture.container,
-                codecs = listOf(json.optString("vcodec"), json.optString("acodec")).filter { it.isNotBlank() && it != "none" }.joinToString(",").takeIf(String::isNotBlank) ?: capture.codecs,
-                durationMs = json.optDouble("duration").takeIf { it > 0.0 }?.times(1000.0)?.toLong() ?: capture.durationMs,
-                thumbnailUrl = resolvedThumbnail ?: capture.thumbnailUrl,
-                thumbnailProvenance = if (resolvedThumbnail != null) MediaThumbnailProvenance.Resolver else capture.thumbnailProvenance,
-                fileName = extension?.let { "${safeBase(capture)}.$it" } ?: capture.fileName,
-                variantCount = variants.size.takeIf { it > 0 } ?: capture.variantCount,
-                updatedAtEpochMs = System.currentTimeMillis(),
-                lastResolvedAtEpochMs = System.currentTimeMillis(),
-                resolutionStatus = MediaResolutionStatus.Resolved,
-            ),
+        val resolvedAt = System.currentTimeMillis()
+        val refreshedCapture = capture.copy(
+            title = json.optString("title").takeIf(String::isNotBlank) ?: capture.title,
+            status = MediaCaptureStatus.MetadataReady,
+            kind = if (json.optBoolean("is_live", false)) MediaSourceKind.VideoStream else capture.kind,
+            container = extension ?: capture.container,
+            codecs = listOf(json.optString("vcodec"), json.optString("acodec")).filter { it.isNotBlank() && it != "none" }.joinToString(",").takeIf(String::isNotBlank) ?: capture.codecs,
+            durationMs = json.optDouble("duration").takeIf { it > 0.0 }?.times(1000.0)?.toLong() ?: capture.durationMs,
+            thumbnailUrl = resolvedThumbnail ?: capture.thumbnailUrl,
+            thumbnailProvenance = if (resolvedThumbnail != null) MediaThumbnailProvenance.Resolver else capture.thumbnailProvenance,
+            fileName = extension?.let { "${safeBase(capture)}.$it" } ?: capture.fileName,
+            variantCount = variants.size.takeIf { it > 0 } ?: capture.variantCount,
+            updatedAtEpochMs = resolvedAt,
+            lastResolvedAtEpochMs = resolvedAt,
+            resolutionStatus = MediaResolutionStatus.Resolved,
         )
+        val accepted = if (variants.isNotEmpty()) {
+            check(repository.saveMediaCaptureWithVariants(refreshedCapture, variants, resolvedAt)) {
+                "Media capture changed while Termux media metadata was resolving"
+            }
+        } else {
+            repository.saveMediaCapture(refreshedCapture)
+        }
+        check(accepted) { "Media capture changed while Termux metadata resolution was running" }
     }
 
     private fun monitorJob(jobId: String) {
