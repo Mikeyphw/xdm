@@ -10,4 +10,14 @@ public interface IFtpDownloadClient
         string? password,
         Func<long, long?, ValueTask> progress,
         CancellationToken cancellationToken = default);
+
+    Task<FtpDownloadResult> DownloadAsync(
+        Uri source,
+        string destinationPath,
+        long resumeOffset,
+        string? username,
+        string? password,
+        Func<long, long?, ValueTask> progress,
+        FtpTransferContext transferContext,
+        CancellationToken cancellationToken = default);
 }

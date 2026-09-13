@@ -32,7 +32,12 @@ public sealed class FtpDownloadClientTests
                 {
                     progress.Add(downloaded);
                     return ValueTask.CompletedTask;
-                });
+                },
+                new FtpTransferContext(
+                    new DateTimeOffset(2026, 7, 12, 1, 1, 2, TimeSpan.Zero),
+                    payload.Length,
+                    ConnectTimeoutSeconds: 30,
+                    RequestTimeoutSeconds: 0));
 
             Assert.True(result.Resumed);
             Assert.Equal(payload.Length, result.TotalBytes);

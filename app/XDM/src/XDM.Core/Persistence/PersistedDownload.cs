@@ -37,4 +37,5 @@ public sealed record PersistedDownload(
     bool IsArchived = false,
     string? ContentHashSha256 = null,
     string? DuplicateOfDownloadId = null,
-    string? DuplicateReason = null);
+    string? DuplicateReason = null,
+    bool AllowDestinationOverwrite = false);

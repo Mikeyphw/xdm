@@ -10,7 +10,8 @@ public sealed record FinalizationMarker(
     FinalizationStage Stage = FinalizationStage.Prepared,
     string? SourcePath = null,
     string? StagingPath = null,
-    DateTimeOffset? UpdatedAt = null)
+    DateTimeOffset? UpdatedAt = null,
+    bool AllowOverwrite = false)
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 }

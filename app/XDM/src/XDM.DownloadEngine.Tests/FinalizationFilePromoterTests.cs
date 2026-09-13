@@ -56,6 +56,41 @@ public sealed class FinalizationFilePromoterTests
     }
 
     [Fact]
+    public async Task RefusesLateDestinationWhenOverwriteWasNotAdmitted()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-finalize-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            byte[] sourcePayload = [1, 2, 3, 4];
+            byte[] existingPayload = [9, 8, 7];
+            string source = Path.Combine(directory, "source.part");
+            string destination = Path.Combine(directory, "destination.bin");
+            await File.WriteAllBytesAsync(source, sourcePayload);
+            await File.WriteAllBytesAsync(destination, existingPayload);
+            FinalizationJournalStore journal = new();
+            FinalizationFilePromoter promoter = new(journal);
+            FinalizationMarker marker = new(
+                FinalizationMarker.CurrentVersion,
+                sourcePayload.Length,
+                Stage: FinalizationStage.Prepared,
+                SourcePath: source,
+                UpdatedAt: DateTimeOffset.UtcNow,
+                AllowOverwrite: false);
+
+            await Assert.ThrowsAsync<IOException>(() =>
+                promoter.PromoteAsync(source, destination, marker, CancellationToken.None));
+
+            Assert.Equal(existingPayload, await File.ReadAllBytesAsync(destination));
+            Assert.Equal(sourcePayload, await File.ReadAllBytesAsync(source));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task LoadsLegacyLengthMarkerAsPreparedJournal()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"xdm-finalize-{Guid.NewGuid():N}");

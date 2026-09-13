@@ -34,7 +34,7 @@ public sealed class DownloadManagerTests
     }
 
     [Fact]
-    public async Task ResumesFromExistingPartialFile()
+    public async Task RestartsFromZeroWhenExistingPartialLacksIdentity()
     {
         byte[] payload = CreatePayload(8192, 239);
         const int partialLength = 2048;
@@ -66,8 +66,11 @@ public sealed class DownloadManagerTests
 
         await WaitForStateAsync(state, id, DownloadState.Completed);
 
-        Assert.Equal(partialLength, handler.LastRangeStart);
+        Assert.Null(handler.LastRangeStart);
         Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
+        string[] stale = Directory.GetFiles(directory.Path, "resume.bin.stale-*.xdm.part");
+        Assert.Single(stale);
+        Assert.Equal(payload[..partialLength], await File.ReadAllBytesAsync(stale[0]));
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public sealed class DownloadManagerTests
             destination,
             1024,
             payload.Length,
-            null,
+            "\"ignore-v1\"",
             null,
             1,
             DateTimeOffset.UtcNow));
@@ -656,6 +659,27 @@ public sealed class DownloadManagerTests
     }
 
     [Fact]
+    public async Task EnforcesExpectedLengthWhenResponseLengthIsUnknown()
+    {
+        byte[] payload = CreatePayload(1024, 53);
+        using TemporaryDirectory directory = new();
+        using HttpClient client = new(new UnknownLengthResponseHandler(payload));
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore());
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/unknown-length.bin"),
+            directory.Path,
+            "unknown-length.bin",
+            ConnectionCount: 1,
+            ExpectedLength: payload.Length + 128L));
+
+        DownloadSnapshot failed = await WaitForStateAsync(state, id, DownloadState.Failed);
+        Assert.Contains("expected", failed.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(failed.DestinationPath));
+    }
+
+    [Fact]
     public async Task AutomaticallyVerifiesExpectedChecksumBeforeFinalization()
     {
         byte[] payload = CreatePayload(4096, 113);
@@ -831,10 +855,11 @@ public sealed class DownloadManagerTests
             payload.Length,
             DownloadState.Paused,
             DateTimeOffset.UtcNow,
+            EntityTag: "\"already-v1\"",
             ExpectedChecksumAlgorithm: DownloadChecksumService.Sha256,
             ExpectedChecksum: new string('0', 64));
         ApplicationState state = new();
-        using HttpClient client = new(new RangeAlreadySatisfiedHandler(payload.Length));
+        using HttpClient client = new(new RangeAlreadySatisfiedHandler(payload.Length, "\"already-v1\""));
         using DownloadManager manager = CreateManager(client, state, new InMemoryHistoryStore([persisted]));
 
         await manager.InitializeAsync();
@@ -1776,7 +1801,37 @@ public sealed class DownloadManagerTests
     }
 
 
-    private sealed class RangeAlreadySatisfiedHandler(long payloadLength) : HttpMessageHandler
+    private sealed class UnknownLengthResponseHandler(byte[] payload) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new UnknownLengthResponseContent(payload)
+            });
+        }
+    }
+
+    private sealed class UnknownLengthResponseContent(byte[] payload) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+            => SerializeToStreamAsync(stream, context, CancellationToken.None);
+
+        protected override Task SerializeToStreamAsync(
+            Stream stream,
+            TransportContext? context,
+            CancellationToken cancellationToken)
+            => stream.WriteAsync(payload, cancellationToken).AsTask();
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+    }
+
+    private sealed class RangeAlreadySatisfiedHandler(long payloadLength, string entityTag) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -1786,10 +1841,12 @@ public sealed class DownloadManagerTests
             Assert.NotNull(request.Headers.Range);
             ByteArrayContent content = new(Array.Empty<byte>());
             content.Headers.TryAddWithoutValidation("Content-Range", $"bytes */{payloadLength}");
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
+            HttpResponseMessage response = new(HttpStatusCode.RequestedRangeNotSatisfiable)
             {
                 Content = content
-            });
+            };
+            response.Headers.ETag = EntityTagHeaderValue.Parse(entityTag);
+            return Task.FromResult(response);
         }
     }
 

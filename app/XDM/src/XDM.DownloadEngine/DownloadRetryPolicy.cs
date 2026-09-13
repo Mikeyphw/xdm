@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 
@@ -35,10 +36,24 @@ public sealed class DownloadRetryPolicy
     }
 
     public static bool IsTransient(Exception exception)
-        => exception is HttpRequestException
-            or HttpIOException
+    {
+        if (exception is HttpRequestException httpException)
+        {
+            if (httpException.StatusCode is not HttpStatusCode statusCode)
+            {
+                return true;
+            }
+
+            int code = (int)statusCode;
+            return statusCode is HttpStatusCode.RequestTimeout
+                or HttpStatusCode.TooManyRequests
+                || code is >= 500 and <= 599;
+        }
+
+        return exception is HttpIOException
             or SocketException
             or EndOfStreamException
             or TimeoutException
             or TaskCanceledException;
+    }
 }

@@ -46,6 +46,29 @@ internal sealed class SegmentedDownloadExecutor
             return null;
         }
 
+        TransferIdentity probeIdentity = new(probe.TotalBytes, probe.EntityTag, probe.LastModified);
+        if (!probeIdentity.HasResumeValidator)
+        {
+            Record(context, TransferDiagnosticStage.Resume, TransferDiagnosticSeverity.Warning,
+                "XDM-TRANSFER-SEGMENT-NO-IDENTITY",
+                "Segmented transfer was disabled because the origin did not provide a strong ETag or Last-Modified validator.");
+            return null;
+        }
+        TransferIdentity expectedIdentity = new(
+            context.ExpectedLength,
+            context.ExpectedEntityTag,
+            context.ExpectedLastModified);
+        if (context.ExpectedLength is long expectedLength && expectedLength != probe.TotalBytes)
+        {
+            throw new DownloadIntegrityException(
+                $"The remote file length changed. Expected {expectedLength}; received {probe.TotalBytes}.");
+        }
+        if (expectedIdentity.HasResumeValidator && !expectedIdentity.Matches(probeIdentity))
+        {
+            throw new DownloadIntegrityException(
+                "The remote file identity changed before segmented transfer could resume.");
+        }
+
         int connectionCount = Math.Clamp(
             context.ConnectionCount,
             1,
@@ -54,7 +77,8 @@ internal sealed class SegmentedDownloadExecutor
         plan.Validate();
         string partialPath = TransferArtifactPaths.GetPartialPath(context.DestinationPath);
         string segmentDirectory = GetSegmentDirectory(context.DestinationPath);
-        Directory.CreateDirectory(segmentDirectory);
+        await PrepareSegmentGenerationAsync(segmentDirectory, probeIdentity, cancellationToken)
+            .ConfigureAwait(false);
         string mergePath = $"{partialPath}.merge";
         if (File.Exists(mergePath))
         {
@@ -134,9 +158,8 @@ internal sealed class SegmentedDownloadExecutor
             context.Referer,
             context.UserAgent);
         request.Headers.Range = new RangeHeaderValue(0, 0);
-        using HttpResponseMessage response = await _httpClient.SendAsync(
+        using HttpResponseMessage response = await SendWithTimeoutAsync(
             request,
-            HttpCompletionOption.ResponseHeadersRead,
             cancellationToken).ConfigureAwait(false);
 
         Record(context, TransferDiagnosticStage.Http,
@@ -262,9 +285,8 @@ internal sealed class SegmentedDownloadExecutor
         request.Headers.Range = new RangeHeaderValue(requestStart, segment.End);
         ApplyIfRange(request, probe);
 
-        using HttpResponseMessage response = await _httpClient.SendAsync(
+        using HttpResponseMessage response = await SendWithTimeoutAsync(
             request,
-            HttpCompletionOption.ResponseHeadersRead,
             cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.PartialContent)
         {
@@ -284,7 +306,7 @@ internal sealed class SegmentedDownloadExecutor
         byte[] buffer = new byte[BufferSize];
         while (true)
         {
-            int read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            int read = await ReadWithTimeoutAsync(source, buffer, cancellationToken).ConfigureAwait(false);
             if (read == 0)
             {
                 break;
@@ -350,7 +372,16 @@ internal sealed class SegmentedDownloadExecutor
         long remainingSegmentBytes = Math.Max(0, totalBytes - existingSegmentBytes);
         long mergeBytes = totalBytes;
         long safetyMargin = Math.Min(DiskSafetyMarginBytes, Math.Max(64L * 1024, totalBytes / 100));
-        long requiredBytes = checked(remainingSegmentBytes + mergeBytes + safetyMargin);
+        long requiredBytes;
+        try
+        {
+            requiredBytes = checked(remainingSegmentBytes + mergeBytes + safetyMargin);
+        }
+        catch (OverflowException exception)
+        {
+            throw new DownloadIntegrityException(
+                $"The remote length is too large to safely reserve destination capacity: {exception.Message}");
+        }
         long? availableBytes = _diskSpaceProvider.GetAvailableBytes(destinationPath);
         if (availableBytes is long available && available < requiredBytes)
         {
@@ -411,23 +442,61 @@ internal sealed class SegmentedDownloadExecutor
             throw new DownloadIntegrityException("A segment response returned an invalid Content-Range.");
         }
 
-        string? entityTag = response.Headers.ETag?.ToString();
-        if (!string.IsNullOrWhiteSpace(probe.EntityTag)
-            && !string.IsNullOrWhiteSpace(entityTag)
-            && !string.Equals(probe.EntityTag, entityTag, StringComparison.Ordinal))
-        {
-            throw new DownloadIntegrityException("The remote file entity tag changed during segmented transfer.");
-        }
-
-        DateTimeOffset? lastModified = response.Content.Headers.LastModified;
-        if (probe.LastModified is DateTimeOffset expected
-            && lastModified is DateTimeOffset actual
-            && expected != actual)
-        {
-            throw new DownloadIntegrityException("The remote file modification date changed during segmented transfer.");
-        }
+        new TransferIdentity(probe.TotalBytes, probe.EntityTag, probe.LastModified)
+            .ValidateResumeResponse(response, requireValidator: true);
     }
 
+
+    private async Task PrepareSegmentGenerationAsync(
+        string segmentDirectory,
+        TransferIdentity currentIdentity,
+        CancellationToken cancellationToken)
+    {
+        SegmentedTransferIdentity? persisted = await SegmentedTransferIdentityStore
+            .LoadAsync(segmentDirectory, cancellationToken)
+            .ConfigureAwait(false);
+        bool hasSegments = Directory.Exists(segmentDirectory)
+            && Directory.EnumerateFiles(segmentDirectory, "*.part", SearchOption.TopDirectoryOnly).Any();
+        if (hasSegments
+            && (persisted is null || !persisted.ToTransferIdentity().Matches(currentIdentity)))
+        {
+            Directory.Delete(segmentDirectory, recursive: true);
+        }
+
+        Directory.CreateDirectory(segmentDirectory);
+        await SegmentedTransferIdentityStore.SaveAsync(
+            segmentDirectory,
+            new SegmentedTransferIdentity(
+                SegmentedTransferIdentity.CurrentVersion,
+                currentIdentity.ExpectedLength ?? throw new DownloadIntegrityException("Segmented transfer requires a known total length."),
+                currentIdentity.EntityTag,
+                currentIdentity.LastModified),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<HttpResponseMessage> SendWithTimeoutAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        Task<HttpResponseMessage> send = _httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        return _options.RequestTimeout is TimeSpan timeout
+            ? await send.WaitAsync(timeout, cancellationToken).ConfigureAwait(false)
+            : await send.ConfigureAwait(false);
+    }
+
+    private async ValueTask<int> ReadWithTimeoutAsync(
+        Stream source,
+        Memory<byte> buffer,
+        CancellationToken cancellationToken)
+    {
+        ValueTask<int> read = source.ReadAsync(buffer, cancellationToken);
+        return _options.RequestTimeout is TimeSpan timeout
+            ? await read.AsTask().WaitAsync(timeout, cancellationToken).ConfigureAwait(false)
+            : await read.ConfigureAwait(false);
+    }
 
     private static Dictionary<string, string?> CreateResponseDiagnosticContext(HttpResponseMessage response)
     {

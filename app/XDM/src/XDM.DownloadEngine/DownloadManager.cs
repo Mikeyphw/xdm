@@ -36,8 +36,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private readonly IDownloadHistoryStore _historyStore;
     private readonly ILogger<DownloadManager> _logger;
     private readonly IDiskSpaceProvider _diskSpaceProvider;
-    private readonly DownloadRetryPolicy _retryPolicy;
-    private readonly SegmentedDownloadExecutor _segmentedExecutor;
+    private DownloadRetryPolicy _retryPolicy;
+    private SegmentedDownloadExecutor _segmentedExecutor;
     private readonly ResumeCheckpointStore _checkpointStore;
     private readonly DownloadChecksumWorkflowStore _checksumWorkflowStore;
     private readonly IPartialFileRepairService _partialFileRepairService;
@@ -317,7 +317,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 item.IsArchived,
                 item.ContentHashSha256,
                 item.DuplicateOfDownloadId,
-                item.DuplicateReason);
+                item.DuplicateReason,
+                item.AllowDestinationOverwrite);
 
             await LoadChecksumWorkflowAsync(session, cancellationToken).ConfigureAwait(false);
 
@@ -591,7 +592,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             false,
             null,
             duplicateUrl?.Id,
-            duplicateUrl is null ? null : "The source URL matches an existing download.");
+            duplicateUrl is null ? null : "The source URL matches an existing download.",
+            effectiveRequest.DuplicateBehavior == DuplicateFileBehavior.Overwrite);
         session.ExpectedSha256 = normalizedExpectedSha256;
         session.ExpectedSha512 = normalizedExpectedSha512;
 
@@ -2863,7 +2865,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     ["host"] = session.Source.IdnHost
                 });
 
-            int maximumAttempts = session.Method == "GET" ? _retryPolicy.MaximumAttempts : 1;
+            DownloadRetryPolicy retryPolicy = _retryPolicy;
+            int maximumAttempts = session.Method == "GET" ? retryPolicy.MaximumAttempts : 1;
             while (true)
             {
                 bool switchedMirror = false;
@@ -2902,7 +2905,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     {
                         if (attempt < maximumAttempts)
                         {
-                            TimeSpan delay = _retryPolicy.GetDelay(attempt);
+                            TimeSpan delay = retryPolicy.GetDelay(attempt);
                             lock (session.Sync)
                             {
                                 session.State = DownloadState.Connecting;
@@ -2995,6 +2998,15 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             Fail(session, exception);
         }
+        catch (TimeoutException exception)
+        {
+            Fail(session, exception);
+        }
+        catch (OverflowException exception)
+        {
+            Fail(session, new DownloadIntegrityException(
+                $"The remote transfer metadata exceeded supported numeric bounds: {exception.Message}"));
+        }
         finally
         {
             policyLease?.Dispose();
@@ -3014,6 +3026,18 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             File.Delete(partialPath);
             existingLength = 0;
+        }
+
+        if (existingLength > 0 && session.Method == "GET")
+        {
+            bool hasSafeResumeIdentity = session.Source.Scheme is "ftp" or "ftps"
+                ? session.LastModified is not null
+                : new TransferIdentity(session.TotalBytes, session.EntityTag, session.LastModified).HasResumeValidator;
+            if (!hasSafeResumeIdentity)
+            {
+                PreserveUnvalidatedPartial(session, partialPath);
+                existingLength = 0;
+            }
         }
 
         if (session.Source.Scheme is "ftp" or "ftps")
@@ -3042,9 +3066,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.Referer,
                 session.UserAgent,
                 session.ConnectionCount,
-                ResolveSpeedLimit(session));
+                ResolveSpeedLimit(session),
+                session.TotalBytes,
+                session.EntityTag,
+                session.LastModified);
             DateTimeOffset lastSegmentProgress = DateTimeOffset.MinValue;
-            SegmentedDownloadResult? segmentedResult = await _segmentedExecutor.TryDownloadAsync(
+            SegmentedDownloadExecutor segmentedExecutor = _segmentedExecutor;
+            SegmentedDownloadResult? segmentedResult = await segmentedExecutor.TryDownloadAsync(
                 context,
                 (downloaded, total, speed) =>
                 {
@@ -3157,9 +3185,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
 
         DownloadEngineLog.DownloadStarted(_logger, session.Id, session.Source, existingLength);
-        using HttpResponseMessage response = await _httpClient
-            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
+        using HttpResponseMessage response = await SendHttpWithRequestTimeoutAsync(
+            request, cancellationToken).ConfigureAwait(false);
         RecordTransferDiagnostic(
             session,
             TransferDiagnosticStage.Http,
@@ -3273,8 +3300,17 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         long? totalBytes = response.Content.Headers.ContentRange?.Length;
         if (totalBytes is null && response.Content.Headers.ContentLength is long contentLength)
         {
-            totalBytes = existingLength + contentLength;
+            try
+            {
+                totalBytes = checked(existingLength + contentLength);
+            }
+            catch (OverflowException exception)
+            {
+                throw new DownloadIntegrityException(
+                    $"The remote content length is too large to represent safely: {exception.Message}");
+            }
         }
+        totalBytes ??= session.TotalBytes;
 
         if (totalBytes is long knownTotalBytes)
         {
@@ -3307,9 +3343,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         Publish(session, forcePersist: true);
 
-        await using Stream source = await response.Content
-            .ReadAsStreamAsync(cancellationToken)
-            .ConfigureAwait(false);
+        await using Stream source = await ReadResponseStreamWithTimeoutAsync(
+            response.Content, cancellationToken).ConfigureAwait(false);
 
         long downloadedBytes;
         await using (FileStream destination = new(
@@ -3327,9 +3362,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
             while (true)
             {
-                int read = await source
-                    .ReadAsync(buffer, cancellationToken)
-                    .ConfigureAwait(false);
+                int read = await ReadResponseBodyWithTimeoutAsync(
+                    source, buffer, cancellationToken).ConfigureAwait(false);
                 if (read == 0)
                 {
                     break;
@@ -3341,7 +3375,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
                 lock (session.Sync)
                 {
-                    session.DownloadedBytes += read;
+                    session.DownloadedBytes = checked(session.DownloadedBytes + read);
                     double elapsedSeconds = Math.Max(speedWatch.Elapsed.TotalSeconds, 0.001);
                     session.BytesPerSecond = (session.DownloadedBytes - speedStartBytes) / elapsedSeconds;
                 }
@@ -3394,6 +3428,70 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         Publish(session, forcePersist: true);
         await CompleteFromPartialAsync(session, partialPath, downloadedBytes).ConfigureAwait(false);
+    }
+
+    private void PreserveUnvalidatedPartial(DownloadSession session, string partialPath)
+    {
+        if (!File.Exists(partialPath))
+        {
+            return;
+        }
+
+        string stalePath = ResolveUniqueArtifactPath(
+            TransferArtifactPaths.GetStalePartialPath(
+                session.DestinationPath,
+                DateTimeOffset.UtcNow));
+        File.Move(partialPath, stalePath, overwrite: false);
+        lock (session.Sync)
+        {
+            session.DownloadedBytes = 0;
+            session.EntityTag = null;
+            session.LastModified = null;
+            session.RecoveryMessage =
+                $"Existing partial bytes could not be tied to a remote validator and were preserved as '{stalePath}'. The transfer restarted from byte zero.";
+        }
+    }
+
+    private TimeSpan? ResolveRequestTimeout()
+    {
+        NetworkSettings network = (_settingsService.Current.Network ?? NetworkSettings.Default).Normalize();
+        return network.RequestTimeoutSeconds == 0
+            ? null
+            : TimeSpan.FromSeconds(network.RequestTimeoutSeconds);
+    }
+
+    private async Task<HttpResponseMessage> SendHttpWithRequestTimeoutAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        Task<HttpResponseMessage> send = _httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        return ResolveRequestTimeout() is TimeSpan timeout
+            ? await send.WaitAsync(timeout, cancellationToken).ConfigureAwait(false)
+            : await send.ConfigureAwait(false);
+    }
+
+    private async Task<Stream> ReadResponseStreamWithTimeoutAsync(
+        HttpContent content,
+        CancellationToken cancellationToken)
+    {
+        Task<Stream> read = content.ReadAsStreamAsync(cancellationToken);
+        return ResolveRequestTimeout() is TimeSpan timeout
+            ? await read.WaitAsync(timeout, cancellationToken).ConfigureAwait(false)
+            : await read.ConfigureAwait(false);
+    }
+
+    private async ValueTask<int> ReadResponseBodyWithTimeoutAsync(
+        Stream source,
+        Memory<byte> buffer,
+        CancellationToken cancellationToken)
+    {
+        ValueTask<int> read = source.ReadAsync(buffer, cancellationToken);
+        return ResolveRequestTimeout() is TimeSpan timeout
+            ? await read.AsTask().WaitAsync(timeout, cancellationToken).ConfigureAwait(false)
+            : await read.ConfigureAwait(false);
     }
 
     private static void ApplyIfRangeValidator(HttpRequestMessage request, DownloadSession session)
@@ -3472,49 +3570,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
     private static void ValidateResumeValidators(HttpResponseMessage response, DownloadSession session)
     {
-        string? expectedEntityTag;
-        DateTimeOffset? expectedLastModified;
+        TransferIdentity identity;
         lock (session.Sync)
         {
-            expectedEntityTag = session.EntityTag;
-            expectedLastModified = session.LastModified;
+            identity = new TransferIdentity(session.TotalBytes, session.EntityTag, session.LastModified);
         }
-
-        string? responseEntityTag = response.Headers.ETag?.ToString();
-        bool hasStrongEntityTag = !string.IsNullOrWhiteSpace(expectedEntityTag)
-            && EntityTagHeaderValue.TryParse(expectedEntityTag, out EntityTagHeaderValue? parsedExpectedEntityTag)
-            && !parsedExpectedEntityTag.IsWeak;
-        if (hasStrongEntityTag)
-        {
-            if (string.IsNullOrWhiteSpace(responseEntityTag))
-            {
-                throw new DownloadIntegrityException("The server omitted the entity tag required to validate this resume.");
-            }
-
-            if (!string.Equals(expectedEntityTag, responseEntityTag, StringComparison.Ordinal))
-            {
-                throw new DownloadIntegrityException("The remote file entity tag changed while resuming.");
-            }
-        }
-        else if (!string.IsNullOrWhiteSpace(expectedEntityTag) && expectedLastModified is null)
-        {
-            throw new DownloadIntegrityException(
-                "The stored entity tag is weak or invalid and cannot safely validate this resume.");
-        }
-
-        DateTimeOffset? responseLastModified = response.Content.Headers.LastModified;
-        if (expectedLastModified is DateTimeOffset expected)
-        {
-            if (responseLastModified is not DateTimeOffset actual)
-            {
-                throw new DownloadIntegrityException("The server omitted the modification date required to validate this resume.");
-            }
-
-            if (expected != actual)
-            {
-                throw new DownloadIntegrityException("The remote file modification date changed while resuming.");
-            }
-        }
+        identity.ValidateResumeResponse(response, requireValidator: true);
     }
 
     private void EnsureDiskCapacity(string destinationPath, long existingLength, long? totalBytes)
@@ -3528,7 +3589,16 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         long safetyMargin = Math.Min(
             DiskSafetyMarginBytes,
             Math.Max(64L * 1024, remainingBytes / 100));
-        long requiredBytes = checked(remainingBytes + safetyMargin);
+        long requiredBytes;
+        try
+        {
+            requiredBytes = checked(remainingBytes + safetyMargin);
+        }
+        catch (OverflowException exception)
+        {
+            throw new DownloadIntegrityException(
+                $"The remote length is too large to safely reserve destination capacity: {exception.Message}");
+        }
         long? availableBytes = _diskSpaceProvider.GetAvailableBytes(destinationPath);
         if (availableBytes is long available && available < requiredBytes)
         {
@@ -3542,6 +3612,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         string? checksumAlgorithm;
         string? checksum;
         bool localIntegrityRecordOnly;
+        bool allowOverwrite;
         lock (session.Sync)
         {
             destinationPath = session.DestinationPath;
@@ -3553,6 +3624,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                         : DownloadChecksumService.Sha512);
             checksum = session.ActualChecksum;
             localIntegrityRecordOnly = session.LocalIntegrityRecordOnly;
+            allowOverwrite = session.AllowDestinationOverwrite;
         }
 
         string markerPath = GetFinalizationMarkerPath(destinationPath);
@@ -3567,7 +3639,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             FinalizationStage.Prepared,
             GetPartialPath(destinationPath),
             null,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            allowOverwrite);
         byte[] payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(marker));
         using (FileStream stream = new(
             temporaryPath,
@@ -3612,7 +3685,16 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 .ConfigureAwait(false);
             if (stagingValid)
             {
-                File.Move(stagingPath, destinationPath, overwrite: true);
+                if (!marker.AllowOverwrite && File.Exists(destinationPath))
+                {
+                    session.State = DownloadState.Failed;
+                    session.RecoveryRequired = true;
+                    session.RecoveryMessage = "Finalization recovery found a destination created after admission and will not overwrite it.";
+                    session.IntegrityStatus = DownloadIntegrityStatus.RecoveryRequired;
+                    session.ErrorMessage = session.RecoveryMessage;
+                    return;
+                }
+                File.Move(stagingPath, destinationPath, overwrite: marker.AllowOverwrite);
                 await _finalizationJournalStore.SaveAsync(
                     destinationPath,
                     marker with
@@ -3627,7 +3709,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             {
                 try
                 {
-                    if (File.Exists(destinationPath))
+                    if (marker.AllowOverwrite && File.Exists(destinationPath))
                     {
                         File.Move(
                             destinationPath,
@@ -3799,7 +3881,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 FinalizationStage.Prepared,
                 partialPath,
                 null,
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow,
+                session.AllowDestinationOverwrite);
         FinalizationPromotionResult promotion = await _finalizationFilePromoter
             .PromoteAsync(partialPath, session.DestinationPath, marker)
             .ConfigureAwait(false);
@@ -4423,6 +4506,12 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             expectedFtpLength = session.TotalBytes;
         }
 
+        NetworkSettings network = (_settingsService.Current.Network ?? NetworkSettings.Default).Normalize();
+        FtpTransferContext ftpContext = new(
+            session.LastModified,
+            expectedFtpLength,
+            network.ConnectTimeoutSeconds,
+            network.RequestTimeoutSeconds);
         FtpDownloadResult result = await _ftpDownloadClient.DownloadAsync(
             session.Source,
             partialPath,
@@ -4451,14 +4540,20 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     Publish(session, forcePersist: downloaded == total);
                 }
             },
+            ftpContext,
             cancellationToken).ConfigureAwait(false);
 
         long completedBytes = Math.Max(result.DownloadedBytes, lastDownloaded);
-        long actualFtpLength = result.TotalBytes ?? completedBytes;
-        if (expectedFtpLength is long expectedLength && expectedLength != actualFtpLength)
+        long actualFtpLength = result.TotalBytes ?? expectedFtpLength ?? completedBytes;
+        if (result.TotalBytes is long advertisedLength && completedBytes != advertisedLength)
+        {
+            throw new EndOfStreamException(
+                $"The FTP transfer completed with {completedBytes} local bytes; SIZE advertised {advertisedLength} bytes.");
+        }
+        if (expectedFtpLength is long expectedLength && completedBytes != expectedLength)
         {
             throw new DownloadIntegrityException(
-                $"The remote file length changed. Expected {expectedLength}; received {actualFtpLength}.");
+                $"The FTP transfer completed with {completedBytes} bytes; {expectedLength} bytes were expected.");
         }
 
         lock (session.Sync)
@@ -4706,6 +4801,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
     private void OnSettingsChanged(object? sender, ApplicationSettings settings)
     {
+        DownloadRetryPolicy retryPolicy = CreateRetryPolicy(settings);
+        _retryPolicy = retryPolicy;
+        _segmentedExecutor = new SegmentedDownloadExecutor(
+            _httpClient,
+            _diskSpaceProvider,
+            retryPolicy,
+            CreateSegmentedOptions(settings),
+            _transferDiagnostics);
         _policyConcurrencyLimiter.NotifyLimitsChanged();
         _queueConcurrencyLimiter.NotifyLimitsChanged();
         _hostConcurrencyLimiter.NotifyLimitsChanged();
@@ -4927,7 +5030,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 session.IsArchived,
                 session.ContentHashSha256,
                 session.DuplicateOfDownloadId,
-                session.DuplicateReason);
+                session.DuplicateReason,
+                session.AllowDestinationOverwrite);
         }
     }
 
@@ -5719,7 +5823,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         return new SegmentedDownloadOptions(
             network.DefaultConnectionCount,
             network.MaximumConnectionCount,
-            network.MinimumSegmentedSizeBytes);
+            network.MinimumSegmentedSizeBytes,
+            network.RequestTimeoutSeconds);
     }
 
     private TimeSpan GetRemainingShutdownBudget()
@@ -5782,7 +5887,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             bool isArchived = false,
             string? contentHashSha256 = null,
             string? duplicateOfDownloadId = null,
-            string? duplicateReason = null)
+            string? duplicateReason = null,
+            bool allowDestinationOverwrite = false)
         {
             Id = id;
             Source = source;
@@ -5840,6 +5946,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             ContentHashSha256 = string.IsNullOrWhiteSpace(contentHashSha256) ? null : contentHashSha256.Trim().ToLowerInvariant();
             DuplicateOfDownloadId = string.IsNullOrWhiteSpace(duplicateOfDownloadId) ? null : duplicateOfDownloadId.Trim();
             DuplicateReason = string.IsNullOrWhiteSpace(duplicateReason) ? null : duplicateReason.Trim();
+            AllowDestinationOverwrite = allowDestinationOverwrite;
             int currentMirrorIndex = Array.FindIndex(normalizedMirrors, mirror => mirror == source);
             MirrorIndex = currentMirrorIndex + 1;
         }
@@ -5933,6 +6040,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public string? DuplicateOfDownloadId { get; set; }
 
         public string? DuplicateReason { get; set; }
+
+        public bool AllowDestinationOverwrite { get; set; }
 
         public TaskCompletionSource<Aria2TaskStatus>? Aria2TerminalSignal { get; set; }
 

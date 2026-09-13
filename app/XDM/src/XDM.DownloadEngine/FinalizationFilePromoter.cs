@@ -49,9 +49,15 @@ public sealed class FinalizationFilePromoter : IFinalizationFilePromoter
         };
         await _journalStore.SaveAsync(destinationPath, promotionStarted, cancellationToken).ConfigureAwait(false);
 
+        if (!marker.AllowOverwrite && File.Exists(destinationPath))
+        {
+            throw new IOException(
+                $"The destination '{destinationPath}' appeared after admission; finalization will not overwrite it.");
+        }
+
         try
         {
-            _moveFile(sourcePath, destinationPath, true);
+            _moveFile(sourcePath, destinationPath, marker.AllowOverwrite);
             await _journalStore.SaveAsync(
                 destinationPath,
                 promotionStarted with { Stage = FinalizationStage.DestinationCommitted },
@@ -76,7 +82,12 @@ public sealed class FinalizationFilePromoter : IFinalizationFilePromoter
             await ValidateCandidateAsync(stagingPath, marker, cancellationToken).ConfigureAwait(false);
             FinalizationMarker ready = copying with { Stage = FinalizationStage.DestinationReady };
             await _journalStore.SaveAsync(destinationPath, ready, cancellationToken).ConfigureAwait(false);
-            _moveFile(stagingPath, destinationPath, true);
+            if (!marker.AllowOverwrite && File.Exists(destinationPath))
+            {
+                throw new IOException(
+                    $"The destination '{destinationPath}' appeared while finalization was copying; it will not be overwritten.");
+            }
+            _moveFile(stagingPath, destinationPath, marker.AllowOverwrite);
             await _journalStore.SaveAsync(
                 destinationPath,
                 ready with { Stage = FinalizationStage.DestinationCommitted },

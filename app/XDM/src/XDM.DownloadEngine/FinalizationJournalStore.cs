@@ -25,7 +25,7 @@ public sealed class FinalizationJournalStore
         try
         {
             FinalizationMarker? marker = JsonSerializer.Deserialize<FinalizationMarker>(payload, _serializerOptions);
-            if (marker is not null && (marker.Version is 1 or FinalizationMarker.CurrentVersion))
+            if (marker is not null && (marker.Version is 1 or 2 or FinalizationMarker.CurrentVersion))
             {
                 return marker.Version == FinalizationMarker.CurrentVersion
                     ? marker

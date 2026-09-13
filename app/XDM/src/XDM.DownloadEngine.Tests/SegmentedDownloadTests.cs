@@ -61,6 +61,14 @@ public sealed class SegmentedDownloadTests
         await File.WriteAllBytesAsync(
             Path.Combine(segmentDirectory, "0000.part"),
             payload[..checkpointLength]);
+        await SegmentedTransferIdentityStore.SaveAsync(
+            segmentDirectory,
+            new SegmentedTransferIdentity(
+                SegmentedTransferIdentity.CurrentVersion,
+                payload.Length,
+                "\"segmented-v1\"",
+                null),
+            CancellationToken.None);
 
         SegmentedRangeHandler handler = new(payload);
         using HttpClient client = new(handler);
@@ -77,6 +85,60 @@ public sealed class SegmentedDownloadTests
         Assert.Contains(
             handler.DataRanges,
             range => range.Start == checkpointLength && range.End == first.End);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
+    }
+
+    [Fact]
+    public async Task FallsBackToSingleStreamWhenProbeHasNoIdentityValidator()
+    {
+        byte[] payload = CreatePayload(4096);
+        using TemporaryDirectory directory = new();
+        NoValidatorRangeHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state);
+
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/no-validator.bin"),
+            directory.Path,
+            "no-validator.bin",
+            ConnectionCount: 4));
+
+        DownloadSnapshot completed = await WaitForStateAsync(state, id, DownloadState.Completed);
+        Assert.Equal(2, handler.RequestCount);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(completed.DestinationPath));
+        Assert.Empty(handler.DataRanges);
+    }
+
+    [Fact]
+    public async Task DiscardsSegmentsFromDifferentIdentityGeneration()
+    {
+        byte[] payload = CreatePayload(8192);
+        using TemporaryDirectory directory = new();
+        string destination = Path.Combine(directory.Path, "generation.bin");
+        string segmentDirectory = $"{destination}.segments";
+        Directory.CreateDirectory(segmentDirectory);
+        SegmentedDownloadPlan plan = SegmentedDownloadPlan.Create(payload.Length, 4);
+        int staleBytes = checked((int)(plan.Segments[0].Length / 2));
+        await File.WriteAllBytesAsync(Path.Combine(segmentDirectory, "0000.part"), Enumerable.Repeat((byte)255, staleBytes).ToArray());
+        await SegmentedTransferIdentityStore.SaveAsync(
+            segmentDirectory,
+            new SegmentedTransferIdentity(SegmentedTransferIdentity.CurrentVersion, payload.Length, "\"old-generation\"", null),
+            CancellationToken.None);
+
+        SegmentedRangeHandler handler = new(payload);
+        using HttpClient client = new(handler);
+        ApplicationState state = new();
+        using DownloadManager manager = CreateManager(client, state);
+        string id = await manager.AddAsync(new DownloadRequest(
+            new Uri("https://example.test/generation.bin"),
+            directory.Path,
+            "generation.bin",
+            ConnectionCount: 4));
+
+        await WaitForStateAsync(state, id, DownloadState.Completed);
+        Assert.DoesNotContain(handler.DataRanges, range => range.Start == staleBytes);
+        Assert.Contains(handler.DataRanges, range => range.Start == 0 && range.End == plan.Segments[0].End);
         Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
     }
 
@@ -193,6 +255,37 @@ public sealed class SegmentedDownloadTests
             response.Content.Headers.ContentLength = length;
             response.Content.Headers.ContentRange = new ContentRangeHeaderValue(start, end, payload.Length);
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class NoValidatorRangeHandler(byte[] payload) : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+        public ConcurrentBag<(long Start, long End)> DataRanges { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestCount++;
+            RangeItemHeaderValue? requested = request.Headers.Range?.Ranges.SingleOrDefault();
+            if (requested is null)
+            {
+                ByteArrayContent full = new(payload);
+                full.Headers.ContentLength = payload.Length;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = full });
+            }
+
+            long start = requested.From ?? 0;
+            long end = requested.To ?? payload.Length - 1;
+            if (!(start == 0 && end == 0))
+            {
+                DataRanges.Add((start, end));
+            }
+            int length = checked((int)(end - start + 1));
+            ByteArrayContent content = new(payload.AsSpan((int)start, length).ToArray());
+            content.Headers.ContentLength = length;
+            content.Headers.ContentRange = new ContentRangeHeaderValue(start, end, payload.Length);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = content });
         }
     }
 

@@ -26,7 +26,7 @@ public static class ConfiguredHttpClientFactory
         ProxySettings proxy = network.Proxy!;
         SocketsHttpHandler handler = new()
         {
-            AutomaticDecompression = DecompressionMethods.All,
+            AutomaticDecompression = DecompressionMethods.None,
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 10,
             ConnectTimeout = TimeSpan.FromSeconds(network.ConnectTimeoutSeconds),

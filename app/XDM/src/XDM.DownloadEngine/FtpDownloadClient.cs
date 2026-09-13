@@ -12,7 +12,7 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
     private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(150);
     private static readonly string[] MdtmFormats = ["yyyyMMddHHmmss", "yyyyMMddHHmmss.FFF"];
 
-    public async Task<FtpDownloadResult> DownloadAsync(
+    public Task<FtpDownloadResult> DownloadAsync(
         Uri source,
         string destinationPath,
         long resumeOffset,
@@ -20,10 +20,30 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
         string? password,
         Func<long, long?, ValueTask> progress,
         CancellationToken cancellationToken = default)
+        => DownloadAsync(
+            source,
+            destinationPath,
+            resumeOffset,
+            username,
+            password,
+            progress,
+            new FtpTransferContext(),
+            cancellationToken);
+
+    public async Task<FtpDownloadResult> DownloadAsync(
+        Uri source,
+        string destinationPath,
+        long resumeOffset,
+        string? username,
+        string? password,
+        Func<long, long?, ValueTask> progress,
+        FtpTransferContext transferContext,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(progress);
+        ArgumentNullException.ThrowIfNull(transferContext);
         ArgumentOutOfRangeException.ThrowIfNegative(resumeOffset);
         if (!source.IsAbsoluteUri || source.Scheme is not ("ftp" or "ftps"))
         {
@@ -44,20 +64,23 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             source.Host,
             port,
             preferredAddressFamily: null,
+            timeout: transferContext.ConnectTimeout,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         Stream controlStream = controlClient.GetStream();
         if (implicitTls)
         {
-            controlStream = await AuthenticateTlsAsync(controlStream, source.Host, cancellationToken)
+            controlStream = await AuthenticateTlsAsync(
+                controlStream, source.Host, transferContext.ConnectTimeout, cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        await using FtpControlConnection control = new(controlStream);
+        await using FtpControlConnection control = new(controlStream, transferContext.RequestTimeout);
         await control.ExpectAsync(220, cancellationToken).ConfigureAwait(false);
         if (useTls && !implicitTls)
         {
             await control.CommandAsync("AUTH TLS", 234, cancellationToken).ConfigureAwait(false);
-            controlStream = await AuthenticateTlsAsync(control.DetachStream(), source.Host, cancellationToken)
+            controlStream = await AuthenticateTlsAsync(
+                control.DetachStream(), source.Host, transferContext.ConnectTimeout, cancellationToken)
                 .ConfigureAwait(false);
             control.AttachStream(controlStream);
         }
@@ -83,6 +106,33 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
         long? totalBytes = await TryGetSizeAsync(control, remotePath, cancellationToken).ConfigureAwait(false);
         DateTimeOffset? lastModified = await TryGetLastModifiedAsync(control, remotePath, cancellationToken)
             .ConfigureAwait(false);
+
+        if (transferContext.ExpectedLength is long expectedLength
+            && totalBytes is long actualLength
+            && expectedLength != actualLength)
+        {
+            throw new DownloadIntegrityException(
+                $"The remote FTP file length changed. Expected {expectedLength}; received {actualLength}.");
+        }
+
+        if (resumeOffset > 0)
+        {
+            if (transferContext.ExpectedLastModified is not DateTimeOffset expectedLastModified)
+            {
+                throw new DownloadIntegrityException(
+                    "FTP resume requires a previously recorded MDTM value; existing bytes cannot be safely appended without remote identity proof.");
+            }
+            if (lastModified is not DateTimeOffset actualLastModified)
+            {
+                throw new DownloadIntegrityException(
+                    "The FTP server omitted MDTM while a validated resume was required.");
+            }
+            if (expectedLastModified != actualLastModified)
+            {
+                throw new DownloadIntegrityException(
+                    "The remote FTP file modification time changed while resuming.");
+            }
+        }
 
         long effectiveOffset = resumeOffset;
         if (totalBytes is long knownSize && effectiveOffset > knownSize)
@@ -115,11 +165,13 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             dataHost,
             dataPort,
             preferredAddressFamily: controlClient.Client.AddressFamily,
+            timeout: transferContext.ConnectTimeout,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         Stream dataStream = dataClient.GetStream();
         if (useTls)
         {
-            dataStream = await AuthenticateTlsAsync(dataStream, source.Host, cancellationToken)
+            dataStream = await AuthenticateTlsAsync(
+                dataStream, source.Host, transferContext.ConnectTimeout, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -142,14 +194,16 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             byte[] buffer = new byte[BufferSize];
             while (true)
             {
-                int read = await ownedDataStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                int read = await ReadWithTimeoutAsync(
+                    ownedDataStream, buffer, transferContext.RequestTimeout, cancellationToken)
+                    .ConfigureAwait(false);
                 if (read == 0)
                 {
                     break;
                 }
 
                 await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-                downloaded += read;
+                downloaded = checked(downloaded + read);
                 DateTimeOffset now = DateTimeOffset.UtcNow;
                 if (now - lastProgress >= ProgressInterval || downloaded == totalBytes)
                 {
@@ -159,17 +213,28 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             }
 
             await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+            destination.Flush(flushToDisk: true);
         }
 
         await control.ExpectAsync(226, 250, cancellationToken).ConfigureAwait(false);
+        if (totalBytes is long advertisedLength && downloaded != advertisedLength)
+        {
+            throw new EndOfStreamException(
+                $"The FTP data stream ended at {downloaded} bytes; SIZE advertised {advertisedLength} bytes.");
+        }
+        if (transferContext.ExpectedLength is long expectedFinalLength && downloaded != expectedFinalLength)
+        {
+            throw new EndOfStreamException(
+                $"The FTP data stream ended at {downloaded} bytes; {expectedFinalLength} bytes were expected.");
+        }
         await progress(downloaded, totalBytes ?? downloaded).ConfigureAwait(false);
         try
         {
             await control.CommandAsync("QUIT", 221, cancellationToken).ConfigureAwait(false);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or TimeoutException)
         {
-            // The transfer already completed; some servers close the control channel immediately.
+            // The transfer already completed; some servers close or stop responding on QUIT.
         }
 
         return new FtpDownloadResult(downloaded, totalBytes ?? downloaded, lastModified, effectiveOffset > 0);
@@ -179,11 +244,16 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
         string host,
         int port,
         AddressFamily? preferredAddressFamily,
+        TimeSpan timeout,
         CancellationToken cancellationToken)
     {
         IPAddress[] addresses = IPAddress.TryParse(host, out IPAddress? literalAddress)
             ? [literalAddress]
-            : await Dns.GetHostAddressesAsync(host, cancellationToken).ConfigureAwait(false);
+            : await WaitWithTimeoutAsync(
+                Dns.GetHostAddressesAsync(host, cancellationToken),
+                timeout,
+                cancellationToken,
+                "FTP DNS lookup").ConfigureAwait(false);
 
         IEnumerable<IPAddress> candidates = preferredAddressFamily is AddressFamily preferred
             ? addresses.OrderByDescending(address => address.AddressFamily == preferred)
@@ -194,7 +264,11 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             TcpClient client = new(address.AddressFamily);
             try
             {
-                await client.ConnectAsync(address, port, cancellationToken).ConfigureAwait(false);
+                await WaitWithTimeoutAsync(
+                    client.ConnectAsync(address, port, cancellationToken).AsTask(),
+                    timeout,
+                    cancellationToken,
+                    "FTP TCP connect").ConfigureAwait(false);
                 return client;
             }
             catch (OperationCanceledException)
@@ -220,19 +294,24 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
     private static async Task<Stream> AuthenticateTlsAsync(
         Stream stream,
         string host,
+        TimeSpan timeout,
         CancellationToken cancellationToken)
     {
         SslStream ssl = new(stream, leaveInnerStreamOpen: false);
         try
         {
-            await ssl.AuthenticateAsClientAsync(
-                new SslClientAuthenticationOptions
-                {
-                    TargetHost = host,
-                    EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-                    CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.Online
-                },
-                cancellationToken).ConfigureAwait(false);
+            await WaitWithTimeoutAsync(
+                ssl.AuthenticateAsClientAsync(
+                    new SslClientAuthenticationOptions
+                    {
+                        TargetHost = host,
+                        EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                        CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.Online
+                    },
+                    cancellationToken),
+                timeout,
+                cancellationToken,
+                "FTP TLS handshake").ConfigureAwait(false);
             return ssl;
         }
         catch
@@ -367,6 +446,66 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
         return port > 0;
     }
 
+    private static async Task<T> WaitWithTimeoutAsync<T>(
+        Task<T> task,
+        TimeSpan? timeout,
+        CancellationToken cancellationToken,
+        string operation)
+    {
+        try
+        {
+            return timeout is null
+                ? await task.ConfigureAwait(false)
+                : await task.WaitAsync(timeout.Value, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException($"{operation} exceeded the configured timeout of {timeout}.", exception);
+        }
+    }
+
+    private static async Task WaitWithTimeoutAsync(
+        Task task,
+        TimeSpan? timeout,
+        CancellationToken cancellationToken,
+        string operation)
+    {
+        try
+        {
+            if (timeout is null)
+            {
+                await task.ConfigureAwait(false);
+            }
+            else
+            {
+                await task.WaitAsync(timeout.Value, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException($"{operation} exceeded the configured timeout of {timeout}.", exception);
+        }
+    }
+
+    private static async ValueTask<int> ReadWithTimeoutAsync(
+        Stream stream,
+        Memory<byte> buffer,
+        TimeSpan? timeout,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            ValueTask<int> read = stream.ReadAsync(buffer, cancellationToken);
+            return timeout is null
+                ? await read.ConfigureAwait(false)
+                : await read.AsTask().WaitAsync(timeout.Value, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException($"FTP data read exceeded the configured timeout of {timeout}.", exception);
+        }
+    }
+
     private static (string Username, string Password) ResolveCredentials(
         Uri source,
         string? username,
@@ -403,10 +542,12 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
         private Stream _stream;
         private StreamReader _reader;
         private StreamWriter _writer;
+        private readonly TimeSpan? _operationTimeout;
 
-        public FtpControlConnection(Stream stream)
+        public FtpControlConnection(Stream stream, TimeSpan? operationTimeout)
         {
             _stream = stream;
+            _operationTimeout = operationTimeout;
             (_reader, _writer) = CreateTextStreams(stream);
         }
 
@@ -475,8 +616,16 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             FtpExpectedCodes expectedCodes,
             CancellationToken cancellationToken)
         {
-            await _writer.WriteLineAsync(command.AsMemory(), cancellationToken).ConfigureAwait(false);
-            await _writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+            await WaitWithTimeoutAsync(
+                _writer.WriteLineAsync(command.AsMemory(), cancellationToken).AsTask(),
+                _operationTimeout,
+                cancellationToken,
+                "FTP control write").ConfigureAwait(false);
+            await WaitWithTimeoutAsync(
+                _writer.FlushAsync(cancellationToken),
+                _operationTimeout,
+                cancellationToken,
+                "FTP control flush").ConfigureAwait(false);
             return await ExpectCoreAsync(expectedCodes, cancellationToken).ConfigureAwait(false);
         }
 
@@ -484,7 +633,11 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             FtpExpectedCodes expectedCodes,
             CancellationToken cancellationToken)
         {
-            string? firstLine = await _reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            string? firstLine = await WaitWithTimeoutAsync(
+                _reader.ReadLineAsync(cancellationToken).AsTask(),
+                _operationTimeout,
+                cancellationToken,
+                "FTP control response").ConfigureAwait(false);
             if (firstLine is null)
             {
                 throw new IOException("The FTP server closed the control connection.");
@@ -502,7 +655,11 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
                 string terminator = $"{code.ToString(CultureInfo.InvariantCulture)} ";
                 while (true)
                 {
-                    string? line = await _reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                    string? line = await WaitWithTimeoutAsync(
+                        _reader.ReadLineAsync(cancellationToken).AsTask(),
+                        _operationTimeout,
+                        cancellationToken,
+                        "FTP multiline response").ConfigureAwait(false);
                     if (line is null)
                     {
                         throw new IOException("The FTP server closed a multiline response.");
