@@ -220,6 +220,7 @@ public sealed class MediaDownloadServiceTests
 
             Assert.False(File.Exists(destination));
             Assert.False(Directory.EnumerateFiles(directory, "*.srt", SearchOption.TopDirectoryOnly).Any(File.Exists));
+            Assert.Empty(Directory.EnumerateFiles(directory, "*.xdm-finalizing*", SearchOption.TopDirectoryOnly));
         }
         finally
         {
@@ -227,6 +228,77 @@ public sealed class MediaDownloadServiceTests
             {
                 Directory.Delete(directory, recursive: true);
             }
+        }
+    }
+
+
+    [Fact]
+    public async Task RejectsIncompatibleStreamCopyBeforeMuxingToMp4()
+    {
+        using HttpClient client = new(new RoutingHandler(request => RoutingHandler.Bytes(Path.GetFileName(request.RequestUri!.AbsolutePath) switch
+        {
+            "audio.opus" => "audio"u8.ToArray(),
+            _ => "video"u8.ToArray()
+        })));
+        Uri source = new("https://media.example.test/watch");
+        MediaCatalog catalog = new(
+            source,
+            MediaKind.DirectFile,
+            "video",
+            false,
+            [
+                new MediaFormat("video", MediaStreamKind.Video, new Uri("https://media.example.test/video.webm"), "webm", "vp9", null, null, null, null, null, "video", true, false),
+                new MediaFormat("audio", MediaStreamKind.Audio, new Uri("https://media.example.test/audio.opus"), "opus", "opus", null, null, null, null, null, "audio", true, false)
+            ],
+            "direct",
+            "direct");
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-media-mux-compat-{Guid.NewGuid():N}");
+        string destination = Path.Combine(directory, "video.mp4");
+        FakeFfmpegService ffmpeg = new();
+        try
+        {
+            MediaDownloadService service = new(client, new FixedCatalogService(catalog), ffmpeg);
+
+            InvalidDataException exception = await Assert.ThrowsAsync<InvalidDataException>(() => service.DownloadAsync(new MediaDownloadRequest(
+                source,
+                destination,
+                VideoFormatId: "video",
+                AudioFormatId: "audio")));
+
+            Assert.Contains("Cannot stream-copy", exception.Message, StringComparison.Ordinal);
+            Assert.Equal(0, ffmpeg.MuxCalls);
+            Assert.False(File.Exists(destination));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void ScavengesOldMediaFinalizationArtifacts()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-media-finalizing-scavenge-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        string oldArtifact = Path.Combine(directory, ".video.xdm-finalizing.mp4");
+        string freshArtifact = Path.Combine(directory, ".fresh.xdm-finalizing.mp4");
+        File.WriteAllText(oldArtifact, "old");
+        File.WriteAllText(freshArtifact, "fresh");
+        File.SetLastWriteTimeUtc(oldArtifact, DateTime.UtcNow - TimeSpan.FromDays(2));
+        try
+        {
+            int deleted = MediaDownloadService.ScavengeAbandonedFinalizationFiles(directory, TimeSpan.FromHours(12));
+
+            Assert.Equal(1, deleted);
+            Assert.False(File.Exists(oldArtifact));
+            Assert.True(File.Exists(freshArtifact));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
         }
     }
 

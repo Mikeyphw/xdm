@@ -27,6 +27,60 @@ public sealed class ConversionQueueServiceTests
     }
 
     [Fact]
+    public async Task ChangedSubscriberFailureDoesNotStopWorker()
+    {
+        RecordingConversionService conversion = new();
+        using ConversionQueueService queue = new(conversion);
+        queue.Changed += (_, _) => throw new InvalidOperationException("subscriber failed");
+
+        string jobId = queue.Enqueue(new ConversionRequest("one.mp4", "one.converted.mp4", "mp4-copy"));
+        await WaitUntilAsync(() => queue.Current.Jobs.Any(job => job.Id == jobId && job.State == ConversionJobState.Completed));
+
+        Assert.Equal(1, conversion.Sources.Count);
+        Assert.Equal(ConversionJobState.Completed, Assert.Single(queue.Current.Jobs).State);
+    }
+
+    [Fact]
+    public async Task ProgressDetailsAreRetainedInSnapshots()
+    {
+        RecordingConversionService conversion = new()
+        {
+            ProgressToReport = new ConversionProgress(
+                ConversionJobState.Converting,
+                "working",
+                0.5,
+                TimeSpan.FromSeconds(12),
+                4096,
+                "2.0x")
+        };
+        using ConversionQueueService queue = new(conversion);
+
+        string jobId = queue.Enqueue(new ConversionRequest("one.mp4", "one.converted.mp4", "mp4-copy"));
+        await WaitUntilAsync(() => queue.Current.Jobs.Any(job => job.Id == jobId && job.State == ConversionJobState.Completed));
+
+        ConversionJobSnapshot job = Assert.Single(queue.Current.Jobs);
+        Assert.Equal(TimeSpan.FromSeconds(12), job.ProcessedDuration);
+        Assert.Equal("2.0x", job.Speed);
+    }
+
+    [Fact]
+    public async Task BoundsTerminalHistory()
+    {
+        RecordingConversionService conversion = new() { Delay = TimeSpan.Zero };
+        using ConversionQueueService queue = new(conversion);
+        for (int index = 0; index < 205; index++)
+        {
+            queue.Enqueue(new ConversionRequest($"source-{index}.mp4", $"dest-{index}.mp4", "mp4-copy"));
+        }
+
+        await WaitUntilAsync(() => queue.Current.Jobs.Count == 200
+            && queue.Current.Jobs.All(static job => job.State == ConversionJobState.Completed));
+
+        Assert.DoesNotContain(queue.Current.Jobs, static job => job.Request.SourcePath == "source-0.mp4");
+        Assert.Contains(queue.Current.Jobs, static job => job.Request.SourcePath == "source-204.mp4");
+    }
+
+    [Fact]
     public async Task CancelsActiveJobAndContinuesWithLaterJobs()
     {
         CancellableConversionService conversion = new();
@@ -62,6 +116,10 @@ public sealed class ConversionQueueServiceTests
 
         public List<string> Sources { get; } = [];
 
+        public ConversionProgress ProgressToReport { get; init; } = new(ConversionJobState.Converting, "working", 0.5);
+
+        public TimeSpan Delay { get; init; } = TimeSpan.FromMilliseconds(40);
+
         public int MaximumConcurrentCalls { get; private set; }
 
         public Task<ExternalToolHealth> GetHealthAsync(CancellationToken cancellationToken = default)
@@ -80,8 +138,11 @@ public sealed class ConversionQueueServiceTests
             Sources.Add(request.SourcePath);
             try
             {
-                progress?.Report(new ConversionProgress(ConversionJobState.Converting, "working", 0.5));
-                await Task.Delay(40, cancellationToken);
+                progress?.Report(ProgressToReport);
+                if (Delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(Delay, cancellationToken);
+                }
                 return new ConversionResult(
                     request.SourcePath,
                     request.DestinationPath,

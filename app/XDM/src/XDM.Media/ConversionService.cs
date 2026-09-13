@@ -3,6 +3,8 @@ namespace XDM.Media;
 public sealed class ConversionService : IConversionService
 {
     private const int HealthOutputLimitBytes = 1024 * 1024;
+    private const int CapabilityOutputLimitBytes = 4 * 1024 * 1024;
+    private static readonly TimeSpan AbandonedTemporaryAge = TimeSpan.FromHours(12);
     private readonly IExternalToolRunner _externalRunner;
     private readonly IConversionProcessRunner _processRunner;
     private readonly IMediaInspectionService _inspectionService;
@@ -146,7 +148,10 @@ public sealed class ConversionService : IConversionService
             throw new InvalidOperationException("FFmpeg was not found beside XDM or on PATH.");
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+        string destinationDirectory = Path.GetDirectoryName(destinationPath)!;
+        Directory.CreateDirectory(destinationDirectory);
+        ScavengeAbandonedTemporaries(destinationDirectory, AbandonedTemporaryAge);
+        await ValidatePresetCapabilitiesAsync(ffmpegPath, definition, cancellationToken).ConfigureAwait(false);
         string temporaryPath = CreateTemporaryPath(destinationPath);
         List<string> arguments =
         [
@@ -180,29 +185,20 @@ public sealed class ConversionService : IConversionService
                 throw new InvalidOperationException(message);
             }
 
-            if (!File.Exists(temporaryPath))
+            long outputBytes = ValidateOutputFile(temporaryPath);
+            if (request.PreserveSourceTimestamp)
             {
-                throw new InvalidDataException("FFmpeg reported success but did not produce an output file.");
-            }
-
-            long outputBytes = new FileInfo(temporaryPath).Length;
-            if (outputBytes <= 0)
-            {
-                throw new InvalidDataException("FFmpeg produced an empty output file.");
+                File.SetLastWriteTimeUtc(temporaryPath, File.GetLastWriteTimeUtc(sourcePath));
             }
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new ConversionProgress(
                 ConversionJobState.Finalizing,
-                "Atomically publishing the converted file.",
+                "Publishing the converted file atomically; cancellation is no longer available.",
                 1,
                 inspection.Duration,
                 outputBytes));
             File.Move(temporaryPath, destinationPath, request.OverwriteExisting);
-            if (request.PreserveSourceTimestamp)
-            {
-                File.SetLastWriteTimeUtc(destinationPath, File.GetLastWriteTimeUtc(sourcePath));
-            }
 
             return new ConversionResult(
                 sourcePath,
@@ -315,6 +311,131 @@ public sealed class ConversionService : IConversionService
         return ExternalToolLocator.Find("ffprobe");
     }
 
+
+    private async Task ValidatePresetCapabilitiesAsync(
+        string ffmpegPath,
+        ConversionPresetDefinition definition,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlySet<string> requiredEncoders = RequiredEncoders(definition);
+        if (requiredEncoders.Count == 0)
+        {
+            return;
+        }
+
+        ExternalToolResult result = await _externalRunner.RunAsync(
+            ffmpegPath,
+            ["-hide_banner", "-encoders"],
+            TimeSpan.FromSeconds(15),
+            CapabilityOutputLimitBytes,
+            cancellationToken).ConfigureAwait(false);
+        if (!result.Succeeded)
+        {
+            string message = string.IsNullOrWhiteSpace(result.StandardError)
+                ? "FFmpeg encoder capability probing failed."
+                : result.StandardError.Trim();
+            throw new InvalidOperationException(message);
+        }
+
+        FfmpegCapabilities capabilities = FfmpegService.ParseCapabilities(
+            new ExternalToolHealth("FFmpeg", true, ffmpegPath, null, "ok"),
+            result.StandardOutput);
+        string[] missing = requiredEncoders
+            .Where(encoder => !SupportsEncoder(capabilities, encoder))
+            .OrderBy(static encoder => encoder, StringComparer.Ordinal)
+            .ToArray();
+        if (missing.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"The selected preset requires missing FFmpeg encoder(s): {string.Join(", ", missing)}.");
+        }
+    }
+
+    private static IReadOnlySet<string> RequiredEncoders(ConversionPresetDefinition definition)
+    {
+        HashSet<string> required = new(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<string> arguments = definition.FfmpegArguments;
+        for (int index = 0; index < arguments.Count - 1; index++)
+        {
+            string option = arguments[index];
+            if (option is "-c:v" or "-codec:v" or "-vcodec" or "-c:a" or "-codec:a" or "-acodec")
+            {
+                string encoder = arguments[index + 1];
+                if (!string.Equals(encoder, "copy", StringComparison.OrdinalIgnoreCase))
+                {
+                    required.Add(encoder);
+                }
+            }
+        }
+
+        return required;
+    }
+
+    private static bool SupportsEncoder(
+        FfmpegCapabilities capabilities,
+        string encoder)
+    {
+        string normalized = encoder.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "libx264" or "h264" => capabilities.SupportsH264,
+            "libx265" or "hevc" or "h265" => capabilities.SupportsH265,
+            "libaom-av1" or "av1" => capabilities.SupportsAv1,
+            "aac" => capabilities.SupportsAac,
+            "libmp3lame" or "mp3" => capabilities.SupportsMp3,
+            "libopus" or "opus" => capabilities.SupportsOpus,
+            _ => false
+        };
+    }
+
+    internal static long ValidateOutputFile(string path)
+    {
+        if (!File.Exists(path))
+        {
+            throw new InvalidDataException("FFmpeg reported success but did not produce an output file.");
+        }
+
+        long outputBytes = new FileInfo(path).Length;
+        if (outputBytes <= 0)
+        {
+            throw new InvalidDataException("FFmpeg produced an empty output file.");
+        }
+
+        return outputBytes;
+    }
+
+    internal static int ScavengeAbandonedTemporaries(
+        string directory,
+        TimeSpan minimumAge)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return 0;
+        }
+
+        int deleted = 0;
+        DateTime cutoffUtc = DateTime.UtcNow - minimumAge;
+        foreach (string path in Directory.EnumerateFiles(directory, "*.xdm-converting", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                if (File.GetLastWriteTimeUtc(path) <= cutoffUtc)
+                {
+                    File.Delete(path);
+                    deleted++;
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+
+        return deleted;
+    }
+
     private static string CreateTemporaryPath(string destinationPath)
     {
         string directory = Path.GetDirectoryName(destinationPath)!;
@@ -336,6 +457,6 @@ public sealed class ConversionService : IConversionService
         }
     }
 
-    private static ExternalToolHealth Unhealthy(string path, string message)
+    private static ExternalToolHealth Unhealthy(string? path, string message)
         => new("FFmpeg conversion", false, path, null, message);
 }

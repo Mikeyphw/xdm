@@ -154,10 +154,11 @@ public sealed class FfmpegService : IFfmpegService
         }
 
         arguments.AddRange(["-c", "copy", "-movflags", "+faststart", fullDestination]);
+        TimeSpan muxTimeout = CalculateMuxTimeout(inputPaths);
         ExternalToolResult result = await _runner.RunAsync(
             path,
             arguments,
-            TimeSpan.FromHours(6),
+            muxTimeout,
             8 * 1024 * 1024,
             cancellationToken).ConfigureAwait(false);
         if (!result.Succeeded)
@@ -167,5 +168,35 @@ public sealed class FfmpegService : IFfmpegService
                 : result.StandardError.Trim();
             throw new InvalidOperationException(message);
         }
+
+        ConversionService.ValidateOutputFile(fullDestination);
+    }
+
+    internal static TimeSpan CalculateMuxTimeout(IReadOnlyList<string> inputPaths)
+    {
+        long totalBytes = 0;
+        foreach (string inputPath in inputPaths)
+        {
+            try
+            {
+                totalBytes = checked(totalBytes + new FileInfo(inputPath).Length);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+            catch (OverflowException)
+            {
+                return TimeSpan.FromHours(6);
+            }
+        }
+
+        double minutesFromSize = totalBytes <= 0
+            ? 0
+            : totalBytes / (64d * 1024d * 1024d);
+        double minutes = Math.Clamp(5 + minutesFromSize, 5, 6 * 60);
+        return TimeSpan.FromMinutes(minutes);
     }
 }

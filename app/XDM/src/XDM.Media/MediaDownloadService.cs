@@ -67,6 +67,8 @@ public sealed class MediaDownloadService(
         long consumedBytes = 0;
         bool usedFfmpeg = false;
         bool completedSuccessfully = false;
+        List<string> finalizationArtifacts = [];
+        ScavengeAbandonedFinalizationFiles(Path.GetDirectoryName(destinationPath)!, TimeSpan.FromHours(12));
         try
         {
             workspaceLock = AcquireWorkspaceLock(workspace);
@@ -117,6 +119,7 @@ public sealed class MediaDownloadService(
                     && mainFormats.Any(IsSegmentedExternalFormat);
             if (requiresMux)
             {
+                ValidateMuxCompatibility(mainFormats, destinationPath);
                 ExternalToolHealth health = await ffmpegService.GetHealthAsync(cancellationToken).ConfigureAwait(false);
                 if (!health.IsAvailable)
                 {
@@ -130,24 +133,30 @@ public sealed class MediaDownloadService(
                     mainStreams.Sum(static stream => stream.DownloadedBytes),
                     "Combining selected media streams without re-encoding."));
                 string temporaryDestination = CreateFinalizationPath(destinationPath);
+                finalizationArtifacts.Add(temporaryDestination);
                 await ffmpegService.MuxAsync(
                     mainStreams.Select(static stream => stream.Path).ToArray(),
                     temporaryDestination,
                     cancellationToken).ConfigureAwait(false);
+                ValidateFinalizationOutput(temporaryDestination);
                 File.Move(temporaryDestination, destinationPath, overwrite: true);
                 usedFfmpeg = true;
             }
             else
             {
                 string temporaryDestination = CreateFinalizationPath(destinationPath);
+                finalizationArtifacts.Add(temporaryDestination);
                 File.Copy(mainStreams[0].Path, temporaryDestination, overwrite: true);
+                ValidateFinalizationOutput(temporaryDestination);
                 File.Move(temporaryDestination, destinationPath, overwrite: true);
             }
 
             foreach (PendingSubtitle subtitle in pendingSubtitles)
             {
                 string temporarySubtitle = CreateFinalizationPath(subtitle.DestinationPath);
+                finalizationArtifacts.Add(temporarySubtitle);
                 File.Copy(subtitle.SourcePath, temporarySubtitle, overwrite: true);
+                ValidateFinalizationOutput(temporarySubtitle);
                 File.Move(temporarySubtitle, subtitle.DestinationPath, overwrite: true);
                 subtitlePaths.Add(subtitle.DestinationPath);
             }
@@ -172,6 +181,11 @@ public sealed class MediaDownloadService(
         finally
         {
             workspaceLock?.Dispose();
+            foreach (string artifact in finalizationArtifacts)
+            {
+                TryDeleteFile(artifact);
+            }
+
             if (!request.KeepPartialFiles && completedSuccessfully)
             {
                 TryDeleteDirectory(workspace);
@@ -247,6 +261,106 @@ public sealed class MediaDownloadService(
             bytes,
             $"Downloaded {format.DisplayName}."));
         return new StreamDownloadResult(outputPath, 1, bytes, false);
+    }
+
+
+    internal static void ValidateMuxCompatibility(
+        IReadOnlyList<MediaFormat> formats,
+        string destinationPath)
+    {
+        string extension = Path.GetExtension(destinationPath).TrimStart('.').ToLowerInvariant();
+        if (extension is "mkv" or "webm")
+        {
+            return;
+        }
+
+        if (extension is not ("mp4" or "m4v" or "mov"))
+        {
+            return;
+        }
+
+        foreach (MediaFormat format in formats)
+        {
+            string? incompatibleContainer = IncompatibleMp4Container(format.Container);
+            if (incompatibleContainer is not null)
+            {
+                throw new InvalidDataException(
+                    $"Cannot stream-copy {incompatibleContainer} media into {extension.ToUpperInvariant()}. Choose MKV or a transcode preset.");
+            }
+
+            foreach (string codec in NormalizeCodecs(format.Codecs))
+            {
+                if (IsKnownMp4IncompatibleCodec(codec))
+                {
+                    throw new InvalidDataException(
+                        $"Cannot stream-copy codec '{codec}' into {extension.ToUpperInvariant()}. Choose MKV or a transcode preset.");
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> NormalizeCodecs(string? codecs)
+    {
+        if (string.IsNullOrWhiteSpace(codecs))
+        {
+            yield break;
+        }
+
+        foreach (string token in codecs.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            string normalized = token.ToLowerInvariant();
+            int profileSeparator = normalized.IndexOf('.');
+            yield return profileSeparator > 0 ? normalized[..profileSeparator] : normalized;
+        }
+    }
+
+    private static string? IncompatibleMp4Container(string? container)
+    {
+        string normalized = (container ?? string.Empty).Trim().TrimStart('.').ToLowerInvariant();
+        return normalized switch
+        {
+            "webm" or "ogg" or "ogv" or "oga" or "opus" or "flac" => normalized,
+            _ => null
+        };
+    }
+
+    private static bool IsKnownMp4IncompatibleCodec(string codec)
+        => codec is "vp8" or "vp9" or "vp09"
+            or "opus" or "vorbis" or "theora" or "flac" or "dts";
+
+    private static long ValidateFinalizationOutput(string path)
+        => ConversionService.ValidateOutputFile(path);
+
+    internal static int ScavengeAbandonedFinalizationFiles(
+        string directory,
+        TimeSpan minimumAge)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return 0;
+        }
+
+        int deleted = 0;
+        DateTime cutoffUtc = DateTime.UtcNow - minimumAge;
+        foreach (string path in Directory.EnumerateFiles(directory, "*.xdm-finalizing*", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                if (File.GetLastWriteTimeUtc(path) <= cutoffUtc)
+                {
+                    File.Delete(path);
+                    deleted++;
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+
+        return deleted;
     }
 
     private static MediaFormat? SelectVideo(MediaCatalog catalog, string? requestedId)
@@ -464,6 +578,23 @@ public sealed class MediaDownloadService(
         if (request.MaximumBytes is <= 0 or > 10L * 1024 * 1024 * 1024 * 1024)
         {
             throw new ArgumentOutOfRangeException(nameof(request), "Media size limit must be between 1 byte and 10 TiB.");
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 

@@ -2,8 +2,10 @@ using System.Threading.Channels;
 
 namespace XDM.Media;
 
-public sealed class ConversionQueueService : IConversionQueueService, IDisposable
+public sealed class ConversionQueueService : IConversionQueueService, IDisposable, IAsyncDisposable
 {
+    private const int MaximumTerminalHistory = 200;
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(30);
     private readonly object _sync = new();
     private readonly IConversionService _conversionService;
     private readonly Channel<string> _pendingJobs = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
@@ -64,6 +66,7 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
                 job.StatusMessage = "The conversion queue is unavailable.";
                 job.ErrorMessage = "The conversion worker has stopped.";
                 job.CompletedAt = DateTimeOffset.UtcNow;
+                PruneTerminalHistory();
             }
         }
 
@@ -89,7 +92,12 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
                 job.State = ConversionJobState.Cancelled;
                 job.StatusMessage = "Cancelled before conversion started.";
                 job.CompletedAt = DateTimeOffset.UtcNow;
+                PruneTerminalHistory();
                 changed = true;
+            }
+            else if (job.State == ConversionJobState.Finalizing)
+            {
+                return false;
             }
             else if (string.Equals(_activeJobId, jobId, StringComparison.Ordinal))
             {
@@ -148,6 +156,32 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
             _activeCancellation?.Cancel();
         }
 
+        WaitForWorkerToSettle();
+        if (_workerTask.IsCompleted)
+        {
+            _workerTask.Dispose();
+        }
+
+        _shutdown.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _pendingJobs.Writer.TryComplete();
+        await _shutdown.CancelAsync().ConfigureAwait(false);
+        lock (_sync)
+        {
+            _activeCancellation?.Cancel();
+        }
+
+        await WaitForWorkerToSettleAsync().ConfigureAwait(false);
         if (_workerTask.IsCompleted)
         {
             _workerTask.Dispose();
@@ -198,6 +232,7 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
                         job.StatusMessage = $"Completed: {result.DestinationPath}";
                         job.OutputBytes = result.OutputBytes;
                         job.CompletedAt = DateTimeOffset.UtcNow;
+                        PruneTerminalHistory();
                     }
                 }
                 catch (OperationCanceledException) when (activeCancellation.IsCancellationRequested)
@@ -207,6 +242,7 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
                         job.State = ConversionJobState.Cancelled;
                         job.StatusMessage = "Conversion cancelled. The source file was not modified.";
                         job.CompletedAt = DateTimeOffset.UtcNow;
+                        PruneTerminalHistory();
                     }
                 }
 #pragma warning disable CA1031 // Queue jobs must capture non-fatal conversion failures and continue with later jobs.
@@ -218,6 +254,7 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
                         job.StatusMessage = "Conversion failed.";
                         job.ErrorMessage = exception.Message;
                         job.CompletedAt = DateTimeOffset.UtcNow;
+                        PruneTerminalHistory();
                     }
                 }
 #pragma warning restore CA1031
@@ -254,6 +291,8 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
             job.StatusMessage = progress.Message;
             job.ProgressFraction = progress.Fraction;
             job.OutputBytes = progress.OutputBytes;
+            job.ProcessedDuration = progress.ProcessedDuration;
+            job.Speed = progress.Speed;
         }
 
         Publish();
@@ -267,7 +306,69 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
             snapshot = CreateSnapshot();
         }
 
-        Changed?.Invoke(this, snapshot);
+        EventHandler<ConversionQueueSnapshot>? changed = Changed;
+        if (changed is null)
+        {
+            return;
+        }
+
+        foreach (EventHandler<ConversionQueueSnapshot> subscriber in changed.GetInvocationList().Cast<EventHandler<ConversionQueueSnapshot>>())
+        {
+#pragma warning disable CA1031 // One broken UI subscriber must not terminate the conversion worker.
+            try
+            {
+                subscriber(this, snapshot);
+            }
+            catch
+            {
+            }
+#pragma warning restore CA1031
+        }
+    }
+
+    private async Task WaitForWorkerToSettleAsync()
+    {
+#pragma warning disable CA1031 // Async disposal is best-effort after cancellation; shutdown should continue even if a worker faults.
+        try
+        {
+            await _workerTask.WaitAsync(DisposeWaitTimeout).ConfigureAwait(false);
+        }
+        catch
+        {
+        }
+#pragma warning restore CA1031
+    }
+
+    private void WaitForWorkerToSettle()
+    {
+#pragma warning disable CA1031 // Disposal is best-effort after cancellation; shutdown should continue even if a worker faults.
+        try
+        {
+            _workerTask.Wait(DisposeWaitTimeout);
+        }
+        catch
+        {
+        }
+#pragma warning restore CA1031
+    }
+
+    private void PruneTerminalHistory()
+    {
+        int terminalCount = _jobs.Count(static job => IsTerminal(job.State));
+        int removeCount = terminalCount - MaximumTerminalHistory;
+        if (removeCount <= 0)
+        {
+            return;
+        }
+
+        foreach (MutableConversionJob stale in _jobs
+            .Where(static job => IsTerminal(job.State))
+            .OrderBy(static job => job.CompletedAt ?? job.CreatedAt)
+            .Take(removeCount)
+            .ToArray())
+        {
+            _jobs.Remove(stale);
+        }
     }
 
     private ConversionQueueSnapshot CreateSnapshot()
@@ -311,6 +412,10 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
 
         public long? OutputBytes { get; set; }
 
+        public TimeSpan? ProcessedDuration { get; set; }
+
+        public string? Speed { get; set; }
+
         public ConversionJobSnapshot ToSnapshot()
             => new(
                 Id,
@@ -323,7 +428,9 @@ public sealed class ConversionQueueService : IConversionQueueService, IDisposabl
                 CreatedAt,
                 StartedAt,
                 CompletedAt,
-                OutputBytes);
+                OutputBytes,
+                ProcessedDuration,
+                Speed);
     }
 
     private sealed class CallbackProgress<T>(Action<T> callback) : IProgress<T>

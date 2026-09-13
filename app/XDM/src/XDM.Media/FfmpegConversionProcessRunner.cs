@@ -6,7 +6,7 @@ namespace XDM.Media;
 
 internal sealed class FfmpegConversionProcessRunner : IConversionProcessRunner
 {
-    private const int MaximumErrorBytes = 8 * 1024 * 1024;
+    private const int MaximumRetainedDiagnosticBytes = 8 * 1024 * 1024;
 
     public async Task<ConversionProcessResult> RunAsync(
         string executablePath,
@@ -45,25 +45,32 @@ internal sealed class FfmpegConversionProcessRunner : IConversionProcessRunner
         using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             timeoutSource.Token);
-        Task progressTask = ReadProgressAsync(process.StandardOutput, expectedDuration, progress, linked.Token);
-        Task<string> errorTask = ReadBoundedErrorAsync(process.StandardError, linked.Token);
+        Task progressTask = ReadProgressAsync(process.StandardOutput, expectedDuration, progress);
+        Task<string> errorTask = BoundedTextCapture.ReadRetainedAsync(
+            process.StandardError,
+            MaximumRetainedDiagnosticBytes);
         try
         {
             await process.WaitForExitAsync(linked.Token).ConfigureAwait(false);
-            await progressTask.ConfigureAwait(false);
+            await AwaitPipesAsync(progressTask, errorTask).ConfigureAwait(false);
             string standardError = await errorTask.ConfigureAwait(false);
             stopwatch.Stop();
             return new ConversionProcessResult(process.ExitCode, standardError, stopwatch.Elapsed);
         }
         catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            TryKill(process);
+            await TerminateAndDrainAsync(process, progressTask, errorTask).ConfigureAwait(false);
             throw new TimeoutException($"FFmpeg exceeded the {timeout.TotalMinutes:0}-minute conversion timeout.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await TerminateAndDrainAsync(process, progressTask, errorTask).ConfigureAwait(false);
+            throw;
         }
 #pragma warning disable CA1031 // The process must be terminated for every non-fatal execution failure before preserving the original exception.
         catch
         {
-            TryKill(process);
+            await TerminateAndDrainAsync(process, progressTask, errorTask).ConfigureAwait(false);
             throw;
         }
 #pragma warning restore CA1031
@@ -95,15 +102,14 @@ internal sealed class FfmpegConversionProcessRunner : IConversionProcessRunner
     private static async Task ReadProgressAsync(
         StreamReader reader,
         TimeSpan? expectedDuration,
-        IProgress<ConversionProgress>? progress,
-        CancellationToken cancellationToken)
+        IProgress<ConversionProgress>? progress)
     {
         TimeSpan? processed = null;
         long? outputBytes = null;
         string? speed = null;
         while (true)
         {
-            string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            string? line = await reader.ReadLineAsync().ConfigureAwait(false);
             if (line is null)
             {
                 return;
@@ -137,40 +143,71 @@ internal sealed class FfmpegConversionProcessRunner : IConversionProcessRunner
                     ? Math.Clamp(processed.Value.TotalSeconds / duration.TotalSeconds, 0, 1)
                     : null;
                 bool completed = string.Equals(value, "end", StringComparison.Ordinal);
-                progress?.Report(new ConversionProgress(
-                    completed ? ConversionJobState.Finalizing : ConversionJobState.Converting,
-                    completed ? "FFmpeg finished encoding; finalizing output." : "FFmpeg is converting the selected media.",
-                    completed ? 1d : fraction,
-                    processed,
-                    outputBytes,
-                    speed));
+                ReportProgress(
+                    progress,
+                    new ConversionProgress(
+                        completed ? ConversionJobState.Finalizing : ConversionJobState.Converting,
+                        completed ? "FFmpeg finished encoding; finalizing output." : "FFmpeg is converting the selected media.",
+                        completed ? 1d : fraction,
+                        processed,
+                        outputBytes,
+                        speed));
             }
         }
     }
 
-    private static async Task<string> ReadBoundedErrorAsync(
-        StreamReader reader,
-        CancellationToken cancellationToken)
+    private static async Task AwaitPipesAsync(
+        Task progressTask,
+        Task<string> errorTask)
+        => await Task.WhenAll(progressTask, errorTask).ConfigureAwait(false);
+
+    private static async Task TerminateAndDrainAsync(
+        Process process,
+        Task progressTask,
+        Task<string> errorTask)
     {
-        char[] buffer = new char[4096];
-        StringBuilder builder = new();
-        int estimatedBytes = 0;
-        while (true)
+        TryKill(process);
+#pragma warning disable CA1031 // Best-effort cleanup must not hide the original timeout/cancellation/failure.
+        try
         {
-            int count = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-            if (count == 0)
-            {
-                return builder.ToString();
-            }
-
-            estimatedBytes += Encoding.UTF8.GetByteCount(buffer.AsSpan(0, count));
-            if (estimatedBytes > MaximumErrorBytes)
-            {
-                throw new InvalidDataException("FFmpeg diagnostic output exceeded the configured safety limit.");
-            }
-
-            builder.Append(buffer, 0, count);
+            await process.WaitForExitAsync(CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(15))
+                .ConfigureAwait(false);
         }
+        catch
+        {
+        }
+
+        try
+        {
+            await Task.WhenAll(progressTask, errorTask)
+                .WaitAsync(TimeSpan.FromSeconds(15))
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+        }
+#pragma warning restore CA1031
+    }
+
+    private static void ReportProgress(
+        IProgress<ConversionProgress>? progress,
+        ConversionProgress value)
+    {
+        if (progress is null)
+        {
+            return;
+        }
+
+#pragma warning disable CA1031 // A UI/subscriber progress exception must not stop FFmpeg pipe drainage.
+        try
+        {
+            progress.Report(value);
+        }
+        catch
+        {
+        }
+#pragma warning restore CA1031
     }
 
     private static TimeSpan CalculateTimeout(TimeSpan? expectedDuration)

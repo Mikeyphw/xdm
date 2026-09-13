@@ -99,6 +99,57 @@ public sealed class ConversionServiceTests
     }
 
     [Fact]
+    public async Task RejectsPresetWhenRequiredEncoderIsMissing()
+    {
+        string directory = CreateTempDirectory("xdm-conversion-capability");
+        string source = Path.Combine(directory, "source.mkv");
+        string destination = Path.Combine(directory, "output.mp3");
+        await File.WriteAllTextAsync(source, "source");
+        ConversionService service = new(
+            new FixedExternalToolRunner(" V..... libx264              H.264\n A..... aac                  AAC\n"),
+            new RecordingProcessRunner(static (_, _, _, _, _) =>
+                throw new InvalidOperationException("FFmpeg must not run without required encoders.")),
+            new FixedInspectionService(new MediaInspection(TimeSpan.FromSeconds(10), "matroska", "h264", "aac", true, true)),
+            "/fake/ffmpeg",
+            "/fake/ffprobe");
+        try
+        {
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.ConvertAsync(new ConversionRequest(source, destination, "mp3-192")));
+
+            Assert.Contains("libmp3lame", exception.Message, StringComparison.Ordinal);
+            Assert.False(File.Exists(destination));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ScavengesOnlyOldConversionTemporaries()
+    {
+        string directory = CreateTempDirectory("xdm-conversion-scavenge");
+        string oldTemporary = Path.Combine(directory, ".old.mp4.deadbeef.xdm-converting");
+        string freshTemporary = Path.Combine(directory, ".fresh.mp4.deadbeef.xdm-converting");
+        File.WriteAllText(oldTemporary, "old");
+        File.WriteAllText(freshTemporary, "fresh");
+        File.SetLastWriteTimeUtc(oldTemporary, DateTime.UtcNow - TimeSpan.FromDays(2));
+        try
+        {
+            int deleted = ConversionService.ScavengeAbandonedTemporaries(directory, TimeSpan.FromHours(12));
+
+            Assert.Equal(1, deleted);
+            Assert.False(File.Exists(oldTemporary));
+            Assert.True(File.Exists(freshTemporary));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ValidatesPresetDestinationExtension()
     {
         string directory = CreateTempDirectory("xdm-conversion-extension");
@@ -172,6 +223,22 @@ public sealed class ConversionServiceTests
             TimeSpan timeout,
             int maximumOutputBytes,
             CancellationToken cancellationToken = default)
-            => Task.FromResult(new ExternalToolResult(0, "ffmpeg version test", string.Empty));
+            => Task.FromResult(new ExternalToolResult(
+                0,
+                arguments.Contains("-encoders", StringComparer.Ordinal)
+                    ? " V..... libx264              H.264\n A..... aac                  AAC\n A..... libmp3lame           MP3\n"
+                    : "ffmpeg version test",
+                string.Empty));
+    }
+
+    private sealed class FixedExternalToolRunner(string encoderOutput) : IExternalToolRunner
+    {
+        public Task<ExternalToolResult> RunAsync(
+            string executablePath,
+            IReadOnlyList<string> arguments,
+            TimeSpan timeout,
+            int maximumOutputBytes,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new ExternalToolResult(0, encoderOutput, string.Empty));
     }
 }

@@ -46,6 +46,9 @@ public sealed partial class ConversionJobViewModel : ObservableObject
     [ObservableProperty]
     private string outputSize = "—";
 
+    [ObservableProperty]
+    private string progressDetails = "—";
+
     public void Apply(ConversionJobSnapshot snapshot)
     {
         State = snapshot.State.ToString();
@@ -56,12 +59,34 @@ public sealed partial class ConversionJobViewModel : ObservableObject
             && snapshot.State is ConversionJobState.Inspecting or ConversionJobState.Converting or ConversionJobState.Finalizing;
         CanCancel = snapshot.State is ConversionJobState.Queued
             or ConversionJobState.Inspecting
-            or ConversionJobState.Converting
-            or ConversionJobState.Finalizing;
+            or ConversionJobState.Converting;
         CanRemove = snapshot.State is ConversionJobState.Completed
             or ConversionJobState.Failed
             or ConversionJobState.Cancelled;
         OutputSize = snapshot.OutputBytes is long bytes ? FormatBytes(bytes) : "—";
+        ProgressDetails = FormatProgressDetails(snapshot);
+    }
+
+
+    private static string FormatProgressDetails(ConversionJobSnapshot snapshot)
+    {
+        List<string> parts = [];
+        if (snapshot.ProcessedDuration is TimeSpan processed)
+        {
+            parts.Add($"processed {processed:hh\\:mm\\:ss}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.Speed))
+        {
+            parts.Add($"speed {snapshot.Speed}");
+        }
+
+        if (snapshot.OutputBytes is long bytes)
+        {
+            parts.Add(FormatBytes(bytes));
+        }
+
+        return parts.Count == 0 ? "—" : string.Join(" • ", parts);
     }
 
     private static string FormatBytes(long bytes)

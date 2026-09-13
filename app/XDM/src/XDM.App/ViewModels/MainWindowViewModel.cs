@@ -50,7 +50,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ITransferHealthProbe _transferHealthProbe;
     private readonly IDesktopNotificationService _desktopNotifications;
     private readonly IBrowserHostInstaller _browserHostInstaller;
-    private readonly BrowserCaptureAcknowledgementStore _browserAcknowledgements = new();
     private readonly IApplicationLifetimeService _applicationLifetimeService;
     private readonly Dictionary<string, DownloadState> _lastDownloadStates = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<DownloadTimelineEntry>> _downloadTimelines = new(StringComparer.Ordinal);
@@ -1845,7 +1844,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         string fileName = string.IsNullOrWhiteSpace(MediaDestinationFile)
-            ? (_currentMediaCatalog is null ? "video.mp4" : BuildSuggestedMediaDestinationFileName(_currentMediaCatalog))
+            ? "video.mp4"
             : Path.GetFileName(MediaDestinationFile.Trim());
         string destination = Path.IsPathRooted(MediaDestinationFile)
             ? MediaDestinationFile
@@ -1888,12 +1887,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             MediaDownloadStatus = $"Completed • {result.DownloadedFragments} fragment(s) • {LocaleFormatter.FormatBytes(result.DownloadedBytes, _localization.Culture)} • {result.DestinationPath}";
             if (MediaPostConversionEnabled && MediaPostConversionPreset is not null)
             {
-                string conversionDestination = ConversionDestinationPlanner.CreatePostDownloadDestination(result.DestinationPath, MediaPostConversionPreset);
-                string jobId = _conversionQueueService.Enqueue(new ConversionRequest(
-                    result.DestinationPath,
-                    conversionDestination,
-                    MediaPostConversionPreset.Id));
-                MediaDownloadStatus += $" • queued {MediaPostConversionPreset.Name} job {jobId[..8]}";
+                try
+                {
+                    string conversionDestination = ConversionDestinationPlanner.CreatePostDownloadDestination(result.DestinationPath, MediaPostConversionPreset);
+                    string jobId = _conversionQueueService.Enqueue(new ConversionRequest(
+                        result.DestinationPath,
+                        conversionDestination,
+                        MediaPostConversionPreset.Id));
+                    MediaDownloadStatus += $" • queued {MediaPostConversionPreset.Name} job {jobId[..8]}";
+                }
+                catch (ArgumentException exception)
+                {
+                    MediaDownloadStatus += $" • post-processing was not queued: {exception.Message}";
+                }
+                catch (InvalidOperationException exception)
+                {
+                    MediaDownloadStatus += $" • post-processing was not queued: {exception.Message}";
+                }
             }
 
             MediaDownloadProgress = 1;
@@ -1995,8 +2005,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(ConversionSourcePath)
-            || string.IsNullOrWhiteSpace(ConversionDestinationPath))
+        if (string.IsNullOrEmpty(ConversionSourcePath)
+            || string.IsNullOrEmpty(ConversionDestinationPath))
         {
             ConversionStatus = "Choose a source file and destination path.";
             return;
@@ -2005,8 +2015,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             string jobId = _conversionQueueService.Enqueue(new ConversionRequest(
-                ConversionSourcePath.Trim(),
-                ConversionDestinationPath.Trim(),
+                ConversionSourcePath,
+                ConversionDestinationPath,
                 SelectedConversionPreset.Id,
                 ConversionOverwriteExisting));
             ConversionStatus = $"Queued {SelectedConversionPreset.Name} job {jobId[..8]}.";
@@ -2445,28 +2455,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task HandleBrowserCaptureAsync(BrowserCaptureEventArgs eventArgs)
     {
         BrowserCaptureRequest request = eventArgs.Request;
-        if (_browserAcknowledgements.TryGet(request.RequestId) is BrowserCaptureAcknowledgement remembered)
-        {
-            CompleteBrowserCapture(eventArgs, remembered);
-            return;
-        }
-
-        BrowserCaptureAcknowledgement Accept(string? downloadId)
-        {
-            BrowserCaptureAcknowledgement ack = new(request.RequestId, true, "accepted", downloadId);
-            _browserAcknowledgements.Save(ack);
-            eventArgs.Accept(downloadId);
-            return ack;
-        }
-
-        BrowserCaptureAcknowledgement Reject(string reason)
-        {
-            BrowserCaptureAcknowledgement ack = new(request.RequestId, false, string.IsNullOrWhiteSpace(reason) ? "rejected" : reason, null);
-            _browserAcknowledgements.Save(ack);
-            eventArgs.Reject(ack.Reason);
-            return ack;
-        }
-
         if (request.Method == "GET" && request.Operation == "media")
         {
             try
@@ -2478,12 +2466,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     .ConfigureAwait(false);
                 if (catalog.Kind == MediaKind.Unknown || catalog.Formats.Count == 0)
                 {
-                    Reject(catalog.Description);
+                    eventArgs.Reject(catalog.Description);
                     SetBrowserCaptureFailure(catalog.Description);
                     return;
                 }
 
-                Accept($"media-{Guid.NewGuid():N}");
+                eventArgs.Accept($"media-{Guid.NewGuid():N}");
                 _dispatcher.Post(() =>
                 {
                     AddMediaInboxEntry(
@@ -2497,37 +2485,22 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
             catch (HttpRequestException exception)
             {
-                Reject(exception.Message);
+                eventArgs.Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
             catch (InvalidDataException exception)
             {
-                Reject(exception.Message);
+                eventArgs.Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
             catch (InvalidOperationException exception)
             {
-                Reject(exception.Message);
+                eventArgs.Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
             catch (NotSupportedException exception)
             {
-                Reject(exception.Message);
-                SetBrowserCaptureFailure(exception.Message);
-            }
-            catch (System.Text.Json.JsonException exception)
-            {
-                Reject(exception.Message);
-                SetBrowserCaptureFailure(exception.Message);
-            }
-            catch (IOException exception)
-            {
-                Reject(exception.Message);
-                SetBrowserCaptureFailure(exception.Message);
-            }
-            catch (TimeoutException exception)
-            {
-                Reject(exception.Message);
+                eventArgs.Reject(exception.Message);
                 SetBrowserCaptureFailure(exception.Message);
             }
 
@@ -2561,33 +2534,31 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 Method: request.Method,
                 RequestBody: request.GetRequestBody(),
                 RequestBodyContentType: request.RequestBodyContentType,
-                SourcePage: ParseOptionalHttpUri(request.SourcePage) ?? ParseOptionalHttpUri(request.Referer),
-                ExpectedLength: request.FileSize,
-                BrowserRequestId: request.BrowserRequestId ?? request.RequestId);
+                SourcePage: ParseOptionalHttpUri(request.Referer));
             downloadId = await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
-            Accept(downloadId);
+            eventArgs.Accept(downloadId);
         }
         catch (IOException exception)
         {
-            Reject(exception.Message);
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
         catch (ArgumentException exception)
         {
-            Reject(exception.Message);
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
         catch (InvalidOperationException exception)
         {
-            Reject(exception.Message);
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
         catch (UnauthorizedAccessException exception)
         {
-            Reject(exception.Message);
+            eventArgs.Reject(exception.Message);
             SetBrowserCaptureFailure(exception.Message);
             return;
         }
@@ -2617,18 +2588,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             OperationMessage = $"Browser capture accepted as {downloadId}.";
         });
-    }
-
-    private static void CompleteBrowserCapture(BrowserCaptureEventArgs eventArgs, BrowserCaptureAcknowledgement acknowledgement)
-    {
-        if (acknowledgement.Accepted)
-        {
-            eventArgs.Accept(acknowledgement.DownloadId);
-        }
-        else
-        {
-            eventArgs.Reject(acknowledgement.Reason);
-        }
     }
 
     private void OnSettingsChanged(object? sender, ApplicationSettings settings)
@@ -3171,7 +3130,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         try
         {
-            ConversionDestinationPath = ConversionDestinationPlanner.CreatePostDownloadDestination(sourcePath, preset);
+            string suggested = ConversionDestinationPlanner.CreatePostDownloadDestination(sourcePath, preset);
+            StringComparison comparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            bool canReplace = string.IsNullOrEmpty(ConversionDestinationPath)
+                || (_lastSuggestedConversionDestination is not null
+                    && string.Equals(ConversionDestinationPath, _lastSuggestedConversionDestination, comparison));
+            _lastSuggestedConversionDestination = suggested;
+            if (canReplace)
+            {
+                ConversionDestinationPath = suggested;
+            }
         }
         catch (ArgumentException)
         {

@@ -43,53 +43,66 @@ public sealed class ExternalToolRunner : IExternalToolRunner
         using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             timeoutSource.Token);
-        Task<string> stdoutTask = ReadBoundedAsync(process.StandardOutput, maximumOutputBytes, linked.Token);
-        Task<string> stderrTask = ReadBoundedAsync(process.StandardError, maximumOutputBytes, linked.Token);
+        Task<string> stdoutTask = BoundedTextCapture.ReadRetainedAsync(
+            process.StandardOutput,
+            maximumOutputBytes);
+        Task<string> stderrTask = BoundedTextCapture.ReadRetainedAsync(
+            process.StandardError,
+            maximumOutputBytes);
         try
         {
             await process.WaitForExitAsync(linked.Token).ConfigureAwait(false);
+            await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
             string stdout = await stdoutTask.ConfigureAwait(false);
             string stderr = await stderrTask.ConfigureAwait(false);
             return new ExternalToolResult(process.ExitCode, stdout, stderr);
         }
         catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            TryKill(process);
+            await TerminateAndDrainAsync(process, stdoutTask, stderrTask).ConfigureAwait(false);
             throw new TimeoutException($"{Path.GetFileName(executablePath)} exceeded the {timeout.TotalSeconds:0}-second timeout.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await TerminateAndDrainAsync(process, stdoutTask, stderrTask).ConfigureAwait(false);
+            throw;
         }
 #pragma warning disable CA1031 // The process must be terminated for every non-fatal execution failure before preserving the original exception.
         catch
         {
-            TryKill(process);
+            await TerminateAndDrainAsync(process, stdoutTask, stderrTask).ConfigureAwait(false);
             throw;
         }
 #pragma warning restore CA1031
     }
 
-    private static async Task<string> ReadBoundedAsync(
-        StreamReader reader,
-        int maximumOutputBytes,
-        CancellationToken cancellationToken)
+    private static async Task TerminateAndDrainAsync(
+        Process process,
+        Task<string> stdoutTask,
+        Task<string> stderrTask)
     {
-        char[] buffer = new char[4096];
-        StringBuilder builder = new();
-        int estimatedBytes = 0;
-        while (true)
+        TryKill(process);
+#pragma warning disable CA1031 // Best-effort cleanup must not hide the original timeout/cancellation/failure.
+        try
         {
-            int count = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-            if (count == 0)
-            {
-                return builder.ToString();
-            }
-
-            estimatedBytes += Encoding.UTF8.GetByteCount(buffer.AsSpan(0, count));
-            if (estimatedBytes > maximumOutputBytes)
-            {
-                throw new InvalidDataException("External tool output exceeded the configured safety limit.");
-            }
-
-            builder.Append(buffer, 0, count);
+            await process.WaitForExitAsync(CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(15))
+                .ConfigureAwait(false);
         }
+        catch
+        {
+        }
+
+        try
+        {
+            await Task.WhenAll(stdoutTask, stderrTask)
+                .WaitAsync(TimeSpan.FromSeconds(15))
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+        }
+#pragma warning restore CA1031
     }
 
     private static void TryKill(Process process)

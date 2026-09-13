@@ -11,4 +11,6 @@ public sealed record ConversionJobSnapshot(
     DateTimeOffset CreatedAt,
     DateTimeOffset? StartedAt,
     DateTimeOffset? CompletedAt,
-    long? OutputBytes);
+    long? OutputBytes,
+    TimeSpan? ProcessedDuration = null,
+    string? Speed = null);

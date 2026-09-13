@@ -61,7 +61,10 @@
                             </StackPanel>
                             <TextBlock Grid.Column="1" Text="{Binding State}" Foreground="{DynamicResource XdmAccentForeground}" VerticalAlignment="Center"/>
                             <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Margin="0,9,0,5" Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}"/>
-                            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                            <StackPanel Grid.Row="2" Spacing="2">
+                              <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{DynamicResource XdmMutedForeground}" TextWrapping="Wrap"/>
+                              <TextBlock Text="{Binding ProgressDetails}" FontSize="10" Foreground="{DynamicResource XdmSubtleForeground}" TextWrapping="Wrap"/>
+                            </StackPanel>
                             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding OutputSize}" FontSize="11" Foreground="{DynamicResource XdmSecondarySoftForeground}" HorizontalAlignment="Right"/>
                           </Grid>
                         </Border>
