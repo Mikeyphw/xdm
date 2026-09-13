@@ -60,10 +60,11 @@ public partial class MainWindowViewModel
         try
         {
             SubsystemHealthSnapshot snapshot = await _subsystemHealthService
-                .RefreshAsync(GetDiagnosticsDestinationDirectory())
+                .RefreshAsync(GetDiagnosticsDestinationDirectory(), _diagnosticsCancellation.Token)
                 .ConfigureAwait(false);
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 ApplySubsystemHealth(snapshot);
                 return Task.CompletedTask;
             });
@@ -72,6 +73,7 @@ public partial class MainWindowViewModel
         {
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 SubsystemHealthStatus = "Subsystem health checks were cancelled.";
                 return Task.CompletedTask;
             });
@@ -80,7 +82,8 @@ public partial class MainWindowViewModel
         {
             await _dispatcher.InvokeAsync(() =>
             {
-                SubsystemHealthStatus = $"Subsystem health checks failed: {exception.Message}";
+                if (_disposed) { return Task.CompletedTask; }
+                SubsystemHealthStatus = $"Subsystem health checks failed: {SecretRedactor.Redact(exception.Message)}";
                 return Task.CompletedTask;
             });
         }
@@ -88,6 +91,7 @@ public partial class MainWindowViewModel
         {
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 IsSubsystemHealthRefreshing = false;
                 return Task.CompletedTask;
             });
@@ -107,10 +111,11 @@ public partial class MainWindowViewModel
         try
         {
             DeterministicDownloadTestResult result = await _deterministicDownloadTestService
-                .RunAsync()
+                .RunAsync(_diagnosticsCancellation.Token)
                 .ConfigureAwait(false);
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 ApplyDeterministicDownloadTest(result);
                 return Task.CompletedTask;
             });
@@ -119,6 +124,7 @@ public partial class MainWindowViewModel
         {
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 DeterministicDownloadTestStatus = "The bounded test download was cancelled.";
                 return Task.CompletedTask;
             });
@@ -127,6 +133,7 @@ public partial class MainWindowViewModel
         {
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 IsDeterministicDownloadTestRunning = false;
                 return Task.CompletedTask;
             });
@@ -145,10 +152,11 @@ public partial class MainWindowViewModel
         try
         {
             SubsystemHealthSnapshot snapshot = await _subsystemHealthService
-                .RepairAsync(repairActionId, GetDiagnosticsDestinationDirectory())
+                .RepairAsync(repairActionId, GetDiagnosticsDestinationDirectory(), _diagnosticsCancellation.Token)
                 .ConfigureAwait(false);
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 ApplySubsystemHealth(snapshot);
                 OperationMessage = "Diagnostics repair action completed and health was refreshed.";
                 return Task.CompletedTask;
@@ -158,7 +166,8 @@ public partial class MainWindowViewModel
         {
             await _dispatcher.InvokeAsync(() =>
             {
-                SubsystemHealthStatus = $"Repair failed: {exception.Message}";
+                if (_disposed) { return Task.CompletedTask; }
+                SubsystemHealthStatus = $"Repair failed: {SecretRedactor.Redact(exception.Message)}";
                 return Task.CompletedTask;
             });
         }
@@ -166,6 +175,7 @@ public partial class MainWindowViewModel
         {
             await _dispatcher.InvokeAsync(() =>
             {
+                if (_disposed) { return Task.CompletedTask; }
                 IsSubsystemHealthRefreshing = false;
                 return Task.CompletedTask;
             });

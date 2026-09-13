@@ -1,3 +1,4 @@
+using System.Text.Json;
 using XDM.Core.Diagnostics;
 
 namespace XDM.Diagnostics;
@@ -5,8 +6,28 @@ namespace XDM.Diagnostics;
 public sealed class TransferDiagnosticStore : ITransferDiagnosticSink, ITransferDiagnosticSource
 {
     private const int MaximumEvents = 2000;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     private readonly object _sync = new();
     private readonly List<TransferDiagnosticEvent> _events = [];
+    private readonly string? _persistencePath;
+
+    public TransferDiagnosticStore()
+    {
+    }
+
+    internal TransferDiagnosticStore(string persistencePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(persistencePath);
+        _persistencePath = persistencePath;
+        LoadPersisted();
+    }
+
+    public static TransferDiagnosticStore Persistent()
+        => new(DiagnosticRingPaths.TransferRingPath());
 
     public event EventHandler? Changed;
 
@@ -43,15 +64,13 @@ public sealed class TransferDiagnosticStore : ITransferDiagnosticSink, ITransfer
             severity,
             code.Trim(),
             SecretRedactor.Redact(message),
-            RedactContext(context));
+            SecretRedactor.RedactContext(context));
 
         lock (_sync)
         {
             _events.Add(item);
-            if (_events.Count > MaximumEvents)
-            {
-                _events.RemoveRange(0, _events.Count - MaximumEvents);
-            }
+            TrimLocked();
+            PersistLocked();
         }
 
         Changed?.Invoke(this, EventArgs.Empty);
@@ -69,22 +88,66 @@ public sealed class TransferDiagnosticStore : ITransferDiagnosticSink, ITransfer
             {
                 _events.RemoveAll(item => string.Equals(item.DownloadId, downloadId, StringComparison.Ordinal));
             }
+
+            PersistLocked();
         }
 
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private static Dictionary<string, string?> RedactContext(
-        IReadOnlyDictionary<string, string?>? context)
+    private void LoadPersisted()
     {
-        if (context is null || context.Count == 0)
+        if (_persistencePath is null || !File.Exists(_persistencePath))
         {
-            return new Dictionary<string, string?>(StringComparer.Ordinal);
+            return;
         }
 
-        return context.ToDictionary(
-            static pair => pair.Key,
-            static pair => pair.Value is null ? null : SecretRedactor.Redact(pair.Value),
-            StringComparer.Ordinal);
+        try
+        {
+            TransferDiagnosticEvent[]? items = JsonSerializer.Deserialize<TransferDiagnosticEvent[]>(
+                File.ReadAllText(_persistencePath),
+                JsonOptions);
+            if (items is null)
+            {
+                return;
+            }
+
+            _events.AddRange(items.Select(static item => item with
+            {
+                Message = SecretRedactor.Redact(item.Message),
+                Context = SecretRedactor.RedactContext(item.Context)
+            }));
+            TrimLocked();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+        }
+    }
+
+    private void PersistLocked()
+    {
+        if (_persistencePath is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_persistencePath)!);
+            string tempPath = _persistencePath + $".{Guid.NewGuid():N}.tmp";
+            File.WriteAllText(tempPath, JsonSerializer.Serialize(_events, JsonOptions));
+            File.Move(tempPath, _persistencePath, overwrite: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+        }
+    }
+
+    private void TrimLocked()
+    {
+        if (_events.Count > MaximumEvents)
+        {
+            _events.RemoveRange(0, _events.Count - MaximumEvents);
+        }
     }
 }

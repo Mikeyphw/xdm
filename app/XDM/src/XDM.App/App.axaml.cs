@@ -40,6 +40,7 @@ public partial class App : Application
 {
     private ServiceProvider? _services;
     private MainWindowViewModel? _trayViewModel;
+    private CrashDiagnosticWiring? _crashDiagnostics;
     private TrayIcon? _mainTrayIcon;
     internal static ExitIntent RequestedExit { get; private set; }
     internal static bool ExitRequested => RequestedExit != ExitIntent.None;
@@ -68,6 +69,7 @@ public partial class App : Application
         IRecoveryService recovery = services.GetRequiredService<IRecoveryService>();
         IDiagnosticEventStore diagnostics = services.GetRequiredService<IDiagnosticEventStore>();
         recovery.Initialize(LaunchOptions);
+        _crashDiagnostics = CrashDiagnosticWiring.Attach(diagnostics);
         diagnostics.Record(
             DiagnosticSeverity.Information,
             "XDM-STARTUP-001",
@@ -214,6 +216,8 @@ public partial class App : Application
             {
                 _trayViewModel.PropertyChanged -= TrayViewModel_PropertyChanged;
             }
+            _crashDiagnostics?.Dispose();
+            _crashDiagnostics = null;
             _services = null;
         }
     }
@@ -322,8 +326,8 @@ public partial class App : Application
         services.AddSingleton(static provider =>
             ConfiguredHttpClientFactory.Create(provider.GetRequiredService<ISettingsService>()));
 
-        services.AddSingleton<IDiagnosticEventStore, DiagnosticEventStore>();
-        services.AddSingleton<TransferDiagnosticStore>();
+        services.AddSingleton<IDiagnosticEventStore>(static _ => DiagnosticEventStore.Persistent());
+        services.AddSingleton(static _ => TransferDiagnosticStore.Persistent());
         services.AddSingleton<ITransferDiagnosticSink>(static provider => provider.GetRequiredService<TransferDiagnosticStore>());
         services.AddSingleton<ITransferDiagnosticSource>(static provider => provider.GetRequiredService<TransferDiagnosticStore>());
         services.AddSingleton<ITransferHealthProbe, TransferHealthProbe>();

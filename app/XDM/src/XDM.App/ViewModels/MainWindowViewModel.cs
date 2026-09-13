@@ -55,6 +55,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly Dictionary<string, List<DownloadTimelineEntry>> _downloadTimelines = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _filePresenceProbeVersions = new(StringComparer.Ordinal);
     private CancellationTokenSource? _mediaDownloadCancellation;
+    private readonly CancellationTokenSource _diagnosticsCancellation = new();
     private MediaCatalog? _currentMediaCatalog;
     private bool _disposed;
 
@@ -760,7 +761,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         TransferHealthProbeStages.Clear();
         TransferHealthProbeStatus = value is null
             ? "Select a download, then run the bounded live probe."
-            : $"Ready to probe {value.Source.GetLeftPart(UriPartial.Authority)} and the destination disk.";
+            : $"Ready to probe {SecretRedactor.RedactOrigin(value.Source)} and the destination disk.";
         SelectedDownloadPriority = value?.Priority ?? DownloadPriority.Normal;
         ApplySelectedHistoryItem(value);
         SelectedDownloadTags = value?.TagsText ?? string.Empty;
@@ -2092,16 +2093,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 ? _settingsService.Current.DefaultDownloadDirectory
                 : DestinationFolder;
             DiagnosticBundlePath = await _diagnosticBundleService
-                .ExportAsync(destination);
+                .ExportAsync(destination, _diagnosticsCancellation.Token);
             _diagnosticEvents.Record(
                 DiagnosticSeverity.Information,
                 "XDM-DIAGNOSTICS-EXPORT",
                 $"Diagnostic bundle exported to {DiagnosticBundlePath}.");
             OperationMessage = "Diagnostic bundle exported.";
         }
+        catch (OperationCanceledException)
+        {
+            DiagnosticBundlePath = "Export cancelled during application shutdown.";
+            _diagnosticEvents.Record(
+                DiagnosticSeverity.Warning,
+                "XDM-DIAGNOSTICS-EXPORT",
+                DiagnosticBundlePath);
+        }
         catch (IOException exception)
         {
-            DiagnosticBundlePath = $"Export failed: {exception.Message}";
+            DiagnosticBundlePath = $"Export failed: {SecretRedactor.Redact(exception.Message)}";
             _diagnosticEvents.Record(
                 DiagnosticSeverity.Error,
                 "XDM-DIAGNOSTICS-EXPORT",
@@ -2109,7 +2118,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
         catch (UnauthorizedAccessException exception)
         {
-            DiagnosticBundlePath = $"Export failed: {exception.Message}";
+            DiagnosticBundlePath = $"Export failed: {SecretRedactor.Redact(exception.Message)}";
             _diagnosticEvents.Record(
                 DiagnosticSeverity.Error,
                 "XDM-DIAGNOSTICS-EXPORT",
@@ -2157,12 +2166,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         _disposed = true;
+        _diagnosticsCancellation.Cancel();
         _mediaDownloadCancellation?.Cancel();
         _mediaDownloadCancellation?.Dispose();
         _updateCancellation?.Cancel();
         _updateCancellation?.Dispose();
         _destinationPreviewCancellation?.Cancel();
         _destinationPreviewCancellation?.Dispose();
+        _diagnosticsCancellation.Dispose();
         _applicationState.Changed -= OnApplicationStateChanged;
         _settingsService.Changed -= OnSettingsChanged;
         _localization.Changed -= OnLocalizationChanged;
@@ -2578,7 +2589,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         _dispatcher.Post(() =>
         {
-            LastBrowserCapture = $"{request.Browser ?? "Browser"}: {request.Url.GetLeftPart(UriPartial.Path)}";
+            LastBrowserCapture = $"{request.Browser ?? "Browser"}: {SecretRedactor.RedactOrigin(request.Url)}";
             if (probe is not null)
             {
                 LastMediaProbe = FormatMediaProbe(probe);

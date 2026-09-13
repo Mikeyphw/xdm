@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text.Json;
-using XDM.BrowserIntegration;
 using XDM.Core.Diagnostics;
+using XDM.BrowserIntegration;
 using XDM.Core.Settings;
 using XDM.Core.State;
 using XDM.Platform;
@@ -62,17 +62,20 @@ public sealed class DiagnosticBundleService : IDiagnosticBundleService
         string archivePath = Path.Combine(
             destinationDirectory,
             $"xdm-diagnostics-{timestamp}.zip");
+        string finalizingPath = archivePath + $".{Guid.NewGuid():N}.xdm-finalizing";
 
-        await using FileStream output = new(
-            archivePath,
-            FileMode.CreateNew,
-            FileAccess.ReadWrite,
-            FileShare.None,
-            64 * 1024,
-            FileOptions.Asynchronous);
-        using ZipArchive archive = new(output, ZipArchiveMode.Create, leaveOpen: true);
-
-        BrowserIntegrationStatus browser = _browserIntegration.Current;
+        try
+        {
+            await using FileStream output = new(
+                finalizingPath,
+                FileMode.CreateNew,
+                FileAccess.ReadWrite,
+                FileShare.None,
+                64 * 1024,
+                FileOptions.Asynchronous | FileOptions.WriteThrough);
+            using (ZipArchive archive = new(output, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                BrowserIntegrationStatus browser = _browserIntegration.Current;
         await AddJsonAsync(archive, "summary.json", new
         {
             generatedAt = DateTimeOffset.UtcNow,
@@ -123,7 +126,7 @@ public sealed class DiagnosticBundleService : IDiagnosticBundleService
         {
             download.Id,
             download.FileName,
-            SourceOrigin = download.Source.GetLeftPart(UriPartial.Authority),
+            SourceOrigin = SecretRedactor.RedactOrigin(download.Source),
             DestinationFileName = Path.GetFileName(download.DestinationPath),
             download.DownloadedBytes,
             download.TotalBytes,
@@ -156,36 +159,53 @@ public sealed class DiagnosticBundleService : IDiagnosticBundleService
             settings.Scheduler
         }, cancellationToken).ConfigureAwait(false);
         await AddJsonAsync(archive, "browser.json", new
+                {
+                    browser.IsListening,
+                    browser.Port,
+                    browser.ProtocolVersion,
+                    browser.StartedAt,
+                    browser.LastMessageAt,
+                    browser.LastBrowser,
+                    LastCapturedOrigin = browser.LastCapturedUrl is null
+                        ? null
+                        : GetOrigin(browser.LastCapturedUrl),
+                    browser.LastExtensionHealthAt,
+                    browser.ExtensionBrowser,
+                    browser.ExtensionBrowserVersion,
+                    browser.ExtensionVersion,
+                    browser.ExtensionManifestVersion,
+                    browser.ExtensionIncognitoAllowed,
+                    browser.ExtensionEnhancedAccessGranted,
+                    ExtensionGrantedOrigins = browser.ExtensionGrantedOrigins?.Select(GetOrigin).ToArray(),
+                    browser.ExtensionCompatibility,
+                    browser.ExtensionCapabilities,
+                    LastError = browser.LastError is null ? null : SecretRedactor.Redact(browser.LastError)
+                }, cancellationToken).ConfigureAwait(false);
+            }
+
+            await output.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
         {
-            browser.IsListening,
-            browser.Port,
-            browser.ProtocolVersion,
-            browser.StartedAt,
-            browser.LastMessageAt,
-            browser.LastBrowser,
-            LastCapturedOrigin = browser.LastCapturedUrl is null
-                ? null
-                : GetOrigin(browser.LastCapturedUrl),
-            browser.LastExtensionHealthAt,
-            browser.ExtensionBrowser,
-            browser.ExtensionBrowserVersion,
-            browser.ExtensionVersion,
-            browser.ExtensionManifestVersion,
-            browser.ExtensionIncognitoAllowed,
-            browser.ExtensionEnhancedAccessGranted,
-            browser.ExtensionGrantedOrigins,
-            browser.ExtensionCompatibility,
-            browser.ExtensionCapabilities,
-            LastError = browser.LastError is null ? null : SecretRedactor.Redact(browser.LastError)
-        }, cancellationToken).ConfigureAwait(false);
+            DeleteQuietly(finalizingPath);
+            throw;
+        }
+
+        try
+        {
+            File.Move(finalizingPath, archivePath);
+        }
+        catch
+        {
+            DeleteQuietly(finalizingPath);
+            throw;
+        }
 
         return archivePath;
     }
 
-    private static string GetOrigin(string url)
-        => Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
-            ? uri.GetLeftPart(UriPartial.Authority)
-            : "[invalid URL]";
+    private static string GetOrigin(string? url)
+        => SecretRedactor.RedactOrigin(url);
 
     private static async Task AddJsonAsync<T>(
         ZipArchive archive,
@@ -195,7 +215,21 @@ public sealed class DiagnosticBundleService : IDiagnosticBundleService
     {
         ZipArchiveEntry entry = archive.CreateEntry(entryName, CompressionLevel.SmallestSize);
         await using Stream stream = entry.Open();
-        await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken)
+        await DiagnosticRedactor.WriteRedactedJsonAsync(stream, value, JsonOptions, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static void DeleteQuietly(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 }

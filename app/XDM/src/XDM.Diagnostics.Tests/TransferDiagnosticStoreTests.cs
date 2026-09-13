@@ -45,4 +45,35 @@ public sealed class TransferDiagnosticStoreTests
         Assert.Empty(store.Snapshot("download-a"));
         Assert.Single(store.Snapshot("download-b"));
     }
+
+    [Fact]
+    public void PersistentStoreRestoresTransferTimelineWithoutSecrets()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"xdm-transfer-{Guid.NewGuid():N}.json");
+        try
+        {
+            TransferDiagnosticStore first = new(path);
+            first.Record(
+                "download-a",
+                TransferDiagnosticStage.Http,
+                TransferDiagnosticSeverity.Warning,
+                "XDM-TRANSFER-TEST",
+                "Cookie: session=secret",
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["url"] = "https://user:pass@example.test/file?api_key=secret"
+                });
+
+            TransferDiagnosticStore second = new(path);
+            TransferDiagnosticEvent item = Assert.Single(second.Snapshot("download-a"));
+
+            Assert.DoesNotContain("session=secret", item.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("user:pass", item.Context["url"] ?? string.Empty, StringComparison.Ordinal);
+            Assert.DoesNotContain("api_key=secret", item.Context["url"] ?? string.Empty, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

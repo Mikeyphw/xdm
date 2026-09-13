@@ -88,7 +88,7 @@ public sealed class TransferHealthProbe : ITransferHealthProbe
                 ? parsedRate
                 : null;
         TransferHealthProbeResult result = new(
-            target.GetLeftPart(UriPartial.Authority),
+            SecretRedactor.RedactOrigin(target),
             startedAt,
             DateTimeOffset.UtcNow,
             stages,
@@ -207,43 +207,56 @@ public sealed class TransferHealthProbe : ITransferHealthProbe
             string testPath = Path.Combine(destinationDirectory, $".xdm-health-{Guid.NewGuid():N}.tmp");
             byte[] payload = new byte[_options.DiskWriteBytes];
             Stopwatch stopwatch = Stopwatch.StartNew();
-            try
+            await using (FileStream stream = new(
+                testPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                64 * 1024,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
             {
-                await using FileStream stream = new(
-                    testPath,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    64 * 1024,
-                    FileOptions.Asynchronous | FileOptions.WriteThrough);
                 await stream.WriteAsync(payload, stageToken).ConfigureAwait(false);
                 await stream.FlushAsync(stageToken).ConfigureAwait(false);
                 stream.Flush(flushToDisk: true);
             }
-            finally
+
+            Exception? cleanupFailure = null;
+            try
             {
-                stopwatch.Stop();
-                try
-                {
-                    File.Delete(testPath);
-                }
-                catch (IOException)
-                {
-                }
-                catch (UnauthorizedAccessException)
-                {
-                }
+                File.Delete(testPath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                cleanupFailure = exception;
             }
 
+            stopwatch.Stop();
             double seconds = Math.Max(stopwatch.Elapsed.TotalSeconds, 0.001);
             long bytesPerSecond = (long)(_options.DiskWriteBytes / seconds);
+            if (cleanupFailure is not null || File.Exists(testPath))
+            {
+                return new TransferHealthProbeStage(
+                    "Destination disk",
+                    TransferHealthProbeStatus.Warning,
+                    TimeSpan.Zero,
+                    "The destination is writable, but the health probe file could not be cleaned up.",
+                    new Dictionary<string, string?>(StringComparer.Ordinal)
+                    {
+                        ["bytesWritten"] = _options.DiskWriteBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["bytesPerSecond"] = bytesPerSecond.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["cleanup"] = "failed",
+                        ["cleanupError"] = cleanupFailure is null ? "probe file still exists" : SecretRedactor.Redact(cleanupFailure.Message)
+                    });
+            }
+
             return Passed(
                 "Destination disk",
-                $"Wrote and flushed {_options.DiskWriteBytes / 1024:N0} KiB without retaining the test file.",
+                $"Wrote and flushed {_options.DiskWriteBytes / 1024:N0} KiB and deleted the test file.",
                 new Dictionary<string, string?>(StringComparer.Ordinal)
                 {
                     ["bytesWritten"] = _options.DiskWriteBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    ["bytesPerSecond"] = bytesPerSecond.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ["bytesPerSecond"] = bytesPerSecond.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["cleanup"] = "deleted"
                 });
         }
     }

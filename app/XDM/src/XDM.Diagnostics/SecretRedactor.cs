@@ -1,23 +1,22 @@
-using System.Text.RegularExpressions;
+using XDM.Core.Diagnostics;
 
 namespace XDM.Diagnostics;
 
-public static partial class SecretRedactor
+public static class SecretRedactor
 {
     public static string Redact(string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        string redacted = BearerSecretRegex().Replace(value, "$1[REDACTED]");
-        redacted = HeaderSecretRegex().Replace(redacted, "$1[REDACTED]");
-        return QuerySecretRegex().Replace(redacted, "$1[REDACTED]");
-    }
+        => DiagnosticRedactor.Redact(value);
 
-    [GeneratedRegex("(?i)(authorization\\s*[:=]\\s*|cookie\\s*[:=]\\s*|password\\s*[:=]\\s*|x-xdm-token\\s*[:=]\\s*)[^\\s,;]+")]
-    private static partial Regex HeaderSecretRegex();
+    public static string RedactOrigin(Uri uri)
+        => DiagnosticRedactor.RedactOrigin(uri);
 
-    [GeneratedRegex("(?i)([?&](?:token|key|auth|signature|sig|password)=)[^&#\\s]+")]
-    private static partial Regex QuerySecretRegex();
+    public static string RedactOrigin(string? value)
+        => DiagnosticRedactor.RedactOrigin(value);
 
-    [GeneratedRegex("(?i)(bearer\\s+)[A-Za-z0-9._~+/-]+=*")]
-    private static partial Regex BearerSecretRegex();
+    public static string RedactPath(string? value)
+        => DiagnosticRedactor.RedactPath(value);
+
+    public static IReadOnlyDictionary<string, string?> RedactContext(
+        IReadOnlyDictionary<string, string?>? context)
+        => DiagnosticRedactor.RedactContext(context);
 }

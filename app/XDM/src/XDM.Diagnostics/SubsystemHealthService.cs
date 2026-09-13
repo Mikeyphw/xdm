@@ -13,6 +13,8 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
 
     private const int DiskProbeBytes = 64 * 1024;
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ExtensionHealthFreshness = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ExtensionHealthClockSkew = TimeSpan.FromSeconds(30);
     private readonly IBrowserIntegrationService _browserIntegration;
     private readonly IBrowserHostInstaller _browserHostInstaller;
     private readonly IAria2Service _aria2Service;
@@ -20,7 +22,9 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
     private readonly ISettingsService _settingsService;
     private readonly IDiagnosticEventStore _events;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly CancellationTokenSource _lifetime = new();
     private SubsystemHealthSnapshot _current = SubsystemHealthSnapshot.Empty;
+    private bool _disposed;
 
     public SubsystemHealthService(
         IBrowserIntegrationService browserIntegration,
@@ -46,18 +50,22 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         string destinationDirectory,
         CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationDirectory);
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            _lifetime.Token);
+        await _gate.WaitAsync(linked.Token).ConfigureAwait(false);
         try
         {
             List<SubsystemHealthCheckResult> checks =
             [
-                CheckBrowserBridge(),
-                CheckNativeHost(),
-                await CheckAria2Async(cancellationToken).ConfigureAwait(false),
-                await CheckFfmpegAsync(cancellationToken).ConfigureAwait(false),
-                CheckProxy(),
-                await CheckDestinationAsync(destinationDirectory, cancellationToken).ConfigureAwait(false)
+                await RunCheckAsync("browser-bridge", "Browser extension bridge", _ => Task.FromResult(CheckBrowserBridge()), linked.Token).ConfigureAwait(false),
+                await RunCheckAsync("native-host", "Native host registration", _ => Task.FromResult(CheckNativeHost()), linked.Token).ConfigureAwait(false),
+                await RunCheckAsync("aria2", "aria2 backend", CheckAria2Async, linked.Token).ConfigureAwait(false),
+                await RunCheckAsync("ffmpeg", "FFmpeg", CheckFfmpegAsync, linked.Token).ConfigureAwait(false),
+                await RunCheckAsync("proxy", "Proxy configuration", _ => Task.FromResult(CheckProxy()), linked.Token).ConfigureAwait(false),
+                await RunCheckAsync("destination-disk", "Destination disk", token => CheckDestinationAsync(destinationDirectory, token), linked.Token).ConfigureAwait(false)
             ];
             Publish(new SubsystemHealthSnapshot(DateTimeOffset.UtcNow, checks));
             _events.Record(
@@ -79,12 +87,16 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         string destinationDirectory,
         CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(repairActionId);
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            _lifetime.Token);
         switch (repairActionId)
         {
             case RepairBrowserNativeHost:
                 BrowserHostInstallationStatus repaired = await _browserHostInstaller
-                    .RepairAsync(_browserIntegration.Current.ExtensionId, cancellationToken)
+                    .RepairAsync(_browserIntegration.Current.ExtensionId, linked.Token)
                     .ConfigureAwait(false);
                 _events.Record(
                     repaired.IsCompatible ? DiagnosticSeverity.Information : DiagnosticSeverity.Warning,
@@ -101,11 +113,11 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
 
                 if (aria2.ConnectionMode == Aria2ConnectionMode.ManagedProcess)
                 {
-                    await _aria2Service.StartManagedProcessAsync(cancellationToken).ConfigureAwait(false);
+                    await _aria2Service.StartManagedProcessAsync(linked.Token).ConfigureAwait(false);
                 }
                 else
                 {
-                    await _aria2Service.RefreshAsync(cancellationToken).ConfigureAwait(false);
+                    await _aria2Service.RefreshAsync(linked.Token).ConfigureAwait(false);
                 }
 
                 _events.Record(
@@ -120,7 +132,44 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
                     "Unknown diagnostics repair action.");
         }
 
-        return await RefreshAsync(destinationDirectory, cancellationToken).ConfigureAwait(false);
+        return await RefreshAsync(destinationDirectory, linked.Token).ConfigureAwait(false);
+    }
+
+    private static async Task<SubsystemHealthCheckResult> RunCheckAsync(
+        string id,
+        string name,
+        Func<CancellationToken, Task<SubsystemHealthCheckResult>> operation,
+        CancellationToken cancellationToken)
+    {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(CheckTimeout);
+        try
+        {
+            return await Task.Run(() => operation(timeout.Token), timeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            return new SubsystemHealthCheckResult(
+                id,
+                name,
+                SubsystemHealthStatus.Unavailable,
+                $"The {name} check exceeded its {CheckTimeout.TotalSeconds:0}-second deadline.",
+                "The check was cancelled by the diagnostics timeout boundary.",
+                stopwatch.Elapsed);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            return new SubsystemHealthCheckResult(
+                id,
+                name,
+                SubsystemHealthStatus.Unavailable,
+                $"The {name} check failed independently.",
+                SecretRedactor.Redact(exception.Message),
+                stopwatch.Elapsed);
+        }
     }
 
     private SubsystemHealthCheckResult CheckBrowserBridge()
@@ -129,6 +178,7 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         BrowserIntegrationStatus status = _browserIntegration.Current;
         SubsystemHealthStatus health;
         string summary;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         if (!status.IsListening)
         {
             health = SubsystemHealthStatus.Unavailable;
@@ -143,6 +193,16 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         {
             health = SubsystemHealthStatus.Degraded;
             summary = "The bridge is ready, but no extension health handshake has been received.";
+        }
+        else if (status.LastExtensionHealthAt > now + ExtensionHealthClockSkew)
+        {
+            health = SubsystemHealthStatus.Degraded;
+            summary = "The extension health timestamp is in the future and cannot prove a live browser.";
+        }
+        else if (now - status.LastExtensionHealthAt > ExtensionHealthFreshness)
+        {
+            health = SubsystemHealthStatus.Degraded;
+            summary = "The last extension health heartbeat is stale.";
         }
         else if (!string.Equals(status.ExtensionCompatibility, "compatible", StringComparison.Ordinal))
         {
@@ -163,6 +223,7 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
             $"Expected native protocol: {BrowserNativeProtocol.ProtocolVersion}",
             $"Extension: {status.ExtensionBrowser ?? "not connected"} {status.ExtensionVersion ?? string.Empty}".TrimEnd(),
             $"Compatibility: {status.ExtensionCompatibility ?? "not reported"}",
+            $"Health freshness limit: {ExtensionHealthFreshness.TotalSeconds:0} seconds",
             $"Last extension health: {status.LastExtensionHealthAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? "never"}",
             string.IsNullOrWhiteSpace(status.LastError)
                 ? "Last error: none"
@@ -225,9 +286,7 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
-            using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(CheckTimeout);
-            await _aria2Service.RefreshAsync(timeout.Token).ConfigureAwait(false);
+            await _aria2Service.RefreshAsync(cancellationToken).ConfigureAwait(false);
             Aria2ServiceSnapshot snapshot = _aria2Service.Current;
             stopwatch.Stop();
             SubsystemHealthStatus status = snapshot.Health.IsAvailable
@@ -276,10 +335,8 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
-            using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(CheckTimeout);
             FfmpegCapabilities capabilities = await _ffmpegService
-                .GetCapabilitiesAsync(timeout.Token)
+                .GetCapabilitiesAsync(cancellationToken)
                 .ConfigureAwait(false);
             stopwatch.Stop();
             return new SubsystemHealthCheckResult(
@@ -291,7 +348,7 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
                 capabilities.Summary,
                 string.Join(
                     Environment.NewLine,
-                    $"Executable: {capabilities.Health.ExecutablePath ?? "not found"}",
+                    $"Executable: {SecretRedactor.RedactPath(capabilities.Health.ExecutablePath)}",
                     $"Version: {capabilities.Health.Version ?? "unknown"}",
                     SecretRedactor.Redact(capabilities.Health.Message)),
                 stopwatch.Elapsed);
@@ -375,21 +432,37 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
             {
                 await stream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
                 await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                stream.Flush(flushToDisk: true);
+            }
+
+            Exception? cleanupFailure = null;
+            try
+            {
+                File.Delete(probePath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                cleanupFailure = exception;
             }
 
             stopwatch.Stop();
             double mibPerSecond = DiskProbeBytes / 1024d / 1024d
                 / Math.Max(stopwatch.Elapsed.TotalSeconds, 0.000_001);
+            bool cleaned = cleanupFailure is null && !File.Exists(probePath);
             return new SubsystemHealthCheckResult(
                 "destination-disk",
                 "Destination disk",
-                SubsystemHealthStatus.Healthy,
-                "Destination is writable and has a readable free-space result.",
+                cleaned ? SubsystemHealthStatus.Healthy : SubsystemHealthStatus.Degraded,
+                cleaned
+                    ? "Destination is writable and the probe file was cleaned up."
+                    : "Destination is writable, but the probe file could not be cleaned up.",
                 string.Join(
                     Environment.NewLine,
-                    $"Directory: {fullPath}",
+                    $"Directory: {SecretRedactor.RedactPath(fullPath)}",
                     $"Available bytes: {drive.AvailableFreeSpace}",
                     $"Bounded write: {DiskProbeBytes} bytes",
+                    $"Probe cleanup: {(cleaned ? "deleted" : "failed")}",
+                    cleanupFailure is null ? "Cleanup error: none" : $"Cleanup error: {SecretRedactor.Redact(cleanupFailure.Message)}",
                     $"Observed write rate: {mibPerSecond:0.0} MiB/s"),
                 stopwatch.Elapsed);
         }
@@ -404,27 +477,20 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
                 SecretRedactor.Redact(exception.Message),
                 stopwatch.Elapsed);
         }
-        finally
-        {
-            if (probePath is not null)
-            {
-                try
-                {
-                    File.Delete(probePath);
-                }
-                catch (IOException)
-                {
-                }
-                catch (UnauthorizedAccessException)
-                {
-                }
-            }
-        }
     }
 
     public void Dispose()
     {
-        _gate.Dispose();
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _lifetime.Cancel();
+        // Do not dispose _gate or _lifetime here. Diagnostics commands may be unwinding on background
+        // continuations during application teardown; cancelling without disposing prevents ObjectDisposedException
+        // from a late WaitAsync/Release while still stopping new work through ThrowIfDisposed.
         GC.SuppressFinalize(this);
     }
 
@@ -434,8 +500,14 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         Changed?.Invoke(this, snapshot);
     }
 
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(SubsystemHealthService));
+        }
+    }
+
     private static string GetOrigin(string? value)
-        => Uri.TryCreate(value, UriKind.Absolute, out Uri? uri)
-            ? uri.GetLeftPart(UriPartial.Authority)
-            : "invalid or unavailable";
+        => SecretRedactor.RedactOrigin(value);
 }

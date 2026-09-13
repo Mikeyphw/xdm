@@ -44,8 +44,99 @@ public sealed class SubsystemHealthServiceTests
         }
     }
 
+    [Fact]
+    public async Task RefreshAsyncExpiresStaleBrowserExtensionHeartbeat()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-health-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+            {
+                DefaultDownloadDirectory = directory,
+                Aria2 = Aria2IntegrationSettings.Default with { Enabled = false }
+            };
+            BrowserIntegrationStatus staleStatus = new(
+                true,
+                9614,
+                BrowserNativeProtocol.ProtocolVersion,
+                "redacted",
+                LastExtensionHealthAt: DateTimeOffset.UtcNow - TimeSpan.FromMinutes(10),
+                ExtensionBrowser: "Test Browser",
+                ExtensionVersion: BrowserNativeProtocol.MinimumExtensionVersion,
+                ExtensionCompatibility: "compatible");
+            using SubsystemHealthService service = new(
+                new FakeBrowserIntegration(staleStatus),
+                new FakeBrowserHostInstaller(),
+                new FakeAria2Service(),
+                new FakeFfmpegService(),
+                new FakeSettingsService(settings),
+                new DiagnosticEventStore());
+
+            SubsystemHealthSnapshot result = await service.RefreshAsync(directory);
+
+            SubsystemHealthCheckResult browser = Assert.Single(result.Checks.Where(static check => check.Id == "browser-bridge"));
+            Assert.Equal(SubsystemHealthStatus.Degraded, browser.Status);
+            Assert.Contains("stale", browser.Summary, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RefreshAsyncIsolatesFailingSubsystemCheck()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"xdm-health-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            ApplicationSettings settings = ApplicationSettings.CreateDefault() with
+            {
+                DefaultDownloadDirectory = directory,
+                Aria2 = Aria2IntegrationSettings.Default with { Enabled = false }
+            };
+            using SubsystemHealthService service = new(
+                new FakeBrowserIntegration(),
+                new ThrowingBrowserHostInstaller(),
+                new FakeAria2Service(),
+                new FakeFfmpegService(),
+                new FakeSettingsService(settings),
+                new DiagnosticEventStore());
+
+            SubsystemHealthSnapshot result = await service.RefreshAsync(directory);
+
+            Assert.Equal(6, result.Checks.Count);
+            Assert.Contains(result.Checks, static check => check.Id == "native-host" && check.Status == SubsystemHealthStatus.Unavailable);
+            Assert.Contains(result.Checks, static check => check.Id == "destination-disk" && check.Status == SubsystemHealthStatus.Healthy);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private sealed class FakeBrowserIntegration : IBrowserIntegrationService
     {
+        public FakeBrowserIntegration()
+            : this(new BrowserIntegrationStatus(
+                true,
+                9614,
+                BrowserNativeProtocol.ProtocolVersion,
+                "redacted",
+                LastExtensionHealthAt: DateTimeOffset.UtcNow,
+                ExtensionBrowser: "Test Browser",
+                ExtensionVersion: BrowserNativeProtocol.MinimumExtensionVersion,
+                ExtensionCompatibility: "compatible"))
+        {
+        }
+
+        public FakeBrowserIntegration(BrowserIntegrationStatus current)
+        {
+            Current = current;
+        }
+
         public event EventHandler<BrowserCaptureEventArgs>? CaptureReceived
         {
             add { }
@@ -58,15 +149,7 @@ public sealed class SubsystemHealthServiceTests
             remove { }
         }
 
-        public BrowserIntegrationStatus Current { get; } = new(
-            true,
-            9614,
-            BrowserNativeProtocol.ProtocolVersion,
-            "redacted",
-            LastExtensionHealthAt: DateTimeOffset.UtcNow,
-            ExtensionBrowser: "Test Browser",
-            ExtensionVersion: BrowserNativeProtocol.MinimumExtensionVersion,
-            ExtensionCompatibility: "compatible");
+        public BrowserIntegrationStatus Current { get; }
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
@@ -98,6 +181,21 @@ public sealed class SubsystemHealthServiceTests
         public Task<BrowserHostInstallationStatus> UninstallAsync(
             CancellationToken cancellationToken = default)
             => Task.FromResult(Healthy);
+    }
+
+    private sealed class ThrowingBrowserHostInstaller : IBrowserHostInstaller
+    {
+        public BrowserHostInstallationStatus GetStatus()
+            => throw new IOException("Native host path /home/tester/.xdm/native-host missing");
+
+        public Task<BrowserHostInstallationStatus> RepairAsync(
+            string? chromiumExtensionId,
+            CancellationToken cancellationToken = default)
+            => throw new IOException("Repair failed");
+
+        public Task<BrowserHostInstallationStatus> UninstallAsync(
+            CancellationToken cancellationToken = default)
+            => throw new IOException("Uninstall failed");
     }
 
     private sealed class FakeAria2Service : IAria2Service

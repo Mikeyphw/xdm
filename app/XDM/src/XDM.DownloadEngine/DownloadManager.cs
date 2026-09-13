@@ -4636,7 +4636,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     }
 
     private static string GetSafeSource(Uri source)
-        => source.GetLeftPart(UriPartial.Path);
+        => DiagnosticRedactor.RedactOrigin(source);
 
     private void Fail(DownloadSession session, Exception exception)
     {

@@ -13,6 +13,8 @@ public sealed class DeterministicDownloadTestService : IDeterministicDownloadTes
     private readonly HttpClient _httpClient;
     private readonly IDiagnosticEventStore _events;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly CancellationTokenSource _lifetime = new();
+    private bool _disposed;
 
     public DeterministicDownloadTestService(HttpClient httpClient, IDiagnosticEventStore events)
     {
@@ -27,13 +29,15 @@ public sealed class DeterministicDownloadTestService : IDeterministicDownloadTes
     public async Task<DeterministicDownloadTestResult> RunAsync(
         CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        ThrowIfDisposed();
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+        await _gate.WaitAsync(linked.Token).ConfigureAwait(false);
         try
         {
             Uri endpoint = ResolveEndpoint();
             DateTimeOffset startedAt = DateTimeOffset.UtcNow;
             Stopwatch stopwatch = Stopwatch.StartNew();
-            using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(linked.Token);
             timeout.CancelAfter(TestTimeout);
             try
             {
@@ -83,7 +87,7 @@ public sealed class DeterministicDownloadTestService : IDeterministicDownloadTes
                 DeterministicDownloadTestResult result = new(
                     startedAt,
                     DateTimeOffset.UtcNow,
-                    endpoint.GetLeftPart(UriPartial.Authority),
+                    SecretRedactor.RedactOrigin(endpoint),
                     (int)response.StatusCode,
                     ExpectedBytes,
                     received,
@@ -112,7 +116,7 @@ public sealed class DeterministicDownloadTestService : IDeterministicDownloadTes
                 DeterministicDownloadTestResult result = new(
                     startedAt,
                     DateTimeOffset.UtcNow,
-                    endpoint.GetLeftPart(UriPartial.Authority),
+                    SecretRedactor.RedactOrigin(endpoint),
                     exception is HttpRequestException { StatusCode: HttpStatusCode statusCode }
                         ? (int)statusCode
                         : 0,
@@ -128,7 +132,7 @@ public sealed class DeterministicDownloadTestService : IDeterministicDownloadTes
                     DiagnosticSeverity.Warning,
                     "XDM-DIAGNOSTICS-TEST-DOWNLOAD",
                     message);
-                if (exception is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                if (exception is OperationCanceledException && linked.Token.IsCancellationRequested)
                 {
                     throw;
                 }
@@ -144,8 +148,23 @@ public sealed class DeterministicDownloadTestService : IDeterministicDownloadTes
 
     public void Dispose()
     {
-        _gate.Dispose();
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _lifetime.Cancel();
+        // Do not dispose the gate while commands may be unwinding on background continuations.
         GC.SuppressFinalize(this);
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(DeterministicDownloadTestService));
+        }
     }
 
     private void Publish(DeterministicDownloadTestResult result)
