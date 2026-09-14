@@ -675,8 +675,9 @@ internal fun BackupRestoreSettingsScreen(state: MainUiState, viewModel: MainView
         item {
             XdmListCard {
                 XdmCardTitle("Portable settings snapshot")
-                XdmSupportingText("Copy a safe backup or paste one here. Passwords, transient browser secrets, and Developer mode are not exported.", maxLines = 4)
+                XdmSupportingText("Copy a safe backup or paste one here. Passwords, transient browser secrets, Developer mode, and device-bound destination grants are not exported.", maxLines = 4)
                 XdmMetadataText(state.backupRestoreReport.summary)
+                XdmMetadataText(state.settingsImportResult.summary)
                 Button(onClick = { copyTextToClipboard(context, "XDM settings snapshot", state.settingsExportText) }) { Text("Copy export") }
                 OutlinedTextField(
                     value = importText,
@@ -689,7 +690,6 @@ internal fun BackupRestoreSettingsScreen(state: MainUiState, viewModel: MainView
                     Button(
                         onClick = {
                             viewModel.importSettingsSnapshot(importText)
-                            importText = ""
                         },
                         enabled = importText.isNotBlank(),
                     ) { Text("Import snapshot") }

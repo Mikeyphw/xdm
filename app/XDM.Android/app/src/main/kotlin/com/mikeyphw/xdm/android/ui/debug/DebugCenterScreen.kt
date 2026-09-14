@@ -124,6 +124,7 @@ fun DebugCenterScreen(
                 supportReportText = state.supportReportText,
                 debugTimelineJsonl = timeline,
                 problemIncidentsText = problemReporter?.exportText().orEmpty(),
+                currentRunId = liveRun?.id ?: latestRun?.id.orEmpty(),
             )
         }
         val zip = outcome.getOrNull()

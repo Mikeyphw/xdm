@@ -42,6 +42,7 @@ import com.mikeyphw.xdm.android.model.BackendCapabilities
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.BackendMigrationRecord
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
+import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.model.DiagnosticExportIntegrity
 import com.mikeyphw.xdm.android.model.DebugWorkbenchShellPolicy
 import com.mikeyphw.xdm.android.model.DebugWorkbenchShellReport
@@ -133,6 +134,7 @@ import com.mikeyphw.xdm.android.model.ProxyCredentialSettings
 import com.mikeyphw.xdm.android.model.ReleasePackagingGate
 import com.mikeyphw.xdm.android.model.ReleasePackagingReport
 import com.mikeyphw.xdm.android.model.SettingsExchangeCodec
+import com.mikeyphw.xdm.android.model.SettingsExchangeImportResult
 import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
 import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
@@ -333,6 +335,7 @@ data class MainUiState(
     val postProcessingSettings: PostProcessingSettings = PostProcessingSettings(),
     val settingsSnapshot: SettingsExchangeSnapshot = SettingsExchangeSnapshot(),
     val settingsExportText: String = SettingsExchangeSnapshot().toPortableText(),
+    val settingsImportResult: SettingsExchangeImportResult = SettingsExchangeImportResult.Idle,
     val historyReport: HistoryManagementReport = HistoryManagementPolicy.summarize(emptyList()),
     val organizationReport: OrganizationPowerToolsReport = OrganizationPowerTools.summarize(emptyList(), emptyList(), emptyList(), emptyList(), emptyList()),
     val browserIntegrationStatus: BrowserIntegrationStatus = BrowserIntegrationStatus(true, true, true, 0, 0),
@@ -753,6 +756,8 @@ class MainViewModel(
         ReviewUiSnapshot(base.first, base.second, base.third, feedback, sessions, admissions)
     }
 
+    private val settingsImportResult = MutableStateFlow(SettingsExchangeImportResult.Idle)
+
     private data class TermuxUiSnapshot(
         val bridge: TermuxBridgeStatus,
         val aria2: TermuxAria2CockpitStatus,
@@ -936,10 +941,10 @@ class MainViewModel(
             activityDiagnosticsExport = activityDiagnosticsExport,
             supportReportText = supportReportText,
             debugWorkbenchReport = DebugWorkbenchShellPolicy.evaluate(
-                recorderInstalled = true,
-                redactionReady = true,
-                supportBundleReady = true,
-                instrumentationHooksReady = true,
+                recorderInstalled = debugEventRecorder !is NoOpDebugEventRecorder,
+                redactionReady = diagnosticsRuntimePrivacyReady,
+                supportBundleReady = supportReportText.isNotBlank() && diagnosticsRuntimePrivacyReady,
+                instrumentationHooksReady = runtime.capabilities.isNotEmpty() || snapshot.downloads.isNotEmpty() || snapshot.mediaCaptures.isNotEmpty() || snapshot.automationCommands.isNotEmpty(),
                 supportReportAvailable = supportReportText.isNotBlank(),
                 developerOptionsEnabled = prefs.developerOptionsEnabled,
                 activeDownloads = snapshot.downloads.count { it.state == DownloadState.Downloading },
@@ -1023,7 +1028,7 @@ class MainViewModel(
     ) { summary, progress, verification -> LiveTransferUi(summary, progress, verification) }
 
     /** Cheap final overlay: high-frequency bytes and FFmpeg progress never recompute release reports/settings/activity. */
-    val uiState: StateFlow<MainUiState> = combine(durableUiState, liveTransferUi, embeddedFfmpegMediaManager.progress) { durable, live, ffmpegProgress ->
+    val uiState: StateFlow<MainUiState> = combine(durableUiState, liveTransferUi, embeddedFfmpegMediaManager.progress, settingsImportResult) { durable, live, ffmpegProgress, importResult ->
         val downloads = durable.downloads.map { download ->
             val snapshot = live.progress[download.id] ?: return@map download
             download.copy(
@@ -1045,6 +1050,7 @@ class MainViewModel(
             activeTransfers = live.summary,
             verificationRecords = verificationRecords,
             embeddedFfmpegProgress = ffmpegProgress,
+            settingsImportResult = importResult,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -1919,12 +1925,16 @@ class MainViewModel(
     }
 
     fun importSettingsSnapshot(text: String) {
-        val snapshot = SettingsExchangeCodec.decode(text) ?: return
+        val result = SettingsExchangeCodec.decodeResult(text)
+        settingsImportResult.value = result
+        val snapshot = result.snapshot ?: return
         viewModelScope.launch(Dispatchers.IO) {
             preferences.importSnapshot(snapshot)
-            snapshot.savedSearches.forEach { repository.saveSavedSearch(it.copy(createdAtEpochMs = if (it.createdAtEpochMs == 0L) System.currentTimeMillis() else it.createdAtEpochMs)) }
-            snapshot.destinationRules.forEach { repository.saveDestinationRule(it) }
-            snapshot.duplicateRules.forEach { repository.saveDuplicateRule(it) }
+            repository.importOrganizationSettingsAtomically(
+                savedSearches = snapshot.savedSearches.map { it.copy(createdAtEpochMs = if (it.createdAtEpochMs == 0L) System.currentTimeMillis() else it.createdAtEpochMs) },
+                destinationRules = snapshot.destinationRules,
+                duplicateRules = snapshot.duplicateRules,
+            )
         }
     }
 
@@ -2016,21 +2026,18 @@ class MainViewModel(
     fun saveDestinationRule(name: String, match: DestinationRuleMatch, pattern: String, destinationUri: String) {
         val trimmed = name.trim().take(48)
         val matchText = when (match) {
-            DestinationRuleMatch.Host -> pattern.trim().lowercase().removePrefix("https://").removePrefix("http://").substringBefore('/').trimEnd('.').take(96)
+            DestinationRuleMatch.Host -> OrganizationPowerTools.normalizeDestinationHostPattern(pattern) ?: return
             DestinationRuleMatch.Extension -> pattern.trim().lowercase().removePrefix(".").take(24)
             DestinationRuleMatch.MimeType -> pattern.trim().lowercase().substringBefore(';').take(96)
             DestinationRuleMatch.Fallback -> "*"
         }
-        val validPattern = when (match) {
-            DestinationRuleMatch.Host -> matchText.removePrefix("*.").contains('.') && ' ' !in matchText
-            DestinationRuleMatch.Extension -> matchText.isNotBlank() && matchText.all { it.isLetterOrDigit() || it in setOf('-', '_') }
-            DestinationRuleMatch.MimeType -> matchText.count { it == '/' } == 1 && !matchText.startsWith('/') && !matchText.endsWith('/')
-            DestinationRuleMatch.Fallback -> true
-        }
-        if (trimmed.isBlank() || !validPattern || destinationUri.isBlank()) return
+        val candidate = OrganizationPowerTools.normalizedDestinationRule(
+            DestinationRule("dest-${UUID.randomUUID()}", trimmed, match, matchText, destinationUri.trim(), true, 0),
+        ) ?: return
+        if (trimmed.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             val priority = (repository.currentDestinationRules().maxOfOrNull(DestinationRule::priority) ?: 0) + 1
-            repository.saveDestinationRule(DestinationRule("dest-${UUID.randomUUID()}", trimmed, match, matchText, destinationUri.trim(), true, priority))
+            repository.saveDestinationRule(candidate.copy(priority = priority))
         }
     }
 

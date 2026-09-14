@@ -70,7 +70,7 @@ checks += [
     ("manifest marks XAR13 as overlay 13 of 17", entry.get("roadmap_position") == "13 of 17"),
     ("manifest closes exactly 21 S13 findings", entry.get("canonical_findings_closed") == 21 and entry.get("canonical_ids") == CANONICAL_IDS),
     ("manifest wires validator/task", entry.get("validator") == "tools/validate-xar13-downloads-truthful-actions.py" and entry.get("validation_task") == "verifyXar13DownloadsTruthfulActions"),
-    ("roadmap current overlay updated", manifest.get("xar_roadmap", {}).get("current_overlay") == "XAR13"),
+    ("roadmap includes XAR13 and current is not before it", "XAR13" in manifest.get("xar_roadmap", {}).get("applied_overlays", []) and manifest.get("xar_roadmap", {}).get("current_overlay") in {"XAR13", "XAR14", "XAR15", "XAR16", "XAR17"}),
 ]
 failed = [label for label, ok in checks if not ok]
 if failed:

@@ -43,96 +43,208 @@ data class SettingsExchangeSnapshot(
     val destinationRules: List<DestinationRule> = emptyList(),
     val duplicateRules: List<DuplicateUrlRule> = emptyList(),
 ) {
-    fun toPortableText(): String = buildString {
-        appendLine("xdm.settings.export=v1")
-        appendLine("compactDensity=$compactDensity")
-        appendLine("destinationUri=${destinationUri.escapeSettingValue()}")
-        appendLine("conflictPolicy=${conflictPolicy.name}")
-        appendLine("proxy.enabled=${proxy.enabled}")
-        appendLine("proxy.host=${proxy.host.escapeSettingValue()}")
-        appendLine("proxy.port=${proxy.port ?: ""}")
-        appendLine("proxy.username=${proxy.username.escapeSettingValue()}")
-        appendLine("proxy.credentialAlias=${proxy.credentialAlias.escapeSettingValue()}")
-        appendLine("post.enabled=${postProcessing.enabled}")
-        appendLine("post.preset=${postProcessing.preset.name}")
-        appendLine("post.customCommandLabel=${postProcessing.customCommandLabel.escapeSettingValue()}")
-        savedSearches.forEachIndexed { index, search ->
-            appendLine("savedSearch.$index=${listOf(search.id, search.name, search.query, search.state?.name.orEmpty(), search.includeArchived.toString()).joinToString("|") { it.escapeSettingValue() }}")
+    fun portableCopy(): SettingsExchangeSnapshot = copy(
+        destinationUri = destinationUri.takeUnless(String::isDeviceBoundDestinationUri).orEmpty(),
+        proxy = proxy.copy(credentialAlias = ""),
+        savedSearches = savedSearches.map { search ->
+            search.copy(id = stableSettingsExchangeId("saved-search", listOf(search.name, search.query, search.state?.name.orEmpty(), search.includeArchived.toString())), createdAtEpochMs = 0)
+        },
+        destinationRules = destinationRules.mapNotNull { rule ->
+            if (rule.destinationUri.isDeviceBoundDestinationUri()) return@mapNotNull null
+            val normalized = OrganizationPowerTools.normalizedDestinationRule(rule) ?: return@mapNotNull null
+            normalized.copy(
+                id = stableSettingsExchangeId("destination-rule", listOf(normalized.name, normalized.match.name, normalized.pattern, normalized.destinationUri, normalized.priority.toString()))
+            )
+        },
+        duplicateRules = duplicateRules.map { rule ->
+            rule.copy(id = stableSettingsExchangeId("duplicate-rule", listOf(rule.hostPattern, rule.action.name)), hostPattern = rule.hostPattern.trim().lowercase(Locale.US))
+        },
+    )
+
+    fun toPortableText(): String {
+        val portable = portableCopy()
+        return buildString {
+            appendLine("xdm.settings.export=v1")
+            appendLine("compactDensity=${portable.compactDensity}")
+            appendLine("destinationUri=${portable.destinationUri.escapeSettingValue()}")
+            appendLine("conflictPolicy=${portable.conflictPolicy.name}")
+            appendLine("proxy.enabled=${portable.proxy.enabled}")
+            appendLine("proxy.host=${portable.proxy.host.escapeSettingValue()}")
+            appendLine("proxy.port=${portable.proxy.port ?: ""}")
+            appendLine("proxy.username=${portable.proxy.username.escapeSettingValue()}")
+            appendLine("proxy.credentialAlias=")
+            appendLine("post.enabled=${portable.postProcessing.enabled}")
+            appendLine("post.preset=${portable.postProcessing.preset.name}")
+            appendLine("post.customCommandLabel=${portable.postProcessing.customCommandLabel.escapeSettingValue()}")
+            portable.savedSearches.forEachIndexed { index, search ->
+                appendLine("savedSearch.$index=${listOf(search.id, search.name, search.query, search.state?.name.orEmpty(), search.includeArchived.toString()).joinToString("|") { it.escapeSettingValue() }}")
+            }
+            portable.destinationRules.forEachIndexed { index, rule ->
+                appendLine("destinationRule.$index=${listOf(rule.id, rule.name, rule.match.name, rule.pattern, rule.destinationUri, rule.enabled.toString(), rule.priority.toString()).joinToString("|") { it.escapeSettingValue() }}")
+            }
+            portable.duplicateRules.forEachIndexed { index, rule ->
+                appendLine("duplicateRule.$index=${listOf(rule.id, rule.hostPattern, rule.action.name, rule.enabled.toString()).joinToString("|") { it.escapeSettingValue() }}")
+            }
+        }.trimEnd()
+    }
+}
+
+enum class SettingsExchangeImportStatus { Idle, Accepted, Rejected }
+
+data class SettingsExchangeImportResult(
+    val status: SettingsExchangeImportStatus = SettingsExchangeImportStatus.Idle,
+    val message: String = "No import attempted.",
+    val snapshot: SettingsExchangeSnapshot? = null,
+    val acceptedItems: Int = 0,
+    val rejectedItems: List<String> = emptyList(),
+) {
+    val accepted: Boolean get() = status == SettingsExchangeImportStatus.Accepted && snapshot != null
+    val summary: String get() = when (status) {
+        SettingsExchangeImportStatus.Idle -> message
+        SettingsExchangeImportStatus.Accepted -> buildString {
+            append("Settings import accepted: $acceptedItems portable items")
+            if (rejectedItems.isNotEmpty()) append("; skipped ${rejectedItems.size} unsafe or invalid items")
         }
-        destinationRules.forEachIndexed { index, rule ->
-            appendLine("destinationRule.$index=${listOf(rule.id, rule.name, rule.match.name, rule.pattern, rule.destinationUri, rule.enabled.toString(), rule.priority.toString()).joinToString("|") { it.escapeSettingValue() }}")
+        SettingsExchangeImportStatus.Rejected -> buildString {
+            append("Settings import rejected: $message")
+            if (rejectedItems.isNotEmpty()) append(" (${rejectedItems.joinToString("; ")})")
         }
-        duplicateRules.forEachIndexed { index, rule ->
-            appendLine("duplicateRule.$index=${listOf(rule.id, rule.hostPattern, rule.action.name, rule.enabled.toString()).joinToString("|") { it.escapeSettingValue() }}")
-        }
-    }.trimEnd()
+    }
+
+    companion object {
+        val Idle = SettingsExchangeImportResult()
+        fun rejected(message: String, rejectedItems: List<String> = emptyList()) =
+            SettingsExchangeImportResult(SettingsExchangeImportStatus.Rejected, message, null, 0, rejectedItems)
+    }
 }
 
 object SettingsExchangeCodec {
-    fun decode(text: String): SettingsExchangeSnapshot? {
-        val values = text.lineSequence().mapNotNull { line ->
+    fun decode(text: String): SettingsExchangeSnapshot? = decodeResult(text).snapshot
+
+    fun decodeResult(text: String): SettingsExchangeImportResult {
+        val rejected = mutableListOf<String>()
+        val values = linkedMapOf<String, String>()
+        text.lineSequence().forEachIndexed { lineNumber, line ->
             val trimmed = line.trim()
-            if (trimmed.isBlank() || trimmed.startsWith("#")) return@mapNotNull null
+            if (trimmed.isBlank() || trimmed.startsWith("#")) return@forEachIndexed
             val index = trimmed.indexOf('=')
-            if (index <= 0) return@mapNotNull null
-            trimmed.substring(0, index) to trimmed.substring(index + 1).unescapeSettingValue()
-        }.toMap()
-        if (values["xdm.settings.export"] != "v1") return null
-        return SettingsExchangeSnapshot(
-            compactDensity = values["compactDensity"]?.toBooleanStrictOrNull() ?: false,
-            destinationUri = values["destinationUri"].orEmpty(),
-            conflictPolicy = values["conflictPolicy"]?.let { runCatching { FilenameConflictPolicy.valueOf(it) }.getOrNull() } ?: FilenameConflictPolicy.Rename,
-            proxy = ProxyCredentialSettings(
-                enabled = values["proxy.enabled"]?.toBooleanStrictOrNull() ?: false,
-                host = values["proxy.host"].orEmpty(),
-                port = values["proxy.port"]?.toIntOrNull()?.takeIf { it in 1..65535 },
-                username = values["proxy.username"].orEmpty(),
-                credentialAlias = values["proxy.credentialAlias"].orEmpty(),
-            ),
-            postProcessing = PostProcessingSettings(
-                enabled = values["post.enabled"]?.toBooleanStrictOrNull() ?: false,
-                preset = values["post.preset"]?.let { runCatching { ConversionPreset.valueOf(it) }.getOrNull() } ?: ConversionPreset.None,
-                customCommandLabel = values["post.customCommandLabel"].orEmpty(),
-            ),
-            savedSearches = values.entries
-                .filter { it.key.startsWith("savedSearch.") }
-                .mapNotNull { (_, value) ->
-                    val parts = value.split('|')
-                    if (parts.size < 5) null else SavedSearch(
-                        id = parts[0].ifBlank { "search-${parts[1].hashCode()}" },
-                        name = parts[1],
-                        query = parts[2],
-                        state = parts[3].takeIf(String::isNotBlank)?.let { runCatching { DownloadState.valueOf(it) }.getOrNull() },
-                        includeArchived = parts[4].toBooleanStrictOrNull() ?: false,
-                        createdAtEpochMs = 0,
-                    )
-                },
-            destinationRules = values.entries
-                .filter { it.key.startsWith("destinationRule.") }
-                .mapNotNull { (_, value) ->
-                    val parts = value.split('|')
-                    if (parts.size < 7) null else DestinationRule(
-                        id = parts[0].ifBlank { "destination-${parts[1].hashCode()}" },
-                        name = parts[1],
+            if (index <= 0) {
+                rejected += "line ${lineNumber + 1} is not key=value"
+                return@forEachIndexed
+            }
+            values[trimmed.substring(0, index)] = trimmed.substring(index + 1)
+        }
+        if (values["xdm.settings.export"]?.unescapeSettingValue() != "v1") {
+            return SettingsExchangeImportResult.rejected("unsupported or missing xdm.settings.export=v1 header", rejected)
+        }
+
+        fun decoded(key: String): String = values[key]?.unescapeSettingValue().orEmpty()
+        val destinationUri = decoded("destinationUri").takeUnless(String::isDeviceBoundDestinationUri).orEmpty()
+        if (decoded("destinationUri").isDeviceBoundDestinationUri()) rejected += "device-bound destinationUri was skipped"
+        val proxyPort = decoded("proxy.port").toIntOrNull()?.takeIf { it in 1..65535 }
+        if (decoded("proxy.port").isNotBlank() && proxyPort == null) rejected += "proxy.port is outside 1..65535"
+
+        val savedSearches = values.entries
+            .filter { it.key.startsWith("savedSearch.") }
+            .mapNotNull { (key, value) ->
+                val parts = splitEscapedSettingFields(value)
+                if (parts.size < 5) {
+                    rejected += "$key is malformed"
+                    null
+                } else {
+                    val name = parts[1].trim().take(48)
+                    val query = parts[2].trim().take(512)
+                    if (name.isBlank() || query.isBlank()) {
+                        rejected += "$key is missing name or query"
+                        null
+                    } else {
+                        SavedSearch(
+                            id = stableSettingsExchangeId("saved-search", listOf(name, query, parts[3], parts[4])),
+                            name = name,
+                            query = query,
+                            state = parts[3].takeIf(String::isNotBlank)?.let { runCatching { DownloadState.valueOf(it) }.getOrNull() },
+                            includeArchived = parts[4].toBooleanStrictOrNull() ?: false,
+                            createdAtEpochMs = 0,
+                        )
+                    }
+                }
+            }
+        val destinationRules = values.entries
+            .filter { it.key.startsWith("destinationRule.") }
+            .mapNotNull { (key, value) ->
+                val parts = splitEscapedSettingFields(value)
+                if (parts.size < 7) {
+                    rejected += "$key is malformed"
+                    null
+                } else if (parts[4].isDeviceBoundDestinationUri()) {
+                    rejected += "$key uses a device-bound destination grant"
+                    null
+                } else {
+                    val imported = DestinationRule(
+                        id = "ignored-import-id",
+                        name = parts[1].trim().take(48),
                         match = runCatching { DestinationRuleMatch.valueOf(parts[2]) }.getOrDefault(DestinationRuleMatch.Host),
                         pattern = parts[3],
-                        destinationUri = parts[4],
+                        destinationUri = parts[4].trim(),
                         enabled = parts[5].toBooleanStrictOrNull() ?: true,
                         priority = parts[6].toIntOrNull() ?: 0,
                     )
-                },
-            duplicateRules = values.entries
-                .filter { it.key.startsWith("duplicateRule.") }
-                .mapNotNull { (_, value) ->
-                    val parts = value.split('|')
-                    if (parts.size < 4) null else DuplicateUrlRule(
-                        id = parts[0].ifBlank { "duplicate-${parts[1].hashCode()}" },
-                        hostPattern = parts[1],
-                        action = runCatching { DuplicateUrlAction.valueOf(parts[2]) }.getOrDefault(DuplicateUrlAction.Ask),
-                        enabled = parts[3].toBooleanStrictOrNull() ?: true,
-                    )
-                },
+                    OrganizationPowerTools.normalizedDestinationRule(imported)?.let { normalized ->
+                        normalized.copy(id = stableSettingsExchangeId("destination-rule", listOf(normalized.name, normalized.match.name, normalized.pattern, normalized.destinationUri, normalized.priority.toString())))
+                    } ?: run {
+                        rejected += "$key has an invalid destination rule"
+                        null
+                    }
+                }
+            }
+        val duplicateRules = values.entries
+            .filter { it.key.startsWith("duplicateRule.") }
+            .mapNotNull { (key, value) ->
+                val parts = splitEscapedSettingFields(value)
+                if (parts.size < 4) {
+                    rejected += "$key is malformed"
+                    null
+                } else {
+                    val hostPattern = parts[1].trim().lowercase(Locale.US).trimEnd('.').take(96)
+                    if (hostPattern.isBlank() || ' ' in hostPattern) {
+                        rejected += "$key has an invalid duplicate host pattern"
+                        null
+                    } else {
+                        DuplicateUrlRule(
+                            id = stableSettingsExchangeId("duplicate-rule", listOf(hostPattern, parts[2])),
+                            hostPattern = hostPattern,
+                            action = runCatching { DuplicateUrlAction.valueOf(parts[2]) }.getOrDefault(DuplicateUrlAction.Ask),
+                            enabled = parts[3].toBooleanStrictOrNull() ?: true,
+                        )
+                    }
+                }
+            }
+        val hardFailures = rejected.filterNot { it.contains("device-bound") }
+        if (hardFailures.isNotEmpty()) {
+            return SettingsExchangeImportResult.rejected("malformed or invalid fields", rejected)
+        }
+        val snapshot = SettingsExchangeSnapshot(
+            compactDensity = decoded("compactDensity").toBooleanStrictOrNull() ?: false,
+            destinationUri = destinationUri,
+            conflictPolicy = decoded("conflictPolicy").let { runCatching { FilenameConflictPolicy.valueOf(it) }.getOrNull() } ?: FilenameConflictPolicy.Rename,
+            proxy = ProxyCredentialSettings(
+                enabled = decoded("proxy.enabled").toBooleanStrictOrNull() ?: false,
+                host = decoded("proxy.host").trim().take(128),
+                port = proxyPort,
+                username = decoded("proxy.username").trim().take(128),
+                credentialAlias = "",
+            ),
+            postProcessing = PostProcessingSettings(
+                enabled = decoded("post.enabled").toBooleanStrictOrNull() ?: false,
+                preset = decoded("post.preset").let { runCatching { ConversionPreset.valueOf(it) }.getOrNull() } ?: ConversionPreset.None,
+                customCommandLabel = decoded("post.customCommandLabel").trim().take(96),
+            ),
+            savedSearches = savedSearches,
+            destinationRules = destinationRules,
+            duplicateRules = duplicateRules,
         )
+        val acceptedItems = 3 + savedSearches.size + destinationRules.size + duplicateRules.size
+        return SettingsExchangeImportResult(SettingsExchangeImportStatus.Accepted, "Settings snapshot accepted.", snapshot, acceptedItems, rejected)
     }
 }
 
@@ -197,18 +309,49 @@ object OrganizationPowerTools {
             ?: DuplicateUrlAction.Ask
     }
 
+    fun normalizedDestinationRule(rule: DestinationRule): DestinationRule? {
+        val normalizedPattern = when (rule.match) {
+            DestinationRuleMatch.Host -> normalizeDestinationHostPattern(rule.pattern) ?: return null
+            DestinationRuleMatch.Extension -> rule.pattern.trim().lowercase(Locale.US).removePrefix(".").take(24).takeIf { value -> value.isNotBlank() && value.all { it.isLetterOrDigit() || it in setOf('-', '_') } } ?: return null
+            DestinationRuleMatch.MimeType -> rule.pattern.trim().lowercase(Locale.US).substringBefore(';').take(96).takeIf { value -> value.count { it == '/' } == 1 && !value.startsWith('/') && !value.endsWith('/') } ?: return null
+            DestinationRuleMatch.Fallback -> "*"
+        }
+        val destination = rule.destinationUri.trim().takeIf(String::isNotBlank) ?: return null
+        return rule.copy(name = rule.name.trim().take(48).ifBlank { "Destination rule" }, pattern = normalizedPattern, destinationUri = destination)
+    }
+
+    fun normalizeDestinationHostPattern(pattern: String): String? {
+        val trimmed = pattern.trim().lowercase(Locale.US)
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .substringBefore('/')
+            .trimEnd('.')
+            .take(96)
+        val domain = trimmed.removePrefix("*.")
+        if (domain.isBlank() || ' ' in domain || !domain.contains('.')) return null
+        return if (trimmed.startsWith("*.")) "*.${domain}" else domain
+    }
+
+    fun hostMatchesDestinationRule(host: String, pattern: String): Boolean {
+        val normalizedHost = host.lowercase(Locale.US).trimEnd('.')
+        val normalizedPattern = normalizeDestinationHostPattern(pattern) ?: return false
+        return if (normalizedPattern.startsWith("*.")) {
+            val domain = normalizedPattern.removePrefix("*.")
+            normalizedHost.endsWith(".$domain")
+        } else {
+            normalizedHost == normalizedPattern
+        }
+    }
+
     fun destinationFor(url: String, fileName: String, mimeType: String?, rules: List<DestinationRule>, fallback: String): String {
         val host = ExternalUrlPolicy.originHost(url).orEmpty().lowercase(Locale.US).trimEnd('.')
         val extension = fileName.substringAfterLast('.', "").lowercase(Locale.US)
         val normalizedMime = mimeType?.substringBefore(';')?.trim()?.lowercase(Locale.US)
-        val enabled = rules.filter { it.enabled }.sortedByDescending { it.priority }
+        val enabled = rules.mapNotNull { normalizedDestinationRule(it) }.filter { it.enabled }.sortedByDescending { it.priority }
         val specific = enabled.firstOrNull { rule ->
             val pattern = rule.pattern.trim().lowercase(Locale.US)
             when (rule.match) {
-                DestinationRuleMatch.Host -> {
-                    val domain = pattern.removePrefix("*.").trimEnd('.')
-                    domain.isNotBlank() && (host == domain || host.endsWith(".$domain"))
-                }
+                DestinationRuleMatch.Host -> hostMatchesDestinationRule(host, pattern)
                 DestinationRuleMatch.Extension -> extension.isNotBlank() && extension == pattern.removePrefix(".")
                 DestinationRuleMatch.MimeType -> when {
                     normalizedMime == null -> false
@@ -309,6 +452,76 @@ object DesktopParityGate { fun evaluate(settingsImportExport: Boolean, historyMa
 
 fun ConversionPreset.displayName(): String = when (this) { ConversionPreset.None -> "None"; ConversionPreset.VideoFastStart -> "Video fast-start metadata"; ConversionPreset.AudioExtract -> "Extract audio track"; ConversionPreset.ArchiveExtract -> "Extract archive after download"; ConversionPreset.CustomCommand -> "Custom command hook" }
 
-private fun String.escapeSettingValue(): String = buildString { this@escapeSettingValue.forEach { char -> when (char) { '\\' -> append("\\\\"); '\n' -> append("\\n"); '\r' -> append("\\r"); else -> append(char) } } }
-private fun String.unescapeSettingValue(): String = buildString { var index = 0; while (index < this@unescapeSettingValue.length) { val char = this@unescapeSettingValue[index]; if (char == '\\' && index + 1 < this@unescapeSettingValue.length) { when (val next = this@unescapeSettingValue[index + 1]) { 'n' -> append('\n'); 'r' -> append('\r'); '\\' -> append('\\'); else -> append(next) }; index += 2 } else { append(char); index += 1 } } }
-private fun String.redactQuerySecrets(): String { val sensitive = setOf("token", "sig", "signature", "key", "auth", "session", "credential"); val marker = indexOf('?'); if (marker < 0) return this; val base = substring(0, marker); val query = substring(marker + 1).split('&').joinToString("&") { pair -> val key = pair.substringBefore('=').lowercase(Locale.US); if (sensitive.any { it in key }) "${pair.substringBefore('=')}=<redacted>" else pair }; return "$base?$query" }
+private fun String.escapeSettingValue(): String = buildString {
+    this@escapeSettingValue.forEach { char ->
+        when (char) {
+            '\\' -> append("\\\\")
+            '\n' -> append("\\n")
+            '\r' -> append("\\r")
+            '|' -> append("\\p")
+            else -> append(char)
+        }
+    }
+}
+
+private fun String.unescapeSettingValue(): String = buildString {
+    var index = 0
+    while (index < this@unescapeSettingValue.length) {
+        val char = this@unescapeSettingValue[index]
+        if (char == '\\' && index + 1 < this@unescapeSettingValue.length) {
+            when (val next = this@unescapeSettingValue[index + 1]) {
+                'n' -> append('\n')
+                'r' -> append('\r')
+                'p' -> append('|')
+                '\\' -> append('\\')
+                else -> append(next)
+            }
+            index += 2
+        } else {
+            append(char)
+            index += 1
+        }
+    }
+}
+
+private fun splitEscapedSettingFields(value: String): List<String> {
+    val parts = mutableListOf<String>()
+    val current = StringBuilder()
+    var index = 0
+    while (index < value.length) {
+        val char = value[index]
+        if (char == '\\' && index + 1 < value.length) {
+            current.append(char)
+            current.append(value[index + 1])
+            index += 2
+        } else if (char == '|') {
+            parts += current.toString().unescapeSettingValue()
+            current.clear()
+            index += 1
+        } else {
+            current.append(char)
+            index += 1
+        }
+    }
+    parts += current.toString().unescapeSettingValue()
+    return parts
+}
+
+private fun String.isDeviceBoundDestinationUri(): Boolean = trim().lowercase(Locale.US).let { value ->
+    value.startsWith("content://") || value.startsWith("file://") || value.startsWith("/storage/") || value.startsWith("/sdcard/")
+}
+
+private fun stableSettingsExchangeId(prefix: String, fields: List<String>): String =
+    "$prefix-" + fields.joinToString("\u001f").hashCode().toUInt().toString(16)
+
+private fun String.redactQuerySecrets(): String {
+    val sensitive = setOf("token", "sig", "signature", "key", "auth", "session", "credential")
+    val marker = indexOf('?')
+    if (marker < 0) return this
+    val base = substring(0, marker)
+    val query = substring(marker + 1).split('&').joinToString("&") { pair ->
+        val key = pair.substringBefore('=').lowercase(Locale.US)
+        if (sensitive.any { it in key }) "${pair.substringBefore('=')}=<redacted>" else pair
+    }
+    return "$base?$query"
+}

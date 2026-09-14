@@ -7,9 +7,35 @@ import org.junit.Test
 
 class DesktopParityModelsTest {
     @Test fun settingsSnapshotRoundTripsWithoutSecrets() {
-        val snapshot = SettingsExchangeSnapshot(true, "content://downloads/tree/main", FilenameConflictPolicy.Compare, ProxyCredentialSettings(true, "proxy.local", 8080, "mike", "main-proxy"), PostProcessingSettings(true, ConversionPreset.VideoFastStart, "faststart"))
-        assertEquals(snapshot, SettingsExchangeCodec.decode(snapshot.toPortableText()))
-        assertFalse(snapshot.toPortableText().contains("password", ignoreCase = true))
+        val snapshot = SettingsExchangeSnapshot(
+            compactDensity = true,
+            destinationUri = "xdm://downloads",
+            conflictPolicy = FilenameConflictPolicy.Compare,
+            proxy = ProxyCredentialSettings(true, "proxy.local", 8080, "mike", "main-proxy"),
+            postProcessing = PostProcessingSettings(true, ConversionPreset.VideoFastStart, "faststart"),
+            savedSearches = listOf(SavedSearch("search-imported", "Pipe search", "name:a|b", DownloadState.Completed, true, 1)),
+        )
+        val text = snapshot.toPortableText()
+        val decoded = SettingsExchangeCodec.decodeResult(text)
+        assertTrue(decoded.accepted)
+        assertEquals(snapshot.portableCopy(), decoded.snapshot)
+        assertFalse(text.contains("main-proxy", ignoreCase = true))
+        assertFalse(text.contains("password", ignoreCase = true))
+    }
+
+    @Test fun portableSettingsSkipDeviceBoundDestinationsAndEscapeDelimiters() {
+        val snapshot = SettingsExchangeSnapshot(
+            destinationUri = "content://downloads/tree/main",
+            savedSearches = listOf(SavedSearch("old-id", "a|b", "site:example|status", null, true, 99)),
+            destinationRules = listOf(DestinationRule("external-id", "Phone grant", DestinationRuleMatch.Host, "example.com", "content://tree/external", true, 9)),
+        )
+        val text = snapshot.toPortableText()
+        val decoded = SettingsExchangeCodec.decodeResult(text)
+        assertTrue(decoded.accepted)
+        assertFalse(text.contains("content://"))
+        assertEquals("", decoded.snapshot?.destinationUri)
+        assertEquals("a|b", decoded.snapshot?.savedSearches?.single()?.name)
+        assertTrue(decoded.snapshot?.destinationRules.orEmpty().isEmpty())
     }
     @Test fun historyReportMarksOnlyFinishedItemsAsRemovable() {
         val downloads = listOf(sampleDownload("a", DownloadState.Completed), sampleDownload("b", DownloadState.Downloading), sampleDownload("c", DownloadState.Failed))
@@ -35,9 +61,11 @@ class DesktopParityModelsTest {
         assertEquals("content://movies", OrganizationPowerTools.destinationFor("https://cdn.test/video.mp4", "video.mp4", "video/mp4", rules, "xdm://downloads"))
     }
     @Test fun destinationHostRulesRespectDomainBoundaries() {
-        val rule = DestinationRule("host", "Example", DestinationRuleMatch.Host, "example.com", "content://example", true, 10)
-        assertEquals("content://example", OrganizationPowerTools.destinationFor("https://sub.example.com/file.bin", "file.bin", null, listOf(rule), "xdm://downloads"))
-        assertEquals("xdm://downloads", OrganizationPowerTools.destinationFor("https://badexample.com/file.bin", "file.bin", null, listOf(rule), "xdm://downloads"))
+        val exact = DestinationRule("host", "Example", DestinationRuleMatch.Host, "example.com", "xdm://example", true, 10)
+        val wildcard = DestinationRule("wild", "Subdomains", DestinationRuleMatch.Host, "*.example.com", "xdm://subdomains", true, 9)
+        assertEquals("xdm://example", OrganizationPowerTools.destinationFor("https://example.com/file.bin", "file.bin", null, listOf(exact, wildcard), "xdm://downloads"))
+        assertEquals("xdm://subdomains", OrganizationPowerTools.destinationFor("https://sub.example.com/file.bin", "file.bin", null, listOf(exact, wildcard), "xdm://downloads"))
+        assertEquals("xdm://downloads", OrganizationPowerTools.destinationFor("https://badexample.com/file.bin", "file.bin", null, listOf(exact, wildcard), "xdm://downloads"))
     }
     @Test fun destinationFallbackNeverShadowsSpecificRule() {
         val rules = listOf(

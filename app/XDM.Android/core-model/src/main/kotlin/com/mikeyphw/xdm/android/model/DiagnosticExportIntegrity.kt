@@ -45,7 +45,7 @@ data class DiagnosticBundleScan(
  */
 object DiagnosticExportIntegrity {
     const val ManifestEntryName = "diagnostic-manifest.json"
-    const val ScannerVersion = "media-parity01-final-zip-v1"
+    const val ScannerVersion = "xar14-final-zip-path-v2"
     private const val MaxEntryBytes = 8 * 1024 * 1024
     private const val MaxBundleBytes = 24 * 1024 * 1024
 
@@ -68,6 +68,8 @@ object DiagnosticExportIntegrity {
     private val headerPattern = Regex("(?im)^\\s*([A-Za-z0-9_-]+)\\s*:\\s*([^\\r\\n]+)$")
     private val jsonFieldPattern = Regex("(?i)\\\"([^\\\"]+)\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"")
     private val bearerPattern = Regex("(?i)\\b(?:bearer|basic)\\s+(?!<redacted>)[A-Za-z0-9._~+/=-]{8,}")
+    private val pathCredentialPattern = Regex("""(?i)/(?!<redacted>)(?:[^/?#\s"']*(?:token|signature|sig|session|sess|credential|password|secret|md5|key|auth)[^/?#\s"']*)""")
+    private val longPathSecretPattern = Regex("""/[A-Za-z0-9._~-]{32,}(?=$|[/?#\s"'])""")
     private val manifestItemPattern = Regex("\\{\\\"name\\\":\\\"([^\\\"]+)\\\",\\\"sha256\\\":\\\"([0-9a-f]{64})\\\",\\\"bytes\\\":(\\d+)\\}")
     private val ambiguousCopyNamePattern = Regex(".*\\(\\d+\\).*")
 
@@ -196,10 +198,10 @@ object DiagnosticExportIntegrity {
 
     /** Fast in-memory contract used by release truth surfaces; the final ZIP scan remains authoritative. */
     fun contractSelfTest(): Boolean {
-        val unsafe = "https://cdn.example.test/master.m3u8?md5=PLANTED_SECRET&sess=SESSION_SECRET"
+        val unsafe = "https://cdn.example.test/session-token-PLANTED/master.m3u8?md5=PLANTED_SECRET&sess=SESSION_SECRET"
         val safe = DebugRedactor.redactExportLine(unsafe)
         return detectSecrets("self-test.txt", safe).isEmpty() &&
-            "PLANTED_SECRET" !in safe && "SESSION_SECRET" !in safe &&
+            "PLANTED_SECRET" !in safe && "SESSION_SECRET" !in safe && "session-token-PLANTED" !in safe &&
             isStructurallyValidJsonObject("{\"safeDetails\":{\"url\":\"$safe\"}}") &&
             !isStructurallyValidJsonObject("{\"safeDetails\":}") &&
             detectSecrets("self-test.txt", unsafe).isNotEmpty()
@@ -288,6 +290,8 @@ object DiagnosticExportIntegrity {
             }
         }
         if (bearerPattern.containsMatchIn(text)) findings += "$entryName contains an unredacted authorization token"
+        if (pathCredentialPattern.containsMatchIn(text)) findings += "$entryName contains an unredacted path-embedded credential"
+        if (longPathSecretPattern.containsMatchIn(text)) findings += "$entryName contains an unredacted token-like URL path segment"
         return findings.distinct()
     }
 

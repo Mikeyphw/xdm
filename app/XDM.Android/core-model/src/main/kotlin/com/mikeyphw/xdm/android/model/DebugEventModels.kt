@@ -146,6 +146,8 @@ object DebugRedactor {
     private val bearerPattern = Regex("(?i)\\b(bearer|basic)\\s+[A-Za-z0-9._~+/=-]{8,}")
     private val sensitiveHeaderLinePattern = Regex("(?im)(^|\\n)(\\s*(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key|x-auth-token|x-csrf-token|x-xsrf-token)\\s*:)\\s*[^\\r\\n]+")
     private val queryParameterPattern = Regex("""([?&])([^=&#\s]+)=([^&#\s"']+)""")
+    private val pathSecretSegmentPattern = Regex("""(?i)(token|signature|sig|session|sess|credential|password|secret|md5|key|auth)""")
+    private val tokenLikePathSegmentPattern = Regex("""^[A-Za-z0-9._~-]{24,}$""")
 
     fun redactDetails(details: Map<String, String>): Map<String, String> = details
         .entries
@@ -188,7 +190,7 @@ object DebugRedactor {
             scheme == "https" && uri.port == 443 -> ""
             else -> ":${uri.port}"
         }
-        val path = uri.rawPath?.takeIf { it.isNotBlank() } ?: "/"
+        val path = redactPathSegments(uri.rawPath?.takeIf { it.isNotBlank() } ?: "/")
         val query = uri.rawQuery
             ?.split('&')
             ?.filter { it.isNotBlank() }
@@ -199,10 +201,22 @@ object DebugRedactor {
         return "$scheme://$host$port$path$query"
     }
 
+    fun redactPathSegments(path: String): String = path
+        .split('/')
+        .joinToString("/") { segment ->
+            when {
+                segment.isBlank() -> segment
+                pathSecretSegmentPattern.containsMatchIn(segment) -> "<redacted>"
+                tokenLikePathSegmentPattern.matches(segment) -> "<redacted>"
+                else -> segment
+            }
+        }
+
     fun redactExportLine(value: String): String = value
         .replace(jsonSecretValuePattern) { match -> match.groupValues[1] + "<redacted>" + match.groupValues[2] }
         .replace(sensitiveHeaderLinePattern) { match -> match.groupValues[1] + match.groupValues[2] + " <redacted>" }
         .replace(bearerPattern) { match -> match.groupValues[1].lowercase(Locale.US) + " <redacted>" }
+        .replace(Regex("""(?i)/[^/?#\s"']*(?:token|signature|sig|session|sess|credential|password|secret|md5|key|auth)[^/?#\s"']*""")) { "/<redacted>" }
         .replace(queryParameterPattern) { match ->
             val part = "${match.groupValues[2]}=${match.groupValues[3]}"
             match.groupValues[1] + ExternalUrlPolicy.redactQueryParameter(part, "<redacted>")
@@ -304,7 +318,16 @@ class RollingJsonlDebugEventRecorder(
         if (!file.exists() || file.length() + nextBytes <= maxSessionBytes) return
         val rotatedName = "debug-${clock()}-${DebugRedactor.fingerprint(sessionId)}.jsonl"
         val rotated = File(sessionsDirectory, rotatedName)
-        file.renameTo(rotated)
+        val moved = file.renameTo(rotated) || runCatching {
+            file.copyTo(rotated, overwrite = true)
+            file.writeText("", Charsets.UTF_8)
+            true
+        }.getOrDefault(false)
+        if (!moved) {
+            val failed = File(sessionsDirectory, rotatedName.removeSuffix(".jsonl") + ".rotation-failed.jsonl")
+            runCatching { file.copyTo(failed, overwrite = true) }
+            runCatching { file.delete() }
+        }
         sessionsDirectory
             .listFiles { candidate -> candidate.isFile && candidate.name.endsWith(".jsonl") }
             .orEmpty()

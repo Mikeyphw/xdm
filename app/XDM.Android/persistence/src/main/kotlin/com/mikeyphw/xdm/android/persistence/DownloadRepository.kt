@@ -824,6 +824,16 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun deleteSavedSearch(id: String) = database.organizationDao().deleteSavedSearch(id)
     suspend fun saveDestinationRule(rule: DestinationRule) = database.organizationDao().upsertDestinationRule(rule.toEntity())
     suspend fun saveDuplicateRule(rule: DuplicateUrlRule) = database.organizationDao().upsertDuplicateRule(rule.toEntity())
+
+    suspend fun importOrganizationSettingsAtomically(
+        savedSearches: List<SavedSearch>,
+        destinationRules: List<DestinationRule>,
+        duplicateRules: List<DuplicateUrlRule>,
+    ) = database.withTransaction {
+        savedSearches.forEach { database.organizationDao().upsertSavedSearch(it.toEntity()) }
+        destinationRules.mapNotNull(OrganizationPowerTools::normalizedDestinationRule).forEach { database.organizationDao().upsertDestinationRule(it.toEntity()) }
+        duplicateRules.forEach { database.organizationDao().upsertDuplicateRule(it.toEntity()) }
+    }
     suspend fun saveClipboardItems(items: List<ClipboardInboxItem>) = database.organizationDao().upsertClipboardItems(items.map { it.copy(url = ExternalUrlPolicy.persistableUrl(it.url) ?: it.url.substringBefore('?')).toEntity() })
     suspend fun saveClipboardItem(item: ClipboardInboxItem) = database.organizationDao().upsertClipboardItem(item.copy(url = ExternalUrlPolicy.persistableUrl(item.url) ?: item.url.substringBefore('?')).toEntity())
     suspend fun findDownloadsByStates(states: Set<DownloadState>): List<Download> =

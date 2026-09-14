@@ -183,7 +183,7 @@ private object PrivateStorageDebugTest : StateDebugTest(
     id = "private-storage",
     group = DebugTestGroup.Storage,
     name = "Private debug storage",
-    description = "Creates and reads a private Diagnostics probe file without touching user downloads.",
+    description = "Creates, reads, and deletes a private Diagnostics probe file without touching user downloads.",
 ) {
     override suspend fun run(context: DebugTestContext): DebugTestResult {
         val startedAt = context.clock()
@@ -191,8 +191,12 @@ private object PrivateStorageDebugTest : StateDebugTest(
         val probe = File(context.privateRoot, "probe.txt")
         val outcome = runCatching {
             context.privateRoot.mkdirs()
-            probe.writeText("debug-center-probe", Charsets.UTF_8)
-            probe.readText(Charsets.UTF_8) == "debug-center-probe"
+            try {
+                probe.writeText("debug-center-probe", Charsets.UTF_8)
+                probe.readText(Charsets.UTF_8) == "debug-center-probe"
+            } finally {
+                probe.delete()
+            }
         }
         return if (outcome.getOrDefault(false)) {
             result(
@@ -243,7 +247,7 @@ private object DownloadRepositoryRoundTripDebugTest : StateDebugTest(
     id = "download-repository-round-trip",
     group = DebugTestGroup.Downloads,
     name = "Download repository round trip",
-    description = "Creates, reads, verifies, and deletes a temporary queued Download row.",
+    description = "Creates, reads, verifies, and deletes a temporary non-schedulable cancelled Download probe row.",
 ) {
     override suspend fun run(context: DebugTestContext): DebugTestResult {
         val startedAt = context.clock()
@@ -255,7 +259,7 @@ private object DownloadRepositoryRoundTripDebugTest : StateDebugTest(
             fileName = "debug-center-probe.bin",
             sourceUrl = "https://example.invalid/xdm-debug-center-probe.bin",
             destinationUri = DestinationUris.APP_PRIVATE_DOWNLOADS,
-            state = DownloadState.Queued,
+            state = DownloadState.Cancelled,
             backend = BackendType.Native,
             bytesReceived = 0L,
             totalBytes = 1024L,
@@ -274,7 +278,7 @@ private object DownloadRepositoryRoundTripDebugTest : StateDebugTest(
         val outcome = runCatching {
             check(repository.save(download)) { "Download save returned false" }
             val loaded = requireNotNull(repository.findDownload(id)) { "Saved Download could not be read back" }
-            check(loaded.state == DownloadState.Queued) { "Expected Queued state but found ${loaded.state}" }
+            check(loaded.state == DownloadState.Cancelled) { "Expected non-schedulable Cancelled state but found ${loaded.state}" }
             check(loaded.fileName == download.fileName) { "Readback fileName mismatch" }
             loaded
         }
@@ -483,7 +487,7 @@ private object MediaDownloadTransactionDebugTest : StateDebugTest(
             fileName = "debug-center-media.mp4",
             sourceUrl = source,
             destinationUri = DestinationUris.APP_PRIVATE_DOWNLOADS,
-            state = DownloadState.Queued,
+            state = DownloadState.Cancelled,
             backend = BackendType.Native,
             bytesReceived = 0L,
             totalBytes = null,
@@ -496,7 +500,7 @@ private object MediaDownloadTransactionDebugTest : StateDebugTest(
             mimeType = "video/mp4",
             requestedBackend = BackendType.Native,
             backendSelectionReason = BackendSelectionReason.UserForced,
-            backendSelectionExplanation = "Diagnostics media-to-download transaction probe.",
+            backendSelectionExplanation = "Diagnostics media-to-download transaction probe; non-schedulable cancelled row.",
         )
         val outcome = runCatching {
             repository.saveMediaCaptureWithVariants(capture, listOf(variant), startedAt)
@@ -571,7 +575,7 @@ private object PrivacyRedactionDebugTest : StateDebugTest(
                 ),
             ),
         )
-        val rawJsonl = """{"safeDetails":{"url":"https://cdn.example.test/master.m3u8?md5=MD5_SECRET&sess=SESSION_SECRET&token=TOKEN_SECRET","nested":"Authorization: Bearer abcdefghijklmnopqrstuvwxyz"}}"""
+        val rawJsonl = """{"safeDetails":{"url":"https://cdn.example.test/session-token-SECRET/master.m3u8?md5=MD5_SECRET&sess=SESSION_SECRET&token=TOKEN_SECRET","nested":"Authorization: Bearer abcdefghijklmnopqrstuvwxyz"}}"""
         val outcome = runCatching {
             val zip = probeStore.exportRunZip(
                 run = probeRun,

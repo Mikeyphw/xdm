@@ -4,7 +4,9 @@ import com.mikeyphw.xdm.android.AppContainer
 import com.mikeyphw.xdm.android.MainUiState
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import java.util.UUID
@@ -82,11 +84,37 @@ class DebugTestRunner(
 
             val result = try {
                 if (stopRequested) throw CancellationException("Diagnostics run stopped")
-                val completed = test.run(context)
+                val completed = withTimeout(PerTestDeadlineMs) { test.run(context) }
                 if (stopRequested) {
                     throw CancellationException("Diagnostics run stopped")
                 }
                 completed
+            } catch (timeout: TimeoutCancellationException) {
+                if (stopRequested) {
+                    DebugTestResult(
+                        testId = test.id,
+                        groupId = test.group.label,
+                        name = test.name,
+                        status = DebugTestStatus.Skipped,
+                        startedAtEpochMs = testStartedAt,
+                        durationMs = (clock() - testStartedAt).coerceAtLeast(0),
+                        summary = "Stopped before this test completed.",
+                        errorCode = "debug-run-stopped",
+                        suggestedAction = "Run selected again when ready.",
+                    )
+                } else {
+                    DebugTestResult(
+                        testId = test.id,
+                        groupId = test.group.label,
+                        name = test.name,
+                        status = DebugTestStatus.Failed,
+                        startedAtEpochMs = testStartedAt,
+                        durationMs = (clock() - testStartedAt).coerceAtLeast(0),
+                        summary = "${test.name} exceeded the per-test diagnostics deadline.",
+                        errorCode = "debug-test-timeout",
+                        suggestedAction = "Export this run and inspect the timeout details before retrying.",
+                    )
+                }
             } catch (cancelled: CancellationException) {
                 DebugTestResult(
                     testId = test.id,
@@ -175,5 +203,9 @@ class DebugTestRunner(
                 )
             }
         }
+    }
+
+    private companion object {
+        const val PerTestDeadlineMs = 30_000L
     }
 }

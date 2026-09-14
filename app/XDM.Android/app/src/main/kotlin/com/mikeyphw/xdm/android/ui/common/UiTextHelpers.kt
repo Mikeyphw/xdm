@@ -11,6 +11,7 @@ import android.content.Intent
 import android.os.Build
 import org.json.JSONArray
 import org.json.JSONObject
+import com.mikeyphw.xdm.android.model.DebugRedactor
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -214,7 +215,12 @@ internal fun firstDownloadUrlFromClipboard(context: Context): String? {
 }
 internal fun copyTextToClipboard(context: Context, label: String, value: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
-    clipboard?.setPrimaryClip(ClipData.newPlainText(label, value))
+    val safeValue = if (label.contains("support report", ignoreCase = true) || label.contains("diagnostic", ignoreCase = true)) {
+        value.lineSequence().joinToString("\n") { DebugRedactor.redactExportLine(it) }
+    } else {
+        value
+    }
+    clipboard?.setPrimaryClip(ClipData.newPlainText(label, safeValue))
 }
 
 internal fun copySensitiveTextToClipboard(
@@ -247,10 +253,15 @@ internal fun copySensitiveTextToClipboard(
 }
 
 internal fun shareTextReport(context: Context, title: String, value: String) {
+    val safeValue = if (title.contains("support report", ignoreCase = true) || title.contains("diagnostic", ignoreCase = true)) {
+        value.lineSequence().joinToString("\n") { DebugRedactor.redactExportLine(it) }
+    } else {
+        value
+    }
     val intent = Intent(Intent.ACTION_SEND)
         .setType("text/plain")
         .putExtra(Intent.EXTRA_SUBJECT, title)
-        .putExtra(Intent.EXTRA_TEXT, value)
+        .putExtra(Intent.EXTRA_TEXT, safeValue)
     context.startActivity(Intent.createChooser(intent, title))
 }
 internal fun Download.accessibilitySummary(): String = buildString {

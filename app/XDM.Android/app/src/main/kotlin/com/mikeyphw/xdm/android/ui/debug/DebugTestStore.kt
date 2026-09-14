@@ -15,11 +15,17 @@ class DebugTestStore(
 ) {
     private val runsDirectory: File get() = File(rootDirectory, "runs")
     private val exportsDirectory: File get() = File(rootDirectory, "exports")
+    private val corruptRunsDirectory: File get() = File(rootDirectory, "corrupt-runs")
 
     fun saveRun(run: DebugTestRun) {
         runsDirectory.mkdirs()
         val file = File(runsDirectory, safeFileName(run.id) + ".json")
-        file.writeText(run.toJson(), Charsets.UTF_8)
+        val tmp = File(runsDirectory, safeFileName(run.id) + ".json.tmp")
+        tmp.writeText(run.toJson(), Charsets.UTF_8)
+        if (!tmp.renameTo(file)) {
+            tmp.copyTo(file, overwrite = true)
+            tmp.delete()
+        }
         pruneOldRuns()
     }
 
@@ -29,7 +35,12 @@ class DebugTestStore(
             .listFiles { candidate -> candidate.isFile && candidate.name.endsWith(".json") }
             .orEmpty()
             .sortedByDescending(File::lastModified)
-            .mapNotNull { file -> runCatching { parseRun(file.readText(Charsets.UTF_8)) }.getOrNull() }
+            .mapNotNull { file ->
+                runCatching { parseRun(file.readText(Charsets.UTF_8)) }.getOrElse {
+                    quarantineCorruptRun(file)
+                    null
+                }
+            }
             .take(retainedRuns)
     }
 
@@ -38,6 +49,7 @@ class DebugTestStore(
         supportReportText: String,
         debugTimelineJsonl: String,
         problemIncidentsText: String = "",
+        currentRunId: String = run.id,
     ): File {
         exportsDirectory.mkdirs()
         val destination = File(exportsDirectory, "xdm-debug-${safeFileName(run.id)}.zip")
@@ -45,6 +57,9 @@ class DebugTestStore(
             .filter(String::isNotBlank)
             .joinToString("\n")
             .let(DiagnosticExportIntegrity::sanitizeJsonl)
+        val includeLiveContext = currentRunId == run.id
+        val safeSupportReportText = if (includeLiveContext) supportReportText else "Historical diagnostics export: live support report intentionally omitted to avoid mixing another run's evidence.\n"
+        val safeIncidentsText = if (includeLiveContext) problemIncidentsText else ""
         val entries = linkedMapOf(
             "bundle-readme.txt" to (
                 "XDM Diagnostics & support v5 / Media Parity01.\n" +
@@ -57,15 +72,15 @@ class DebugTestStore(
             "test-results.json" to DebugRedactor.redactExportLine(run.toJson()).toByteArray(Charsets.UTF_8),
             "debug-events.jsonl" to debugEvents.toByteArray(Charsets.UTF_8),
             "environment.txt" to buildEnvironmentText(run).toByteArray(Charsets.UTF_8),
-            "support-report.txt" to sanitizeText(supportReportText).toByteArray(Charsets.UTF_8),
+            "support-report.txt" to sanitizeText(safeSupportReportText).toByteArray(Charsets.UTF_8),
             "redaction-report.txt" to (
                 "XDM diagnostics v5 export. The exact final ZIP is rescanned before it can be shared. " +
                     "Cookie, Authorization, token, signature, session/sess, md5, key-like values, and signed URL credentials are redacted locally. " +
                     "No automatic upload is performed.\n"
                 ).toByteArray(Charsets.UTF_8),
         )
-        if (problemIncidentsText.isNotBlank()) {
-            entries["problem-incidents.txt"] = sanitizeText(problemIncidentsText).toByteArray(Charsets.UTF_8)
+        if (safeIncidentsText.isNotBlank()) {
+            entries["problem-incidents.txt"] = sanitizeText(safeIncidentsText).toByteArray(Charsets.UTF_8)
         }
         DiagnosticExportIntegrity.writeVerifiedZip(
             destination = destination,
@@ -75,15 +90,27 @@ class DebugTestStore(
                 diagnosticsVersion = "v5",
                 appVersion = BuildConfig.VERSION_NAME,
                 buildType = BuildConfig.BUILD_TYPE,
-                roomSchemaVersion = 22,
+                roomSchemaVersion = 25,
                 runId = run.id,
                 testSummary = run.summaryLabel,
             ),
         )
+        pruneOldExports()
         return destination
     }
 
     fun scanExport(file: File): DiagnosticBundleScan = DiagnosticExportIntegrity.scanZip(file)
+
+    private fun quarantineCorruptRun(file: File) {
+        corruptRunsDirectory.mkdirs()
+        runCatching {
+            val destination = File(corruptRunsDirectory, file.nameWithoutExtension + ".corrupt.json")
+            if (!file.renameTo(destination)) {
+                file.copyTo(destination, overwrite = true)
+                file.delete()
+            }
+        }
+    }
 
     private fun pruneOldRuns() {
         runsDirectory
@@ -94,9 +121,18 @@ class DebugTestStore(
             .forEach(File::delete)
     }
 
+    private fun pruneOldExports() {
+        exportsDirectory
+            .listFiles { candidate -> candidate.isFile && candidate.extension.equals("zip", ignoreCase = true) }
+            .orEmpty()
+            .sortedByDescending(File::lastModified)
+            .drop(retainedRuns)
+            .forEach(File::delete)
+    }
+
     private fun buildEnvironmentText(run: DebugTestRun): String = buildString {
-        appendLine("Diagnostics version: v5 / Media Parity01")
-        appendLine("Room schema: 24")
+        appendLine("Diagnostics version: v5 / XAR14 settings-diagnostics truth")
+        appendLine("Room schema: 25")
         appendLine("Product topology: download manager + Live Locator WebView + external browser extension handoff")
         appendLine("Run ID: ${run.id}")
         appendLine("Started: ${run.startedAtEpochMs}")
