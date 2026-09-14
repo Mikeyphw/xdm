@@ -5,6 +5,24 @@
   const TARGETS = Object.freeze({ XDM: "xdm", ONE_DM: "1dm", ASK: "ask" });
   const HEADER_ALLOWLIST = new Set(["authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language", "range"]);
   const MAX_HEADER_BLOCK = 12 * 1024;
+  const HANDOFF_LIFETIME_MS = 10 * 60 * 1000;
+
+  function randomNonce() {
+    const bytes = new Uint8Array(18);
+    if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === "function") globalThis.crypto.getRandomValues(bytes);
+    else for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+    return Array.from(bytes).map(value => value.toString(16).padStart(2, "0")).join("");
+  }
+
+  function senderProof(input = {}) {
+    const createdAt = Math.max(1, Math.trunc(Number(input.pageObservationCreatedAt || Date.now())));
+    const expiresAt = Math.max(createdAt + 1, Math.trunc(Number(input.pageObservationExpiresAt || createdAt + HANDOFF_LIFETIME_MS)));
+    return Object.freeze({
+      nonce: String(input.pageObservationNonce || randomNonce()).replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 256),
+      createdAt,
+      expiresAt,
+    });
+  }
 
   function safeHttpUrl(value) {
     const raw = String(value || "").trim();
@@ -82,7 +100,14 @@
     const finalSent = handoff.finalHeaders && typeof handoff.finalHeaders === "object" ? handoff.finalHeaders.headers : null;
     const proposedHeaders = headerBlock(proposed || {});
     const finalHeaders = headerBlock(finalSent || {});
-    return { proposedHeaders, finalHeaders, rawHeaders: finalHeaders || proposedHeaders };
+    return {
+      proposedHeaders,
+      finalHeaders,
+      // XAR10: executable raw headers require final sent-header evidence; proposed
+      // pre-send headers remain audit context and must not replay as runtime authority.
+      rawHeaders: finalHeaders,
+      finalHeadersReady: Boolean(finalHeaders),
+    };
   }
 
   function buildXdmAdd(input = {}) {
@@ -110,7 +135,12 @@
     const mime = String(input.mimeType || input.contentType || "").split(";", 1)[0].trim().toLowerCase().slice(0, 120); if (mime) params.set("mime", mime);
     params.set("kind", cleanText(input.streamKind || mediaKind(url, mime), 32).toLowerCase() || "media");
     const stableMediaId = String(input.stableMediaId || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 160); if (stableMediaId.length >= 8) params.set("stableMediaId", stableMediaId);
-    const revision = Math.max(0, Number(input.sessionRevision || input.revision || 0)); if (revision) params.set("sessionRevision", String(Math.trunc(revision)));
+    const proof = senderProof(input);
+    params.set("pageObservationNonce", proof.nonce);
+    params.set("pageObservationCreatedAt", String(proof.createdAt));
+    params.set("pageObservationExpiresAt", String(proof.expiresAt));
+    const requestFingerprint = String(input.requestFingerprint || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 256); if (requestFingerprint) params.set("requestFingerprint", requestFingerprint);
+    const revision = Math.max(0, Number(input.sessionRevision || input.revision || proof.createdAt)); if (revision) params.set("sessionRevision", String(Math.trunc(revision)));
     const length = Math.max(0, Number(input.contentLength || 0)); if (length) params.set("length", String(Math.trunc(length)));
     const duration = Math.max(0, Number(input.durationMs || 0)); if (duration) params.set("durationMs", String(Math.trunc(duration)));
     const blocks = candidateHeaderBags(input);
@@ -141,8 +171,11 @@
       thumbnailUrl: safeHttpUrl(candidate.thumbnailUrl || ""),
       thumbnailProvenance: cleanText(candidate.thumbnailProvenance || "Unknown", 32).replace(/[^A-Za-z]/g, "") || "Unknown",
       stableMediaId: String(candidate.stableMediaId || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 160),
+      requestId: cleanText(candidate.requestId || handoff.requestId || "", 96).replace(/[^A-Za-z0-9._:-]/g, ""),
+      requestGeneration: Math.max(0, Math.trunc(Number(candidate.requestGeneration || handoff.requestGeneration || 0))),
       requestFingerprint: String(candidate.requestFingerprint || "").trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 96),
-      sessionRevision: Math.max(1, Math.trunc(Number(candidate.sessionRevision || revision || 1))),
+      sessionRevision: Math.max(1, Math.trunc(Number(candidate.sessionRevision || revision || handoff.requestGeneration || 1))),
+      evidenceExpiresAtEpochMs: Math.max(0, Math.trunc(Number(candidate.evidenceExpiresAtEpochMs || 0))),
       quality: cleanText(candidate.quality || "strong", 24).toLowerCase() || "strong",
       reason: cleanText(candidate.reason || "browser-media", 96) || "browser-media",
       streamKind: cleanText(candidate.streamKind || mediaKind(url, candidate.contentType), 24).toLowerCase() || "media",
@@ -178,7 +211,7 @@
       proposedHeaders: sanitizeHeaderBag(proposed || {}),
       finalHeaders: sanitizeHeaderBag(finalSent || {}),
     };
-    for (const key of ["pageUrl", "frameUrl", "title", "contentType", "thumbnailUrl", "stableMediaId", "requestFingerprint", "canonicalUrl", "logicalMediaId"]) {
+    for (const key of ["pageUrl", "frameUrl", "title", "contentType", "thumbnailUrl", "stableMediaId", "requestId", "requestFingerprint", "canonicalUrl", "logicalMediaId"]) {
       if (!result[key]) delete result[key];
     }
     if (!result.contentLength) delete result.contentLength;
@@ -229,7 +262,9 @@
       const link = uri.toString();
       if (link.length <= 64 * 1024) return link;
     }
-    return base;
+    // XAR10: oversized capture sessions must fail closed instead of silently falling back
+    // to one direct candidate and dropping multi-candidate/variant/track evidence.
+    return "";
   }
 
   // Compatibility symbol for old tests/callers in the same source tree. New XPIs do not encrypt.

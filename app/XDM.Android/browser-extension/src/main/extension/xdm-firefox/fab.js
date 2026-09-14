@@ -111,7 +111,8 @@
     host = document.createElement("div");
     host.id = HOST_ID;
     host.dataset.xdmMediaFab = "v2";
-    shadow = host.attachShadow({ mode: "open" });
+    // XAR10: closed Shadow DOM keeps privileged XDM capture URLs out of page-readable DOM.
+    shadow = host.attachShadow({ mode: "closed" });
     installListeners();
     mount();
     return host;

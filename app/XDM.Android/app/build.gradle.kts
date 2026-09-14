@@ -446,6 +446,16 @@ val verifyXar09SchedulerRecovery = tasks.register<Exec>("verifyXar09SchedulerRec
     trackStaticValidation("xar09-scheduler-recovery")
 }
 
+
+
+val verifyXar10BrowserCaptureEvidence = tasks.register<Exec>("verifyXar10BrowserCaptureEvidence") {
+    group = "verification"
+    description = "Verify XAR10 browser extension, WebView, request-scoped capture evidence, and S10 coverage contracts."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar10-browser-capture-evidence.py")
+    trackStaticValidation("xar10-browser-capture-evidence")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -504,6 +514,7 @@ val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGat
         verifyXar07NativeHttpProtocol,
         verifyXar08Aria2Ownership,
         verifyXar09SchedulerRecovery,
+        verifyXar10BrowserCaptureEvidence,
         verifyFfmpeg04FullReleaseSeal,
         verifyFfmpegRoadmapPostSealHotfix,
         verifyGradleTaskGraphOptimization,

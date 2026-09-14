@@ -7,7 +7,7 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
-/** Parses XDM browser custom-scheme links. v3 capture is intentionally direct/keyless. */
+/** Parses XDM browser custom-scheme links. v3 capture is sender-bound and direct but never keyless runtime authority. */
 object XdmBrowserDeepLinkParser {
     private val allowedCaptureHeaders = setOf(
         "authorization", "cookie", "referer", "user-agent", "origin", "accept", "accept-language", "range",
@@ -81,8 +81,10 @@ object XdmBrowserDeepLinkParser {
         val proposed = if (allowHeaders) parameters.singleValue(XdmBrowserDeepLinkContract.ProposedHeadersParameter).sanitizedHeaderBlock() else null
         val final = if (allowHeaders) parameters.singleValue(XdmBrowserDeepLinkContract.FinalHeadersParameter).sanitizedHeaderBlock() else null
         val rawHeaders = if (allowHeaders) {
+            // XAR10: proposed pre-send headers are preserved as audit context but never promoted
+            // to executable runtime headers when final sent-header evidence is unavailable.
             parameters.singleValue(XdmBrowserDeepLinkContract.RawHeadersParameter).sanitizedHeaderBlock()
-                ?: final ?: proposed
+                ?: final
         } else null
         val requestFingerprint = if (allowHeaders) {
             parameters.singleValue(XdmBrowserDeepLinkContract.RequestFingerprintParameter)

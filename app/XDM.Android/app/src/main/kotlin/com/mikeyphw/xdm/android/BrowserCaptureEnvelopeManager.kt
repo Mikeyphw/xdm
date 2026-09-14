@@ -165,11 +165,20 @@ class BrowserCaptureEnvelopeManager {
         parseSession(String(clear, StandardCharsets.UTF_8), payload.captureSessionId, nowEpochMs)
     }
 
-    /** Parse the bounded direct/keyless v3 candidate batch after the exported intake boundary validates and routes it. */
+    /** Parse the bounded sender-bound direct v3 candidate batch after the exported intake boundary validates and routes it. */
     fun decodeDirect(payload: XdmBrowserDeepLinkPayload, nowEpochMs: Long = System.currentTimeMillis()): Result<DecodedSession> = runCatching {
         require(payload.hasDirectCaptureSession) { "Direct browser capture session is incomplete" }
         val sessionId = payload.captureSessionId.safeToken(96) ?: error("Direct browser capture session id is invalid")
         val revision = payload.sessionRevision?.takeIf { it > 0L } ?: error("Direct browser capture revision is missing")
+        val nonce = payload.pageObservationNonce.safeToken(256)?.takeIf { it.length >= 16 }
+            ?: error("Direct browser capture sender proof nonce is missing")
+        val createdAt = payload.pageObservationCreatedAtEpochMs?.takeIf { it > 0L }
+            ?: error("Direct browser capture sender timestamp is missing")
+        val expiresAt = payload.pageObservationExpiresAtEpochMs?.takeIf { it > createdAt }
+            ?: error("Direct browser capture sender expiry is missing")
+        require(expiresAt - createdAt <= DIRECT_CAPTURE_HANDOFF_LIFETIME_MS) { "Direct browser capture lifetime is too long" }
+        require(nowEpochMs >= createdAt - CLOCK_SKEW_MS && nowEpochMs <= expiresAt) { "Direct browser capture expired; capture the page again" }
+        require(revision >= createdAt - CLOCK_SKEW_MS && revision <= expiresAt + CLOCK_SKEW_MS) { "Direct browser capture revision is outside sender proof lifetime" }
         val pageUrl = ExternalUrlPolicy.normalizedUrl(payload.pageUrl)
         val title = payload.pageTitle.orEmpty().sanitizeText(240).ifBlank { "Browser capture" }
         val array = JSONArray(requireNotNull(payload.directCandidatesJson))
@@ -183,8 +192,10 @@ class BrowserCaptureEnvelopeManager {
                 val stableId = (item.optString("logicalMediaId").safeToken(160) ?: item.optString("stableMediaId").safeToken(160))
                 val candidateRevision = item.optLong("sessionRevision", revision).takeIf { it > 0L } ?: revision
                 val requestFingerprint = item.optString("requestFingerprint").safeToken(96)
-                    ?: "direct-" + "$sessionId|$candidateRevision|$index|$url"
-                        .toByteArray(StandardCharsets.UTF_8).sha256Hex().take(32)
+                    ?: error("Direct browser capture request fingerprint is missing")
+                require(item.optString("requestId").safeToken(96) != null || item.optLong("requestGeneration", 0L) > 0L) {
+                    "Direct browser capture request evidence identity is missing"
+                }
                 add(
                     Candidate(
                         url = url,
@@ -229,8 +240,8 @@ class BrowserCaptureEnvelopeManager {
             revision = revision,
             pageUrl = pageUrl,
             pageTitle = title,
-            createdAtEpochMs = nowEpochMs,
-            expiresAtEpochMs = nowEpochMs + DIRECT_CAPTURE_HANDOFF_LIFETIME_MS,
+            createdAtEpochMs = createdAt,
+            expiresAtEpochMs = expiresAt,
             totalCandidateCount = totalCandidateCount,
             truncated = payload.truncatedCandidates || totalCandidateCount > candidates.size,
             candidates = candidates,

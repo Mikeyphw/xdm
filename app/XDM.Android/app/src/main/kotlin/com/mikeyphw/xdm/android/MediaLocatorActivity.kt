@@ -41,6 +41,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
+import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewFeature
 import com.mikeyphw.xdm.android.media.MediaCaptureService
 import com.mikeyphw.xdm.android.media.LogicalMediaGraphEngine
@@ -60,6 +61,7 @@ import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import com.mikeyphw.xdm.android.model.MediaSourceKind
 import com.mikeyphw.xdm.android.model.MediaVariant
 import java.net.URI
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.Collections
 import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
@@ -154,6 +156,8 @@ class MediaLocatorActivity : ComponentActivity() {
         val url: String,
         val headers: Map<String, String>,
         val observedAtEpochMs: Long,
+        val documentGeneration: Long,
+        val mainFrame: Boolean,
     )
 
     private val engine = MediaSniffingEngine()
@@ -161,6 +165,8 @@ class MediaLocatorActivity : ComponentActivity() {
     private val logicalGraph = LogicalMediaGraphEngine(sniffingEngine = engine, captureService = captureService)
     private val located = linkedMapOf<String, LocatedMedia>()
     private val requestLedgerLock = Any()
+    private val userscriptHandlers = mutableListOf<ScriptHandler>()
+    private var currentDocumentGeneration: Long = 0L
     private val requestLedger = object : LinkedHashMap<String, NativeRequestEvidence>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, NativeRequestEvidence>?): Boolean = size > MAX_NATIVE_REQUESTS
     }
@@ -434,7 +440,7 @@ class MediaLocatorActivity : ComponentActivity() {
             }
 
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
-                currentPageUrl = url
+                beginNewDocument(url)
                 currentPageTitle = null
                 updateFavicon(favicon)
                 lastMainFrameError = null
@@ -773,6 +779,10 @@ class MediaLocatorActivity : ComponentActivity() {
     private inner class MediaObservationBridge {
         @JavascriptInterface
         fun observe(rawJson: String) {
+            if (rawJson.toByteArray(StandardCharsets.UTF_8).size > MAX_BRIDGE_JSON_BYTES) {
+                debugRecorder.record(DebugArea.WebView, DebugSeverity.Warning, "bridge-observation", "rejected", mapOf("reason" to "payload-too-large"), pageOperationId)
+                return
+            }
             val observation = runCatching { JSONObject(rawJson) }.getOrNull() ?: return
             val url = observation.optString("url").trim().takeIf(String::isNotBlank) ?: return
             val mime = observation.optString("mime").trim().takeIf(String::isNotBlank)
@@ -787,7 +797,7 @@ class MediaLocatorActivity : ComponentActivity() {
             val thumbnailProvenance = runCatching { MediaThumbnailProvenance.valueOf(observation.optString("thumbnailProvenance")) }
                 .getOrDefault(MediaThumbnailProvenance.Unknown)
                 .takeIf { thumbnailUrl != null } ?: MediaThumbnailProvenance.Unknown
-            val key = correlationKey(url) ?: return
+            val key = correlationKey(url, currentDocumentGeneration) ?: return
             val observationKey = "$key|${if (body != null) "body" else source}"
             debugRecorder.record(
                 area = DebugArea.WebView,
@@ -805,10 +815,11 @@ class MediaLocatorActivity : ComponentActivity() {
                     val correlated = nativeEvidenceFor(url)
                     val exactHeaders = correlated?.let { correlatedRequestHeaders(url, it) }.orEmpty()
                     val inheritedHeaders = safeInheritedSessionHeaders(authoritativePage)
-                    // Browser/request credentials are attached only when WebView natively observed the
-                    // exact URL. JS-only candidates may still be reviewed, but cannot manufacture a
-                    // credential-enriched request by calling the bridge directly.
-                    val observedHeaders = if (correlated != null) exactHeaders + jsHeaders else emptyMap()
+                    val pageHeaders = jsHeaders.withoutSensitiveWebViewHeaders()
+                    // XAR10: Browser/request credentials are attached only when WebView natively observed
+                    // the exact URL. JS-only candidates may enrich non-sensitive hints, but cannot
+                    // manufacture or override Cookie/Authorization by calling the bridge directly.
+                    val observedHeaders = if (correlated != null) pageHeaders + exactHeaders else pageHeaders
                     val primaryHeaders = inheritedHeaders + observedHeaders
                     val graphSnapshot = withContext(Dispatchers.Default) {
                         logicalGraph.observe(
@@ -833,9 +844,9 @@ class MediaLocatorActivity : ComponentActivity() {
                     val found = graphSnapshot.items.map { item ->
                         val nativeForCanonical = nativeEvidenceFor(item.requestUrl)
                         val exactHeaders = if (nativeForCanonical != null) {
-                            safeInheritedSessionHeaders(authoritativePage) + correlatedRequestHeaders(item.requestUrl, nativeForCanonical)
+                            item.requestHeaders.withoutSensitiveWebViewHeaders() + safeInheritedSessionHeaders(authoritativePage) + correlatedRequestHeaders(item.requestUrl, nativeForCanonical)
                         } else {
-                            item.requestHeaders
+                            item.requestHeaders.withoutSensitiveWebViewHeaders()
                         }
                         LocatedMedia(
                             logicalMediaId = item.logicalMediaId,
@@ -886,9 +897,22 @@ class MediaLocatorActivity : ComponentActivity() {
         }
     }
 
+    private fun beginNewDocument(url: String) {
+        currentPageUrl = url
+        currentDocumentGeneration += 1L
+        synchronized(requestLedgerLock) { requestLedger.clear() }
+        // XAR10: WebView native request evidence is document-generation scoped; a later same-URL
+        // navigation cannot rebind stale Cookie/Authorization evidence to a new document/frame.
+    }
+
+    private fun removeDocumentStartUserscripts() {
+        userscriptHandlers.forEach { handler -> runCatching { handler.remove() } }
+        userscriptHandlers.clear()
+    }
+
     private fun recordNativeRequest(request: WebResourceRequest) {
         val url = request.url.toString()
-        val key = correlationKey(url) ?: return
+        val key = correlationKey(url, currentDocumentGeneration) ?: return
         debugRecorder.record(
             area = DebugArea.WebView,
             severity = DebugSeverity.Trace,
@@ -906,13 +930,13 @@ class MediaLocatorActivity : ComponentActivity() {
             if (name.isBlank() || trimmed.isBlank() || '\n' in trimmed || '\r' in trimmed) null else name to trimmed.take(8192)
         }.toMap()
         synchronized(requestLedgerLock) {
-            requestLedger[key] = NativeRequestEvidence(url, headers, System.currentTimeMillis())
+            requestLedger[key] = NativeRequestEvidence(url, headers, System.currentTimeMillis(), currentDocumentGeneration, request.isForMainFrame)
             pruneRequestLedgerLocked(System.currentTimeMillis())
         }
     }
 
     private fun nativeEvidenceFor(url: String): NativeRequestEvidence? {
-        val key = correlationKey(url) ?: return null
+        val key = correlationKey(url, currentDocumentGeneration) ?: return null
         val now = System.currentTimeMillis()
         return synchronized(requestLedgerLock) {
             pruneRequestLedgerLocked(now)
@@ -924,16 +948,31 @@ class MediaLocatorActivity : ComponentActivity() {
         requestLedger.entries.removeAll { now - it.value.observedAtEpochMs > NATIVE_REQUEST_TTL_MS }
     }
 
-    private fun correlationKey(raw: String): String? = runCatching {
+    private fun correlationKey(raw: String, documentGeneration: Long): String? = runCatching {
         val uri = URI(raw.trim())
         val scheme = uri.scheme?.lowercase(Locale.US)?.takeIf { it == "http" || it == "https" } ?: return@runCatching null
         val host = uri.host?.lowercase(Locale.US)?.takeIf(String::isNotBlank) ?: return@runCatching null
-        URI(scheme, null, host, uri.port, uri.rawPath?.ifBlank { "/" } ?: "/", uri.rawQuery, null).toASCIIString()
+        documentGeneration.toString() + "|" + URI(scheme, null, host, uri.port, uri.rawPath?.ifBlank { "/" } ?: "/", uri.rawQuery, null).toASCIIString()
     }.getOrNull()
 
     private fun safeInheritedSessionHeaders(pageUrl: String?): Map<String, String> = buildMap {
         locatorUserAgent?.takeIf(String::isNotBlank)?.let { put("User-Agent", it) }
         pageUrl?.takeIf(String::isNotBlank)?.let { put("Referer", it) }
+    }
+
+    private fun Map<String, String>.withoutSensitiveWebViewHeaders(): Map<String, String> = filterKeys { name ->
+        !name.equals("Cookie", true) && !name.equals("Authorization", true) && !name.equals("Proxy-Authorization", true)
+    }
+
+    private fun headersForMediaLocatorVariant(parentUrl: String, childUrl: String, headers: Map<String, String>): Map<String, String> {
+        if (headers.isEmpty()) return emptyMap()
+        if (ExternalUrlPolicy.credentialHeadersAllowedFor(parentUrl, childUrl)) return headers
+        // XAR10: cross-origin HLS tracks/variants keep only non-sensitive transport hints.
+        return headers.filterKeys { name ->
+            !name.equals("Cookie", true) && !name.equals("Authorization", true) &&
+                !name.equals("Proxy-Authorization", true) && !name.equals("Origin", true) &&
+                !name.equals("Referer", true)
+        }
     }
 
     private fun refreshList() {
@@ -1071,9 +1110,12 @@ class MediaLocatorActivity : ComponentActivity() {
 
     private fun installEnabledUserscriptsAtDocumentStart() {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        removeDocumentStartUserscripts()
         val script = WebViewUserscriptStore(this).documentStartScriptFor(currentPageUrl)
         if (script.isBlank()) return
-        runCatching { WebViewCompat.addDocumentStartJavaScript(webView, script, setOf("*")) }
+        // XAR10: keep document-start userscript registrations removable and scoped by the
+        // userscript's own runtime matcher, so future navigations cannot inherit stale site scope.
+        runCatching { userscriptHandlers += WebViewCompat.addDocumentStartJavaScript(webView, script, setOf("*")) }
             .onFailure { showFeedbackToast(getString(R.string.media_locator_userscripts_injection_failed)) }
     }
 
@@ -1222,7 +1264,7 @@ class MediaLocatorActivity : ComponentActivity() {
                 check(MediaRequestHandoffStore.rememberVariant(
                     variantId = variant.id,
                     exactUrl = variant.url,
-                    headers = candidate.requestHeaders,
+                    headers = headersForMediaLocatorVariant(candidate.url, variant.url, candidate.requestHeaders),
                     redactedSummary = "live locator variant • ${variant.kind.name}",
                     expiresAtEpochMs = variant.expiresAtEpochMs ?: now + 24L * 60L * 60L * 1000L,
                     subjectGeneration = committedRevision,

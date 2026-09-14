@@ -33,7 +33,7 @@ object XdmBrowserDeepLinkContract {
     const val PageObservationNonceParameter = "pageObservationNonce"
     const val PageObservationCreatedAtParameter = "pageObservationCreatedAt"
     const val PageObservationExpiresAtParameter = "pageObservationExpiresAt"
-    // v3 direct/keyless capture-session fields. The primary candidate above remains for
+    // v3 sender-bound direct capture-session fields. The primary candidate above remains for
     // backwards compatibility; this bounded batch prevents first-only handoff loss.
     const val DirectCandidatesParameter = "candidates"
     const val TotalCandidateCountParameter = "candidateCount"

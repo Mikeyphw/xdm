@@ -73,14 +73,15 @@ class MainActivity : ComponentActivity() {
     private fun consumeInternalDirectBrowserCapture(incoming: Intent?): Boolean {
         if (incoming?.action != ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT) return false
         val rawDeepLink = incoming.getStringExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)
-        val privateNetworkApproved = incoming.getBooleanExtra(EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED, false)
+        // XAR10: exported/internal direct browser capture intents are forgeable. Never trust
+        // an intent extra as private-network approval; admission policy must re-derive it.
         incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)
         incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED)
         setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
         val parsed = XdmBrowserDeepLinkParser.parseDetailed(rawDeepLink, BuildConfig.XDM_BROWSER_SCHEME)
         val payload = (parsed as? XdmBrowserDeepLinkParseResult.Accepted)?.payload
         if (payload?.hasDirectCaptureSession == true) {
-            viewModel.ingestDirectBrowserCaptureSession(payload, privateNetworkApproved)
+            viewModel.ingestDirectBrowserCaptureSession(payload, privateNetworkApproved = false)
         }
         return true
     }

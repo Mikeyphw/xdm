@@ -3274,6 +3274,20 @@ class MainViewModel(
         AutomationCommandSource.Tasker, AutomationCommandSource.DeepLink, AutomationCommandSource.Internal -> DownloadIntakeOrigin.Automation
     }
 
+    private fun headersForBrowserVariant(parentUrl: String, variantUrl: String, candidateHeaders: Map<String, String>): Map<String, String> {
+        if (candidateHeaders.isEmpty()) return emptyMap()
+        // XAR10: HLS/DASH child inputs on a different origin must not inherit the parent
+        // Cookie/Authorization/Origin/Referer credential bag captured for the master request.
+        if (!ExternalUrlPolicy.credentialHeadersAllowedFor(parentUrl, variantUrl)) {
+            return candidateHeaders.filterKeys { name ->
+                !name.equals("Cookie", true) && !name.equals("Authorization", true) &&
+                    !name.equals("Proxy-Authorization", true) && !name.equals("Origin", true) &&
+                    !name.equals("Referer", true)
+            }
+        }
+        return candidateHeaders
+    }
+
     private fun transientSessionHeaders(
         rawHeaders: String?,
         pageUrl: String? = null,
@@ -3612,8 +3626,10 @@ class MainViewModel(
                 )
                 return@launch
             }
-            val primaryScope = payload.url?.let(DownloadRequestApprovalScope::forUrl)
-            val privateScopes = if (privateNetworkApproved && primaryScope != null) setOf(primaryScope) else emptySet()
+            // XAR10: do not trust forgeable internal direct-capture approval extras.
+            // Direct browser capture may carry evidence, but private-network approval must be
+            // re-derived through admission/review policy rather than an Intent boolean.
+            val privateScopes = emptySet<DownloadRequestApprovalScope>()
             runCatching {
                 importBrowserCaptureSession(
                     decoded = decoded,
@@ -3828,7 +3844,7 @@ class MainViewModel(
                     BrowserVariantImportHandoff(
                         variantId = rekeyed.id,
                         exactUrl = source.url,
-                        headers = facts.finalHeaders.ifEmpty { facts.proposedHeaders },
+                        headers = headersForBrowserVariant(candidate.url, source.url, facts.finalHeaders.ifEmpty { facts.proposedHeaders }),
                         redactedSummary = "browser session ${decoded.sessionId.take(24)} request ${candidate.requestFingerprint.take(24)}",
                         expiresAtEpochMs = source.expiresAtEpochMs ?: decoded.expiresAtEpochMs,
                         subjectGeneration = candidate.sessionRevision,

@@ -101,7 +101,8 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   assert.strictEqual(diagnostics["7"].reason, "xhr-media-mime");
   assert.strictEqual(diagnostics["7"].frameCount, 1);
   assert.ok(handoffInputs.length > 0);
-  assert.strictEqual(handoffInputs[0].candidates[0].headers["accept-language"], "en-GB,en;q=0.9", "Accept-Language must survive privileged request capture");
+  assert.strictEqual(handoffInputs[0].candidates[0].headers["accept-language"], undefined, "proposed headers must not become executable without final sent-header evidence");
+  assert.strictEqual(handoffInputs[0].candidates[0].browserHandoff.proposedHeaders.headers["accept-language"], "en-GB,en;q=0.9", "Accept-Language remains available as proposed audit context");
 
   const firstTab7DispatchCount = executeCalls.filter(call => call.tabId === 7).length;
   events.headers.listeners[0]({

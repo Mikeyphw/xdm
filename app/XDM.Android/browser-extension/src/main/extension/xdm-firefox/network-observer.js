@@ -95,7 +95,9 @@
       finalHeaders: captured.finalHeadersAvailable
         ? headerObservation("FinalSent", captured.finalHeaders || {})
         : headerObservation("Unavailable", {}, captured.finalUnavailableReason || "onSendHeaders unavailable"),
+      requestId: String(captured.requestId || ""),
       requestGeneration: Number(captured.requestGeneration || captured.at || Date.now()),
+      frameId: Number(captured.frameId || 0),
       frameUrl: captured.frameUrl || "",
       tabUrl: captured.tabUrl || "",
     });
@@ -135,6 +137,17 @@
       return domain && (host === domain || host.endsWith(`.${domain}`));
     });
     return settings.siteMode === "whitelist" ? matched : !matched;
+  }
+
+  function tabUrlAllowedForCapture(details) {
+    const source = details && (details.documentUrl || details.originUrl || details.initiator || details.url || "");
+    return tabAllowed(source);
+  }
+
+  function finalHeadersForExecution(captured) {
+    // XAR10: response classification must not replay proposed pre-send headers when
+    // final sent-header evidence is unavailable or still pending.
+    return captured && captured.finalHeadersAvailable ? (captured.finalHeaders || {}) : {};
   }
 
   function sanitizeDiagnosticUrl(value) {
@@ -319,7 +332,6 @@
     const previous = lastDispatchedByTab.get(tabId);
     if (previous && previous.requestFingerprint === candidate.requestFingerprint && previous.candidateCount === candidateCount &&
         previous.revision === candidateRevision && Date.now() - previous.at < SAME_URL_SUPPRESS_MS) return;
-    lastDispatchedByTab.set(tabId, { requestFingerprint: candidate.requestFingerprint, candidateCount, revision: candidateRevision, at: Date.now() });
 
     const session = captureSessionFor(tabId);
     session.revision = Math.max(Number(session.revision || 0), candidateRevision, Date.now());
@@ -343,6 +355,14 @@
       } catch (error) {
         publishStatus({ lastError: `XDM capture handoff failed: ${error && error.message ? error.message : String(error)}`, lastErrorAt: Date.now() });
       }
+    }
+
+    if (!prebuiltXdmLink && candidateCount > sessionCandidates.length) {
+      publishStatus({
+        lastError: "XDM capture handoff is too large; refusing to drop selected variants/tracks. Filter candidates and try again.",
+        lastErrorAt: Date.now(),
+      });
+      return;
     }
 
     if (!prebuiltXdmLink && settings.defaultTarget === "xdm") {
@@ -379,7 +399,10 @@
       capturedCandidateCount,
     });
     await updateDiagnostics(tabId, payload);
-    await offerInTopFrame(tabId, payload);
+    const offered = await offerInTopFrame(tabId, payload);
+    // XAR10: auto-offer suppression is committed only after handoff construction and
+    // in-page offer success, so a failed injection does not suppress a needed retry.
+    if (offered) lastDispatchedByTab.set(tabId, { requestFingerprint: candidate.requestFingerprint, candidateCount, revision: candidateRevision, at: Date.now() });
   }
 
   function addClassifiedResponse(tabId, details, headers, source = "webRequest", handoffContext = null) {
@@ -592,6 +615,7 @@
     let tab;
     try { tab = await browser.tabs.get(Number(tabId)); } catch (_) { tab = null; }
     if (!tab || !/^https?:/i.test(tab.url || "")) throw new Error("The source tab is no longer available.");
+    if (!tabAllowed(tab.url)) throw new Error("This site is disabled by XDM site-mode settings.");
     const session = captureSessionFor(tabId);
     session.revision = Math.max(Number(session.revision || 0), ...selected.map(item => Number(item.sessionRevision || 0)), Date.now());
     const handoff = globalThis.XdmHandoffV1;
@@ -645,14 +669,17 @@
     browser.webRequest.onBeforeSendHeaders.addListener(
       details => {
         if (details.tabId === -1) return;
+        if (!tabUrlAllowedForCapture(details)) return;
         capturedHeaders.set(details.requestId, {
           at: Date.now(),
           requestId: String(details.requestId || ""),
+          tabId: Number(details.tabId),
           requestGeneration: Date.now(),
           proposedHeaders: captureUsefulHeaders(details.requestHeaders),
           finalHeaders: {},
           finalHeadersAvailable: false,
           finalUnavailableReason: browser.webRequest.onSendHeaders ? "pending onSendHeaders" : "onSendHeaders unsupported",
+          frameId: Number.isFinite(Number(details.frameId)) ? Number(details.frameId) : 0,
           frameUrl: details.documentUrl || details.originUrl || "",
           tabUrl: details.initiator || "",
         });
@@ -666,7 +693,8 @@
       browser.webRequest.onSendHeaders.addListener(
         details => {
           if (details.tabId === -1) return;
-          const previous = capturedHeaders.get(details.requestId) || { at: Date.now(), proposedHeaders: {} };
+          if (!tabUrlAllowedForCapture(details)) return;
+          const previous = capturedHeaders.get(details.requestId) || { at: Date.now(), requestId: String(details.requestId || ""), proposedHeaders: {} };
           previous.finalHeaders = captureUsefulHeaders(details.requestHeaders);
           previous.finalHeadersAvailable = true;
           previous.finalUnavailableReason = "";
@@ -680,7 +708,7 @@
 
     browser.webRequest.onHeadersReceived.addListener(
       details => {
-        if (details.tabId === -1 || !settings.enabled || !settings.autoDetectPlayingVideos) return;
+        if (details.tabId === -1 || !settings.enabled || !settings.autoDetectPlayingVideos || !tabUrlAllowedForCapture(details)) return;
         const captured = capturedHeaders.get(details.requestId);
         addClassifiedResponse(details.tabId, {
           url: details.url,
@@ -693,7 +721,7 @@
           frameUrl: details.originUrl || details.documentUrl || "",
           requestId: details.requestId,
           requestGeneration: captured && captured.requestGeneration || Date.now()
-        }, captured ? (captured.finalHeadersAvailable ? captured.finalHeaders : captured.proposedHeaders) : {}, "webRequest", captured);
+        }, finalHeadersForExecution(captured), "webRequest", captured);
       },
       { urls: ["<all_urls>"] },
       ["responseHeaders"]
@@ -702,6 +730,26 @@
     const clear = details => capturedHeaders.delete(details.requestId);
     browser.webRequest.onCompleted.addListener(clear, { urls: ["<all_urls>"] });
     browser.webRequest.onErrorOccurred.addListener(clear, { urls: ["<all_urls>"] });
+
+    if (browser.webNavigation && browser.webNavigation.onCommitted && browser.webNavigation.onCommitted.addListener) {
+      browser.webNavigation.onCommitted.addListener(details => {
+        if (details.tabId === -1) return;
+        candidateStore.clearDocumentEvidence(details.tabId, Number.isFinite(Number(details.frameId)) ? Number(details.frameId) : null);
+        for (const [requestId, entry] of capturedHeaders) {
+          if (Number(entry.tabId || details.tabId) === Number(details.tabId) && Number(entry.frameId || 0) === Number(details.frameId || 0)) capturedHeaders.delete(requestId);
+        }
+        if (Number(details.frameId || 0) === 0) lastDispatchedByTab.delete(details.tabId);
+      });
+    }
+    if (browser.tabs && browser.tabs.onUpdated && browser.tabs.onUpdated.addListener) {
+      browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+        if (changeInfo && (changeInfo.url || changeInfo.status === "loading")) {
+          candidateStore.clearDocumentEvidence(tabId);
+          lastDispatchedByTab.delete(tabId);
+        }
+      });
+    }
+
     browser.tabs.onRemoved.addListener(tabId => {
       // Request headers are keyed by requestId. Tab removal must not accidentally delete a same-numbered request id.
       tabDispatchSessions.delete(tabId);

@@ -26,9 +26,15 @@ data class UserscriptMetadata(
     val runAtDocumentStart: Boolean,
 ) {
     fun appliesTo(pageUrl: String?): Boolean {
-        if (pageUrl.isNullOrBlank()) return true
+        if (pageUrl.isNullOrBlank()) return false
         val patterns = (matches + includes).ifEmpty { listOf("*") }
         return patterns.any { pattern -> UserscriptPattern.matches(pattern, pageUrl) }
+    }
+
+    fun runtimeMatcherJson(): String {
+        val array = JSONArray()
+        (matches + includes).ifEmpty { listOf("*") }.forEach { array.put(it) }
+        return array.toString()
     }
 
     companion object {
@@ -79,12 +85,28 @@ object WebViewUserscriptPolicy {
         return UserscriptValidationResult(true, "Userscript saved for matching pages")
     }
 
-    fun wrapForInjection(source: String): String {
+    fun wrapForInjection(source: String, metadata: UserscriptMetadata): String {
         val body = source.substringAfter("// ==/UserScript==", source).trim()
         val escaped = JSONArray().put(body).toString().removePrefix("[").removeSuffix("]")
+        val patterns = metadata.runtimeMatcherJson()
         return """
             (function(){
               try {
+                var patterns = $patterns;
+                function globToRegex(value) {
+                  if (value === '*' || value === '*://*/*' || value === '<all_urls>') return /^https?:\/\//i;
+                  var raw = String(value);
+                  var escapedPattern = '';
+                  for (var i = 0; i < raw.length; i += 1) {
+                    var ch = raw.charAt(i);
+                    if (ch === '*') escapedPattern += '.*';
+                    else if (ch === '?') escapedPattern += '.';
+                    else if ('\\.^${'$'}+{}()|[]'.indexOf(ch) >= 0) escapedPattern += '\\' + ch;
+                    else escapedPattern += ch;
+                  }
+                  return new RegExp('^' + escapedPattern + '${'$'}', 'i');
+                }
+                if (!patterns.some(function(pattern){ return globToRegex(pattern).test(location.href); })) return;
                 if (window.__xdmUserscriptRan) return;
                 window.__xdmUserscriptRan = true;
                 var script = document.createElement('script');
@@ -96,8 +118,7 @@ object WebViewUserscriptPolicy {
               }
             })();
         """.trimIndent()
-    }
-}
+    }}
 
 class WebViewUserscriptStore(context: Context) {
     private val prefs = context.getSharedPreferences("xdm-webview-userscripts", Context.MODE_PRIVATE)
@@ -118,7 +139,7 @@ class WebViewUserscriptStore(context: Context) {
         val script = snapshot()
         if (!script.enabled || script.scriptSource.isBlank()) return ""
         if (!script.metadata.appliesTo(pageUrl)) return ""
-        return WebViewUserscriptPolicy.wrapForInjection(script.scriptSource)
+        return WebViewUserscriptPolicy.wrapForInjection(script.scriptSource, script.metadata)
     }
 
     companion object {
@@ -130,10 +151,38 @@ class WebViewUserscriptStore(context: Context) {
 private object UserscriptPattern {
     fun matches(pattern: String, url: String): Boolean {
         val normalized = pattern.trim().ifBlank { "*" }
-        if (normalized == "*" || normalized == "*://*/*") return true
-        val regex = Regex.escape(normalized)
-            .replace("\\*", ".*")
-            .replace("\\?", ".")
-        return runCatching { Regex("^$regex$").containsMatchIn(url) }.getOrDefault(false)
+        if (normalized == "*" || normalized == "*://*/*" || normalized == "<all_urls>") return url.startsWith("http://", true) || url.startsWith("https://", true)
+        return when {
+            normalized.contains("://") -> matchPatternToRegex(normalized)?.matches(url) == true
+            else -> globPatternToRegex(normalized).matches(url)
+        }
     }
+
+    private fun matchPatternToRegex(pattern: String): Regex? {
+        val splitScheme = pattern.split("://", limit = 2)
+        if (splitScheme.size != 2) return null
+        val schemePart = splitScheme[0]
+        val hostAndPath = splitScheme[1]
+        val slash = hostAndPath.indexOf('/')
+        val hostPart = if (slash >= 0) hostAndPath.substring(0, slash) else hostAndPath
+        val pathPart = if (slash >= 0) hostAndPath.substring(slash) else "/*"
+        val scheme = when (schemePart) {
+            "*" -> "https?"
+            "http", "https" -> Regex.escape(schemePart)
+            else -> return null
+        }
+        val host = when {
+            hostPart == "*" -> "[^/]+"
+            hostPart.startsWith("*.") -> "(?:[^/]+\\.)?" + Regex.escape(hostPart.removePrefix("*."))
+            "*" in hostPart -> Regex.escape(hostPart).replace("\\*", "[^/]*")
+            else -> Regex.escape(hostPart)
+        }
+        val path = Regex.escape(pathPart).replace("\\*", ".*").replace("\\?", ".")
+        return Regex("^$scheme://$host$path$", RegexOption.IGNORE_CASE)
+    }
+
+    private fun globPatternToRegex(pattern: String): Regex = Regex(
+        "^" + Regex.escape(pattern).replace("\\*", ".*").replace("\\?", ".") + "$",
+        RegexOption.IGNORE_CASE,
+    )
 }

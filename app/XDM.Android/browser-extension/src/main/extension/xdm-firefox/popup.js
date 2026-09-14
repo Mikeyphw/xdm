@@ -195,6 +195,19 @@ function updateList(settings) {
   document.getElementById("siteCard").style.opacity = mode === "all" ? ".82" : "1";
 }
 
+function hostAllowedBySiteMode(tabUrl, settings) {
+  if (!settings || settings.enabled === false) return false;
+  if (settings.siteMode === "all") return true;
+  let host = "";
+  try { host = new URL(tabUrl).hostname.toLowerCase().replace(/^www\./, ""); } catch (_) { return false; }
+  const list = settings.siteMode === "whitelist" ? settings.whitelist : settings.blacklist;
+  const matched = (Array.isArray(list) ? list : []).some(item => {
+    const domain = String(item || "").trim().toLowerCase().replace(/^www\./, "");
+    return domain && (host === domain || host.endsWith(`.${domain}`));
+  });
+  return settings.siteMode === "whitelist" ? matched : !matched;
+}
+
 function validHttpUrl(value) {
   try {
     const url = new URL(value);
@@ -267,6 +280,8 @@ async function showLauncher(input) {
   if (!activeTab || typeof activeTab.id !== "number") throw new Error("No active webpage tab is available.");
   if (!/^https?:/i.test(activeTab.url || "")) throw new Error("Open a normal HTTP or HTTPS webpage first.");
 
+  const settings = await getSettings();
+  if (!hostAllowedBySiteMode(activeTab.url || "", settings)) throw new Error("This site is disabled by XDM site-mode settings.");
   const selfTest = await runBridgeSelfTest(activeTab.id);
   setHealth("selfTestState", selfTest.ok ? "Passed" : (selfTest.lastError || "Failed"), selfTest.ok === true);
   if (!selfTest.ok) throw new Error(`Page host self-test failed: ${selfTest.lastError || "launcher host could not mount"}`);

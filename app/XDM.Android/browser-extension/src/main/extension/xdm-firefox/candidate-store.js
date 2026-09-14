@@ -5,6 +5,35 @@
   const MAX_EVIDENCE_PER_TAB = 384;
 
 
+
+
+  function evidenceFrameId(candidate) {
+    const value = Number(candidate && candidate.frameId);
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function evidenceGeneration(candidate) {
+    const value = Number(candidate && (candidate.requestGeneration || candidate.sessionRevision || candidate.at || 0));
+    return Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
+  }
+
+  function evidenceKey(candidate, exact) {
+    const requestId = String(candidate && candidate.requestId || '').trim();
+    if (!requestId) return '';
+    return [String(exact || ''), requestId, evidenceFrameId(candidate), evidenceGeneration(candidate)].join('\n');
+  }
+
+  function cloneCandidate(candidate) {
+    return Object.assign({}, candidate, {
+      headers: Object.assign({}, candidate && candidate.headers || {}),
+      browserHandoff: candidate && candidate.browserHandoff ? JSON.parse(JSON.stringify(candidate.browserHandoff)) : undefined,
+      variantUrls: [...(candidate && candidate.variantUrls || [])],
+      trackUrls: [...(candidate && candidate.trackUrls || [])],
+      variantInfo: (candidate && candidate.variantInfo || []).map(item => Object.assign({}, item)),
+      trackInfo: (candidate && candidate.trackInfo || []).map(item => Object.assign({}, item)),
+    });
+  }
+
   function mergeObjectArray(left, right, keyFn, limit) {
     const merged = new Map();
     for (const item of [...(left || []), ...(right || [])]) {
@@ -48,23 +77,46 @@
       const key = Number(tabId);
       const evidence = this.evidence.get(key) || new Map();
       const exact = CORE.exactRequestUrl(candidate.url);
-      if (exact) evidence.set(exact, Object.assign({}, candidate, { at: Date.now() }));
+      const compositeKey = evidenceKey(candidate, exact);
+      // XAR10: privileged evidence is keyed by exact URL + requestId + frame + generation,
+      // never by a single exact-URL slot that a parallel same-URL request can overwrite.
+      if (exact && compositeKey) evidence.set(compositeKey, Object.assign({}, candidate, {
+        exactRequestUrl: exact,
+        evidenceKey: compositeKey,
+        at: Date.now(),
+      }));
       while (evidence.size > MAX_EVIDENCE_PER_TAB) evidence.delete(evidence.keys().next().value);
       this.evidence.set(key, evidence);
     }
 
-    findEvidence(tabId, rawUrl, frameId = null, maxAgeMs = 45 * 1000) {
+    findEvidence(tabId, rawUrl, frameOrOptions = null, maxAgeMs = 45 * 1000) {
       const key = Number(tabId);
       this.trim(key);
       const exact = CORE.exactRequestUrl(CORE.resolveUrl(rawUrl, ""));
-      const candidate = (this.evidence.get(key) || new Map()).get(exact);
-      if (!candidate || Date.now() - Number(candidate.at || 0) > maxAgeMs) return null;
+      const options = frameOrOptions && typeof frameOrOptions === "object" ? frameOrOptions : { frameId: frameOrOptions };
+      const wantedFrame = options.frameId == null ? null : Number(options.frameId);
+      const wantedRequestId = String(options.requestId || "").trim();
+      const now = Date.now();
+      const matches = [...((this.evidence.get(key) || new Map()).values())].filter(candidate => {
+        if (candidate.exactRequestUrl !== exact) return false;
+        if (now - Number(candidate.at || 0) > maxAgeMs) return false;
+        if (wantedRequestId && String(candidate.requestId || "") !== wantedRequestId) return false;
+        if (wantedFrame != null && Number.isFinite(wantedFrame) && evidenceFrameId(candidate) !== wantedFrame) return false;
+        return true;
+      }).sort((a, b) => evidenceGeneration(b) - evidenceGeneration(a) || Number(b.at || 0) - Number(a.at || 0));
+      return matches.length ? cloneCandidate(matches[0]) : null;
+    }
+
+    clearDocumentEvidence(tabId, frameId = null) {
+      const key = Number(tabId);
+      const evidence = this.evidence.get(key);
+      if (!evidence) return;
       const wantedFrame = frameId == null ? null : Number(frameId);
-      if (wantedFrame != null && Number.isFinite(wantedFrame) && Number(candidate.frameId || 0) !== wantedFrame) return null;
-      return Object.assign({}, candidate, {
-        headers: Object.assign({}, candidate.headers || {}),
-        browserHandoff: candidate.browserHandoff ? JSON.parse(JSON.stringify(candidate.browserHandoff)) : undefined,
-      });
+      for (const [composite, candidate] of evidence) {
+        if (wantedFrame == null || !Number.isFinite(wantedFrame) || evidenceFrameId(candidate) === wantedFrame) {
+          evidence.delete(composite);
+        }
+      }
     }
 
     absorb(tabId, rootId, childId) {
@@ -139,9 +191,19 @@
       const previousConfidence = Number(previous.confidence || 0);
       const mergedQuality = candidate.quality === "strong" || previous.quality === "strong" ? "strong" : (candidate.quality || previous.quality || "possible");
       const sameRequest = previous.requestFingerprint === requestFingerprint;
+      // XAR10: a signed URL candidate with a new request fingerprint carries a new executable
+      // exact URL and header proof. Do not keep the previous signed exact URL while adopting
+      // newer request headers/fingerprints.
+      const exactRequestUrl = sameRequest ? (previous.url || url) : url;
+      const mergedHeaders = sameRequest
+        ? Object.assign({}, previous.headers || {}, candidate.headers || {})
+        : Object.assign({}, candidate.headers || {});
+      const mergedHandoff = sameRequest
+        ? Object.assign({}, previous.browserHandoff || {}, candidate.browserHandoff || {})
+        : Object.assign({}, candidate.browserHandoff || {});
       const merged = {
-        url: hls && hls.master ? url : (previous.url || url),
-        canonicalUrl: CORE.logicalMediaUrl(hls && hls.master ? url : (previous.canonicalUrl || previous.url || url)),
+        url: hls && hls.master ? url : exactRequestUrl,
+        canonicalUrl: CORE.logicalMediaUrl(hls && hls.master ? url : (previous.canonicalUrl || exactRequestUrl)),
         logicalMediaId: stableMediaId,
         contentType: candidate.contentType || previous.contentType || "",
         contentLength: Math.max(Number(candidate.contentLength || 0), Number(previous.contentLength || 0)),
@@ -158,8 +220,8 @@
         requestId: candidate.requestId || previous.requestId || "",
         requestFingerprint,
         requestGeneration: Number(candidate.requestGeneration || previous.requestGeneration || 0),
-        headers: Object.assign({}, previous.headers || {}, candidate.headers || {}),
-        browserHandoff: Object.assign({}, previous.browserHandoff || {}, candidate.browserHandoff || {}),
+        headers: mergedHeaders,
+        browserHandoff: mergedHandoff,
         stableMediaId,
         requestEvidenceCount: Math.min(64, Number(previous.requestEvidenceCount || 0) + (sameRequest ? 0 : 1)),
         observationCount: Math.min(1000000, Number(previous.observationCount || 0) + 1),
@@ -203,7 +265,7 @@
       const now = Date.now();
       for (const [identity, candidate] of bucket) if (now - Number(candidate.at || 0) > this.ttlMs) bucket.delete(identity);
       const evidence = this.evidence.get(numericTabId);
-      if (evidence) for (const [url, candidate] of evidence) if (now - Number(candidate.at || 0) > this.ttlMs) evidence.delete(url);
+      if (evidence) for (const [composite, candidate] of evidence) if (now - Number(candidate.at || 0) > this.ttlMs) evidence.delete(composite);
       if (bucket.size > this.maxPerTab) {
         const sorted = [...bucket.values()].sort((a, b) => CORE.rankCandidate(b) - CORE.rankCandidate(a));
         bucket.clear();
