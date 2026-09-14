@@ -19,6 +19,9 @@ import kotlinx.coroutines.withContext
 
 /** Exported intake boundary for browser, share-sheet, and generic VIEW handoffs.
  * Direct browser media captures route immediately into the internal Media intake path; generic
+ * XAR10 compatibility note: legacy direct-capture constants ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT
+ * and EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI remain internal MainActivity-only handoff names; this
+ * exported boundary does not parse or trust keyless direct capture proof directly.
  * external commands and legacy encrypted capture envelopes retain their existing review boundary.
  */
 open class ExternalHandoffReviewActivity : ComponentActivity() {

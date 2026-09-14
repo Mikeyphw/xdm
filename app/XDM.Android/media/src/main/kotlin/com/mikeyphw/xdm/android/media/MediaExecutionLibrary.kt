@@ -331,7 +331,7 @@ class MediaExecutionLibraryPlanner(
                     kind = variant.kind,
                     url = variant.url,
                     mimeType = variant.mimeType,
-                    headers = plan.sessionHandoff.requestHeaders(),
+                    headers = MediaExecutionSecurityPolicy.scopedHeadersFor(variant.url, plan.primaryUrl, plan.sessionHandoff.requestHeaders()),
                     expiresAtEpochMs = variant.expiresAtEpochMs,
                 )
             }

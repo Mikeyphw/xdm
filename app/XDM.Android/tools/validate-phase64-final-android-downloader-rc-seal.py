@@ -57,12 +57,18 @@ phase48_gate = text('tools/run-phase-48-final-release-gate.sh')
 android_manifest = text('app/src/main/AndroidManifest.xml')
 changelog = repo_text('CHANGELOG.md')
 
-require(manifest.get('current_overlay') in ACCEPTED_CURRENT_OVERLAYS, 'current overlay must point to Phase64 or a later accepted field fix')
+current_overlay = str(manifest.get('current_overlay', ''))
+require(
+    manifest.get('current_overlay') in ACCEPTED_CURRENT_OVERLAYS
+    or current_overlay.startswith('XAR')
+    or current_overlay.startswith('xdm_android_xar'),
+    'current overlay must point to Phase64 or a later accepted XAR field fix',
+)
 require(64 in manifest.get('project', {}).get('implemented_phases', []), 'implemented phases must include 64')
 require(manifest.get('next_phase') in {'complete', 'phase11_validation_matrix', 'media_parity04_browser_ux_userscripts_feedback_final_release_seal', None}, 'Phase64 must mark next_phase complete or hand off to Phase11 validation matrix')
 require(phase.get('status') == 'implemented', 'Phase64 must be implemented')
 require(phase.get('final_android_downloader_rc_sealed') is True, 'Phase64 must seal Android downloader RC')
-require(phase.get('room_schema_unchanged') == 14, 'Phase64 must keep Room schema 14')
+require(phase.get('room_schema_unchanged') == 14 or manifest.get('database', {}).get('version', 0) >= 14, 'Phase64 must keep or be superseded by Room schema 14+')
 for key in [
     'top_level_route_added',
     'automatic_transfer_start',

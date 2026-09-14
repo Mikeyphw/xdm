@@ -288,15 +288,15 @@ object TermuxShellTemplates {
         appendLine("START_TICKS=${'$'}(sed -n 's/^processStartTicks=//p' \"${'$'}OWNER\" | head -n1)")
         appendLine("SETSID=${'$'}(sed -n 's/^setsid=//p' \"${'$'}OWNER\" | head -n1)")
         appendLine("EXIT_CODE=${'$'}(sed -n 's/^exitCode=//p' \"${'$'}OWNER\" | head -n1)")
-        appendLine("PAYLOAD=${'$'}(sed -n 's/^payload=//p' \"${'$'}OWNER\" | head -n1)")
+        appendLine("WRAPPER_PID=${'$'}(sed -n 's/^wrapperPid=//p' \"${'$'}OWNER\" | head -n1)")
         appendLine("test \"${'$'}JOB\" = \"${'$'}EXPECTED_JOB\" && test \"${'$'}TOKEN\" = \"${'$'}EXPECTED_TOKEN\" || { printf 'XDM_CONTROL\\tdenied\\n'; exit 3; }")
         appendLine("if [ \"${'$'}STATE\" = finished ]; then printf 'XDM_CONTROL\\tprobe\\tfinished\\texit=%s\\n' \"${'$'}{EXIT_CODE:-1}\"; exit 0; fi")
         appendLine("case \"${'$'}PID\" in ''|*[!0-9]*) printf 'XDM_CONTROL\\tinvalid_pid\\n'; exit 4 ;; esac")
         appendLine("if ! test -d /proc/\"${'$'}PID\"; then printf 'XDM_CONTROL\\tprobe\\tstopped_without_result\\n'; exit 76; fi")
         appendLine("CURRENT_TICKS=${'$'}(awk '{print ${'$'}22}' /proc/\"${'$'}PID\"/stat 2>/dev/null || true)")
         appendLine("test -n \"${'$'}START_TICKS\" && test \"${'$'}CURRENT_TICKS\" = \"${'$'}START_TICKS\" || { printf 'XDM_CONTROL\\towner_mismatch\\tpid_reused\\n'; exit 3; }")
-        appendLine("CMDLINE=${'$'}(tr '\\0' ' ' < /proc/\"${'$'}PID\"/cmdline 2>/dev/null || true)")
-        appendLine("case \"${'$'}CMDLINE\" in *\"${'$'}PAYLOAD\"*) : ;; *) printf 'XDM_CONTROL\\towner_mismatch\\tcmdline\\n'; exit 3 ;; esac")
+        appendLine("PPID_NOW=${'$'}(sed -n 's/^PPid:[[:space:]]*//p' /proc/\"${'$'}PID\"/status 2>/dev/null | head -n1)")
+        appendLine("if [ \"${'$'}SETSID\" = 1 ] && [ \"${'$'}GROUP\" = \"${'$'}PID\" ]; then :; elif [ -n \"${'$'}WRAPPER_PID\" ] && [ \"${'$'}PPID_NOW\" = \"${'$'}WRAPPER_PID\" ]; then :; else printf 'XDM_CONTROL\\towner_mismatch\\tprocess_tree\\n'; exit 3; fi")
         val signal = when (command.action) {
             TermuxProcessControlAction.Pause -> "STOP"
             TermuxProcessControlAction.Resume -> "CONT"

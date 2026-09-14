@@ -89,7 +89,7 @@ for needle, label in [
     require(worker, needle, label)
 
 for needle, label in [
-    ("version = 24", "Room schema 24"),
+    ("version = 25", "Room schema 25"),
     ("NativeHlsJobEntity::class", "native HLS job entity registration"),
     ("NativeHlsPartEntity::class", "native HLS part entity registration"),
     ("abstract fun nativeHlsDao(): NativeHlsDao", "DAO registration"),
@@ -120,8 +120,8 @@ for needle, label in [
 ]:
     require(migrations, needle, label)
 require(app, "Migrations.Migration23To24", "migration registration")
-if not (ROOT / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/24.json").exists():
-    raise AssertionError("Missing exported Room schema 24.json")
+if not (ROOT / "persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/25.json").exists():
+    raise AssertionError("Missing exported Room schema 25.json")
 
 for path in [
     "media/src/test/kotlin/com/mikeyphw/xdm/android/media/NativeHlsExecutionEngineTest.kt",

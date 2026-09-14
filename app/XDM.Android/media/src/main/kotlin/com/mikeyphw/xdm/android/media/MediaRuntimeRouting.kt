@@ -113,13 +113,7 @@ object MediaFfmpegRuntimeRoutingPolicy {
             add(spec.sourceUrl)
             inputs.forEach { add(it.url) }
         }.filter(String::isNotBlank)
-        return urls.isNotEmpty() && urls.all { url ->
-            val normalized = ExternalUrlPolicy.normalizedUrl(url) ?: return@all false
-            val scheme = normalized.substringBefore(':').lowercase()
-            scheme in setOf("http", "https", "ftp") &&
-                !ExternalUrlPolicy.hasCredentialBearingQuery(normalized) &&
-                !ExternalUrlPolicy.requiresPrivateNetworkApproval(normalized)
-        }
+        return MediaExecutionSecurityPolicy.termuxNetworkEligible(urls, spec.requestHeaders)
     }
 
     private fun termuxDecision(

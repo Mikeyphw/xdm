@@ -35,6 +35,9 @@ enum class NativeHlsUnsupportedReason {
     SeparateRenditionMuxRequired,
     EncryptedInitMap,
     MissingSegments,
+    MissingKeyUri,
+    InvalidAesIv,
+    MissingExtinf,
     InvalidPlaylist,
 }
 
@@ -92,10 +95,15 @@ data class NativeHlsPart(
     val state: NativeHlsPartState = NativeHlsPartState.Pending,
     val bytesReceived: Long = 0L,
     val sha256Hex: String? = null,
+    val gap: Boolean = false,
 ) {
     val effectiveIvHex: String?
         get() = key?.ivHex ?: key?.takeIf { it.isAes128 }?.let { implicitIvHex(mediaSequence) }
-    val complete: Boolean get() = state == NativeHlsPartState.Complete
+    /**
+     * XAR12 treats EXT-X-GAP as a successful skipped unit. This keeps progress and resume
+     * monotonic without trying to fetch a segment that the playlist explicitly marks absent.
+     */
+    val complete: Boolean get() = state == NativeHlsPartState.Complete || state == NativeHlsPartState.Skipped
 }
 
 data class NativeHlsManifestPlan(
@@ -223,6 +231,9 @@ class NativeHlsExecutionEngine {
         if (keys.any { it.method.equals("SAMPLE-AES", true) }) reasons += NativeHlsUnsupportedReason.SampleAes
         if (keys.any { it.isProtected }) reasons += NativeHlsUnsupportedReason.DrmKeyFormat
         if (keys.any { !it.method.equals("NONE", true) && !it.isAes128 && !it.isProtected }) reasons += NativeHlsUnsupportedReason.UnknownEncryption
+        if (keys.any { it.isAes128 && it.uri.isNullOrBlank() }) reasons += NativeHlsUnsupportedReason.MissingKeyUri
+        if (keys.any { it.isAes128 && it.ivHex != null && !isValidAes128IvHex(it.ivHex) }) reasons += NativeHlsUnsupportedReason.InvalidAesIv
+        if (hasSegmentWithoutExtinf(lines)) reasons += NativeHlsUnsupportedReason.MissingExtinf
         // EXT-X-KEY also applies to EXT-X-MAP. The current executor decrypts media parts but does
         // not persist/decrypt an encrypted init-map key/IV separately, so fail closed to fallback
         // instead of producing a corrupt fMP4 artifact.
@@ -276,11 +287,13 @@ class NativeHlsExecutionEngine {
     fun parseMediaPlaylist(capture: MediaCaptureRecord, playlistText: String): List<NativeHlsPart> {
         val baseUrl = capture.sourceUrl
         val parts = mutableListOf<NativeHlsPart>()
-        var pendingDurationMs = 0L
+        var pendingDurationMs: Long? = null
+        var pendingGap = false
         var currentKey: NativeHlsKey? = null
         var currentMap: NativeHlsMap? = null
-        var pendingByteRange: NativeHlsByteRange? = null
-        var byteRangeOffset: Long = 0L
+        var activeInitMapIdentity: String? = null
+        var pendingByteRangeRaw: String? = null
+        val byteRangeOffsetsByResource = mutableMapOf<String, Long>()
         var sequence = 0L
         var mediaSequenceBase = 0L
         var discontinuity = 0
@@ -290,35 +303,56 @@ class NativeHlsExecutionEngine {
                     mediaSequenceBase = line.substringAfter(':', "0").trim().toLongOrNull() ?: 0L
                     sequence = 0L
                 }
+                line.startsWith("#EXT-X-DISCONTINUITY-SEQUENCE", true) -> {
+                    discontinuity = line.substringAfter(':', "0").trim().toIntOrNull() ?: 0
+                }
                 line.startsWith("#EXTINF", true) -> {
                     val seconds = line.substringAfter(':', "0").substringBefore(',').trim().toDoubleOrNull() ?: 0.0
                     pendingDurationMs = (seconds * 1000.0).roundToInt().toLong().coerceAtLeast(1L)
                 }
+                line.startsWith("#EXT-X-GAP", true) -> pendingGap = true
                 line.startsWith("#EXT-X-KEY", true) -> currentKey = parseKey(baseUrl, line).takeUnless { it.method.equals("NONE", true) }
                 line.startsWith("#EXT-X-MAP", true) -> currentMap = parseMap(baseUrl, line)
-                line.startsWith("#EXT-X-BYTERANGE", true) -> {
-                    pendingByteRange = parseByteRange(line.substringAfter(':', ""), byteRangeOffset)
-                    pendingByteRange?.let { byteRangeOffset = (it.offset ?: byteRangeOffset) + it.length }
+                line.startsWith("#EXT-X-BYTERANGE", true) -> pendingByteRangeRaw = line.substringAfter(':', "")
+                line.startsWith("#EXT-X-DISCONTINUITY", true) -> {
+                    discontinuity++
+                    activeInitMapIdentity = null
                 }
-                line.startsWith("#EXT-X-DISCONTINUITY", true) -> discontinuity++
                 line.startsWith("#") -> Unit
                 else -> {
+                    val durationMs = pendingDurationMs ?: run {
+                        pendingGap = false
+                        pendingByteRangeRaw = null
+                        return@forEach
+                    }
+                    val resolvedUrl = resolveUrl(baseUrl, line)
+                    val priorOffset = byteRangeOffsetsByResource[resolvedUrl] ?: 0L
+                    val byteRange = pendingByteRangeRaw?.let { parseByteRange(it, priorOffset) }
+                    byteRange?.let { range -> byteRangeOffsetsByResource[resolvedUrl] = (range.offset ?: priorOffset) + range.length }
+                    val mapIdentity = mapIdentity(currentMap)
+                    val mapForPart = currentMap?.takeIf { mapIdentity != null && mapIdentity != activeInitMapIdentity }
+                    if (mapForPart != null) activeInitMapIdentity = mapIdentity
                     val mediaSequence = mediaSequenceBase + sequence
+                    val gap = pendingGap
                     val part = NativeHlsPart(
-                        id = "${capture.id}:hls-part:${parts.size}",
+                        id = "${capture.id}:hls-part:$discontinuity:$mediaSequence:${parts.size}",
                         index = parts.size,
-                        url = resolveUrl(baseUrl, line),
-                        durationMs = pendingDurationMs.takeIf { it > 0L } ?: 1L,
+                        url = resolvedUrl,
+                        durationMs = durationMs,
                         mediaSequence = mediaSequence,
                         discontinuitySequence = discontinuity,
-                        byteRange = pendingByteRange,
-                        initMap = currentMap,
+                        byteRange = byteRange,
+                        initMap = mapForPart,
                         key = currentKey,
+                        expectedBytes = if (gap) 0L else byteRange?.length,
+                        state = if (gap) NativeHlsPartState.Skipped else NativeHlsPartState.Pending,
+                        gap = gap,
                     )
                     parts += part
                     sequence++
-                    pendingDurationMs = 0L
-                    pendingByteRange = null
+                    pendingDurationMs = null
+                    pendingByteRangeRaw = null
+                    pendingGap = false
                 }
             }
         }
@@ -368,7 +402,9 @@ class NativeHlsExecutionEngine {
     }
 
     fun storagePreflight(plan: NativeHlsManifestPlan, availableBytes: Long?, expectedOutputBytes: Long? = null): NativeHlsStoragePlan {
-        val downloadedEstimate = plan.parts.mapNotNull { it.expectedBytes }.sum().takeIf { it > 0L }
+        val knownPartBytes = plan.parts.mapNotNull { part -> part.expectedBytes ?: part.byteRange?.length }.sum().takeIf { it > 0L }
+        val knownInitMapBytes = plan.parts.mapNotNull { it.initMap?.byteRange?.length }.sum().takeIf { it > 0L }
+        val downloadedEstimate = listOfNotNull(knownPartBytes, knownInitMapBytes).sum().takeIf { it > 0L }
             ?: expectedOutputBytes
         val overhead = downloadedEstimate?.let { (it / 10L).coerceAtLeast(16L * 1024L * 1024L) }
         val required = when {
@@ -422,9 +458,10 @@ class NativeHlsExecutionEngine {
         val textPrefix = artifactBytes.copyOfRange(0, artifactBytes.size.coerceAtMost(512)).toString(Charsets.UTF_8)
         val containsManifest = textPrefix.contains("#EXTM3U") || textPrefix.contains("#EXT-X-STREAM-INF") || textPrefix.contains("#EXTINF")
         val html = textPrefix.contains("<html", true) || textPrefix.contains("<!doctype html", true) || textPrefix.contains("access denied", true)
+        val executableParts = plan.parts.count { !it.gap }
         val expectedMin = when {
-            plan.parts.size > 1 -> plan.parts.size.toLong() * 188L
-            plan.parts.isNotEmpty() -> 188L
+            executableParts > 1 -> executableParts.toLong() * 188L
+            executableParts == 1 -> 188L
             else -> 1024L
         }
         val sha = sha256Bytes(artifactBytes)
@@ -438,7 +475,7 @@ class NativeHlsExecutionEngine {
             !hashMatches -> "Artifact hash does not match the expected completed generation."
             else -> "Completed artifact passed structural/native-HLS verification."
         }
-        return NativeHlsCompletionEvidence(valid, artifactBytes.size.toLong(), expectedMin, containsManifest, html, plan.parts.size, sha, message)
+        return NativeHlsCompletionEvidence(valid, artifactBytes.size.toLong(), expectedMin, containsManifest, html, executableParts, sha, message)
     }
 
     private fun unsupportedPlan(
@@ -490,6 +527,27 @@ class NativeHlsExecutionEngine {
         val requireAudio = selected.any { it.kind == MediaVariantKind.Audio } ||
             mime.startsWith("audio/") || audioCodecHints.any(codecText::contains)
         return requireVideo to requireAudio
+    }
+
+    private fun hasSegmentWithoutExtinf(lines: List<String>): Boolean {
+        var hasDuration = false
+        lines.forEach { line ->
+            when {
+                line.startsWith("#EXTINF", true) -> hasDuration = true
+                line.startsWith("#") -> Unit
+                hasDuration -> hasDuration = false
+                else -> return true
+            }
+        }
+        return false
+    }
+
+    fun isValidAes128IvHex(ivHex: String): Boolean = ivHex.removePrefix("0x").removePrefix("0X")
+        .matches(Regex("^[0-9a-fA-F]{32}$"))
+
+    private fun mapIdentity(map: NativeHlsMap?): String? = map?.let { value ->
+        val range = value.byteRange?.let { byteRange -> "${byteRange.offset ?: 0L}:${byteRange.length}" } ?: "full"
+        "${value.uri}#$range"
     }
 
     private fun parseKey(baseUrl: String, line: String): NativeHlsKey {

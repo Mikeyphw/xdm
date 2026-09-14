@@ -89,13 +89,13 @@ object ReleaseInstallReadinessGate {
                     ),
                 )
             }
-            if (schemaVersion != 24) {
+            if (schemaVersion != 25) {
                 add(
                     ReleaseReadinessCheck(
                         id = "database.schema",
                         severity = ReleaseReadinessSeverity.Blocking,
                         title = "Unexpected schema migration",
-                        detail = "Install/update readiness must report the reviewed Room schema v24 after the reviewed migration chain through manifest hardening.",
+                        detail = "Install/update readiness must report the reviewed Room schema v25 after the reviewed migration chain through manifest hardening.",
                     ),
                 )
             }

@@ -40,7 +40,13 @@ phase5_validator = read("tools/validate-browser-removal-phase-5.py")
 downloader_8e_validator = read("tools/validate-downloader-experience-phase-8e.py")
 android_manifest = read("app/src/main/AndroidManifest.xml")
 
-require(manifest.get("current_overlay") in ({OVERLAY} | LATER_OVERLAYS), "current overlay must point to Phase61 or a later accepted overlay")
+current_overlay = str(manifest.get("current_overlay", ""))
+require(
+    manifest.get("current_overlay") in ({OVERLAY} | LATER_OVERLAYS)
+    or current_overlay.startswith("XAR")
+    or current_overlay.startswith("xdm_android_xar"),
+    "current overlay must point to Phase61 or a later accepted XAR overlay",
+)
 require(61 in manifest.get("project", {}).get("implemented_phases", []), "implemented phases must include 61")
 require(manifest.get("next_phase") in {"media_parity04_browser_ux_userscripts_feedback_final_release_seal", "complete", "phase63_release_readiness_support_bundle_seal", 'phase64_final_android_downloader_rc_seal', 'phase11_validation_matrix', None}, "next phase should mark the field-fix arc complete or point to Phase63 support-bundle seal")
 require(phase.get("room_schema_unchanged") == 14 or manifest.get('database', {}).get('version', 0) >= 17, "Phase61 validator harmony must survive current schema 17 or newer")

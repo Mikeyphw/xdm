@@ -465,6 +465,16 @@ val verifyXar11ManifestResolution = tasks.register<Exec>("verifyXar11ManifestRes
     trackStaticValidation("xar11-manifest-resolution")
 }
 
+
+val verifyXar12MediaExecutionSeal = tasks.register<Exec>("verifyXar12MediaExecutionSeal") {
+    group = "verification"
+    description = "Verify XAR12 Native HLS, embedded FFmpeg, Termux execution, and S12 coverage contracts."
+    dependsOn(verifyXar11ManifestResolution)
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar12-media-execution-seal.py")
+    trackStaticValidation("xar12-media-execution-seal")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -524,6 +534,8 @@ val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGat
         verifyXar08Aria2Ownership,
         verifyXar09SchedulerRecovery,
         verifyXar10BrowserCaptureEvidence,
+        verifyXar11ManifestResolution,
+        verifyXar12MediaExecutionSeal,
         verifyFfmpeg04FullReleaseSeal,
         verifyFfmpegRoadmapPostSealHotfix,
         verifyGradleTaskGraphOptimization,

@@ -122,9 +122,16 @@ object FfmpegCommandCompiler {
         return CompiledFfmpegCommand(
             binary = FfmpegBinary.Ffmpeg,
             arguments = arguments,
+            timeoutMs = ffmpegWallClockTimeoutMs(expectedDurationMs),
             progressEnabled = true,
             expectedDurationMs = expectedDurationMs,
         )
+    }
+
+    private fun ffmpegWallClockTimeoutMs(expectedDurationMs: Long?): Long {
+        val defaultTimeout = 10L * 60L * 1000L
+        val durationScaled = expectedDurationMs?.takeIf { it > 0L }?.let { it * 3L + 2L * 60L * 1000L }
+        return (durationScaled ?: defaultTimeout).coerceIn(5L * 60L * 1000L, 2L * 60L * 60L * 1000L)
     }
 
     private fun MutableList<String>.addInput(input: FfmpegInput) {

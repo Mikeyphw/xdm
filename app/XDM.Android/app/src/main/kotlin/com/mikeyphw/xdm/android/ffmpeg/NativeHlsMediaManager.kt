@@ -40,6 +40,7 @@ import com.mikeyphw.xdm.android.storage.DestinationRequest
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
 import com.mikeyphw.xdm.android.transfer.DownloadRequestKind
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -51,6 +52,8 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +70,7 @@ import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.ResponseBody
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -96,6 +100,7 @@ class NativeHlsMediaManager(
     private enum class RequestedControl { Pause, Cancel }
     private enum class ControlCommand { Pause, Resume, Cancel }
     private data class ControlIntent(val sequence: Long, val command: ControlCommand)
+    private data class RunningHttpResponse(val call: Call, val response: Response)
 
     private val appContext = context.applicationContext
     private val dao = database.nativeHlsDao()
@@ -353,10 +358,10 @@ class NativeHlsMediaManager(
             }
 
             val completeRows = dao.partsForJob(jobId)
-            require(completeRows.size == plan.parts.size && completeRows.all { it.state == NativeHlsPartState.Complete.name }) {
-                "Native HLS finalization refused because not every part is durably complete."
+            require(completeRows.size == plan.parts.size && completeRows.all { it.state == NativeHlsPartState.Complete.name || it.state == NativeHlsPartState.Skipped.name }) {
+                "Native HLS finalization refused because not every part is durably complete or explicitly skipped."
             }
-            val segmentFiles = plan.parts.indices.map { partFile(tempDir, it) }
+            val segmentFiles = plan.parts.filterNot { it.gap }.map { partFile(tempDir, it.index) }
             require(segmentFiles.all { it.isFile && it.length() > 0L }) { "A durably complete HLS part file is missing." }
 
             val outputRequest = DestinationRequest(
@@ -386,7 +391,8 @@ class NativeHlsMediaManager(
 
             persistStage(dao.findJob(jobId) ?: original, NativeHlsExecutionStage.Verifying, NativeHlsFinalizationState.Verifying, "Embedded FFprobe verification passed; checking final artifact integrity.")
             val staged = prepared.artifacts.stagingFile
-            require(staged.isFile && staged.length() >= plan.parts.size.toLong().coerceAtLeast(1L) * 188L) { "Final HLS artifact is implausibly small." }
+            val executablePartCount = plan.parts.count { !it.gap }.toLong().coerceAtLeast(1L)
+            require(staged.isFile && staged.length() >= executablePartCount * 188L) { "Final HLS artifact is implausibly small." }
             val prefix = staged.inputStream().use { input -> ByteArray(512).let { buffer -> buffer.copyOf(input.read(buffer).coerceAtLeast(0)) } }.toString(Charsets.UTF_8)
             require(!prefix.contains("#EXTM3U") && !prefix.contains("<html", true) && !prefix.contains("<!doctype html", true)) { "Finalized artifact looks like manifest/error text rather than media." }
             val digest = sha256File(staged)
@@ -434,19 +440,23 @@ class NativeHlsMediaManager(
         } catch (cancelled: CancellationException) {
             withContext(NonCancellable) {
                 val row = dao.findJob(jobId) ?: original
-                prepared?.deleteArtifacts()
-                when (requestedControl.remove(row.downloadId)) {
-                    RequestedControl.Cancel -> markCancelled(row)
-                    RequestedControl.Pause -> persistStage(row, NativeHlsExecutionStage.Paused, NativeHlsFinalizationState.None, "Paused; completed parts are preserved.")
-                    null -> persistFailure(row, "Native HLS execution was interrupted; durable recovery is available.")
+                if (!reconcileCommittedPublication(row)) {
+                    prepared?.deleteArtifacts()
+                    when (requestedControl.remove(row.downloadId)) {
+                        RequestedControl.Cancel -> markCancelled(row)
+                        RequestedControl.Pause -> persistStage(row, NativeHlsExecutionStage.Paused, NativeHlsFinalizationState.None, "Paused; completed parts are preserved.")
+                        null -> persistFailure(row, "Native HLS execution was interrupted; durable recovery is available.")
+                    }
                 }
             }
             throw cancelled
         } catch (error: Throwable) {
             withContext(NonCancellable) {
                 val row = dao.findJob(jobId) ?: original
-                prepared?.deleteArtifacts()
-                persistFailure(row, error.message ?: error::class.java.simpleName)
+                if (!reconcileCommittedPublication(row)) {
+                    prepared?.deleteArtifacts()
+                    persistFailure(row, error.message ?: error::class.java.simpleName)
+                }
             }
         }
     }
@@ -459,16 +469,24 @@ class NativeHlsMediaManager(
         handoff: MediaRequestHandoff?,
         priorRetries: Int,
     ) {
+        if (part.gap || part.state == NativeHlsPartState.Skipped) {
+            target.delete()
+            dao.updatePart(partEntityId(jobId, part.index), NativeHlsPartState.Skipped.name, 0L, 0L, null, priorRetries, null, System.currentTimeMillis())
+            return
+        }
         var lastError: Throwable? = null
         for (attempt in 0 until 3) {
             try {
                 val now = System.currentTimeMillis()
                 dao.updatePart(partEntityId(jobId, part.index), NativeHlsPartState.Downloading.name, 0L, part.expectedBytes, null, priorRetries + attempt, null, now)
-                val mapBytes = part.initMap?.let { map -> fetchBytes(map.uri, headers, handoff, map.byteRange?.headerValue) } ?: ByteArray(0)
-                var media = fetchBytes(part.url, headers, handoff, part.byteRange?.headerValue)
+                val mapBytes = part.initMap?.let { map ->
+                    fetchBytes(map.uri, headers, handoff, map.byteRange?.headerValue, map.byteRange?.length ?: MAX_HLS_INIT_MAP_BYTES)
+                } ?: ByteArray(0)
+                val mediaLimit = part.byteRange?.length ?: MAX_HLS_SEGMENT_BYTES
+                var media = fetchBytes(part.url, headers, handoff, part.byteRange?.headerValue, mediaLimit)
                 part.key?.takeIf { it.isAes128 }?.let { key ->
                     val keyUrl = requireNotNull(key.uri) { "AES-128 HLS key URL is missing" }
-                    val keyBytes = fetchBytes(keyUrl, headers, handoff, null)
+                    val keyBytes = fetchBytes(keyUrl, headers, handoff, null, MAX_HLS_KEY_BYTES)
                     require(keyBytes.size == 16) { "AES-128 HLS key must be exactly 16 bytes" }
                     media = decryptAes128(media, keyBytes, requireNotNull(part.effectiveIvHex) { "AES-128 HLS IV is missing" })
                 }
@@ -497,16 +515,17 @@ class NativeHlsMediaManager(
     }
 
     private suspend fun fetchText(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?): String =
-        fetchBytes(url, headers, handoff, null).toString(Charsets.UTF_8)
+        fetchBytes(url, headers, handoff, null, MAX_HLS_MANIFEST_BYTES).toString(Charsets.UTF_8)
 
-    private suspend fun fetchBytes(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?, range: String?): ByteArray {
+    private suspend fun fetchBytes(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?, range: String?, maxBytes: Long): ByteArray {
         var current = url
         repeat(6) { redirectCount ->
             validateRequest(current, headers, handoff, range)
             val builder = Request.Builder().url(current)
             filteredHeaders(current, headers, handoff).forEach { (name, value) -> builder.header(name, value) }
             range?.let { builder.header("Range", it) }
-            val response = executeCancellable(builder.build())
+            val runningResponse = executeCancellable(builder.build())
+            val response = runningResponse.response
             try {
                 if (response.code in 300..399) {
                     require(redirectCount < 5) { "Too many HLS redirects" }
@@ -516,9 +535,14 @@ class NativeHlsMediaManager(
                     current = next
                     return@repeat
                 }
-                if (range != null) require(response.code == 206) { "HLS byte-range request expected HTTP 206, got ${response.code}" }
-                else require(response.isSuccessful) { "HLS request failed with HTTP ${response.code}" }
-                return response.body?.bytes() ?: error("HLS response body is empty")
+                if (range != null) {
+                    require(response.code == 206) { "HLS byte-range request expected HTTP 206, got ${response.code}" }
+                    validateContentRange(response.header("Content-Range"), requireNotNull(parseRangeHeader(range)), response.body?.contentLength())
+                } else {
+                    require(response.isSuccessful) { "HLS request failed with HTTP ${response.code}" }
+                }
+                val body = response.body ?: error("HLS response body is empty")
+                return readBoundedBody(body, runningResponse.call, maxBytes)
             } finally {
                 response.close()
             }
@@ -526,7 +550,36 @@ class NativeHlsMediaManager(
         error("Too many HLS redirects")
     }
 
-    private suspend fun executeCancellable(request: Request): Response = suspendCancellableCoroutine { continuation ->
+    private suspend fun readBoundedBody(body: ResponseBody, call: Call, maxBytes: Long): ByteArray {
+        require(maxBytes in 1L..Int.MAX_VALUE.toLong()) { "Invalid HLS response bound: $maxBytes" }
+        val context = currentCoroutineContext()
+        val cancellationHandle = context[Job]?.invokeOnCompletion { cause ->
+            if (cause is CancellationException) call.cancel()
+        }
+        return try {
+            withContext(Dispatchers.IO) {
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(DEFAULT_HLS_READ_BUFFER_BYTES)
+                var total = 0L
+                body.byteStream().use { input ->
+                    while (true) {
+                        context.ensureActive()
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        if (read == 0) continue
+                        total += read.toLong()
+                        require(total <= maxBytes) { "HLS response exceeded bounded cap of $maxBytes bytes" }
+                        output.write(buffer, 0, read)
+                    }
+                }
+                output.toByteArray()
+            }
+        } finally {
+            cancellationHandle?.dispose()
+        }
+    }
+
+    private suspend fun executeCancellable(request: Request): RunningHttpResponse = suspendCancellableCoroutine { continuation ->
         val call = client.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
@@ -539,7 +592,7 @@ class NativeHlsMediaManager(
                     response.close()
                     return
                 }
-                continuation.resume(response)
+                continuation.resume(RunningHttpResponse(call, response))
             }
         })
     }
@@ -565,9 +618,10 @@ class NativeHlsMediaManager(
     }
 
     private fun filteredHeaders(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?): Map<String, String> {
-        val sameHost = ExternalUrlPolicy.originHost(url) != null && ExternalUrlPolicy.originHost(url) == handoff?.boundHost
-        if (sameHost) return headers
-        return headers.filterKeys { name -> name.lowercase() !in setOf("authorization", "cookie", "proxy-authorization", "x-api-key", "x-auth-token", "x-access-token") }
+        val handoffOrigin = handoff?.exactUrl?.let(::originKeyForSecurity)
+        val requestOrigin = originKeyForSecurity(url)
+        if (handoffOrigin != null && handoffOrigin == requestOrigin) return headers
+        return headers.filterKeys { name -> name.lowercase() !in SENSITIVE_NATIVE_HLS_HEADERS }
     }
 
     private suspend fun updateAggregateProgress(jobId: String, plan: NativeHlsManifestPlan, stage: NativeHlsExecutionStage) {
@@ -726,6 +780,7 @@ class NativeHlsMediaManager(
     }
 
     private suspend fun markCancelled(row: NativeHlsJobEntity) {
+        if (reconcileCommittedPublication(row)) return
         val now = System.currentTimeMillis()
         safeTempDirectory(row.tempDirectoryKey).deleteRecursively()
         dao.upsertJob(row.copy(stage = NativeHlsExecutionStage.Cancelled.name, finalizationState = NativeHlsFinalizationState.Cancelled.name, recoverable = false, message = "Cancelled and owned temporary artifacts removed.", updatedAtEpochMs = now))
@@ -805,7 +860,9 @@ class NativeHlsMediaManager(
     private fun partFile(dir: File, index: Int) = File(dir, "part-${index.toString().padStart(6, '0')}.media")
 
     private fun decryptAes128(ciphertext: ByteArray, key: ByteArray, ivHex: String): ByteArray {
-        val iv = ivHex.removePrefix("0x").padStart(32, '0').takeLast(32).chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        val normalizedIv = ivHex.removePrefix("0x").removePrefix("0X")
+        require(normalizedIv.matches(Regex("^[0-9a-fA-F]{32}$"))) { "AES-128 IV must be exactly 16 bytes encoded as 32 hexadecimal characters" }
+        val iv = normalizedIv.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         require(iv.size == 16) { "AES-128 IV must be 16 bytes" }
         return Cipher.getInstance("AES/CBC/PKCS5Padding").run {
             init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(iv))
@@ -840,6 +897,41 @@ class NativeHlsMediaManager(
 
     private fun partEntityId(jobId: String, partIndex: Int): String = "$jobId:part:$partIndex"
 
+    private fun originKeyForSecurity(url: String): String? = runCatching {
+        val uri = URI(url)
+        val scheme = uri.scheme?.lowercase() ?: return null
+        val host = uri.host?.lowercase() ?: return null
+        val port = when {
+            uri.port >= 0 -> uri.port
+            scheme == "http" -> 80
+            scheme == "https" -> 443
+            else -> -1
+        }
+        if (port >= 0) "$scheme://$host:$port" else "$scheme://$host"
+    }.getOrNull()
+
+    private fun parseRangeHeader(value: String): LongRange? {
+        val match = Regex("^bytes=(\\d+)-(\\d+)$").matchEntire(value.trim()) ?: return null
+        val start = match.groupValues[1].toLongOrNull() ?: return null
+        val end = match.groupValues[2].toLongOrNull() ?: return null
+        return if (end >= start) start..end else null
+    }
+
+    private fun validateContentRange(contentRange: String?, requested: LongRange, contentLength: Long?) {
+        val value = requireNotNull(contentRange?.trim()) { "HLS byte-range response is missing Content-Range" }
+        val match = Regex("^bytes (\\d+)-(\\d+)/(\\d+|\\*)$", RegexOption.IGNORE_CASE).matchEntire(value)
+            ?: error("Invalid HLS Content-Range: $value")
+        val start = match.groupValues[1].toLong()
+        val end = match.groupValues[2].toLong()
+        require(start == requested.first && end == requested.last) { "HLS Content-Range does not match the requested range" }
+        match.groupValues[3].takeUnless { it == "*" }?.toLongOrNull()?.let { total ->
+            require(total > end) { "HLS Content-Range total is smaller than returned range" }
+        }
+        contentLength?.takeIf { it >= 0L }?.let { length ->
+            require(length == (requested.last - requested.first + 1L)) { "HLS byte-range body length does not match Content-Range" }
+        }
+    }
+
     private fun partIdentityMatches(row: NativeHlsPartEntity, part: NativeHlsPart): Boolean =
         row.mediaSequence == part.mediaSequence &&
             row.url == persistableUrl(part.url) &&
@@ -849,7 +941,8 @@ class NativeHlsMediaManager(
             row.keyUri == part.key?.uri?.let(::persistableUrl) &&
             row.keyMethod == part.key?.method &&
             row.keyIvHex == part.key?.ivHex &&
-            row.discontinuitySequence == part.discontinuitySequence
+            row.discontinuitySequence == part.discontinuitySequence &&
+            (if (part.gap) row.state == NativeHlsPartState.Skipped.name else true)
 
     private fun NativeHlsPart.toEntity(jobId: String, now: Long) = NativeHlsPartEntity(
         id = partEntityId(jobId, index),
@@ -924,6 +1017,21 @@ class NativeHlsMediaManager(
     )
 
     private companion object {
+        private const val MAX_HLS_MANIFEST_BYTES = 4L * 1024L * 1024L
+        private const val MAX_HLS_INIT_MAP_BYTES = 64L * 1024L * 1024L
+        private const val MAX_HLS_SEGMENT_BYTES = 512L * 1024L * 1024L
+        private const val MAX_HLS_KEY_BYTES = 16L
+        private const val DEFAULT_HLS_READ_BUFFER_BYTES = 64 * 1024
+        private val SENSITIVE_NATIVE_HLS_HEADERS = setOf(
+            "authorization",
+            "cookie",
+            "proxy-authorization",
+            "referer",
+            "origin",
+            "x-api-key",
+            "x-auth-token",
+            "x-access-token",
+        )
         val TERMINAL_NATIVE_HLS_STAGES = setOf(NativeHlsExecutionStage.Completed.name, NativeHlsExecutionStage.Cancelled.name)
     }
 

@@ -50,6 +50,7 @@ validators=(
   tools/validate-xar09-scheduler-recovery.py
   tools/validate-xar10-browser-capture-evidence.py
   tools/validate-xar11-manifest-resolution.py
+  tools/validate-xar12-media-execution-seal.py
   tools/validate-gradle-task-graph-optimization.py
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
   tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py

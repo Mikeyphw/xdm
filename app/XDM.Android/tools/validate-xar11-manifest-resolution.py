@@ -50,7 +50,8 @@ for needle, label in [
     ("selectedVariants", "selected variant set"),
     ("sameTimeline", "same-period DASH audio selection"),
     ("manifestTimelineGroupId", "timeline-aware audio/subtitle pick"),
-    ("needsCookieContext = session.hasCredentialContext || selectedExecutionUrls", "unselected credential-bearing variants ignored"),
+    ("needsCookieContext = session.hasCredentialContext", "credential context decision starts from session"),
+    ("selectedExecutionUrls(capture, selected, selectedVariants).any(ExternalUrlPolicy::hasCredentialBearingQuery)", "unselected credential-bearing variants ignored"),
 ]:
     if needle not in planner:
         raise SystemExit(f"missing {label}: {needle}")

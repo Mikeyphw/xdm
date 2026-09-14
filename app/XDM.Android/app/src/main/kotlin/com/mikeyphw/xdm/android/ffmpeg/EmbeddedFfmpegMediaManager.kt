@@ -3,6 +3,7 @@ package com.mikeyphw.xdm.android.ffmpeg
 import com.mikeyphw.xdm.android.media.MediaDownloadIntent
 import com.mikeyphw.xdm.android.media.MediaDownloadStrategy
 import com.mikeyphw.xdm.android.media.MediaPostProcessingKind
+import com.mikeyphw.xdm.android.media.MediaExecutionSecurityPolicy
 import com.mikeyphw.xdm.android.media.MediaQueuedDownloadSpec
 import com.mikeyphw.xdm.android.media.ffmpeg.EmbeddedFfmpegRuntime
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegFailureKind
@@ -239,6 +240,13 @@ class EmbeddedFfmpegMediaManager(
         var committedPromotion: DestinationPromotionResult? = null
         try {
             prepared.artifacts.stagingFile.parentFile?.mkdirs()
+            MediaExecutionSecurityPolicy.requireEmbeddedExecutable(
+                urls = buildList {
+                    add(spec.sourceUrl)
+                    spec.selectedInputs.forEach { add(it.url) }
+                },
+                headers = spec.requestHeaders + spec.selectedInputs.flatMap { it.headers.entries }.associate { it.key to it.value },
+            )
             val operation = when (kind) {
                 ExecutionKind.Live -> FfmpegOperation.RecordStream(
                     inputUrl = spec.sourceUrl,

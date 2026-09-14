@@ -74,7 +74,8 @@ parity03_overlay = "xdm_media_parity03_native_hls_execution_admission_integrity_
 parity04_overlay = "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip"
 hotfix_overlay = "xdm_media_parity04_validation_hotfix_v1.zip"
 phase = manifest.get("media_parity01_runtime_truth_diagnostics_backend_reliability", {})
-require(manifest.get("current_overlay") in {expected_overlay, successor_overlay, parity03_overlay, parity04_overlay, hotfix_overlay}, "PROJECT_MANIFEST current_overlay must point to Media Parity01 or an accepted successor/hotfix")
+current_overlay = str(manifest.get("current_overlay", ""))
+require(manifest.get("current_overlay") in {expected_overlay, successor_overlay, parity03_overlay, parity04_overlay, hotfix_overlay} or current_overlay.startswith("XAR") or current_overlay.startswith("xdm_android_xar"), "PROJECT_MANIFEST current_overlay must point to Media Parity01 or an accepted XAR/successor/hotfix")
 require(phase.get("status") == "implemented", "Media Parity01 manifest phase must be implemented")
 require(phase.get("room_schema") == 22, "Media Parity01 must report Room schema 22")
 require(phase.get("final_zip_privacy_scan_required") is True, "final ZIP privacy scan must be required")
@@ -163,7 +164,7 @@ require("releaseDocsComplete = staticValidationPassed" not in main_vm, "release 
 require("noNewTopLevelRoutes = staticValidationPassed" not in main_vm, "route topology must not proxy static validation")
 require("diagnosticsRedacted = staticValidationPassed" not in main_vm, "diagnostics privacy must not proxy static validation")
 
-require("currentRoomSchemaVersion = 24" in developer, "Developer Center final media validation must use current Room schema 24")
+require("currentRoomSchemaVersion = 25" in developer, "Developer Center final media validation must use current Room schema 25")
 require("currentRoomSchemaVersion = 21" not in developer, "stale Room schema 21 remains in Developer Center")
 require_all(developer, [
     "XDM_ROUTE_TOPOLOGY_VALIDATED",
@@ -239,7 +240,7 @@ for prop in [
 ]:
     require(prop in release_gate, f"signed release gate must attest earned independent evidence: {prop}")
 
-# Current source truth: successor source diagnostics say schema 24 while Parity01 historical metadata remains schema 22.
+# Current source truth: successor source diagnostics say schema 25 while Parity01 historical metadata remains schema 22.
 for relative in [
     "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt",
     "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseReadinessModels.kt",
@@ -275,7 +276,7 @@ for relative in [
     require(expected_overlay in source, f"active carry-forward validator must accept Media Parity01: {relative}")
     require(successor_overlay in source, f"active carry-forward validator must accept Media Parity02 successor: {relative}")
 
-require(manifest.get("final_public_release_gate", {}).get("room_schema_locked") == 24, "final public release gate must report current Room schema 24")
+require(manifest.get("final_public_release_gate", {}).get("room_schema_locked") == 25, "final public release gate must report current Room schema 25")
 require(manifest.get("final_public_release_gate", {}).get("schema_version_unchanged") == 23, "final public release gate schema truth must be 23")
 
 print("Media Parity01 runtime-truth validation passed: final diagnostics artifacts are fail-closed, topology/schema truth is current, legacy Firefox crypto blockers are retired, and aria2 health is lifecycle-backed")

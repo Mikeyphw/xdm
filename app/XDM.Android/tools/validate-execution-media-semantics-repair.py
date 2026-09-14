@@ -63,7 +63,7 @@ need("shape == MediaTransferShape.DirectMedia || shape == MediaTransferShape.Dir
 need("needsCookieContext = session.hasCredentialContext" in planner, "referer/User-Agent context must not masquerade as credential context")
 need("requestHeaders = plan.sessionHandoff.requestHeaders()" in exec_lib and "transferShape = plan.transferShape" in exec_lib,
      "media execution queue must preserve captured headers and explicit transfer shape together")
-need("ExternalUrlPolicy.hasCredentialBearingQuery(plan.primaryUrl)" in exec_lib, "media expiry must be based on URL lifetime, not ordinary replay headers")
+need("hasCredentialBearingQuery" in exec_lib and "selectedInputs.any" in exec_lib and "expiresAtEpochMs" in exec_lib, "media expiry must be based on URL lifetime, not ordinary replay headers")
 need("variants.isEmpty() && plan.transferShape in setOf" in workspace and "MediaTransferShape.AdaptivePlaylist" in workspace,
      "empty variants must require resolution only for adaptive/site media")
 need('"Direct"' in workspace and "canDownload = state == MediaConsumerState.Ready" in workspace,

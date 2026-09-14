@@ -18,10 +18,14 @@ object FfmpegMediaVerifier {
             if (expectation.requireAudio && probe.audioStreams.isEmpty()) add("audio stream is missing")
             if (expectation.requireSubtitle && probe.subtitleStreams.isEmpty()) add("subtitle stream is missing")
             val expected = expectation.expectedDurationMs
-            if (expected != null && expected > 5_000L && durationMs != null) {
-                val tolerance = (expected / 20L).coerceAtLeast(2_000L)
-                if (abs(durationMs - expected) > tolerance) {
-                    add("duration differs from expected media by more than ${tolerance}ms")
+            if (expected != null && expected > 5_000L) {
+                if (durationMs == null) {
+                    add("duration is missing from probe even though this media attempt has an expected duration")
+                } else {
+                    val tolerance = (expected / 20L).coerceAtLeast(2_000L)
+                    if (abs(durationMs - expected) > tolerance) {
+                        add("duration differs from expected media by more than ${tolerance}ms")
+                    }
                 }
             }
         }

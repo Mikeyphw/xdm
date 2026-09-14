@@ -208,15 +208,18 @@ class MediaTermuxRuntimeAdapter {
                 TermuxRuntimeTransientKind.HeaderManifest -> "# transient header manifest\n# values redacted\n# process scoped"
             }
             files += TermuxRuntimeTransientFile(
-                fileName = label,
+                fileName = appPrivateTransientName(label),
                 kind = kind,
-                redactedPreview = preview,
+                redactedPreview = "$preview\n# app-private transient; never staged in shared Downloads",
                 deleteAfterTerminalState = true,
                 verifierLabel = "verify-${kind.name.lowercase(Locale.US)}-forgotten",
             )
         }
         return files
     }
+
+    private fun appPrivateTransientName(label: String): String =
+        "app-private://xdm-termux/transient/" + label.replace(Regex("[^A-Za-z0-9._-]"), "_").take(96).ifBlank { "transient.media" }
 
     private fun cleanupStepsFor(
         request: MediaWorkerBridgeRequest,

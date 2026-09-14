@@ -13,6 +13,7 @@ PARITY01_OVERLAY = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliabi
 PARITY02_OVERLAY = "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"
 PARITY03_OVERLAY = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 PARITY04_OVERLAY = "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip"
+XAR_SUCCESSORS = {f"XAR{index:02d} " for index in range(1, 18)}
 
 
 def text(relative: str) -> str:
@@ -39,14 +40,20 @@ media_card = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/media/MediaCa
 media_workspace = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaConsumerWorkspace.kt")
 locator = text("app/src/main/kotlin/com/mikeyphw/xdm/android/MediaLocatorActivity.kt")
 library = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/library/MediaLibraryScreen.kt")
-activity = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityScreen.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityWorkspace.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
+activity = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityScreen.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/OperationalActivityScreens.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/activity/ActivityWorkspace.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt") + "\n" + text("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/OperationalActivity.kt")
 settings = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/settings/SettingsScreen.kt")
 developer = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperSettingsScreen.kt") + "\n" + text("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsWorkspace.kt")
 design = text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmDesignSystem.kt")
 shell = text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAdaptiveShell.kt")
 ux12_contract = text("app/src/test/kotlin/com/mikeyphw/xdm/android/Ux12AccessibilityTerminologyVisualSealContractTest.kt")
 
-require(manifest.get("current_overlay") in {OVERLAY, POST_UX13_HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY, PARITY03_OVERLAY, PARITY04_OVERLAY}, "PROJECT_MANIFEST current_overlay must point to UX13 or an accepted successor through Parity04")
+current_overlay = str(manifest.get("current_overlay", ""))
+require(
+    current_overlay in {OVERLAY, POST_UX13_HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY, PARITY03_OVERLAY, PARITY04_OVERLAY}
+    or any(current_overlay.startswith(prefix) for prefix in XAR_SUCCESSORS)
+    or current_overlay.startswith("xdm_android_xar"),
+    "PROJECT_MANIFEST current_overlay must point to UX13 or an accepted successor through Parity04/XAR",
+)
 require(manifest.get("next_phase") in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal", None}, "UX13 must close the historical UX roadmap or point to the accepted Parity04 successor")
 require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the UX13 Room 21 baseline")
 phase = manifest.get("ux13_end_to_end_ui_ux_release_seal", {})

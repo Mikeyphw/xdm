@@ -230,6 +230,8 @@ assert.strictEqual(events.message.listeners.length, 1, "page observation receive
   diagnostics = storageState.xdmNetworkDiagnosticsV1;
   assert.strictEqual(diagnostics["11"].reason, "hls-body");
   assert.strictEqual(diagnostics["11"].quality, "strong");
+  const tab11Handoff = handoffInputs.slice().reverse().find(input => input.pageUrl === "https://page.example/watch/11");
+  assert.ok(tab11Handoff && tab11Handoff.candidates[0].browserHandoff.proposedHeaders.headers["accept-language"] === "pt-BR", "Accept-Language must survive privileged request capture");
 
 
   // Parity02: a child media playlist, its many segments, a late master playlist, and a poster

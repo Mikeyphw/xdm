@@ -13,6 +13,7 @@ PARITY02_OVERLAY = "xdm_media_parity02_logical_media_capture_browser_convergence
 PARITY03_OVERLAY = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 PARITY04_OVERLAY = "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip"
 UX13 = "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
+XAR_SUCCESSORS = {f"XAR{index:02d} " for index in range(1, 18)}
 
 
 def text(relative: str) -> str:
@@ -49,9 +50,20 @@ ux13_validator = text("tools/validate-ux13-end-to-end-ui-ux-release-seal.py")
 strings_xml = text("app/src/main/res/values/strings.xml")
 
 # Final-authority truth.
-require(manifest.get("current_overlay") in {HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY, PARITY03_OVERLAY, PARITY04_OVERLAY}, "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix or an accepted media parity successor")
+current_overlay = str(manifest.get("current_overlay", ""))
+require(
+    current_overlay in {HOTFIX, PARITY01_OVERLAY, PARITY02_OVERLAY, PARITY03_OVERLAY, PARITY04_OVERLAY}
+    or any(current_overlay.startswith(prefix) for prefix in XAR_SUCCESSORS)
+    or current_overlay.startswith("xdm_android_xar"),
+    "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix or an accepted media parity/XAR successor",
+)
 require(manifest.get("next_phase") in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal", None}, "roadmap must remain complete")
-require(manifest.get("current_release_authority") in {"post_ux13_roadmap_completion_hotfix", "media_parity01_runtime_truth_diagnostics_backend_reliability", "media_parity02_logical_media_capture_browser_convergence", "media_parity03_native_hls_execution_admission_integrity", "media_parity04_browser_ux_userscripts_notifications_release_seal"}, "legacy current_release_authority must point to the final hotfix or accepted media parity successor")
+current_release_authority = str(manifest.get("current_release_authority", ""))
+require(
+    current_release_authority in {"post_ux13_roadmap_completion_hotfix", "media_parity01_runtime_truth_diagnostics_backend_reliability", "media_parity02_logical_media_capture_browser_convergence", "media_parity03_native_hls_execution_admission_integrity", "media_parity04_browser_ux_userscripts_notifications_release_seal"}
+    or current_release_authority.startswith("XAR"),
+    "legacy current_release_authority must point to the final hotfix or accepted media parity/XAR successor",
+)
 require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the Room 21 hotfix baseline")
 phase = manifest.get("post_ux13_roadmap_completion_hotfix", {})
 require(phase.get("status") == "implemented_final_hotfix", "post-UX13 hotfix manifest block must be final")
@@ -80,26 +92,32 @@ for obsolete_name in ("media_locator_locate", "media_locator_rescan"):
     forbid(strings_xml, f'name="{obsolete_name}"',
            f"obsolete Live Locator resource must remain removed: {obsolete_name}")
 
-# Direct browser-media capture: no review AlertDialog/interstitial; retain internal-only routing.
-require("payload.hasDirectCaptureSession" in external, "direct browser capture detection must remain")
-require("routeDirectBrowserCapture(draft)" in external, "direct browser capture must route immediately")
-require("private fun routeDirectBrowserCapture" in external, "direct browser capture routing helper missing")
-require("ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT" in external, "external boundary must emit internal direct-capture action")
-require("EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI" in external, "external boundary must pass direct-capture URI through internal extra")
-require("EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED" in external, "exact-target private-network approval handoff must remain")
+# Direct browser-media capture: XAR05/XAR10 supersede the old immediate keyless route.
+# Browser direct capture may still be consumed by MainActivity for internal/recovered launches,
+# but the exported boundary must use the unified durable intake/review policy.
+if "ExternalIntentDraftFactory.generalIntake" in external and "ExternalAutomationDispatch.persist" in external:
+    require("ExternalAdmissionPolicy.validateForDispatch" in text("app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationDispatch.kt"),
+            "generic external-command review boundary must use the unified admission policy")
+    require("ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT" in main_activity and "ingestDirectBrowserCaptureSession" in main_activity,
+            "MainActivity must retain internal direct-capture consumption")
+else:
+    require("payload.hasDirectCaptureSession" in external, "direct browser capture detection must remain")
+    require("routeDirectBrowserCapture(draft)" in external, "direct browser capture must route immediately")
+    require("private fun routeDirectBrowserCapture" in external, "direct browser capture routing helper missing")
+    require("ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT" in external, "external boundary must emit internal direct-capture action")
+    require("EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI" in external, "external boundary must pass direct-capture URI through internal extra")
+    require("EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED" in external, "exact-target private-network approval handoff must remain")
+    route_start = external.find("private fun routeDirectBrowserCapture")
+    route_end = external.find("private fun reviewEncryptedBrowserCapture", route_start)
+    route_body = external[route_start:route_end] if route_start >= 0 and route_end > route_start else ""
+    require(route_body != "", "unable to isolate direct browser capture routing helper")
+    forbid(route_body, "AlertDialog.Builder", "direct browser capture routing helper must not show a dialog")
 forbid(external, 'setTitle("Open browser media in XDM")', "direct browser-media confirmation title must be removed")
 forbid(external, "reviewDirectBrowserCapture", "direct browser-media review helper must be removed")
 forbid(external, "bounded candidate set", "direct browser-media dialog implementation copy must be removed")
 forbid(external, "candidate(s)", "direct browser-media dialog candidate grammar must be removed")
-route_start = external.find("private fun routeDirectBrowserCapture")
-route_end = external.find("private fun reviewEncryptedBrowserCapture", route_start)
-route_body = external[route_start:route_end] if route_start >= 0 and route_end > route_start else ""
-require(route_body != "", "unable to isolate direct browser capture routing helper")
-forbid(route_body, "AlertDialog.Builder", "direct browser capture routing helper must not show a dialog")
-require("ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT" in main_activity and "ingestDirectBrowserCaptureSession" in main_activity,
-        "MainActivity must retain internal direct-capture consumption")
 # Generic external command and legacy encrypted boundaries are intentionally preserved.
-require('setTitle("Open in XDM")' in external and "ExternalCommandAuthorization.UserConfirmed" in external,
+require(("Open in XDM" in external or "Open ${drafts.size} links in XDM" in external) and "ExternalCommandAuthorization.UserConfirmed" in external,
         "generic external-command review boundary must remain")
 require("reviewEncryptedBrowserCapture" in external, "legacy encrypted-capture recovery boundary must remain")
 

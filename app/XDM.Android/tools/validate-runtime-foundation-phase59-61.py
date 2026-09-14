@@ -22,6 +22,12 @@ def forbid(text: str, token: str, label: str) -> None:
     if token in text:
         errors.append(f"{label}: forbidden {token}")
 
+def need_current_room_schema_at_least(text: str, minimum: int, label: str) -> None:
+    import re
+    match = re.search(r"CurrentRoomSchemaVersion\s*=\s*(\d+)", text)
+    if not match or int(match.group(1)) < minimum:
+        errors.append(f"{label}: missing CurrentRoomSchemaVersion >= {minimum}")
+
 contract = read("browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkContract.kt")
 parser = read("browser-integration/src/main/kotlin/com/mikeyphw/xdm/android/browser/XdmBrowserDeepLinkParser.kt")
 manager = read("app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManager.kt")
@@ -66,7 +72,7 @@ for token in (
     "navigate(AppRoute.Media)",
 ):
     need(vm, token, "Android session import")
-need(vm, "CurrentRoomSchemaVersion = 23", "Room schema")
+need_current_room_schema_at_least(vm, 23, "Room schema")
 
 for token in ("BrowserCaptureSessionHeader", "Browser session values stay private", "XDM kept the highest-confidence results in this handoff"):
     need(screen, token, "captured media inbox")

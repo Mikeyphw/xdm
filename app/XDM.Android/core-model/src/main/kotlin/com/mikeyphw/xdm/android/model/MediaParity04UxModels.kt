@@ -23,7 +23,7 @@ data class MediaParity04AcceptanceRow(
 
 object MediaParity04UxReleaseSeal {
     const val overlayId = "media_parity04_browser_ux_userscripts_notifications_release_seal_v1"
-    const val currentRoomSchemaVersion = 24
+    const val currentRoomSchemaVersion = 25
     const val browserShell = "light-browser-with-floating-media-fab"
     const val mediaSelection = "logical-media-bottom-sheet-before-admission"
     const val userscriptSupport = "tampermonkey-style-local-match-include-grant-none"
@@ -80,7 +80,7 @@ object MediaParity04UxReleaseSeal {
         MediaParity04AcceptanceRow(
             MediaParity04Surface.DebugCenter,
             "Debug Options and Debug Workbench converge into one Developer Center explanation of current schema, validation blocks, runtime health, and media evidence.",
-            "Final validators require schema 24 truth and Parity01/02/03/04 evidence together.",
+            "Final validators require schema 25 truth and Parity01/02/03/04 evidence together.",
             userVisible = false,
         ),
     )

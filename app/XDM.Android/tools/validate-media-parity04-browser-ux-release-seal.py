@@ -87,14 +87,15 @@ for surface in [
     require(model, surface, f"Parity04 acceptance surface {surface}")
 
 key = "media_parity04_browser_ux_userscripts_notifications_release_seal"
-if manifest.get("current_release_authority") != key:
-    raise AssertionError("Parity04 must be the current release authority")
+current_release_authority = str(manifest.get("current_release_authority", ""))
+if manifest.get("current_release_authority") != key and not current_release_authority.startswith("XAR") and not current_release_authority.startswith("xdm_android_xar"):
+    raise AssertionError("Parity04 must be the current or retained release authority under a later XAR overlay")
 if manifest.get("current_experience_polish_authority") != key:
     raise AssertionError("Parity04 must be the current experience-polish authority")
 if manifest.get("current_validation_truth_authority") != key:
     raise AssertionError("Parity04 must be the current validation-truth authority")
-if manifest.get("database", {}).get("version") != 24:
-    raise AssertionError("Parity04 must preserve Room schema 24")
+if manifest.get("database", {}).get("version") != 25:
+    raise AssertionError("Parity04 must preserve Room schema 25")
 section = manifest.get(key) or {}
 expected = {
     "status": "implemented_final_seal",

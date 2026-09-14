@@ -18,11 +18,12 @@ def need(cond: bool, msg: str):
 def has(src: str, *needles: str) -> bool: return all(n in src for n in needles)
 
 routing = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaRuntimeRouting.kt")
+security_policy = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionSecurityPolicy.kt")
 execution = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionLibrary.kt")
 dispatch = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt")
 worker = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaWorkerBridge.kt")
 termux_adapter = text("media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaTermuxRuntimeAdapter.kt")
-need(has(routing, "Automatic", "Embedded FFmpeg", "Termux FFmpeg", "termuxFallbackEligible", "hasCredentialBearingQuery", "requiresPrivateNetworkApproval"), "runtime policy lacks full automatic/embedded/Termux and secret/private-network boundary")
+need(has(routing, "Automatic", "Embedded FFmpeg", "Termux FFmpeg", "termuxFallbackEligible", "MediaExecutionSecurityPolicy.termuxNetworkEligible") and has(security_policy, "hasCredentialBearingQuery", "requiresPrivateNetworkApproval", "termuxNetworkEligible", "scheme in setOf(\"https\")"), "runtime policy lacks full automatic/embedded/Termux and secret/private-network boundary")
 need(has(routing, "context.embeddedReady", "context.termuxReady && context.termuxNetworkFallbackEligible", "signed media session cannot safely cross into Termux"), "Automatic routing is not embedded-first/fail-closed")
 need(has(execution, "TermuxFfmpegAdaptive", "TermuxFfmpegLive", "ffmpegRuntimeDecision", '"termux-ffmpeg"', '"--session-safe"'), "execution planner does not own the external FFmpeg fallback lanes")
 need(has(dispatch, "termuxFfmpegReady", "NeedsTermuxSetup", "LaunchTermuxJob", "session-safe public inputs only"), "dispatch does not gate/explain Termux FFmpeg fallback")

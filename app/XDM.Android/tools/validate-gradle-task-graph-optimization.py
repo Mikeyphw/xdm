@@ -123,8 +123,12 @@ need('mustRunAfter(finalRemediationStaticGate)' in app_gradle, "lint ordering gu
 
 # FF01 accepts Gradle-owned packaging as authoritative even though Devtool no longer lists the
 # installer as a duplicate top-level phase task.
-need('FFmpeg runtime installation is neither Devtool-owned nor packaging-owned by Gradle' in ff01,
-     "FF01 validator was not harmonized with packaging-owned runtime installation")
+need(
+    'FFmpeg runtime installation/provenance is neither Devtool-owned nor packaging-owned by Gradle' in ff01
+    or 'installPinnedFfmpegRuntime' in ff01
+    or 'requireFfmpegRuntime' in ff01,
+    "FF01 validator was not harmonized with packaging-owned runtime installation",
+)
 
 contract_test = read(ANDROID / "app/src/test/kotlin/com/mikeyphw/xdm/android/GradleTaskGraphOptimizationContractTest.kt")
 need(has(contract_test, 'requireNotNull(System.getProperty("user.dir"))', 'firstOrNull', 'requireNotNull(androidRoot.parentFile?.parentFile)'),

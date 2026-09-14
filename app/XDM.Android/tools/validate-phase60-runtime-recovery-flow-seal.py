@@ -36,7 +36,8 @@ def require(condition: bool, message: str) -> None:
 
 manifest = json.loads((ROOT / 'PROJECT_MANIFEST.json').read_text())
 phase = manifest.get('field_bugfix_phase_60', {})
-require(manifest.get('current_overlay') in ({OVERLAY} | LATER_OVERLAYS), 'current overlay must point to Phase60 or a later accepted field-fix overlay')
+current_overlay = str(manifest.get('current_overlay', ''))
+require(manifest.get('current_overlay') in ({OVERLAY} | LATER_OVERLAYS) or current_overlay.startswith('XAR') or current_overlay.startswith('xdm_android_xar'), 'current overlay must point to Phase60 or a later accepted XAR/field-fix overlay')
 require(60 in manifest.get('project', {}).get('implemented_phases', []), 'Phase60 must be recorded as implemented')
 require(phase.get('status') == 'implemented', 'Phase60 must be implemented')
 require(phase.get('room_schema_unchanged') == 14, 'Phase60 must keep Room schema 14')

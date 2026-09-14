@@ -17,8 +17,9 @@ parity04_overlay='xdm_media_parity04_browser_ux_userscripts_notifications_releas
 hotfix_overlay='xdm_media_parity04_validation_hotfix_v1.zip'
 manifest=json.loads(read('PROJECT_MANIFEST.json') or '{}')
 phase=manifest.get('media_parity02_logical_media_capture_browser_convergence',{})
-req(manifest.get('current_overlay') in {overlay, successor_overlay, parity04_overlay, hotfix_overlay},'current overlay must be Media Parity02 or an accepted successor/hotfix')
-req(manifest.get('database',{}).get('version') in {23,24},'authoritative Room schema must be 23 or accepted Parity03 successor schema 24')
+current_overlay=str(manifest.get('current_overlay',''))
+req(manifest.get('current_overlay') in {overlay, successor_overlay, parity04_overlay, hotfix_overlay} or current_overlay.startswith('XAR') or current_overlay.startswith('xdm_android_xar'),'current overlay must be Media Parity02 or an accepted XAR/successor/hotfix')
+req(manifest.get('database',{}).get('version') in {23,24,25},'authoritative Room schema must be 23 or accepted Parity03 successor schema 24')
 req('22_to_23' in manifest.get('database',{}).get('migrations',[]),'manifest migration chain must include 22_to_23')
 req(phase.get('status')=='implemented','Parity02 manifest status must be implemented')
 req(phase.get('room_schema')==23 and phase.get('migration')=='22_to_23','Parity02 manifest schema/migration truth missing')
@@ -40,7 +41,7 @@ mig=read('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migra
 ent=read('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt')
 dao=read('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/MediaCaptureDao.kt')
 repo=read('persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt')
-req(re.search(r'version\s*=\s*(23|24)\b',db) is not None,'AppDatabase must be schema 23 or accepted successor schema 24')
+req(re.search(r'version\s*=\s*(23|24|25)\b',db) is not None,'AppDatabase must be schema 23 or accepted successor schema 24/25')
 for s in ('Migration22To23 = object : Migration(22, 23)','CREATE TABLE IF NOT EXISTS media_observations','index_media_captures_logicalMediaId','22_to_23'):
  req(s in (mig+json.dumps(manifest)),f'persistence migration missing {s}')
 req('data class MediaObservationEntity' in ent,'media observation entity missing')
@@ -58,7 +59,7 @@ req('located[candidate.logicalMediaId]' in locator,'Live Locator UI must key row
 
 developer=read('app/src/main/kotlin/com/mikeyphw/xdm/android/ui/developer/DeveloperToolsScreen.kt')
 req('Raw media observations' in developer and 'state.mediaObservations.take(12)' in developer,'developer-only raw evidence surface missing')
-req('currentRoomSchemaVersion = 23' in developer or 'currentRoomSchemaVersion = 24' in developer,'Developer Center schema truth must be current')
+req('currentRoomSchemaVersion = 23' in developer or 'currentRoomSchemaVersion = 24' in developer or 'currentRoomSchemaVersion = 25' in developer,'Developer Center schema truth must be current')
 
 main=read('app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt')
 envelope=read('app/src/main/kotlin/com/mikeyphw/xdm/android/BrowserCaptureEnvelopeManager.kt')

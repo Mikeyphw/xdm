@@ -220,7 +220,7 @@ class MediaDownloadPlanner {
             canQueueDirectly = strategy != MediaDownloadStrategy.UnsupportedProtected,
             explanation = explanationFor(strategy, capture.kind, intent, capture, variants, normalizedSelection, session),
             metadataProbeUrl = metadataProbeUrl(capture),
-            needsCookieContext = session.hasCredentialContext || selectedExecutionUrls(capture, selected, selectedVariants).any(ExternalUrlPolicy::hasCredentialBearingQuery),
+            needsCookieContext = session.hasCredentialContext || ExternalUrlPolicy.hasCredentialBearingQuery(capture.sourceUrl) || selectedExecutionUrls(capture, selected, selectedVariants).any(ExternalUrlPolicy::hasCredentialBearingQuery),
             trackSelection = normalizedSelection,
             sessionHandoff = session,
             ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent).takeIf { strategy == MediaDownloadStrategy.YtDlp },
