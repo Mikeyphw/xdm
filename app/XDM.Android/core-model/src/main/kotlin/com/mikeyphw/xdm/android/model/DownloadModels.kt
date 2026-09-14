@@ -140,6 +140,16 @@ data class MediaVariant(
     val isForced: Boolean = false,
     val channels: String? = null,
     val inStreamId: String? = null,
+    /** XAR11: false for metadata-only in-band renditions such as HLS CLOSED-CAPTIONS. */
+    val requiresNetworkFetch: Boolean = true,
+    /** XAR11: DASH Period / HLS timeline owner; selection must not flatten across timeline groups. */
+    val manifestTimelineGroupId: String? = null,
+    /** XAR11: executable segmented URL/template, distinct from representation BaseURL metadata. */
+    val manifestExecutionUrlTemplate: String? = null,
+    /** XAR11: DASH initialization segment URL/template when present. */
+    val manifestInitializationUrl: String? = null,
+    /** XAR11: diagnostics label for media/subtitle/caption/period semantics. */
+    val manifestRoleLabel: String? = null,
 ) {
     val qualityLabel: String
         get() = displayLabel.ifBlank {

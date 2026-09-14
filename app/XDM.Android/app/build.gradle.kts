@@ -456,6 +456,15 @@ val verifyXar10BrowserCaptureEvidence = tasks.register<Exec>("verifyXar10Browser
     trackStaticValidation("xar10-browser-capture-evidence")
 }
 
+val verifyXar11ManifestResolution = tasks.register<Exec>("verifyXar11ManifestResolution") {
+    group = "verification"
+    description = "Verify XAR11 HLS/DASH manifest resolution, track graph, selected expiry, and S11 coverage contracts."
+    dependsOn(verifyXar10BrowserCaptureEvidence)
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar11-manifest-resolution.py")
+    trackStaticValidation("xar11-manifest-resolution")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."

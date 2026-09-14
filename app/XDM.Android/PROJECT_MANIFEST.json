@@ -5150,5 +5150,53 @@
     ],
     "current_overlay": "XAR09",
     "last_completed_overlay": "XAR09"
+  },
+  "xar11_manifest_resolution": {
+    "overlay": "XAR11",
+    "roadmap_position": "11 of 17",
+    "canonical_section": "S11",
+    "canonical_findings_closed": 18,
+    "canonical_ids": [
+      "S11-01",
+      "S11-02",
+      "S11-03",
+      "S11-04",
+      "S11-05",
+      "S11-06",
+      "S11-07",
+      "S11-08",
+      "S11-09",
+      "S11-10",
+      "S11-11",
+      "S11-12",
+      "S11-13",
+      "S11-14",
+      "DS6-S11-01",
+      "DS6-S11-02",
+      "DS6-S11-03",
+      "DS6-S11-04"
+    ],
+    "depends_on": [
+      "XAR05",
+      "XAR10"
+    ],
+    "dash_segment_template_executable_urls": true,
+    "dash_periods_preserved_as_timeline_groups": true,
+    "dash_audio_autoselected_for_best_video": true,
+    "dash_xml_hardening_fail_closed": true,
+    "hls_child_headers_origin_scoped_by_later_execution": true,
+    "hls_closed_captions_inband_metadata": true,
+    "hls_alternative_video_relationships": true,
+    "manifest_probe_requires_completeness": true,
+    "large_transport_fragments_filtered": true,
+    "logical_segment_attribution_request_scoped_from_xar10": true,
+    "resolver_ready_blocked_by_manifest_or_selected_child_expiry": true,
+    "selected_child_urls_control_session_and_expiry_truth": true,
+    "content_length_bound_to_observed_resource_only": true,
+    "docs": "docs/remediation/XAR11-MANIFEST-RESOLUTION.md",
+    "report": "XDM_ANDROID_XAR11_MANIFEST_RESOLUTION_REPORT.md",
+    "validator": "tools/validate-xar11-manifest-resolution.py",
+    "validation_task": "verifyXar11ManifestResolution",
+    "validation_mode": "intermediate_no_validate"
   }
 }

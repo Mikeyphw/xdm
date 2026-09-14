@@ -199,8 +199,9 @@ class MediaDownloadPlanner {
             strategy == MediaDownloadStrategy.YtDlp || strategy == MediaDownloadStrategy.FfmpegAdaptive || strategy == MediaDownloadStrategy.FfmpegLive || strategy == MediaDownloadStrategy.NativeHls -> capture.sourceUrl
             else -> selected?.url ?: capture.selectedVariantUrl ?: capture.sourceUrl
         }
-        val selectedVariantHeaders = normalizedSelection.selectedIds()
-            .flatMap { id -> variantSessionHeaders[id].orEmpty() }
+        val selectedVariants = normalizedSelection.selectedIds().mapNotNull { id -> variants.firstOrNull { it.id == id } }
+        val selectedVariantHeaders = selectedVariants
+            .flatMap { variant -> variantSessionHeaders[variant.id].orEmpty() }
         val effectiveSessionHeaders = mergeSessionHeaders(sessionHeaders, selectedVariantHeaders)
         val session = MediaSessionHandoff(
             pageUrl = capture.pageUrl,
@@ -219,7 +220,7 @@ class MediaDownloadPlanner {
             canQueueDirectly = strategy != MediaDownloadStrategy.UnsupportedProtected,
             explanation = explanationFor(strategy, capture.kind, intent, capture, variants, normalizedSelection, session),
             metadataProbeUrl = metadataProbeUrl(capture),
-            needsCookieContext = session.hasCredentialContext || ExternalUrlPolicy.hasCredentialBearingQuery(capture.sourceUrl) || variants.any { ExternalUrlPolicy.hasCredentialBearingQuery(it.url) },
+            needsCookieContext = session.hasCredentialContext || selectedExecutionUrls(capture, selected, selectedVariants).any(ExternalUrlPolicy::hasCredentialBearingQuery),
             trackSelection = normalizedSelection,
             sessionHandoff = session,
             ytDlpFormatSelector = ytdlpFormatSelector(variants, normalizedSelection, intent).takeIf { strategy == MediaDownloadStrategy.YtDlp },
@@ -363,15 +364,29 @@ class MediaDownloadPlanner {
         fun compatible(kind: MediaVariantKind, id: String?, requiredGroup: String?): String? {
             val explicit = id?.let { wanted -> variants.firstOrNull { it.id == wanted && it.kind == kind } }
             if (explicit != null && (requiredGroup == null || explicit.groupId == requiredGroup)) return explicit.id
-            return variants.firstOrNull { variant ->
-                variant.kind == kind && (requiredGroup == null || variant.groupId == requiredGroup) && (variant.isDefault || variant.isAutoselect)
-            }?.id
+            val timeline = video?.manifestTimelineGroupId
+            val sameTimeline = variants.filter { variant ->
+                variant.kind == kind && (timeline == null || variant.manifestTimelineGroupId == timeline)
+            }
+            return sameTimeline.firstOrNull { variant ->
+                (requiredGroup == null || variant.groupId == requiredGroup) && (variant.isDefault || variant.isAutoselect)
+            }?.id ?: sameTimeline.maxWithOrNull(compareBy<MediaVariant> { it.bitrateBitsPerSecond ?: 0L }.thenBy { it.language.orEmpty() })?.id
         }
         return MediaTrackSelection(
             videoVariantId = videoId,
             audioVariantId = compatible(MediaVariantKind.Audio, selection.audioVariantId, video?.audioGroupId),
             subtitleVariantId = compatible(MediaVariantKind.Subtitle, selection.subtitleVariantId, video?.subtitleGroupId),
         )
+    }
+
+    private fun selectedExecutionUrls(capture: MediaCaptureRecord, selected: MediaVariant?, selectedVariants: List<MediaVariant>): List<String> = buildList {
+        add(capture.sourceUrl)
+        selected?.url?.let(::add)
+        selectedVariants.forEach { variant ->
+            if (variant.requiresNetworkFetch) add(variant.url)
+            variant.manifestInitializationUrl?.let(::add)
+            variant.manifestExecutionUrlTemplate?.let(::add)
+        }
     }
 
     private fun ytdlpFormatSelector(variants: List<MediaVariant>, selection: MediaTrackSelection, intent: MediaDownloadIntent): String? {

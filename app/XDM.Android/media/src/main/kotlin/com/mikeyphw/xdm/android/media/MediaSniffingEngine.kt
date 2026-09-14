@@ -393,13 +393,26 @@ class MediaSniffingEngine(
         val body = bodyPrefix?.trimStart()?.takeIf(String::isNotBlank) ?: return emptyList<MediaVariant>() to null
         val captureId = MediaCaptureService.captureIdFor(candidate.sourceUrl)
         return when (candidate.kind) {
-            MediaSourceKind.HlsPlaylist -> if (body.startsWith("#EXTM3U", ignoreCase = true)) {
+            MediaSourceKind.HlsPlaylist -> if (body.startsWith("#EXTM3U", ignoreCase = true) && manifestProbeComplete(candidate.kind, bodyPrefix)) {
                 captureService.parseHlsPlaylist(captureId, candidate.sourceUrl, body).ifEmpty { candidate.variants } to captureService.inspectHlsPlaylist(body)
             } else emptyList<MediaVariant>() to null
-            MediaSourceKind.DashManifest -> if (body.contains("<MPD", ignoreCase = true)) {
+            MediaSourceKind.DashManifest -> if (body.contains("<MPD", ignoreCase = true) && manifestProbeComplete(candidate.kind, bodyPrefix)) {
                 captureService.parseDashManifest(captureId, candidate.sourceUrl, body).ifEmpty { candidate.variants } to captureService.inspectDashManifest(body)
             } else emptyList<MediaVariant>() to null
             else -> emptyList<MediaVariant>() to null
+        }
+    }
+
+    private fun manifestProbeComplete(kind: MediaSourceKind, bodyPrefix: String?): Boolean {
+        val body = bodyPrefix?.trim().orEmpty()
+        if (body.isBlank()) return false
+        if (body.length >= MAX_BODY_PREFIX) return false
+        return when (kind) {
+            MediaSourceKind.HlsPlaylist -> body.lineSequence().map(String::trim).any { line ->
+                line.equals("#EXT-X-ENDLIST", true) || line.startsWith("#EXT-X-STREAM-INF", true) || line.startsWith("#EXT-X-MEDIA", true)
+            }
+            MediaSourceKind.DashManifest -> body.contains("</MPD>", ignoreCase = true)
+            else -> true
         }
     }
 
@@ -561,6 +574,10 @@ class MediaSniffingEngine(
         "no DRM bypass",
         "signed media query strings preserved",
     ).joinToString(" • ")
+
+    private companion object {
+        const val MAX_BODY_PREFIX = 768 * 1024
+    }
 
     private fun String.cleanExtractedUrl(): String = trim()
         .trimEnd(')', ']', '}', '>', ',', '.', ';', ':')

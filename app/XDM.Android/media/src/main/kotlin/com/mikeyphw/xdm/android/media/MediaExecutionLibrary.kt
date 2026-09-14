@@ -152,6 +152,7 @@ data class MediaSelectedTrackInput(
     val url: String,
     val mimeType: String?,
     val headers: Map<String, String>,
+    val expiresAtEpochMs: Long? = null,
 ) {
     val redactedUrl: String get() = ExternalUrlPolicy.persistableUrl(url) ?: url.substringBefore('?')
 }
@@ -331,6 +332,7 @@ class MediaExecutionLibraryPlanner(
                     url = variant.url,
                     mimeType = variant.mimeType,
                     headers = plan.sessionHandoff.requestHeaders(),
+                    expiresAtEpochMs = variant.expiresAtEpochMs,
                 )
             }
         }
@@ -358,7 +360,7 @@ class MediaExecutionLibraryPlanner(
             postProcessing = postProcessing,
             redactedSessionSummary = plan.sessionHandoff.redactedSummary,
             requestHeaders = plan.sessionHandoff.requestHeaders(),
-            isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(plan.primaryUrl) || capture.needsManifestRefresh(System.currentTimeMillis()),
+            isExpiringUrl = isSelectedMediaSpecExpiring(capture, plan.primaryUrl, selectedInputs, System.currentTimeMillis()),
             canUseAppQueue = plan.canQueueDirectly && !needsTermux && !blocked,
             requiresTermuxYtDlp = needsTermux && !blocked,
             strategy = plan.strategy,
@@ -366,6 +368,23 @@ class MediaExecutionLibraryPlanner(
             ytDlpFormatSelector = plan.ytDlpFormatSelector,
             sidecar = sidecar,
         )
+    }
+
+    private fun isSelectedMediaSpecExpiring(
+        capture: MediaCaptureRecord,
+        primaryUrl: String,
+        selectedInputs: List<MediaSelectedTrackInput>,
+        nowEpochMs: Long,
+    ): Boolean {
+        val urls = buildList {
+            add(primaryUrl)
+            add(capture.sourceUrl)
+            capture.selectedVariantUrl?.let(::add)
+            selectedInputs.forEach { add(it.url) }
+        }
+        return capture.needsManifestRefresh(nowEpochMs) ||
+            urls.any(ExternalUrlPolicy::hasCredentialBearingQuery) ||
+            selectedInputs.any { input -> input.expiresAtEpochMs?.let { nowEpochMs >= it } == true }
     }
 
     fun enginePlan(

@@ -16,6 +16,8 @@ import java.net.URI
 import java.security.MessageDigest
 import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
+import org.xml.sax.SAXNotRecognizedException
+import org.xml.sax.SAXNotSupportedException
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -205,20 +207,29 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             val type = attrs["TYPE"]?.uppercase(Locale.ROOT)
             val kind = when (type) {
                 "AUDIO" -> MediaVariantKind.Audio
+                "VIDEO" -> MediaVariantKind.Video
                 "SUBTITLES", "CLOSED-CAPTIONS" -> MediaVariantKind.Subtitle
                 else -> null
             } ?: continue
             val uri = attrs["URI"]?.takeIf(String::isNotBlank)
-            // CLOSED-CAPTIONS normally use INSTREAM-ID with no URI. Preserve the track relation
-            // as metadata while keeping the authoritative master as the execution URL.
+            // CLOSED-CAPTIONS normally use INSTREAM-ID with no URI. Preserve that relation
+            // as in-band metadata; do not invent a network child that points back at the master.
             if (uri == null && type != "CLOSED-CAPTIONS") continue
-            val label = listOfNotNull(attrs["NAME"], attrs["LANGUAGE"]?.uppercase(Locale.ROOT), attrs["CHANNELS"]).joinToString(" • ").ifBlank { kind.name }
+            val label = listOfNotNull(type, attrs["NAME"], attrs["LANGUAGE"]?.uppercase(Locale.ROOT), attrs["CHANNELS"]).joinToString(" • ").ifBlank { kind.name }
+            val isClosedCaptions = type == "CLOSED-CAPTIONS"
+            val roleLabel = when (type) {
+                "CLOSED-CAPTIONS" -> "hls-inband-closed-caption"
+                "VIDEO" -> "hls-alternative-video-rendition"
+                "SUBTITLES" -> "hls-subtitle-rendition"
+                "AUDIO" -> "hls-audio-rendition"
+                else -> "hls-media-rendition"
+            }
             variants += MediaVariant(
                 id = "$captureId:hls-media:$index",
                 captureId = captureId,
-                url = uri?.let { resolveVariantUrl(playlistUrl, it) } ?: playlistUrl,
+                url = uri?.let { resolveVariantUrl(playlistUrl, it) } ?: "inband://hls/$captureId/${attrs["GROUP-ID"].orEmpty()}/${attrs["INSTREAM-ID"].orEmpty()}",
                 kind = kind,
-                mimeType = if (type == "CLOSED-CAPTIONS") "application/cea-608" else if (kind == MediaVariantKind.Subtitle) "text/vtt" else "application/vnd.apple.mpegurl",
+                mimeType = if (isClosedCaptions) "application/cea-608" else if (kind == MediaVariantKind.Subtitle) "text/vtt" else "application/vnd.apple.mpegurl",
                 language = attrs["LANGUAGE"],
                 position = index,
                 displayLabel = label,
@@ -229,6 +240,8 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
                 isForced = attrs["FORCED"].equals("YES", true),
                 channels = attrs["CHANNELS"],
                 inStreamId = attrs["INSTREAM-ID"],
+                requiresNetworkFetch = !isClosedCaptions,
+                manifestRoleLabel = roleLabel,
             )
             index++
         }
@@ -325,24 +338,37 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
                     val lang = rep.attrOrNull("lang") ?: adaptationLang
                     val kind = dashVariantKind(mime, content, codecs)
                     val template = directChildren(rep, "SegmentTemplate").firstOrNull() ?: adaptationTemplate
-                    val repId = rep.attrOrNull("id")
-                    val label = labelFor(rep.attrOrNull("height")?.toIntOrNull(), rep.attrOrNull("bandwidth")?.toLongOrNull(), codecs, lang, kind) +
-                        template?.attrOrNull("media")?.let { " • segmented" }.orEmpty()
+                    val repId = rep.attrOrNull("id") ?: "rep$repIndex"
+                    val bandwidth = rep.attrOrNull("bandwidth")?.toLongOrNull()
+                    val templateMedia = template?.attrOrNull("media")?.let { pattern ->
+                        resolveVariantUrl(repBase, dashTemplateUrl(pattern, repId, bandwidth, number = 1L, time = 0L))
+                    }
+                    val templateInitialization = template?.attrOrNull("initialization")?.let { pattern ->
+                        resolveVariantUrl(repBase, dashTemplateUrl(pattern, repId, bandwidth, number = 0L, time = 0L))
+                    }
+                    val executableUrl = templateMedia ?: directChildText(rep, "BaseURL")?.let { resolveVariantUrl(adaptationBase, it) } ?: repBase
+                    val timelineGroup = "dash-period:$periodIndex"
+                    val label = labelFor(rep.attrOrNull("height")?.toIntOrNull(), bandwidth, codecs, lang, kind) +
+                        template?.attrOrNull("media")?.let { " • segmented • period ${periodIndex + 1}" }.orEmpty()
                     variants += MediaVariant(
-                        id = "$captureId:dash:$periodIndex:$adaptationIndex:${repId ?: repIndex}",
+                        id = "$captureId:dash:$periodIndex:$adaptationIndex:$repId",
                         captureId = captureId,
-                        url = repBase,
+                        url = executableUrl,
                         kind = kind,
                         mimeType = mime,
                         width = rep.attrOrNull("width")?.toIntOrNull(),
                         height = rep.attrOrNull("height")?.toIntOrNull(),
-                        bitrateBitsPerSecond = rep.attrOrNull("bandwidth")?.toLongOrNull(),
+                        bitrateBitsPerSecond = bandwidth,
                         codecs = codecs,
                         language = lang,
                         position = position++,
                         displayLabel = label,
                         expiresAtEpochMs = expiresAtEpochMs,
                         groupId = adaptation.attrOrNull("id") ?: "$periodIndex:$adaptationIndex",
+                        manifestTimelineGroupId = timelineGroup,
+                        manifestExecutionUrlTemplate = template?.attrOrNull("media")?.let { resolveVariantUrl(repBase, dashTemplateDiagnostic(it, repId, bandwidth)) },
+                        manifestInitializationUrl = templateInitialization,
+                        manifestRoleLabel = "dash-${kind.name.lowercase(Locale.ROOT)}-period-${periodIndex + 1}",
                     )
                 }
             }
@@ -488,16 +514,31 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         }
     }
 
-    private fun parseMpd(text: String) = runCatching {
+    private fun parseMpd(text: String): org.w3c.dom.Document? {
         val factory = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
             isExpandEntityReferences = false
-            runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
-            runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
-            runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
         }
-        factory.newDocumentBuilder().parse(text.byteInputStream(Charsets.UTF_8))
-    }.getOrNull()
+        // XAR11: parser-hardening support is mandatory. Parse failures may return null for
+        // ordinary malformed MPDs, but unavailable XXE/DOCTYPE controls are configuration
+        // failures and must not be silently ignored.
+        requireXmlFeature(factory, "http://apache.org/xml/features/disallow-doctype-decl", true)
+        requireXmlFeature(factory, "http://xml.org/sax/features/external-general-entities", false)
+        requireXmlFeature(factory, "http://xml.org/sax/features/external-parameter-entities", false)
+        return runCatching { factory.newDocumentBuilder().parse(text.byteInputStream(Charsets.UTF_8)) }.getOrNull()
+    }
+
+    private fun requireXmlFeature(factory: DocumentBuilderFactory, feature: String, enabled: Boolean) {
+        try {
+            factory.setFeature(feature, enabled)
+        } catch (error: SAXNotRecognizedException) {
+            throw IllegalStateException("Required DASH XML hardening feature is unavailable: $feature", error)
+        } catch (error: SAXNotSupportedException) {
+            throw IllegalStateException("Required DASH XML hardening feature is unsupported: $feature", error)
+        }
+        val actual = runCatching { factory.getFeature(feature) }.getOrNull()
+        check(actual == null || actual == enabled) { "Required DASH XML hardening feature was not applied: $feature" }
+    }
 
     private fun directChildren(parent: Element, localName: String): List<Element> = buildList {
         val nodes = parent.childNodes
@@ -638,6 +679,19 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
         }
         return result
     }
+
+    private fun dashTemplateUrl(pattern: String, representationId: String, bandwidth: Long?, number: Long, time: Long): String = pattern
+        .replace("\$RepresentationID\$", representationId)
+        .replace(Regex("\\$Bandwidth(?:%0\\d+d)?\\$"), bandwidth?.toString().orEmpty())
+        .replace(Regex("\\$Number(?:%0(\\d+)d)?\\$")) { match ->
+            val width = match.groupValues.getOrNull(1)?.toIntOrNull()
+            if (width == null) number.toString() else number.toString().padStart(width, '0')
+        }
+        .replace(Regex("\\$Time(?:%0\\d+d)?\\$"), time.toString())
+
+    private fun dashTemplateDiagnostic(pattern: String, representationId: String, bandwidth: Long?): String = pattern
+        .replace("\$RepresentationID\$", representationId)
+        .replace(Regex("\\$Bandwidth(?:%0\\d+d)?\\$"), bandwidth?.toString().orEmpty())
 
     private fun dashVariantKind(mimeType: String?, contentType: String?, codecs: String?): MediaVariantKind = when {
         contentType.equals("audio", ignoreCase = true) || mimeType?.startsWith("audio/") == true || codecs?.startsWith("mp4a", ignoreCase = true) == true -> MediaVariantKind.Audio

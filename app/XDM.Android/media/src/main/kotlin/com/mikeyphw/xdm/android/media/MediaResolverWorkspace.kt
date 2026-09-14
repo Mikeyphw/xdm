@@ -129,7 +129,9 @@ class MediaResolverWorkspacePlanner(
         val selectedVideo = videoVariants.firstOrNull { it.id == normalized.videoVariantId }
         val selectedAudio = audioVariants.firstOrNull { it.id == normalized.audioVariantId }
         val selectedSubtitle = subtitleVariants.firstOrNull { it.id == normalized.subtitleVariantId }
-        val ready = plan.canQueueDirectly && when {
+        val nowEpochMs = System.currentTimeMillis()
+        val selectedExpired = listOfNotNull(selectedVideo, selectedAudio, selectedSubtitle).any { it.isExpired(nowEpochMs) }
+        val ready = plan.canQueueDirectly && !selectedExpired && !capture.needsManifestRefresh(nowEpochMs) && when {
             capture.kind == MediaSourceKind.HlsPlaylist || capture.kind == MediaSourceKind.DashManifest -> videoVariants.isNotEmpty() || variants.isNotEmpty()
             capture.pageUrl != null && capture.kind == MediaSourceKind.Unknown -> capture.resolutionStatus == MediaResolutionStatus.Resolved
             else -> true
@@ -148,7 +150,7 @@ class MediaResolverWorkspacePlanner(
         val subtitleRows = subtitleVariants.map { trackRow(it, it.id == normalized.subtitleVariantId) }
         val session = sessionDashboard(plan.sessionHandoff)
         val probeWarnings = buildList {
-            if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh) add("Manifest metadata has expired and should be refreshed before queueing.")
+            if (capture.resolutionStatus == MediaResolutionStatus.RequiresRefresh || capture.needsManifestRefresh(nowEpochMs) || selectedExpired) add("Manifest metadata or a selected child URL has expired and should be refreshed before queueing.")
             if (capture.resolutionStatus == MediaResolutionStatus.Failed) add("The previous resolver attempt failed. Review diagnostics before retrying.")
             if (capture.isPlaylist && variants.isEmpty()) add("Adaptive media has no resolved streams yet.")
             if (capture.pageUrl != null && variants.isEmpty()) add("Page sources need a yt-dlp metadata probe before format selection.")
