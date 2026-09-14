@@ -130,6 +130,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val embeddedFfmpegRuntime = EmbeddedFfmpegRuntime(this)
         val embeddedFfmpegMediaManager = EmbeddedFfmpegMediaManager(repository, destinationWriter, embeddedFfmpegRuntime)
         MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { MediaRequestHandoffStore.sweepExpired() }
         val nativeHlsMediaManager = NativeHlsMediaManager(this, database, repository, destinationWriter, embeddedFfmpegRuntime)
         val sensitivePersistenceMigrator = SensitivePersistenceMigrator(this, repository)
         val runtimeIdentities = BackendRuntimeIdentityStore(this)

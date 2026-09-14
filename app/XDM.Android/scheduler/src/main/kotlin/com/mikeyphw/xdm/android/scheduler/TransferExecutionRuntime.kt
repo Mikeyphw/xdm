@@ -35,6 +35,7 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -94,6 +95,7 @@ class TransferExecutionRuntime(
     private val fileNames = ConcurrentHashMap<String, String>()
     private val _summary = MutableStateFlow(ActiveTransferSummary())
     val summary: StateFlow<ActiveTransferSummary> = _summary
+    private val lastSummaryProjectionAt = AtomicLong(0L)
     private val _terminalEvents = MutableSharedFlow<TransferTerminalEvent>(extraBufferCapacity = 32)
     val terminalEvents: SharedFlow<TransferTerminalEvent> = _terminalEvents
 
@@ -535,6 +537,8 @@ class TransferExecutionRuntime(
             }
             val publicationFence = resolvePublicationFence(selected, mapping, coordinated.ownership) ?: return
             observeTaskUntilRunEnd(selected, mapping, publicationFence)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)
         } finally {
@@ -567,6 +571,8 @@ class TransferExecutionRuntime(
                 backend.resume(mapping.second)
             }
             observeTaskUntilRunEnd(download, mapping, publicationFence)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             handleRuntimeFailure(download, error)
         } finally {
@@ -821,7 +827,7 @@ class TransferExecutionRuntime(
             lastDurableProgressAt.remove(downloadId)
             fileNames.remove(downloadId)
             attemptGenerations.remove(downloadId)
-            updateSummary()
+            updateSummary(force = true)
         } else if (state !in ACTIVE_STATES) {
             // Paused, failed, and recovery-required attempts retain their encrypted request
             // envelope so process death does not silently discard authentication or signed URLs.
@@ -928,6 +934,8 @@ class TransferExecutionRuntime(
 
         val verifiedSnapshot = try {
             completionVerifier.complete(original, snapshot)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             _liveVerification.value = _liveVerification.value - original.id
             lastLiveVerificationAt.remove(original.id)
@@ -1068,7 +1076,11 @@ class TransferExecutionRuntime(
         }
     }
 
-    private fun updateSummary() {
+    private fun updateSummary(force: Boolean = false) {
+        val now = clock()
+        val previous = lastSummaryProjectionAt.get()
+        if (!force && previous != 0L && now - previous < LIVE_SUMMARY_PROJECTION_INTERVAL_MS) return
+        lastSummaryProjectionAt.set(now)
         val active = snapshots.value.entries.filter { it.value.state in ACTIVE_STATES }
         val totalKnown = active.mapNotNull { it.value.totalBytes }
         val primary = active.firstOrNull()
@@ -1124,6 +1136,7 @@ class TransferExecutionRuntime(
     companion object {
         internal const val DURABLE_PROGRESS_INTERVAL_MS = 333L
         internal const val LIVE_VERIFICATION_INTERVAL_MS = 100L
+        internal const val LIVE_SUMMARY_PROJECTION_INTERVAL_MS = 250L
         val ACTIVE_STATES = setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Verifying, DownloadState.Repairing)
         val INTERRUPTED_STATES = setOf(DownloadState.Connecting, DownloadState.Downloading, DownloadState.Finalizing, DownloadState.Repairing, DownloadState.Verifying)
         val TERMINAL_STATES = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)

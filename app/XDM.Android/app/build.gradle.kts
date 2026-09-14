@@ -85,6 +85,7 @@ android {
         buildConfigField("Boolean", "XDM_ROUTE_TOPOLOGY_VALIDATED", routeTopologyValidated.toString())
         buildConfigField("Boolean", "XDM_LINT_VALIDATION_PASSED", lintValidationPassed.toString())
         buildConfigField("Boolean", "XDM_NATIVE_SYMBOLS_VALIDATED", nativeSymbolsValidated.toString())
+        buildConfigField("Boolean", "XDM_SCOPED_STORAGE_RELEASE_LANE", "true")
         buildConfigField("Boolean", "XDM_ARIA2_PAYLOAD_GATE_CONFIGURED", "true")
         buildConfigField("Boolean", "XDM_FFMPEG_PAYLOAD_GATE_CONFIGURED", "true")
         ndk {
@@ -129,6 +130,10 @@ android {
             manifestPlaceholders["xdmBrowserScheme"] = "xdmdownload-devunsigned"
             buildConfigField("String", "XDM_BROWSER_SCHEME", "\"xdmdownload-devunsigned\"")
         }
+    }
+    sourceSets.getByName("release") {
+        // XAR15: release publishes a scoped-storage lane by merging src/release/AndroidManifest.xml.
+        manifest.srcFile("src/release/AndroidManifest.xml")
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }

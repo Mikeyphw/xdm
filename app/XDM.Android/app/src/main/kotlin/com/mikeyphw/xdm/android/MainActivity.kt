@@ -50,7 +50,8 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-        requestLegacyStoragePermissionsIfNeeded()
+        // XAR15: legacy external-storage prompts are no longer automatic on launch;
+        // direct-file destinations request access only from the explicit Direct storage UI action.
         refreshNotificationPermissionState()
         // A recreated Activity must not replay the launch intent. New deliveries arrive in onNewIntent.
         if (savedInstanceState == null) consumeLaunchIntent(intent)
@@ -73,10 +74,16 @@ class MainActivity : ComponentActivity() {
     private fun consumeInternalDirectBrowserCapture(incoming: Intent?): Boolean {
         if (incoming?.action != ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT) return false
         val rawDeepLink = incoming.getStringExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)
+        val routeToken = incoming.getStringExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_TOKEN)
         // XAR10: exported/internal direct browser capture intents are forgeable. Never trust
         // an intent extra as private-network approval; admission policy must re-derive it.
         incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI)
         incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED)
+        incoming.removeExtra(EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_TOKEN)
+        if (!InternalBrowserCaptureApprovalGate.consume(rawDeepLink, routeToken)) {
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            return true
+        }
         setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
         val parsed = XdmBrowserDeepLinkParser.parseDetailed(rawDeepLink, BuildConfig.XDM_BROWSER_SCHEME)
         val payload = (parsed as? XdmBrowserDeepLinkParseResult.Accepted)?.payload
@@ -186,5 +193,6 @@ class MainActivity : ComponentActivity() {
         internal const val ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT = "com.mikeyphw.xdm.android.INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT"
         internal const val EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI = "com.mikeyphw.xdm.android.extra.INTERNAL_BROWSER_DIRECT_CAPTURE_URI"
         internal const val EXTRA_INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED = "com.mikeyphw.xdm.android.extra.INTERNAL_BROWSER_DIRECT_PRIVATE_NETWORK_APPROVED"
+        internal const val EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_TOKEN = "com.mikeyphw.xdm.android.extra.INTERNAL_BROWSER_DIRECT_CAPTURE_TOKEN"
     }
 }

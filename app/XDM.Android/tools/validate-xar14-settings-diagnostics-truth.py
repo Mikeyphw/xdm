@@ -66,7 +66,7 @@ checks += [
     ("manifest entry", bool(entry)),
     ("manifest overlay position", entry and entry.get("roadmap_position")=="14 of 17"),
     ("manifest closes 21", entry and entry.get("canonical_findings_closed")==21 and entry.get("canonical_ids")==CANONICAL_IDS),
-    ("roadmap current", manifest.get("xar_roadmap",{}).get("current_overlay")=="XAR14"),
+    ("roadmap current", manifest.get("xar_roadmap",{}).get("current_overlay") in {"XAR14", "XAR15", "XAR16", "XAR17"}),
     ("archive inventory updated", "xdm_android_xar14_settings_diagnostics_truth_v1.tar.gz" in manifest.get("xar_applied_overlay_archives", [])),
 ]
 failed=[label for label,ok in checks if not ok]

@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.mikeyphw.xdm.android.model.DebugArea
 import com.mikeyphw.xdm.android.model.DebugRecorderProvider
 import com.mikeyphw.xdm.android.model.DebugSeverity
+import com.mikeyphw.xdm.android.model.ExternalNetworkTarget
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.model.MimePresentationKind
 import com.mikeyphw.xdm.android.model.MimePresentationResolver
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +41,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.security.MessageDigest
+import java.util.concurrent.Semaphore
 
 internal data class XdmArtworkRequest(
     val fileName: String,
@@ -124,6 +127,12 @@ internal object XdmArtworkLoader {
     private const val MAX_REMOTE_BYTES = 6 * 1024 * 1024
     private const val MAX_DISK_BYTES = 32L * 1024L * 1024L
     private const val TARGET_EDGE_PX = 320
+    private const val MAX_NETWORK_LOADS = 2
+    private const val MAX_DECODE_LOADS = 4
+    private const val TEMP_MAX_AGE_MS = 60L * 60L * 1000L
+
+    private val networkPermits = Semaphore(MAX_NETWORK_LOADS, true)
+    private val decodePermits = Semaphore(MAX_DECODE_LOADS, true)
 
     private val memory = object : LruCache<String, Bitmap>(12 * 1024) {
         override fun sizeOf(key: String, value: Bitmap): Int = (value.allocationByteCount / 1024).coerceAtLeast(1)
@@ -194,47 +203,61 @@ internal object XdmArtworkLoader {
         }
     }.getOrNull()
 
-    private fun loadRemoteImage(rawUrl: String): Bitmap? = runCatching {
-        val connection = (URL(rawUrl).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 5_000
-            readTimeout = 8_000
-            instanceFollowRedirects = true
-            requestMethod = "GET"
-            setRequestProperty("Accept", "image/avif,image/webp,image/*,*/*;q=0.2")
-            setRequestProperty("User-Agent", "XDM-Android-Thumbnail/1")
-        }
-        try {
-            val code = connection.responseCode
-            if (code !in 200..299) return@runCatching null
-            val declared = connection.contentLengthLong
-            if (declared > MAX_REMOTE_BYTES) return@runCatching null
-            val bytes = connection.inputStream.use { input ->
-                val output = ByteArrayOutputStream(minOf(MAX_REMOTE_BYTES, declared.takeIf { it > 0 }?.toInt() ?: 64 * 1024))
-                val buffer = ByteArray(16 * 1024)
-                var total = 0
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read <= 0) break
-                    total += read
-                    if (total > MAX_REMOTE_BYTES) return@runCatching null
-                    output.write(buffer, 0, read)
+    private fun loadRemoteImage(rawUrl: String): Bitmap? {
+        val normalizedUrl = ExternalUrlPolicy.normalizedUrl(rawUrl) ?: return null
+        if (ExternalUrlPolicy.classifyNetworkTarget(normalizedUrl) != ExternalNetworkTarget.Public) return null
+        if (!networkPermits.tryAcquire()) return null
+        return try {
+            runCatching {
+                val connection = (URL(normalizedUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 5_000
+                    readTimeout = 8_000
+                    instanceFollowRedirects = true
+                    requestMethod = "GET"
+                    setRequestProperty("Accept", "image/avif,image/webp,image/*,*/*;q=0.2")
+                    setRequestProperty("User-Agent", "XDM-Android-Thumbnail/1")
                 }
-                output.toByteArray()
-            }
-            decodeSampled(bytes)
+                try {
+                    val code = connection.responseCode
+                    if (code !in 200..299) return@runCatching null
+                    val declared = connection.contentLengthLong
+                    if (declared > MAX_REMOTE_BYTES) return@runCatching null
+                    val bytes = connection.inputStream.use { input ->
+                        val output = ByteArrayOutputStream(minOf(MAX_REMOTE_BYTES, declared.takeIf { it > 0 }?.toInt() ?: 64 * 1024))
+                        val buffer = ByteArray(16 * 1024)
+                        var total = 0
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read <= 0) break
+                            total += read
+                            if (total > MAX_REMOTE_BYTES) return@runCatching null
+                            output.write(buffer, 0, read)
+                        }
+                        output.toByteArray()
+                    }
+                    decodeSampled(bytes)
+                } finally {
+                    connection.disconnect()
+                }
+            }.getOrNull()
         } finally {
-            connection.disconnect()
+            networkPermits.release()
         }
-    }.getOrNull()
+    }
 
     private fun decodeSampled(bytes: ByteArray): Bitmap? {
         if (bytes.isEmpty()) return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        var sample = 1
-        while (bounds.outWidth / sample > TARGET_EDGE_PX * 2 || bounds.outHeight / sample > TARGET_EDGE_PX * 2) sample *= 2
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })?.scaledForCache()
+        if (!decodePermits.tryAcquire()) return null
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            var sample = 1
+            while (bounds.outWidth / sample > TARGET_EDGE_PX * 2 || bounds.outHeight / sample > TARGET_EDGE_PX * 2) sample *= 2
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })?.scaledForCache()
+        } finally {
+            decodePermits.release()
+        }
     }
 
     private fun Bitmap.scaledForCache(): Bitmap {
@@ -253,13 +276,28 @@ internal object XdmArtworkLoader {
 
     private fun persistBitmap(file: File, bitmap: Bitmap) = runCatching {
         file.parentFile?.mkdirs()
-        val temp = File(file.parentFile, file.name + ".tmp")
-        FileOutputStream(temp).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 86, out) }
+        cleanupStaleTempFiles(file.parentFile)
+        val temp = File(file.parentFile, file.name + ".tmp-" + System.nanoTime())
+        FileOutputStream(temp).use { out ->
+            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 86, out)) return@runCatching null
+            out.flush()
+            out.fd.sync()
+        }
+        if (temp.length() <= 0L) return@runCatching null
         if (!temp.renameTo(file)) {
             temp.copyTo(file, overwrite = true)
             temp.delete()
         }
+        if (decodeFile(file) == null) file.delete()
     }.getOrNull()
+
+    private fun cleanupStaleTempFiles(directory: File?) {
+        val now = System.currentTimeMillis()
+        directory?.listFiles { file -> file.isFile && file.name.contains(".tmp-") }
+            .orEmpty()
+            .filter { now - it.lastModified() > TEMP_MAX_AGE_MS }
+            .forEach { it.delete() }
+    }
 
     private fun prune(context: Context) {
         val files = cacheDirectory(context).listFiles { f -> f.isFile && f.extension == "jpg" }.orEmpty()

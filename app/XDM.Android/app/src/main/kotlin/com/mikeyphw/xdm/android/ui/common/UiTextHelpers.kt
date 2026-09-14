@@ -207,7 +207,8 @@ internal fun firstDownloadUrlFromClipboard(context: Context): String? {
     for (index in 0 until clip.itemCount) {
         val item = clip.getItemAt(index)
         ExternalUrlPolicy.normalizedUrl(item.uri?.toString())?.let { return it }
-        val text = item.coerceToText(context)?.toString().orEmpty()
+        val text = listOfNotNull(item.text?.toString(), item.htmlText).joinToString("
+").take(8_192)
         ExternalUrlPolicy.urlsInText(text).firstOrNull()?.let { return it }
         ExternalUrlPolicy.normalizedUrl(text)?.let { return it }
     }
@@ -215,7 +216,7 @@ internal fun firstDownloadUrlFromClipboard(context: Context): String? {
 }
 internal fun copyTextToClipboard(context: Context, label: String, value: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
-    val safeValue = if (label.contains("support report", ignoreCase = true) || label.contains("diagnostic", ignoreCase = true)) {
+    val safeValue = if (label.contains("support report", ignoreCase = true) || label.contains("diagnostic", ignoreCase = true) || label.contains("settings snapshot", ignoreCase = true)) {
         value.lineSequence().joinToString("\n") { DebugRedactor.redactExportLine(it) }
     } else {
         value

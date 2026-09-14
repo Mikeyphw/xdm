@@ -33,6 +33,7 @@ class BrowserCaptureSessionRegistry(private val root: File) {
         }
         val durable = if (existing != null && existing.revision == summary.revision) mergeEqualRevision(existing, summary) else summary
         atomicWrite(target, propertiesFor(durable))
+        pruneSessions()
         refresh()
     }
 
@@ -64,6 +65,7 @@ class BrowserCaptureSessionRegistry(private val root: File) {
         if (existing != null && existing.revision > summary.revision) return
         val durable = if (existing != null && existing.revision == summary.revision) mergeEqualRevision(existing, summary) else summary
         atomicWrite(target, propertiesFor(durable))
+        pruneSessions()
     }
 
     private fun mergeEqualRevision(
@@ -131,7 +133,16 @@ class BrowserCaptureSessionRegistry(private val root: File) {
     }
 
     private fun refresh() {
+        pruneSessions()
         _sessions.value = loadAll().sortedByDescending(BrowserCaptureSessionSummary::updatedAtEpochMs)
+    }
+
+    private fun pruneSessions() {
+        val files = root.listFiles { file -> file.isFile && file.name.endsWith(".properties") }.orEmpty()
+        if (files.size <= MAX_SESSIONS) return
+        files.sortedBy(File::lastModified)
+            .take(files.size - MAX_SESSIONS)
+            .forEach { it.delete() }
     }
 
     private fun loadAll(): List<BrowserCaptureSessionSummary> = root.listFiles()
@@ -174,5 +185,8 @@ class BrowserCaptureSessionRegistry(private val root: File) {
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.name())
     private fun decode(value: String): String = runCatching { URLDecoder.decode(value, StandardCharsets.UTF_8.name()) }.getOrDefault(value)
 
-    companion object { private const val MAX_CANDIDATES = 24 }
+    companion object {
+        private const val MAX_CANDIDATES = 24
+        private const val MAX_SESSIONS = 96
+    }
 }

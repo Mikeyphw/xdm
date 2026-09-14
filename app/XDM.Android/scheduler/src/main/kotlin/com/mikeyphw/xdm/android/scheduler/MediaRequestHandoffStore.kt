@@ -41,7 +41,11 @@ object MediaRequestHandoffStore {
 
     fun initialize(store: SecureRequestEnvelopeStore) {
         durableStore = store
-        durableStore.deleteExpired()
+    }
+
+    /** XAR15: expired encrypted request envelopes are swept off the startup critical path. */
+    fun sweepExpired(nowEpochMs: Long = System.currentTimeMillis()) {
+        durableStore.deleteExpired(nowEpochMs)
     }
 
     fun remember(

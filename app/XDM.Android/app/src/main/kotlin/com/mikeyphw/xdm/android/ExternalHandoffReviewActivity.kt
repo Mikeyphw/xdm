@@ -32,6 +32,10 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
             reviewEncryptedBrowserCapture(deepLink.payload)
             return
         }
+        if (deepLink is XdmBrowserDeepLinkParseResult.Accepted && deepLink.payload.hasDirectCaptureSession) {
+            routeDirectBrowserCapture(intent.dataString, deepLink.payload)
+            return
+        }
         val intake = ExternalIntentDraftFactory.generalIntake(this, intent)
         if (intake.rejectedDraft != null) {
             rejectAndFinish(
@@ -64,6 +68,24 @@ open class ExternalHandoffReviewActivity : ComponentActivity() {
             .show()
     }
 
+
+
+    private fun routeDirectBrowserCapture(rawDeepLink: String?, payload: XdmBrowserDeepLinkPayload) {
+        val token = InternalBrowserCaptureApprovalGate.approve(rawDeepLink)
+        if (token == null) {
+            finish()
+            return
+        }
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .setAction(MainActivity.ACTION_INTERNAL_BROWSER_DIRECT_CAPTURE_IMPORT)
+                .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_URI, rawDeepLink)
+                .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_DIRECT_CAPTURE_TOKEN, token)
+                .putExtra(MainActivity.EXTRA_INTERNAL_BROWSER_CAPTURE_SESSION_ID, payload.captureSessionId)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
+        finish()
+    }
 
     private fun reviewEncryptedBrowserCapture(payload: XdmBrowserDeepLinkPayload) {
         val sessionLabel = payload.captureSessionId.orEmpty().take(32)

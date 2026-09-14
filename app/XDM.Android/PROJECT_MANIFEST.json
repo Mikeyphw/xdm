@@ -1733,7 +1733,7 @@
   },
   "current_experience_polish_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_hotfix": "xdm_media_parity04_validation_hotfix_v1.zip",
-  "current_overlay": "XAR14",
+  "current_overlay": "XAR15",
   "current_release_authority": "XAR12 media execution seal",
   "current_runtime_quality_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
@@ -5332,6 +5332,41 @@
     "validation_task": "verifyXar14SettingsDiagnosticsTruth",
     "validator": "tools/validate-xar14-settings-diagnostics-truth.py"
   },
+  "xar15_privacy_security_performance": {
+    "android_xar_position": "15 of 17",
+    "artwork_cache_atomic_verified": true,
+    "artwork_inflight_bounded": true,
+    "artwork_network_guarded": true,
+    "behavioral_validator_added": true,
+    "browser_capture_registry_bounded": true,
+    "cancellation_rethrown": true,
+    "canonical_findings": 13,
+    "canonical_firefox_extension_production_source_changed": false,
+    "closed_findings": [
+      "S15-01",
+      "S15-02",
+      "S15-03",
+      "S15-04",
+      "S15-05",
+      "S15-06",
+      "S15-07",
+      "S15-08",
+      "S15-09",
+      "S15-10",
+      "S15-11",
+      "DS8-S15-04",
+      "DS8-S15-05"
+    ],
+    "direct_capture_approval_gate": true,
+    "legacy_storage_not_auto_requested": true,
+    "merged_roadmap_position": "6 of 8",
+    "overlay": "XAR15",
+    "progress_projection_throttled": true,
+    "scoped_storage_release_lane": true,
+    "settings_clipboard_sensitive": true,
+    "share_clipdata_nonblocking": true,
+    "startup_expiry_sweep_async": true
+  },
   "xar_applied_overlay_archives": [
     "xdm_android_xar01_build_signing_native_provenance_v1.tar.gz",
     "xdm_android_xar02_concurrency_cas_ownership_v2.tar.gz",
@@ -5346,7 +5381,8 @@
     "xdm_android_xar11_manifest_resolution_v1.tar.gz",
     "xdm_android_xar12_media_execution_seal_v2.tar.gz",
     "xdm_android_xar13_downloads_truthful_actions_v1.tar.gz",
-    "xdm_android_xar14_settings_diagnostics_truth_v1.tar.gz"
+    "xdm_android_xar14_settings_diagnostics_truth_v1.tar.gz",
+    "xdm_android_xar15_privacy_security_performance_v1.tar.gz"
   ],
   "xar_roadmap": {
     "applied_overlays": [
@@ -5363,9 +5399,10 @@
       "XAR11",
       "XAR12",
       "XAR13",
-      "XAR14"
+      "XAR14",
+      "XAR15"
     ],
-    "current_overlay": "XAR14",
-    "last_completed_overlay": "XAR14"
+    "current_overlay": "XAR15",
+    "last_completed_overlay": "XAR15"
   }
 }

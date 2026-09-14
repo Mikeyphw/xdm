@@ -53,6 +53,7 @@ validators=(
   tools/validate-xar12-media-execution-seal.py
   tools/validate-xar13-downloads-truthful-actions.py
   tools/validate-xar14-settings-diagnostics-truth.py
+  tools/validate-xar15-privacy-security-performance.py
   tools/validate-gradle-task-graph-optimization.py
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
   tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py

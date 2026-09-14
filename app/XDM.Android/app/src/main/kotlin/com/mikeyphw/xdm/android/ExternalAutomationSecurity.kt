@@ -273,7 +273,7 @@ internal object ExternalIntentDraftFactory {
         intent.getStringExtra("com.android.browser.extra.URL"),
         intent.getStringExtra("org.mozilla.gecko.extra.URI"),
         intent.getStringExtra(Intent.EXTRA_SUBJECT),
-    ).plus(clipValues(activity, intent))
+    ).plus(clipValuesWithoutCoercion(intent))
         .flatMap { value -> externalUrls(value).asSequence() }
         .distinct()
         .take(24)
@@ -301,14 +301,16 @@ internal object ExternalIntentDraftFactory {
     private fun sharedText(activity: Activity, intent: Intent): String? = sequenceOf(
         intent.getStringExtra(Intent.EXTRA_TEXT),
         intent.getStringExtra(Intent.EXTRA_SUBJECT),
-    ).plus(clipValues(activity, intent)).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotBlank) }
+    ).plus(clipValuesWithoutCoercion(intent)).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotBlank) }
 
-    private fun clipValues(activity: Activity, intent: Intent): Sequence<String?> = sequence {
+    private fun clipValuesWithoutCoercion(intent: Intent): Sequence<String?> = sequence {
         val clip = intent.clipData ?: return@sequence
-        for (index in 0 until clip.itemCount) {
+        val count = clip.itemCount.coerceAtMost(MAX_CLIP_ITEMS)
+        for (index in 0 until count) {
             val item = clip.getItemAt(index)
             yield(item.uri?.toString())
-            yield(item.coerceToText(activity)?.toString())
+            yield(item.text?.toString()?.take(MAX_CLIP_TEXT_CHARS))
+            yield(item.htmlText?.take(MAX_CLIP_TEXT_CHARS))
         }
     }
 
