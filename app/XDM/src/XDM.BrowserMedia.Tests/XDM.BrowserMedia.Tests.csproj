@@ -20,9 +20,11 @@
     <None Include="../../chrome-extension/app.js" Link="Fixtures/Extensions/chrome-app.js" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../chrome-extension/connector.js" Link="Fixtures/Extensions/chrome-connector.js" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../chrome-extension/popup.html" Link="Fixtures/Extensions/chrome-popup.html" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../firefox-amo/manifest.json" Link="Fixtures/Extensions/firefox-manifest.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../firefox-amo/app/app.js" Link="Fixtures/Extensions/firefox-app.js" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../firefox-amo/app/connector.js" Link="Fixtures/Extensions/firefox-connector.js" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../XDM.Android/browser-extension/src/main/extension/xdm-firefox/manifest.template.json" Link="Fixtures/Extensions/firefox-manifest.template.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js" Link="Fixtures/Extensions/firefox-handoff.js" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../XDM.Android/browser-extension/src/main/extension/xdm-firefox/network-observer.js" Link="Fixtures/Extensions/firefox-network-observer.js" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../XDM.Android/browser-extension/src/main/extension/xdm-firefox/detector-core.js" Link="Fixtures/Extensions/firefox-detector-core.js" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.html" Link="Fixtures/Extensions/firefox-popup.html" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

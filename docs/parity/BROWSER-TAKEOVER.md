@@ -1,4 +1,4 @@
-# Browser takeover and extension parity — Overlay 14
+# Browser takeover and extension parity — Overlay 14 + XFE01
 
 Overlay 14 replaces the legacy unversioned browser bridge with protocol 2.0 and
 an explicit acknowledgement boundary. The extension never cancels a browser
@@ -8,18 +8,31 @@ download successfully.
 
 ## Supported extension paths
 
-- Firefox uses the fixed extension ID
-  `xdm-v8-browser-helper@subhra74.github.io`.
-- The Chromium Manifest V3 extension supports Chrome/Chromium and compatible
-  Edge, Brave, Vivaldi and Opera builds. Because unpacked/store extension IDs
-  differ, paste one or more 32-character IDs into **Browser integration →
-  Install / repair**.
-- Native host manifests are installed per user. The same screen reports host and
-  manifest compatibility and can repair or uninstall registrations.
+- Firefox has exactly one implementation: the Android-owned canonical source at
+  `app/XDM.Android/browser-extension/src/main/extension/xdm-firefox`. Its fixed ID is
+  `xdm-android-media-bridge@mikeyphw`. Desktop packaging renders that same source
+  into `XDM-Firefox.xpi`; it does not carry a desktop Firefox fork.
+- Firefox keeps its proven `xdmdownload://add` v1 and `xdmdownload://capture` v3
+  handoff logic. Desktop adapts to those custom URL schemes and forwards a launch
+  to the already-running XDM instance when necessary.
+- The Chromium Manifest V3 extension remains desktop-specific and supports
+  Chrome/Chromium and compatible Edge, Brave, Vivaldi and Opera builds. Because
+  unpacked/store extension IDs differ, paste one or more 32-character IDs into
+  **Browser integration → Install / repair**.
+- **Install / repair** registers the Firefox custom URL schemes per user and
+  native-host manifests for the Chromium family. It also removes the obsolete
+  Firefox native-messaging manifest from pre-XFE01 desktop installs.
 
 ## Protocol and trust boundary
 
-Native messages use a four-byte little-endian length prefix and strict JSON
+Firefox does not use the desktop native-messaging protocol. The canonical extension
+builds bounded custom-scheme handoffs; desktop accepts only release/debug XDM schemes,
+add v1 or capture v3, HTTP(S) media URLs, bounded candidate payloads, and final-sent
+request-header evidence. Proposed headers remain diagnostic evidence and never become
+runtime request authority. The custom-scheme payload is forwarded over the authenticated
+single-instance loopback token when a second process is launched.
+
+Chromium native messages use a four-byte little-endian length prefix and strict JSON
 schemas. Protocol 2.0 accepts only `hello`, `health`, `capture` and
 `capture-batch`. Messages are capped at 256 KiB, batches at 100 captures, capture
 payloads at 128 KiB, headers at 64 entries and request bodies at 16 KiB. A random

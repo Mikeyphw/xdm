@@ -1,40 +1,6 @@
 {
-  "name": "XDM Browser Helper",
-  "browser_action": {
-    "default_popup": "app/popup.html",
-    "default_title": "XDM browser integration"
-  },
-  "manifest_version": 2,
-  "version": "4.1.0",
-  "description": "Least-privilege, acknowledged browser download takeover for Xtreme Download Manager.",
-  "permissions": [
-    "activeTab",
-    "alarms",
-    "contextMenus",
-    "downloads",
-    "nativeMessaging",
-    "storage",
-    "tabs"
-  ],
-  "optional_permissions": [
-    "cookies",
-    "webRequest",
-    "http://*/*",
-    "https://*/*"
-  ],
-  "background": {
-    "page": "main.html",
-    "persistent": true
-  },
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
-  },
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "xdm-v8-browser-helper@subhra74.github.io",
-      "strict_min_version": "109.0"
-    }
-  }
+  "retired": true,
+  "canonical_source": "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox",
+  "canonical_extension_id": "xdm-android-media-bridge@mikeyphw",
+  "replacement_artifact": "XDM-Firefox.xpi"
 }

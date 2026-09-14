@@ -9,7 +9,7 @@ public sealed record BrowserHostManifestStatus(
 
 public sealed record BrowserHostInstallationStatus(
     bool NativeHostExists,
-    bool FirefoxManifestInstalled,
+    bool FirefoxProtocolRegistered,
     int ChromiumManifestCount,
     string Message,
     bool IsCompatible = false,

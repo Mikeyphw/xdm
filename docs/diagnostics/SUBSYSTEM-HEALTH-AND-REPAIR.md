@@ -7,7 +7,7 @@ This slice completes the actionable diagnostics workbench after the selected-tra
 The Diagnostics page can refresh independent checks for:
 
 - browser bridge listening state, extension handshake, and protocol compatibility;
-- native-host executable and Firefox/Chromium registration compatibility;
+- native-host executable, canonical Firefox custom-protocol registration, and Chromium native-messaging compatibility;
 - aria2 enablement, managed-process state, RPC availability, version, task count, and observed RPC latency;
 - FFmpeg executable health and detected H.264, H.265, AV1, AAC, MP3, and Opus capabilities;
 - normalized proxy mode, endpoint shape, authentication mode, and bypass configuration;

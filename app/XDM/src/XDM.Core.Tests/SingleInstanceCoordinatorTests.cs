@@ -25,6 +25,25 @@ public sealed class SingleInstanceCoordinatorTests
     }
 
     [Fact]
+    public async Task SecondaryInstanceRelaysFirefoxHandoffPayloadExactly()
+    {
+        int port = GetAvailablePort();
+        string applicationId = $"xdm-test-{Guid.NewGuid():N}";
+        string payload = "xdmdownload://capture?v=3&url=https%3A%2F%2Fcdn.example.test%2Fmaster.m3u8&title=Canonical%20Firefox";
+        using SingleInstanceCoordinator primary = new(applicationId, port);
+        using SingleInstanceCoordinator secondary = new(applicationId, port);
+        TaskCompletionSource<string?> activation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        primary.ActivationRequested += (_, args) => activation.TrySetResult(args.Payload);
+
+        Assert.True(primary.TryAcquire());
+        Assert.True(primary.StartListening());
+        Assert.False(secondary.TryAcquire());
+        Assert.True(await secondary.SignalPrimaryAsync(payload));
+
+        Assert.Equal(payload, await activation.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
     public async Task IdleActivationClientCannotMonopolizeListener()
     {
         int port = GetAvailablePort();

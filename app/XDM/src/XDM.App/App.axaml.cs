@@ -54,6 +54,8 @@ public partial class App : Application
     }
     internal static StartupOptions LaunchOptions { get; set; } = StartupOptions.Default;
 
+    internal static string? InitialFirefoxHandoffUri { get; set; }
+
     internal static SingleInstanceCoordinator? InstanceCoordinator { get; set; }
 
     public override void Initialize()
@@ -136,14 +138,22 @@ public partial class App : Application
             MainWindow mainWindow = services.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
             _trayViewModel = services.GetRequiredService<MainWindowViewModel>();
+            MainWindowViewModel mainViewModel = _trayViewModel;
             _trayViewModel.PropertyChanged += TrayViewModel_PropertyChanged;
             UpdateTrayStatus();
             RunObservedUpdateHealthAsync(services, diagnostics);
-            _ = services.GetRequiredService<MainWindowViewModel>().InitializeAutomaticUpdateCheckAsync();
+            _ = mainViewModel.InitializeAutomaticUpdateCheckAsync();
             if (InstanceCoordinator is not null)
             {
-                InstanceCoordinator.ActivationRequested += (_, _) =>
-                    Dispatcher.UIThread.Post(mainWindow.RestoreAndActivate);
+                InstanceCoordinator.ActivationRequested += (_, activation) =>
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        mainWindow.RestoreAndActivate();
+                        if (!string.IsNullOrWhiteSpace(activation.Payload))
+                        {
+                            _ = mainViewModel.HandleFirefoxExtensionHandoffAsync(activation.Payload);
+                        }
+                    });
                 if (!InstanceCoordinator.StartListening())
                 {
                     diagnostics.Record(
@@ -151,6 +161,13 @@ public partial class App : Application
                         "XDM-STARTUP-SINGLE-INSTANCE",
                         "The activation listener could not be started; duplicate launches will still be blocked.");
                 }
+            }
+
+            if (!string.IsNullOrWhiteSpace(InitialFirefoxHandoffUri))
+            {
+                string initialHandoff = InitialFirefoxHandoffUri;
+                InitialFirefoxHandoffUri = null;
+                Dispatcher.UIThread.Post(() => _ = mainViewModel.HandleFirefoxExtensionHandoffAsync(initialHandoff));
             }
 
             desktop.Exit += (_, _) =>

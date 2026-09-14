@@ -17,6 +17,7 @@ dotnet publish "$repo_root/app/XDM/src/XDM.Updater/XDM.Updater.csproj" -c Releas
 cp "$host_output/XDM.NativeHost" "$output/XDM.NativeHost"
 cp "$updater_output/XDM.Updater" "$output/XDM.Updater"
 chmod +x "$output/XDM" "$output/XDM.NativeHost" "$output/XDM.Updater"
+python3 "$repo_root/app/XDM/eng/package-canonical-firefox-extension.py" --output "$output/XDM-Firefox.xpi" --theme dark --channel release
 python3 "$repo_root/app/XDM/eng/package-portable.py" --source "$output" --output "$repo_root/artifacts/packages" \
   --name "xdm-modern-$version-$rid" --tar-gz
 

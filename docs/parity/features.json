@@ -490,7 +490,7 @@
       ],
       "implementationPaths": [
         "app/XDM/chrome-extension/app.js",
-        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
         "app/XDM/src/XDM.NativeHost/Program.cs",
         "app/XDM/src/XDM.App/ViewModels/MainWindowViewModel.cs"
       ],
@@ -513,7 +513,7 @@
       ],
       "implementationPaths": [
         "app/XDM/chrome-extension/app.js",
-        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
         "app/XDM/src/XDM.BrowserIntegration/BrowserNativeProtocol.cs"
       ],
       "automatedTests": [
@@ -536,7 +536,7 @@
         "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureRules.cs",
         "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureRuleEvaluator.cs",
         "app/XDM/chrome-extension/popup.js",
-        "app/XDM/firefox-amo/app/popup.js"
+        "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/popup.js"
       ],
       "automatedTests": [
         "XDM.BrowserMedia.Tests.BrowserCaptureRuleEvaluatorTests"
@@ -1133,7 +1133,7 @@
       "implementationPaths": [
         "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureRequest.cs",
         "app/XDM/chrome-extension/app.js",
-        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
         "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
       ],
       "automatedTests": [
@@ -1152,20 +1152,20 @@
       "status": "complete",
       "legacySources": [
         "browser-extension/",
-        "app/XDM/firefox-amo/"
+        "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/"
       ],
       "implementationPaths": [
         "app/XDM/chrome-extension/manifest.json",
         "app/XDM/chrome-extension/app.js",
-        "app/XDM/firefox-amo/manifest.json",
-        "app/XDM/firefox-amo/app/app.js",
+        "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/manifest.template.json",
+        "app/XDM.Android/browser-extension/src/main/extension/xdm-firefox/handoff.js",
         "app/XDM/src/XDM.BrowserIntegration/BrowserHostInstaller.cs"
       ],
       "automatedTests": [
         "XDM.BrowserMedia.Tests.BrowserHostInstallerTests.RepairsAndUninstallsFirefoxAndChromiumFamilyManifests"
       ],
       "targetOverlay": "14",
-      "notes": "Firefox and Chromium-compatible builds cover Chrome/Chromium, Edge, Brave, Vivaldi and Opera-compatible native-host locations."
+      "notes": "The single Android-owned Firefox extension uses the xdm custom-protocol handoff on desktop; Chromium-compatible builds cover Chrome/Chromium, Edge, Brave, Vivaldi and Opera native-host locations."
     },
     {
       "id": "media.format-selection",

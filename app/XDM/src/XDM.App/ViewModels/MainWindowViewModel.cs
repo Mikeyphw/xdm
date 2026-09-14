@@ -1704,9 +1704,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             BrowserHostInstallationStatus status = await _browserHostInstaller
                 .RepairAsync(EmptyToNull(BrowserExtensionId));
             BrowserHostStatus = status.Message;
-            OperationMessage = status.NativeHostExists
-                ? "Browser native-host registration repaired."
-                : "Native-host executable is not present in the application directory.";
+            OperationMessage = status.IsCompatible
+                ? "Firefox handoff and browser registrations repaired."
+                : status.FirefoxProtocolRegistered
+                    ? "Firefox handoff registration repaired; Chromium native-host registration still needs attention."
+                    : "Browser registration could not be completed.";
         }
         catch (IOException exception)
         {
@@ -1732,7 +1734,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             BrowserHostInstallationStatus status = await _browserHostInstaller.UninstallAsync();
             BrowserHostStatus = status.Message;
-            OperationMessage = "Browser native-host registrations removed.";
+            OperationMessage = "Firefox handoff and browser native-host registrations removed.";
         }
         catch (IOException exception)
         {
@@ -2461,6 +2463,30 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private void OnBrowserCaptureReceived(object? sender, BrowserCaptureEventArgs eventArgs)
         => _ = HandleBrowserCaptureAsync(eventArgs);
 
+    internal async Task HandleFirefoxExtensionHandoffAsync(string rawUri)
+    {
+        if (!FirefoxExtensionHandoffParser.TryParse(rawUri, out FirefoxExtensionHandoff? handoff, out string error)
+            || handoff is null)
+        {
+            SetBrowserCaptureFailure(error.Length == 0 ? "Firefox extension handoff was rejected." : error);
+            return;
+        }
+
+        int processed = 0;
+        foreach (BrowserCaptureRequest request in handoff.Requests)
+        {
+            BrowserCaptureEventArgs eventArgs = new(request);
+            await HandleBrowserCaptureAsync(eventArgs).ConfigureAwait(false);
+            processed++;
+        }
+
+        if (processed > 1)
+        {
+            _dispatcher.Post(() =>
+                OperationMessage = $"Firefox extension handed off {processed} media candidate(s) from one capture session.");
+        }
+    }
+
     private async Task HandleBrowserCaptureAsync(BrowserCaptureEventArgs eventArgs)
     {
         BrowserCaptureRequest request = eventArgs.Request;
@@ -2543,7 +2569,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 Method: request.Method,
                 RequestBody: request.GetRequestBody(),
                 RequestBodyContentType: request.RequestBodyContentType,
-                SourcePage: ParseOptionalHttpUri(request.Referer));
+                SourcePage: ParseOptionalHttpUri(request.SourcePage ?? request.Referer));
             downloadId = await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
             eventArgs.Accept(downloadId);
         }

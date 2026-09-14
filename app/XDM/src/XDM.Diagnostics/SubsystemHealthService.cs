@@ -242,26 +242,24 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
         Stopwatch stopwatch = Stopwatch.StartNew();
         BrowserHostInstallationStatus status = _browserHostInstaller.GetStatus();
         stopwatch.Stop();
-        bool installed = status.NativeHostExists
-            && status.IsCompatible
-            && status.CompatibleManifestCount > 0;
+        bool installed = status.IsCompatible;
         SubsystemHealthStatus health = installed
             ? SubsystemHealthStatus.Healthy
-            : status.NativeHostExists
+            : status.FirefoxProtocolRegistered || status.NativeHostExists
                 ? SubsystemHealthStatus.Degraded
                 : SubsystemHealthStatus.Unavailable;
         string details = string.Join(
             Environment.NewLine,
             $"Native host executable: {(status.NativeHostExists ? "found" : "missing")}",
-            $"Firefox manifest: {(status.FirefoxManifestInstalled ? "installed" : "missing")}",
+            $"Firefox handoff protocol: {(status.FirefoxProtocolRegistered ? "registered" : "missing")}",
             $"Chromium manifests: {status.ChromiumManifestCount}",
             $"Compatible manifests: {status.CompatibleManifestCount}",
             SecretRedactor.Redact(status.Message));
         return new SubsystemHealthCheckResult(
             "native-host",
-            "Native host registration",
+            "Browser registration",
             health,
-            installed ? "Native messaging registration is compatible." : "Native messaging registration needs repair.",
+            installed ? "Firefox handoff and native messaging registrations are compatible." : "Browser registration needs repair.",
             details,
             stopwatch.Elapsed,
             installed ? null : RepairBrowserNativeHost,

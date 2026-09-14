@@ -10,7 +10,7 @@ built, tested, or packaged.
 - HTTP, HTTPS, FTP, and FTPS downloads with pause, resume, retry, cancellation, and history
 - ETag/Last-Modified resume validation, range checking, disk preflight, and crash-safe finalization
 - Batch URLs, custom request metadata, authentication, categories, queues, schedules, and speed limits
-- Firefox and Chromium-family browser capture through an authenticated native host
+- Firefox capture through the single Android-owned canonical Firefox extension using the `xdmdownload` handoff contract, plus Chromium-family capture through the authenticated native host
 - Direct media, HLS, and DASH probing and acquisition
 - 120 fixed device conversion profiles and verified update-package staging
 - System, manual, and bounded PAC proxy modes with Basic or integrated authentication
@@ -84,4 +84,19 @@ XDM Android now includes truthful browser-extension status, redacted handoff dia
 
 ## XDM Android browser bridge release gate
 
-The Android project owns its Firefox media bridge source, deterministic XPI generator, XDM-themed FAB, custom `xdmdownload` intake, settings diagnostics, and recovery flow. Phase 42 seals the automated release matrix and documents the remaining physical-device IronFox sign-off. See `app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md`.
+The Android project owns its Firefox media bridge source, deterministic XPI generator, XDM-themed FAB, custom `xdmdownload` intake, settings diagnostics, and recovery flow. Desktop packaging consumes this same Firefox source tree and adapts the desktop receiver to its existing handoff protocol; there is no second Firefox implementation. Phase 42 seals the automated release matrix and documents the remaining physical-device IronFox sign-off. See `app/XDM.Android/docs/architecture/PHASE-42-BROWSER-BRIDGE-RELEASE-GATE.md`.
+
+
+## v3 artifact-manifest repair
+
+The v3 archive removes the `workspace.root: "."` manifest field used in v2 because Devtool normalizes that root to an empty path during artifact manifest validation. The payload source intent remains the same: Android Firefox extension logic is preserved and desktop is adapted around that canonical extension.
+
+
+## v4 repair note
+
+The 20260914 v3 Devtool run passed artifact validation and applied, then failed during full xdm_modern validation before REM18. XFE01 is a pre-seal convergence overlay, so apply it with --no-validate. v4 also fixes the new XFE01 adapter compile/analyzer findings: explicit new string(char[]), StartsWith(char), and an explicit FileStream lock for secondary-instance tests. Full desktop validation remains owned by REM18, merged overlay 2 of 8.
+
+
+## XFE01 single Firefox extension convergence
+
+This repository has received merged roadmap overlay 1 of 8: XFE01. Firefox capture is consolidated around the already-working Android-owned extension. v5 is a manifest-only repair over v4: it uses Devtool's accepted `validation.failure_action: keep` enum for the pre-seal `--no-validate` apply mode. The Android extension capture logic remains unchanged.

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using XDM.BrowserIntegration;
 
 namespace XDM.BrowserMedia.Tests;
 
@@ -23,27 +24,55 @@ public sealed class BrowserExtensionSecurityTests
     }
 
     [Fact]
-    public void FirefoxManifestKeepsNetworkAccessOptional()
+    public void FirefoxFixtureIsTheCanonicalAndroidExtension()
     {
-        using JsonDocument document = LoadManifest("firefox-manifest.json");
+        using JsonDocument document = LoadManifest("firefox-manifest.template.json");
         JsonElement root = document.RootElement;
         string[] required = root.GetProperty("permissions").EnumerateArray().Select(static value => value.GetString()!).ToArray();
-        string[] optional = root.GetProperty("optional_permissions").EnumerateArray().Select(static value => value.GetString()!).ToArray();
+        JsonElement gecko = root.GetProperty("browser_specific_settings").GetProperty("gecko");
 
-        Assert.DoesNotContain("cookies", required);
-        Assert.DoesNotContain("webRequest", required);
-        Assert.DoesNotContain("https://*/*", required);
-        Assert.Contains("cookies", optional);
-        Assert.Contains("webRequest", optional);
-        Assert.Contains("https://*/*", optional);
+        Assert.Equal(2, root.GetProperty("manifest_version").GetInt32());
+        Assert.Equal(FirefoxExtensionHandoffParser.CanonicalExtensionId, gecko.GetProperty("id").GetString());
+        Assert.Contains("storage", required);
+        Assert.Contains("tabs", required);
+        Assert.Contains("activeTab", required);
+        Assert.Contains("webRequest", required);
+        Assert.Contains("<all_urls>", required);
+        Assert.DoesNotContain("nativeMessaging", required);
+        Assert.DoesNotContain("downloads", required);
+        Assert.False(root.TryGetProperty("optional_permissions", out _));
     }
 
-    [Theory]
-    [InlineData("chrome-app.js")]
-    [InlineData("firefox-app.js")]
-    public void ExtensionImplementsSiteModesPendingConfirmationAndSensitiveDefaults(string fixture)
+    [Fact]
+    public void CanonicalFirefoxHandoffKeepsAndroidSchemesAndFinalHeaderAuthority()
     {
-        string source = File.ReadAllText(GetFixturePath(fixture));
+        string source = File.ReadAllText(GetFixturePath("firefox-handoff.js"));
+
+        Assert.Contains("buildXdmAdd", source, StringComparison.Ordinal);
+        Assert.Contains("buildXdmCapture", source, StringComparison.Ordinal);
+        Assert.Contains("buildCaptureSession", source, StringComparison.Ordinal);
+        Assert.Contains("xdmdownload", source, StringComparison.Ordinal);
+        Assert.Contains("proposedHeaders", source, StringComparison.Ordinal);
+        Assert.Contains("finalHeaders", source, StringComparison.Ordinal);
+        Assert.Contains("rawHeaders: finalHeaders", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CanonicalFirefoxObserverKeepsExistingCapturePipeline()
+    {
+        string observer = File.ReadAllText(GetFixturePath("firefox-network-observer.js"));
+        string detector = File.ReadAllText(GetFixturePath("firefox-detector-core.js"));
+
+        Assert.Contains("webRequest", observer, StringComparison.Ordinal);
+        Assert.Contains("XdmHandoffV1", observer, StringComparison.Ordinal);
+        Assert.Contains("candidate", observer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("m3u8", detector, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ChromiumExtensionStillImplementsSiteModesPendingConfirmationAndSensitiveDefaults()
+    {
+        string source = File.ReadAllText(GetFixturePath("chrome-app.js"));
 
         Assert.Contains("defaultSiteMode", source, StringComparison.Ordinal);
         Assert.Contains("sitePolicies", source, StringComparison.Ordinal);
@@ -55,7 +84,7 @@ public sealed class BrowserExtensionSecurityTests
     }
 
     [Fact]
-    public void PopupExplainsOptionalMetadataAccess()
+    public void ChromiumPopupExplainsOptionalMetadataAccess()
     {
         string source = File.ReadAllText(GetFixturePath("chrome-popup.html"));
 
@@ -64,12 +93,10 @@ public sealed class BrowserExtensionSecurityTests
         Assert.Contains("Waiting for confirmation", source, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("chrome-app.js")]
-    [InlineData("firefox-app.js")]
-    public void ExtensionRegistersWakeupListenersBeforeAwaitedStartup(string fixture)
+    [Fact]
+    public void ChromiumExtensionRegistersWakeupListenersBeforeAwaitedStartup()
     {
-        string source = File.ReadAllText(GetFixturePath(fixture));
+        string source = File.ReadAllText(GetFixturePath("chrome-app.js"));
 
         Assert.True(source.IndexOf("registerDownloadTakeover();", StringComparison.Ordinal) < source.IndexOf("await this.loadRules();", StringComparison.Ordinal));
         Assert.True(source.IndexOf("registerRuntimeMessages();", StringComparison.Ordinal) < source.IndexOf("await this.loadRules();", StringComparison.Ordinal));
@@ -77,12 +104,10 @@ public sealed class BrowserExtensionSecurityTests
         Assert.Contains("browserRequestId", source, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("chrome-connector.js")]
-    [InlineData("firefox-connector.js")]
-    public void NativeConnectorScalesBatchTimeoutBeyondPerItemBudget(string fixture)
+    [Fact]
+    public void ChromiumNativeConnectorScalesBatchTimeoutBeyondPerItemBudget()
     {
-        string source = File.ReadAllText(GetFixturePath(fixture));
+        string source = File.ReadAllText(GetFixturePath("chrome-connector.js"));
 
         Assert.Contains("BATCH_ITEM_TIMEOUT_MS", source, StringComparison.Ordinal);
         Assert.Contains("timeoutFor(type, payload)", source, StringComparison.Ordinal);

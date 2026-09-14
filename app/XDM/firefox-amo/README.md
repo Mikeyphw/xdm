@@ -1,6 +1,9 @@
-# XDM Firefox extension
+# Retired Firefox desktop fork
 
-Firefox browser integration for protocol 2.0. The native manifest allow-list uses
-`xdm-v8-browser-helper@subhra74.github.io`; XDM can install or repair it without
-an extension ID being entered. Automatic downloads are cancelled only after XDM
-returns an accepted queue acknowledgement.
+XFE01 retired this directory as executable extension source.
+
+The only supported Firefox extension implementation is the proven Android-owned source at:
+
+`app/XDM.Android/browser-extension/src/main/extension/xdm-firefox`
+
+Desktop packages render that exact source into `XDM-Firefox.xpi` and adapt XDM Desktop to its existing `xdmdownload://add` v1 / `xdmdownload://capture` v3 handoff contract. Do not add Firefox capture logic here.

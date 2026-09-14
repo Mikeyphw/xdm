@@ -2,6 +2,7 @@ using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using XDM.App.Converters;
 using XDM.App.ViewModels;
+using XDM.BrowserIntegration;
 using XDM.Core.Categories;
 using XDM.Core.State;
 using XDM.Diagnostics;
@@ -23,10 +24,11 @@ internal static class Program
         }
 
         App.LaunchOptions = StartupOptions.Parse(args);
+        App.InitialFirefoxHandoffUri = FirefoxExtensionHandoffParser.FindHandoffArgument(args);
         using SingleInstanceCoordinator coordinator = new("xdm-modern", ActivationPort);
         if (!coordinator.TryAcquire())
         {
-            return coordinator.SignalPrimaryAsync().GetAwaiter().GetResult() ? 0 : 2;
+            return coordinator.SignalPrimaryAsync(App.InitialFirefoxHandoffUri).GetAwaiter().GetResult() ? 0 : 2;
         }
 
         App.InstanceCoordinator = coordinator;

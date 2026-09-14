@@ -2,8 +2,10 @@
 Type=Application
 Name=Xtreme Download Manager
 Comment=Download files and capture browser media
-Exec=/opt/xdm/XDM
+Exec=/opt/xdm/XDM %u
 Terminal=false
 Icon=xdm-modern
 Categories=Network;FileTransfer;
 StartupNotify=true
+MimeType=x-scheme-handler/xdmdownload;x-scheme-handler/xdmdownload-debug;
+X-XDM-FirefoxExtensionId=xdm-android-media-bridge@mikeyphw
