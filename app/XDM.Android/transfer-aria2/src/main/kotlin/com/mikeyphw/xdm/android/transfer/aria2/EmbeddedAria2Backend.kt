@@ -60,8 +60,9 @@ class EmbeddedAria2Backend(
 
     override suspend fun capabilities(): BackendCapabilities {
         val available = processManager.effectiveCapability().isAvailable
+        val enabledFeatures = processManager.lastKnownEnabledFeatures()
         return BackendCapabilities(
-            protocols = if (available) setOf("http", "https", "ftp", "sftp", "magnet") else emptySet(),
+            protocols = if (available) aria2OwnedProtocols(enabledFeatures) else emptySet(),
             supportsSegmentation = available,
             supportsMirrors = available,
             supportsSelectiveRepair = false,
@@ -84,8 +85,15 @@ class EmbeddedAria2Backend(
         require(request.requestKind !in setOf(DownloadRequestKind.Torrent, DownloadRequestKind.Metalink)) {
             "Embedded aria2 integration does not implement aria2.addTorrent/addMetalink; use a backend with explicit protocol support"
         }
-        require(!ExternalUrlPolicy.hasCredentialBearingQuery(request.sourceUrl)) {
-            "aria2 cannot durably own signed or credential-bearing URLs; use the native encrypted request path"
+        val candidateUris = (listOf(request.sourceUrl) + request.mirrors).distinct()
+        require(candidateUris.all(::isAria2OwnedScheme)) {
+            "aria2 ownership is limited to http/https/ftp direct-file URIs; magnet, sftp, torrent and provider-owned inputs require another backend"
+        }
+        require(candidateUris.none(ExternalUrlPolicy::hasCredentialBearingQuery)) {
+            "aria2 cannot durably own signed or credential-bearing source or mirror URLs; use the native encrypted request path"
+        }
+        require(request.mirrors.isEmpty() || request.headers.keys.none(PrivacyDiagnosticsRedactor::isSensitiveHeaderName)) {
+            "aria2 cannot safely apply sensitive headers to multiple mirror origins; use native per-origin request execution"
         }
         require(request.headers.keys.none(PrivacyDiagnosticsRedactor::isSensitiveHeaderName)) {
             "aria2 cannot durably own authenticated request headers; use the native encrypted request path"
@@ -171,12 +179,11 @@ class EmbeddedAria2Backend(
             lastSynchronizedAtEpochMs = now,
         )
         try {
-            mappingStore.upsert(mapping)
-            sessionStore.writeOwnershipMetadata(prepared.files, mapping)
-            rpc.saveSession()
+            commitMappingAndSession(prepared.files, mapping, rpc)
         } catch (error: Throwable) {
             runCatching { rpc.remove(gid, force = true) }
             runCatching { rpc.removeDownloadResult(gid) }
+            runCatching { rpc.saveSession() }
             runCatching { mappingStore.deleteByGid(gid) }
             sessionStore.deleteTaskMetadata(prepared.files)
             throw error
@@ -265,6 +272,17 @@ class EmbeddedAria2Backend(
         val rpc = processManager.rpc()
         val mapping = mappingStore.findByGid(taskId)
         val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
+        if (mapping?.status == MAPPING_COMPLETED) {
+            if (status != null) snapshots[taskId] = statusToBackendSnapshot(mapping, status)
+            return
+        }
+        if (status?.status == Aria2TaskStatusValue.Complete && mapping != null) {
+            runCatching { rpc.removeDownloadResult(taskId) }
+            check(rpc.saveSession()) { "aria2 session could not be durably saved while cancelling a completed-but-unpublished task" }
+            updateMapping(mapping, MAPPING_REMOVED, code = "CANCEL_AT_COMPLETION_BOUNDARY", message = "User cancellation won before XDM published the completed aria2 output.")
+            snapshots[taskId] = BackendSnapshot(taskId, DownloadState.Cancelled, status.completedLength, status.totalLength, 0).withProof(mapping)
+            return
+        }
         if (status?.status in TERMINAL_RPC_STATES || mapping?.status in TERMINAL_MAPPING_STATES) {
             if (mapping != null && status != null) snapshots[taskId] = statusToBackendSnapshot(mapping, status)
             return
@@ -280,10 +298,18 @@ class EmbeddedAria2Backend(
     override suspend fun remove(taskId: String) {
         val mapping = mappingStore.findByGid(taskId)
         val rpc = runCatching { processManager.rpc() }.getOrNull()
-        val status = rpc?.let { runCatching { it.tellStatus(taskId) }.getOrNull() }
-        if (status?.status !in TERMINAL_RPC_STATES) rpc?.remove(taskId, force = true)
-        rpc?.saveSession()
-        runCatching { rpc?.removeDownloadResult(taskId) }
+        if (rpc == null) {
+            mapping?.let { updateMapping(it, MAPPING_REMOVAL_PENDING, code = "ARIA2_RPC_UNAVAILABLE", message = "Removal is pending until XDM can authenticate aria2 and save the session.") }
+            return
+        }
+        val status = runCatching { rpc.tellStatus(taskId) }.getOrNull()
+        if (status?.status !in TERMINAL_RPC_STATES) rpc.remove(taskId, force = true)
+        val sessionSaved = runCatching { rpc.saveSession() }.getOrDefault(false)
+        if (!sessionSaved) {
+            mapping?.let { updateMapping(it, MAPPING_REMOVAL_PENDING, code = "ARIA2_SAVE_SESSION_FAILED", message = "Removal was requested but aria2.saveSession failed; XDM retained ownership for retry.") }
+            return
+        }
+        runCatching { rpc.removeDownloadResult(taskId) }
         controls.remove(taskId)?.let { control -> runCatching { control.destination.deleteArtifacts() } }
         mapping?.let {
             val files = it.files()
@@ -390,6 +416,22 @@ class EmbeddedAria2Backend(
             backendTaskId = ownership.backendTaskId,
         )
         val mapping = mappingStore.findByDownload(ownership.downloadId) ?: return artifactOnlyResult(ownership)
+        if (mapping.status == MAPPING_RETIRED_FOR_MIGRATION) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ResumableArtifact,
+                "aria2 mapping was retired for migration and will not be resurrected by status refresh.",
+                safeToResume = false,
+                backendTaskId = mapping.gid,
+            )
+        }
+        if (mapping.status == MAPPING_FINALIZATION_FAILED || mapping.status == MAPPING_REMOVAL_PENDING) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ResumableArtifact,
+                "aria2 mapping requires XDM-owned recovery before resume: ${mapping.status}.",
+                safeToResume = false,
+                backendTaskId = mapping.gid,
+            )
+        }
         val mismatch = validateMapping(ownership, mapping)
         if (mismatch != null) return BackendReconciliationResult(
             BackendReconciliationClassification.ConflictingArtifact,
@@ -411,13 +453,13 @@ class EmbeddedAria2Backend(
                 Aria2TaskStatusValue.Active,
                 Aria2TaskStatusValue.Waiting,
                 Aria2TaskStatusValue.Paused,
-                Aria2TaskStatusValue.Complete,
                 -> BackendReconciliationResult(
                     BackendReconciliationClassification.ActiveTaskVerified,
                     "aria2 GID ${mapping.gid} matches its XDM ownership, source, output, and generation.",
                     safeToResume = true,
                     backendTaskId = mapping.gid,
                 )
+                Aria2TaskStatusValue.Complete -> verifiedCompleteReconciliation(mapping, status)
                 Aria2TaskStatusValue.Error -> BackendReconciliationResult(
                     BackendReconciliationClassification.ResumableArtifact,
                     "aria2 reported ${status.errorMessage ?: "an error"}; validated partial data is available for controlled retry.",
@@ -554,7 +596,7 @@ class EmbeddedAria2Backend(
                 backendInstanceId = mapping.backendInstanceId,
                 backendSessionId = mapping.backendSessionId,
             )
-            runCatching { updateMapping(mapping, MAPPING_COMPLETED) }
+            updateMapping(mapping, MAPPING_COMPLETED)
             completed
         }
 
@@ -585,15 +627,16 @@ class EmbeddedAria2Backend(
     }
 
     private suspend fun updateMappingFromStatus(mapping: Aria2TaskMapping, status: Aria2TaskStatus) {
-        if (mapping.status in TERMINAL_MAPPING_STATES || mapping.status == MAPPING_RETIRED_FOR_MIGRATION) return
-        updateMapping(mapping, status.status.name, status.errorCode, status.errorMessage)
+        if (mapping.status in TERMINAL_MAPPING_STATES || mapping.status == MAPPING_RETIRED_FOR_MIGRATION || mapping.status == MAPPING_REMOVAL_PENDING) return
+        updateMapping(mapping, mapRpcStatusForDurableMapping(status), status.errorCode, status.errorMessage)
     }
 
     private suspend fun refreshRecoveredMapping(mapping: Aria2TaskMapping, status: Aria2TaskStatus) {
+        if (mapping.status in TERMINAL_MAPPING_STATES || mapping.status == MAPPING_RETIRED_FOR_MIGRATION || mapping.status == MAPPING_REMOVAL_PENDING) return
         val now = maxOf(clock(), mapping.updatedAtEpochMs + 1L)
         val refreshed = mapping.copy(
             backendSessionId = runtimeIdentity.sessionId,
-            status = status.status.name,
+            status = mapRpcStatusForDurableMapping(status),
             updatedAtEpochMs = now,
             lastSynchronizedAtEpochMs = now,
             lastErrorCode = status.errorCode,
@@ -602,6 +645,57 @@ class EmbeddedAria2Backend(
         mappingStore.upsert(refreshed)
         sessionStore.writeOwnershipMetadata(refreshed.files(), refreshed)
     }
+
+
+    private suspend fun commitMappingAndSession(files: Aria2TaskFiles, mapping: Aria2TaskMapping, rpc: Aria2RpcControl) {
+        mappingStore.upsert(mapping)
+        sessionStore.writeOwnershipMetadata(files, mapping)
+        check(rpc.saveSession()) { "aria2 session could not be durably saved after mapping creation" }
+    }
+
+    private fun verifiedCompleteReconciliation(mapping: Aria2TaskMapping, status: Aria2TaskStatus): BackendReconciliationResult {
+        val output = File(mapping.outputPath)
+        if (!output.isFile) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "aria2 reported complete but the owned output is missing; final publication cannot continue.",
+                backendTaskId = mapping.gid,
+            )
+        }
+        val expected = mapping.expectedLength ?: status.totalLength.takeIf { it > 0 }
+        if (expected != null && output.length() != expected) {
+            return BackendReconciliationResult(
+                BackendReconciliationClassification.ConflictingArtifact,
+                "aria2 reported complete but the owned output length does not match expected publication truth.",
+                backendTaskId = mapping.gid,
+            )
+        }
+        return BackendReconciliationResult(
+            BackendReconciliationClassification.ResumableArtifact,
+            "aria2 reports complete output, but XDM must run final output/publication verification before terminal completion is acknowledged.",
+            safeToResume = false,
+            backendTaskId = mapping.gid,
+        )
+    }
+
+    private fun mapRpcStatusForDurableMapping(status: Aria2TaskStatus): String = when (status.status) {
+        Aria2TaskStatusValue.Complete -> MAPPING_COMPLETION_VERIFICATION_PENDING
+        else -> status.status.name
+    }
+
+    private fun aria2OwnedProtocols(enabledFeatures: Set<String>): Set<String> {
+        val lower = enabledFeatures.map { it.lowercase() }.toSet()
+        val protocolFeaturesKnown = lower.any { it in setOf("http", "https", "ftp", "sftp", "bittorrent", "metalink") }
+        return buildSet {
+            if (!protocolFeaturesKnown || "http" in lower) add("http")
+            if (!protocolFeaturesKnown || "https" in lower) add("https")
+            if ("ftp" in lower) add("ftp")
+        }
+    }
+
+    private fun isAria2OwnedScheme(uri: String): Boolean = runCatching {
+        URI(uri).scheme?.lowercase() in setOf("http", "https", "ftp")
+    }.getOrDefault(false)
 
     private fun validateMapping(ownership: BackendOwnership, mapping: Aria2TaskMapping): String? {
         if (mapping.gid != ownership.backendTaskId && ownership.backendTaskId != null) return "The persisted aria2 GID does not match the backend task ownership record."
@@ -638,8 +732,8 @@ class EmbeddedAria2Backend(
         return if (output?.isFile == true || control?.isFile == true) {
             BackendReconciliationResult(
                 BackendReconciliationClassification.ResumableArtifact,
-                "aria2 no longer exposes the GID, but its owned partial/control artifacts remain${detail?.let { ": $it" }.orEmpty()}.",
-                safeToResume = true,
+                "aria2 no longer exposes the GID, but its owned partial/control artifacts remain${detail?.let { ": $it" }.orEmpty()}; sparse aria2 allocation is restart/recovery-required, not safe resume.",
+                safeToResume = false,
                 backendTaskId = null,
             )
         } else {
@@ -736,7 +830,9 @@ class EmbeddedAria2Backend(
         const val MAPPING_COMPLETED = "Completed"
         const val MAPPING_FINALIZATION_FAILED = "FinalizationFailed"
         const val MAPPING_RETIRED_FOR_MIGRATION = "RetiredForMigration"
-        val TERMINAL_MAPPING_STATES = setOf(MAPPING_REMOVED, MAPPING_COMPLETED, MAPPING_FINALIZATION_FAILED, "Error")
+        const val MAPPING_REMOVAL_PENDING = "RemovalPending"
+        const val MAPPING_COMPLETION_VERIFICATION_PENDING = "CompletionVerificationPending"
+        val TERMINAL_MAPPING_STATES = setOf(MAPPING_REMOVED, MAPPING_COMPLETED, "Error")
         val TERMINAL_RPC_STATES = setOf(Aria2TaskStatusValue.Error, Aria2TaskStatusValue.Complete, Aria2TaskStatusValue.Removed)
     }
 }

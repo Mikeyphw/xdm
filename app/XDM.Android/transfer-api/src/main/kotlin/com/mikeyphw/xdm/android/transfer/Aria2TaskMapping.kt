@@ -61,4 +61,4 @@ class InMemoryAria2TaskMappingStore : Aria2TaskMappingStore {
 }
 
 
-private val TERMINAL_MAPPING_STATES = setOf("Completed", "Removed", "Error", "FinalizationFailed")
+private val TERMINAL_MAPPING_STATES = setOf("Completed", "Removed", "Error")

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.flow
 class Aria2EventPoller(
     private val processManager: Aria2ProcessManager,
     private val pollIntervalMillis: Long = 750,
+    private val terminalBackoffMillis: Long = 1_500,
 ) : Aria2TaskEventSource {
     override fun observe(gid: String): Flow<Aria2TaskStatus> = flow {
         var last: Aria2TaskStatus? = null
@@ -17,7 +18,8 @@ class Aria2EventPoller(
             if (status != last) emit(status)
             last = status
             if (status.status in TERMINAL) return@flow
-            delay(pollIntervalMillis)
+            val adaptiveDelay = if (status.downloadSpeed == 0L && status.status != Aria2TaskStatusValue.Active) terminalBackoffMillis else pollIntervalMillis
+            delay(adaptiveDelay)
         }
     }.buffer(Channel.CONFLATED)
 

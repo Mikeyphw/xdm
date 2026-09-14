@@ -4925,7 +4925,9 @@
     "canonical_findings_closed": 22,
     "depends_on": [
       "XAR03",
-      "XAR05"
+      "XAR05",
+      "XAR06",
+      "XAR07"
     ],
     "order": "6 of 17",
     "overlay": "XAR06",
@@ -4984,13 +4986,63 @@
     "validation_mode": "intermediate_no_validate",
     "validator": "tools/validate-xar07-native-http-protocol.py"
   },
+
+    "xar08_aria2_ownership": {
+      "canonical_section": "S08",
+      "canonical_findings_closed": 23,
+      "canonical_ids": [
+        "S08-01",
+        "S08-02",
+        "S08-03",
+        "S08-04",
+        "S08-05",
+        "S08-06",
+        "S08-07",
+        "S08-08",
+        "S08-09",
+        "S08-10",
+        "S08-11",
+        "S08-12",
+        "S08-13",
+        "S08-15",
+        "S08-16",
+        "S08-17",
+        "DS4-S08-01",
+        "DS4-S08-02",
+        "DS4-S08-03",
+        "DS4-S08-04",
+        "DS4-S08-05",
+        "DS4-S08-06",
+        "RERUN34-S08-01"
+      ],
+      "depends_on": [
+        "XAR02",
+        "XAR03",
+        "XAR06",
+        "XAR07"
+      ],
+      "overlay": "XAR08",
+      "roadmap_position": "8 of 17",
+      "validator": "tools/validate-xar08-aria2-ownership.py",
+      "validation_task": "verifyXar08Aria2Ownership",
+      "report": "XDM_ANDROID_XAR08_ARIA2_OWNERSHIP_REPORT.md",
+      "docs": "docs/remediation/XAR08-ARIA2-OWNERSHIP.md",
+      "capability_truth_feature_aware": true,
+      "session_sanitized_before_launch": true,
+      "removal_fail_closed": true,
+      "completed_requires_terminal_mapping_persistence": true,
+      "recovered_complete_requires_publication_verification": true,
+      "validation_mode": "intermediate_no_validate"
+    }
+,
   "xar_applied_overlay_archives": [
     "xdm_android_xar01_build_signing_native_provenance_v1.tar.gz",
     "xdm_android_xar02_concurrency_cas_ownership_v2.tar.gz",
     "xdm_android_xar03_persistence_generation_integrity_v1.tar.gz",
     "xdm_android_xar04_navigation_session_ownership_v1.tar.gz",
     "xdm_android_xar05_external_intake_admission_v1.tar.gz",
-    "xdm_android_xar06_storage_publication_v1.tar.gz"
+    "xdm_android_xar06_storage_publication_v1.tar.gz",
+    "xdm_android_xar07_native_http_protocol_v1.tar.gz"
   ],
   "xar_roadmap": {
     "applied_overlays": [
@@ -4998,9 +5050,11 @@
       "XAR02",
       "XAR03",
       "XAR04",
-      "XAR05"
+      "XAR05",
+      "XAR06",
+      "XAR07"
     ],
-    "current_overlay": "XAR07",
-    "last_completed_overlay": "XAR07"
+    "current_overlay": "XAR08",
+    "last_completed_overlay": "XAR08"
   }
 }

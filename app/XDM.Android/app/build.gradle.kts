@@ -428,6 +428,15 @@ val verifyXar07NativeHttpProtocol = tasks.register<Exec>("verifyXar07NativeHttpP
     trackStaticValidation("xar07-native-http-protocol")
 }
 
+
+val verifyXar08Aria2Ownership = tasks.register<Exec>("verifyXar08Aria2Ownership") {
+    group = "verification"
+    description = "Verify XAR08 aria2 ownership, session ordering, runtime capability truth, and S08 coverage contracts."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar08-aria2-ownership.py")
+    trackStaticValidation("xar08-aria2-ownership")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -484,6 +493,7 @@ val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGat
         verifyXar05ExternalIntakeAdmission,
         verifyXar06StoragePublication,
         verifyXar07NativeHttpProtocol,
+        verifyXar08Aria2Ownership,
         verifyFfmpeg04FullReleaseSeal,
         verifyFfmpegRoadmapPostSealHotfix,
         verifyGradleTaskGraphOptimization,

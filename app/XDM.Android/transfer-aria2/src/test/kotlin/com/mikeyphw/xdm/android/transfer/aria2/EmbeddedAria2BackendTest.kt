@@ -335,6 +335,10 @@ private class TestRpcControl(private val process: TestManagedProcess) : Aria2Rpc
         return true
     }
 
+    override suspend fun purgeSavedSession() {
+        events += "purge-session"
+    }
+
     override suspend fun shutdown(force: Boolean) { process.complete(if (force) 137 else 0) }
 
     fun complete(gid: String, totalLength: Long) {

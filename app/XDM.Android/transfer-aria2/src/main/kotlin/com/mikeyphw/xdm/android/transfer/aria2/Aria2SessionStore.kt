@@ -7,6 +7,7 @@ import com.mikeyphw.xdm.android.transfer.Aria2TaskMapping
 import com.mikeyphw.xdm.android.util.sanitizeFileName
 import java.io.File
 import java.io.RandomAccessFile
+import java.security.MessageDigest
 import java.util.UUID
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -27,10 +28,15 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
         }
         if (!sessionFile.exists()) check(sessionFile.createNewFile()) { "Unable to create aria2 session file" }
         sessionFile.restrictToOwner()
+        cleanupTransientLaunchConfigurations()
+        rotateRuntimeLog()
+        sanitizeSavedSessionToOwnedMetadata()
     }
 
     override fun cleanupTransientLaunchConfigurations(): Int {
-        prepare()
+        listOf(rootDirectory, taskDirectory, stagingDirectory, logDirectory).forEach { directory ->
+            if (!directory.exists()) directory.mkdirs()
+        }
         var removed = 0
         rootDirectory.listFiles().orEmpty()
             .filter { it.isFile && it.name.startsWith("launch-") && it.extension == "conf" }
@@ -39,6 +45,42 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
             }
         return removed
     }
+
+    override fun sanitizeSavedSessionToOwnedMetadata(): Int = runCatching {
+        if (!sessionFile.isFile || sessionFile.length() == 0L) return@runCatching 0
+        val ownedGids = taskDirectory.listFiles().orEmpty()
+            .mapNotNull { directory -> File(directory, "ownership.json").takeIf(File::isFile)?.readText(Charsets.UTF_8) }
+            .mapNotNull { payload -> Regex("\\\"gid\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(payload)?.groupValues?.get(1) }
+            .toSet()
+        if (ownedGids.isEmpty()) {
+            val removed = sessionFile.readLines(Charsets.UTF_8).count { it.isNotBlank() }
+            if (removed > 0) atomicWrite(sessionFile, "")
+            return@runCatching removed
+        }
+        val original = sessionFile.readLines(Charsets.UTF_8)
+        val retained = original.filter { line ->
+            val trimmed = line.trim()
+            trimmed.isBlank() || ownedGids.any { gid -> trimmed.contains(gid) }
+        }
+        if (retained.size != original.size) atomicWrite(sessionFile, retained.joinToString("\n", postfix = if (retained.isEmpty()) "" else "\n"))
+        original.size - retained.size
+    }.getOrDefault(0)
+
+    override fun rotateRuntimeLog(maxBytes: Long): Boolean = runCatching {
+        val file = File(logDirectory, "aria2-runtime.log")
+        if (!file.isFile || file.length() <= maxBytes.coerceAtLeast(64 * 1024L)) return@runCatching true
+        val previous = File(logDirectory, "aria2-runtime.log.1")
+        previous.delete()
+        val keep = maxBytes.coerceAtLeast(64 * 1024L) / 2L
+        val suffix = RandomAccessFile(file, "r").use { input ->
+            val count = minOf(input.length(), keep).toInt()
+            input.seek((input.length() - count).coerceAtLeast(0L))
+            ByteArray(count).also(input::readFully)
+        }
+        if (!file.renameTo(previous)) previous.writeBytes(file.readBytes())
+        atomicWrite(file, suffix.toString(Charsets.UTF_8))
+        true
+    }.getOrDefault(false)
 
     override fun readRuntimeLogTail(maxChars: Int): String? = runCatching {
         val file = File(logDirectory, "aria2-runtime.log")
@@ -73,6 +115,7 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
             endpoint = Aria2Endpoint(requireNotNull(values["port"]).toInt()),
             secretGeneration = requireNotNull(values["secretGeneration"]).toLong(),
             startedAtEpochMs = requireNotNull(values["startedAtEpochMs"]).toLong(),
+            processId = values["processId"]?.toLongOrNull(),
         )
     }.getOrNull()
 
@@ -85,6 +128,7 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
                 appendLine("port=${lease.endpoint.port}")
                 appendLine("secretGeneration=${lease.secretGeneration}")
                 appendLine("startedAtEpochMs=${lease.startedAtEpochMs}")
+                lease.processId?.let { appendLine("processId=$it") }
             },
         )
         true
@@ -175,6 +219,7 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
             put("backendInstanceId", mapping.backendInstanceId)
             put("status", mapping.status)
             put("updatedAtEpochMs", mapping.updatedAtEpochMs)
+            put("sessionFileSha256", sessionFile.sha256IfPresent().orEmpty())
         }
         atomicWrite(files.ownershipMetadata, payload.toString())
     }
@@ -207,6 +252,20 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
     }
 
     private fun safeFileName(value: String): String = sanitizeFileName(value)
+
+    private fun File.sha256IfPresent(): String? = runCatching {
+        if (!isFile) return@runCatching null
+        val digest = MessageDigest.getInstance("SHA-256")
+        inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }.getOrNull()
 
     private fun File.safeConfigurationPath(): String = canonicalPath.also { path ->
         require('\n' !in path && '\r' !in path) { "Unsafe aria2 configuration path" }

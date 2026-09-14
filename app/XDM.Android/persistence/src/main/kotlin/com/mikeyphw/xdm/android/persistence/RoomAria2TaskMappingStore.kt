@@ -81,4 +81,4 @@ private fun Aria2SessionMappingEntity.toModel() = Aria2TaskMapping(
 )
 
 
-private val TERMINAL_MAPPING_STATES = setOf("Completed", "Removed", "Error", "FinalizationFailed")
+private val TERMINAL_MAPPING_STATES = setOf("Completed", "Removed", "Error")

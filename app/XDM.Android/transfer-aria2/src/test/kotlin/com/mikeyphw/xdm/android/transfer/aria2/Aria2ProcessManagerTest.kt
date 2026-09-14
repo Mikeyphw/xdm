@@ -518,6 +518,7 @@ private class FakeRpcControl(private val process: FakeManagedProcess) : Aria2Rpc
     override suspend fun tellStopped(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
     override suspend fun removeDownloadResult(gid: String) { events += "remove-result" }
     override suspend fun saveSession(): Boolean { events += "save"; return true }
+    override suspend fun purgeSavedSession() { events += "purge-session" }
     override suspend fun shutdown(force: Boolean) { events += "shutdown"; process.complete(if (force) 137 else 0) }
 }
 
@@ -545,6 +546,7 @@ private class FailingRpcControl(private val error: Throwable) : Aria2RpcControl 
     override suspend fun tellStopped(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
     override suspend fun removeDownloadResult(gid: String) = Unit
     override suspend fun saveSession(): Boolean = true
+    override suspend fun purgeSavedSession() = Unit
     override suspend fun shutdown(force: Boolean) = Unit
 }
 

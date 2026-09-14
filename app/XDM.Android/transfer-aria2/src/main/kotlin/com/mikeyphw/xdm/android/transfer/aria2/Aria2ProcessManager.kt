@@ -68,6 +68,9 @@ class Aria2ProcessManager(
             return@withLock Aria2StartResult(started = true, alreadyRunning = true, state = currentState)
         }
         clearDeadProcess()
+        sessionStore.cleanupTransientLaunchConfigurations()
+        sessionStore.rotateRuntimeLog()
+        val prunedSessionRows = sessionStore.sanitizeSavedSessionToOwnedMetadata()
         val persistedRuntime = reconcilePersistedRuntime()
         if (persistedRuntime.failure != null) {
             return@withLock failedStart(
@@ -163,6 +166,7 @@ class Aria2ProcessManager(
             endpoint = prepared.endpoint,
             secretGeneration = prepared.secretGeneration,
             startedAtEpochMs = prepared.startedAtEpochMs,
+            processId = process.processId,
         )
         if (sessionStore.supportsRuntimeLease && !sessionStore.writeRuntimeLease(lease)) {
             secureAbort(process, prepared.configuration)
@@ -181,7 +185,7 @@ class Aria2ProcessManager(
             processId = process.processId,
             secretGeneration = prepared.secretGeneration,
             startedAtEpochMs = prepared.startedAtEpochMs,
-            orphanRecovery = persistedRuntime.status,
+            orphanRecovery = if (prunedSessionRows > 0 && persistedRuntime.status == Aria2OrphanRecovery.None) Aria2OrphanRecovery.ClearedStaleMarker else persistedRuntime.status,
         )
         _state.value = running
         observeExit(process)
@@ -276,8 +280,16 @@ class Aria2ProcessManager(
 
     suspend fun activeTaskIds(): List<String> = runCatching {
         val rpc = rpc()
-        (rpc.tellActive() + rpc.tellWaiting() + rpc.tellStopped()).map(Aria2TaskStatus::gid).distinct()
+        val active = rpc.tellActive()
+        val waiting = rpc.tellWaiting(offset = 0, count = ACTIVE_TASK_BATCH_SIZE)
+        val stopped = rpc.tellStopped(offset = 0, count = ACTIVE_TASK_BATCH_SIZE)
+        (active + waiting + stopped).map(Aria2TaskStatus::gid).distinct()
     }.getOrDefault(emptyList())
+
+    suspend fun lastKnownEnabledFeatures(): Set<String> = runCatching {
+        val currentState = _state.value as? Aria2ProcessState.Running
+        currentState?.version?.enabledFeatures ?: rpc().getVersion().enabledFeatures
+    }.getOrDefault(emptySet())
 
     suspend fun smokeTest(): Aria2SmokeTestResult {
         val start = start()
@@ -678,6 +690,10 @@ class Aria2ProcessManager(
         val failure: Aria2StartupDiagnostic? = null,
         val sessionSaved: Boolean = true,
     )
+
+    private companion object {
+        const val ACTIVE_TASK_BATCH_SIZE = 250
+    }
 
     private data class RpcReadiness(
         val version: Aria2Version?,

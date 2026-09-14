@@ -99,6 +99,7 @@ data class Aria2RuntimeLease(
     val endpoint: Aria2Endpoint,
     val secretGeneration: Long,
     val startedAtEpochMs: Long,
+    val processId: Long? = null,
 )
 
 sealed interface Aria2ProcessState {
@@ -189,6 +190,8 @@ interface Aria2RuntimeFiles {
     val sessionFile: File
     fun prepare()
     fun cleanupTransientLaunchConfigurations(): Int = 0
+    fun sanitizeSavedSessionToOwnedMetadata(): Int = 0
+    fun rotateRuntimeLog(maxBytes: Long = 512 * 1024L): Boolean = true
     fun readRuntimeLogTail(maxChars: Int = 4096): String? = null
     val supportsRuntimeLease: Boolean get() = false
     fun readRuntimeLease(): Aria2RuntimeLease? = null

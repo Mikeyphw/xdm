@@ -49,6 +49,7 @@ object EngineEscalationPlanner {
         val expiring = draft.url.hasCredentialBearingQuery() || draft.url.hasShortLivedPathHint() || sessionHealth?.expiryRiskLabel == "High"
         val blockedByServer = lastHttpStatus == 401 || lastHttpStatus == 403
         val largeDirectFile = kind == DownloadIntakeKind.DirectFile && (draft.contentLength ?: 0L) >= LargeFileThresholdBytes
+        val aria2Eligible = largeDirectFile && !hasProtectedContext && !expiring && !blockedByServer && kind == DownloadIntakeKind.DirectFile
         val site = draft.host?.takeIf(String::isNotBlank) ?: "source site"
         val suggested = suggestedMethod(
             kind = kind,
@@ -57,6 +58,7 @@ object EngineEscalationPlanner {
             expiring = expiring,
             blockedByServer = blockedByServer,
             largeDirectFile = largeDirectFile,
+            aria2Eligible = aria2Eligible,
         )
         val nextAction = nextAction(
             kind = kind,
@@ -109,7 +111,7 @@ object EngineEscalationPlanner {
                     guidance = fallbackGuidance(kind, blockedByServer),
                 ),
             ),
-            alternatives = alternatives(kind, hasProtectedContext, largeDirectFile),
+            alternatives = alternatives(kind, hasProtectedContext, aria2Eligible),
         )
     }
 
@@ -120,14 +122,15 @@ object EngineEscalationPlanner {
         expiring: Boolean,
         blockedByServer: Boolean,
         largeDirectFile: Boolean,
+        aria2Eligible: Boolean,
     ): String = when {
         blockedByServer -> "Refresh browser capture or inspect with yt-dlp"
         kind == DownloadIntakeKind.AdaptiveMedia -> "Media resolver or yt-dlp"
         kind == DownloadIntakeKind.PageOrUnknown -> "Inspect media before queueing"
         hasProtectedContext || expiring -> "XDM Native with captured session"
-        largeDirectFile -> "aria2 segmented transfer"
+        aria2Eligible -> "aria2 segmented transfer"
         kind == DownloadIntakeKind.Torrent -> "Torrent-compatible handoff"
-        recommendation?.backend == BackendType.Aria2 -> "aria2 segmented transfer"
+        recommendation?.backend == BackendType.Aria2 && aria2Eligible -> "aria2 segmented transfer"
         recommendation?.backend == BackendType.Native -> "XDM Native"
         else -> "Automatic safe default"
     }
@@ -154,6 +157,7 @@ object EngineEscalationPlanner {
         expiring: Boolean,
         blockedByServer: Boolean,
         largeDirectFile: Boolean,
+        aria2Eligible: Boolean,
     ): String = when {
         blockedByServer -> "Server asked for browser access"
         kind == DownloadIntakeKind.AdaptiveMedia -> "Playlist needs resolver support"
@@ -174,6 +178,7 @@ object EngineEscalationPlanner {
         expiring: Boolean,
         blockedByServer: Boolean,
         largeDirectFile: Boolean,
+        aria2Eligible: Boolean,
     ): String = when {
         blockedByServer -> "$site refused a direct probe. Refresh the browser capture first, then use the captured session or inspect with yt-dlp when this is a watch page."
         kind == DownloadIntakeKind.AdaptiveMedia -> "This looks like HLS or DASH. Inspect media first so variants, audio, subtitles, and expiring playlist access are handled deliberately."
@@ -214,7 +219,7 @@ object EngineEscalationPlanner {
             add(EngineEscalationAlternative("yt-dlp/media resolver", "Use for pages, playlists, variants, and extractor-supported sites."))
         }
         if (largeDirectFile) {
-            add(EngineEscalationAlternative("aria2", "Use for large direct files that benefit from segmented retry."))
+            add(EngineEscalationAlternative("aria2", "Use only for unsigned direct files without browser/session credentials or redirect-sensitive policy."))
         }
         if (hasProtectedContext) {
             add(EngineEscalationAlternative("XDM Native", "Use while captured browser session context is still fresh."))

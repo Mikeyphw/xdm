@@ -168,6 +168,10 @@ class OkHttpAria2RpcControl(
 
     override suspend fun saveSession(): Boolean = invoke("aria2.saveSession").jsonPrimitive.content == "OK"
 
+    override suspend fun purgeSavedSession() {
+        invoke("aria2.purgeDownloadResult")
+    }
+
     override suspend fun shutdown(force: Boolean) {
         invoke(if (force) "aria2.forceShutdown" else "aria2.shutdown")
     }
