@@ -100,6 +100,32 @@ class DownloadUiTruthTest {
         assertTrue(truth.overallProgressText.contains("verification in progress"))
     }
 
+
+    @Test
+    fun evidenceIsBoundToCurrentAttemptGeneration() {
+        val item = download(DownloadState.Completed).copy(attemptGeneration = 2L, completedArtifactUri = "content://downloads/id", completedArtifactGeneration = 2L, completedArtifactBytes = 1024L)
+        val staleChecksum = checksum(matches = true).copy(attemptGeneration = 1L)
+        val context = DownloadUiTruthPlanner.contextFor(item, listOf(item), checksumResults = listOf(staleChecksum))
+        assertFalse(context.verificationPassed())
+        assertEquals("Not confirmed", DownloadUiTruthPlanner.truth(item, context).verificationText)
+    }
+
+    @Test
+    fun completedRequiresCommittedArtifactMetadataBeforeReadyCopy() {
+        val item = download(DownloadState.Completed).copy(completedArtifactUri = null, completedArtifactGeneration = null, completedArtifactBytes = null)
+        val context = DownloadUiTruthPlanner.contextFor(item, listOf(item))
+        assertEquals("Committing", DownloadUiTruthPlanner.truth(item, context).badge)
+        assertTrue(DownloadUiTruthPlanner.truth(item, context).status.contains("pending durable artifact metadata"))
+    }
+
+    @Test
+    fun activeUnknownLengthTransfersShowIndeterminateProgress() {
+        val item = download(DownloadState.Downloading).copy(totalBytes = null)
+        val context = DownloadUiTruthPlanner.contextFor(item, listOf(item))
+        assertEquals(null, DownloadUiTruthPlanner.phaseProgress(item, context))
+        assertTrue(DownloadUiTruthPlanner.indeterminateProgressVisible(item, context))
+    }
+
     private fun checksum(matches: Boolean) = ChecksumResult(
         id = "checksum",
         downloadId = "id",

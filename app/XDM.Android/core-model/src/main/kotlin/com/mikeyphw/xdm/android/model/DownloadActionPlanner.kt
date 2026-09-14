@@ -28,6 +28,8 @@ enum class DownloadActionKind {
     DeleteFile,
     DeleteRecord,
     DeleteFileAndRecord,
+    Archive,
+    Unarchive,
 }
 
 enum class DownloadActionIcon {
@@ -215,26 +217,34 @@ object DownloadActionPlanner {
         return listOfNotNull(primary, secondary).distinctBy(DownloadAction::kind).take(2)
     }
 
-    fun batchActionsFor(downloads: List<Download>): List<DownloadAction> {
-        if (downloads.isEmpty()) return emptyList()
-        val states = downloads.mapTo(linkedSetOf()) { it.state }
-        return buildList {
-            if (states.any { it in pausableStates }) add(pause(label = "Pause selected"))
-            if (states.any { it in resumableStates || it == DownloadState.Failed }) add(resume(label = "Resume selected", validated = false))
-            add(
-                DownloadAction(
-                    kind = DownloadActionKind.CopyLink,
-                    label = "Copy redacted source links",
-                    icon = DownloadActionIcon.Copy,
-                    enabled = downloads.any { ExternalUrlPolicy.persistableUrl(it.sourceUrl) != null },
-                    supportingText = "Copies only persistence-safe URLs. Credential-bearing query values remain redacted.",
-                ),
-            )
-            if (states.all { it in terminalStates }) add(deleteHistory(label = "Delete selected download entries"))
-        }
+fun batchActionsFor(downloads: List<Download>): List<DownloadAction> {
+    if (downloads.isEmpty()) return emptyList()
+    val states = downloads.mapTo(linkedSetOf()) { it.state }
+    return buildList {
+        if (states.any { it in pausableStates }) add(pause(label = "Pause selected"))
+        if (states.any { it in resumableStates || it == DownloadState.Failed }) add(resume(label = "Resume selected", validated = false))
+        add(
+            DownloadAction(
+                kind = DownloadActionKind.Archive,
+                label = "Archive selected",
+                icon = DownloadActionIcon.Folder,
+                enabled = downloads.any { !it.archived && it.state !in DownloadActionExecutionTruth.activeStates },
+                supportingText = "Archives only current non-active rows; active Native HLS/media work is retained visibly until its owner stops.",
+            ),
+        )
+        add(
+            DownloadAction(
+                kind = DownloadActionKind.Unarchive,
+                label = "Unarchive selected",
+                icon = DownloadActionIcon.Folder,
+                enabled = downloads.any { it.archived },
+                supportingText = "Returns archived rows to the everyday Downloads workspace after a current-state check.",
+            ),
+        )
     }
+}
 
-    private val pausableStates = setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Finalizing)
+private val pausableStates = setOf(DownloadState.Downloading, DownloadState.Connecting, DownloadState.Finalizing)
     private val resumableStates = setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
     private val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
     private val queueStates = setOf(DownloadState.Created, DownloadState.Queued, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)

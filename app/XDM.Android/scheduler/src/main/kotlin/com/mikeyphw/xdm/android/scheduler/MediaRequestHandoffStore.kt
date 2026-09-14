@@ -155,6 +155,7 @@ object MediaRequestHandoffStore {
         targetAttemptGeneration: Long = 1L,
     ): Boolean {
         val source = forDownload(sourceDownloadId) ?: return false
+        val sameExactRequest = replacementExactUrl == null || replacementExactUrl == source.exactUrl
         return remember(
             downloadId = targetDownloadId,
             headers = source.headers,
@@ -172,8 +173,8 @@ object MediaRequestHandoffStore {
             expiresAtEpochMs = source.expiresAtEpochMs,
             attemptGeneration = targetAttemptGeneration,
             subjectGeneration = targetAttemptGeneration,
-            privateNetworkApproved = replacementExactUrl == null && source.privateNetworkApproved,
-            cleartextCredentialsApproved = replacementExactUrl == null && source.cleartextCredentialsApproved,
+            privateNetworkApproved = sameExactRequest && source.privateNetworkApproved,
+            cleartextCredentialsApproved = sameExactRequest && source.cleartextCredentialsApproved,
             cleanupActions = source.cleanupActions,
             tempCookieFileName = source.tempCookieFileName,
         )

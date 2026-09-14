@@ -475,6 +475,15 @@ val verifyXar12MediaExecutionSeal = tasks.register<Exec>("verifyXar12MediaExecut
     trackStaticValidation("xar12-media-execution-seal")
 }
 
+val verifyXar13DownloadsTruthfulActions = tasks.register<Exec>("verifyXar13DownloadsTruthfulActions") {
+    group = "verification"
+    description = "Verify XAR13 Downloads UI/action truth, fresh current-state execution, and S13 coverage contracts."
+    dependsOn(verifyXar12MediaExecutionSeal)
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar13-downloads-truthful-actions.py")
+    trackStaticValidation("xar13-downloads-truthful-actions")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -536,6 +545,7 @@ val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGat
         verifyXar10BrowserCaptureEvidence,
         verifyXar11ManifestResolution,
         verifyXar12MediaExecutionSeal,
+        verifyXar13DownloadsTruthfulActions,
         verifyFfmpeg04FullReleaseSeal,
         verifyFfmpegRoadmapPostSealHotfix,
         verifyGradleTaskGraphOptimization,

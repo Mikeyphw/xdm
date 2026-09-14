@@ -124,7 +124,7 @@ fun DownloadsScreen(
     onBulkPause: (List<Download>) -> Unit,
     onBulkResume: (List<Download>) -> Unit,
     onCreateTag: (String) -> Unit,
-    onAssignTag: (Download, DownloadTag) -> Unit,
+    onSetTagAssignment: (List<Download>, DownloadTag, Boolean) -> Unit,
     onSaveSearch: (String, String, DownloadState?, Boolean) -> Unit,
     onDeleteSavedSearch: (SavedSearch) -> Unit,
     onPauseAll: () -> Unit,
@@ -659,7 +659,7 @@ fun DownloadsScreen(
                 onBulkPause = { onBulkPause(selectedDownloads) },
                 onBulkResume = { onBulkResume(selectedDownloads) },
                 onCreateTag = onCreateTag,
-                onAssignTag = { tag -> selectedDownloads.forEach { onAssignTag(it, tag) } },
+                onSetTagAssignment = { tag, assigned -> onSetTagAssignment(selectedDownloads, tag, assigned) },
                 onSaveSearch = onSaveSearch,
                 onApplySavedSearch = { search ->
                     query = search.query
@@ -938,6 +938,7 @@ private fun performDownloadAction(
         DownloadActionKind.DeleteFile -> onDeleteSavedFile(download, false)
         DownloadActionKind.DeleteRecord -> onDeleteRecord(download)
         DownloadActionKind.DeleteFileAndRecord -> onDeleteSavedFile(download, true)
+        DownloadActionKind.Archive, DownloadActionKind.Unarchive -> onOpenDetails()
     }
 }
 

@@ -68,7 +68,7 @@ internal fun DownloadRow(
     val truth = DownloadUiTruthPlanner.truth(download, actionContext)
     val totalBytes = download.totalBytes
     val phaseProgress = DownloadUiTruthPlanner.phaseProgress(download, actionContext)
-    val progressVisible = phaseProgress != null
+    val progressVisible = phaseProgress != null || DownloadUiTruthPlanner.indeterminateProgressVisible(download, actionContext)
     val runningVerification = actionContext.latestVerification?.takeIf { it.status == com.mikeyphw.xdm.android.model.VerificationStatus.Running }
     val verificationTotalBytes = runningVerification?.totalBytes
     val byteText = when {
@@ -130,7 +130,7 @@ internal fun DownloadRow(
                     maxLines = if (compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (progressVisible) XdmProgressLine(progress = requireNotNull(phaseProgress), stateLabel = truth.overallProgressText)
+                if (progressVisible) XdmProgressLine(progress = phaseProgress, stateLabel = truth.overallProgressText)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(byteText, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(trailing, style = MaterialTheme.typography.labelMedium, maxLines = 1)

@@ -1733,7 +1733,7 @@
   },
   "current_experience_polish_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_hotfix": "xdm_media_parity04_validation_hotfix_v1.zip",
-  "current_overlay": "XAR12 media execution seal",
+  "current_overlay": "XAR13 Downloads truthful actions",
   "current_release_authority": "XAR12 media execution seal",
   "current_runtime_quality_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
@@ -5250,7 +5250,8 @@
     "xdm_android_xar09_scheduler_recovery_v1.tar.gz",
     "xdm_android_xar10_browser_capture_evidence_v1.tar.gz",
     "xdm_android_xar11_manifest_resolution_v1.tar.gz",
-    "xdm_android_xar12_media_execution_seal_v2.tar.gz"
+    "xdm_android_xar12_media_execution_seal_v2.tar.gz",
+    "xdm_android_xar13_downloads_truthful_actions_v1.tar.gz"
   ],
   "xar_roadmap": {
     "applied_overlays": [
@@ -5265,9 +5266,66 @@
       "XAR09",
       "XAR10",
       "XAR11",
+      "XAR12",
+      "XAR13"
+    ],
+    "current_overlay": "XAR13",
+    "last_completed_overlay": "XAR13"
+  },
+  "xar13_downloads_truthful_actions": {
+    "overlay": "XAR13",
+    "roadmap_position": "13 of 17",
+    "merged_roadmap_position": "overlay 4 of 8",
+    "archive": "xdm_android_xar13_downloads_truthful_actions_v1.tar.gz",
+    "canonical_section": "S13",
+    "canonical_findings_closed": 21,
+    "canonical_ids": [
+      "S13-01",
+      "S13-02",
+      "S13-04",
+      "S13-05",
+      "S13-07",
+      "S13-08",
+      "S13-09",
+      "S13-10",
+      "S13-11",
+      "S13-12",
+      "S13-13",
+      "S13-14",
+      "S13-15",
+      "DS7-S13-01",
+      "DS7-S13-02",
+      "DS7-S13-03",
+      "DS7-S13-04",
+      "DS7-S13-05",
+      "DS7-S13-06",
+      "RERUN67-S13-01",
+      "RERUN7R-S13-01"
+    ],
+    "depends_on": [
+      "XAR02",
+      "XAR03",
+      "XAR06",
+      "XAR07",
+      "XAR08",
+      "XAR09",
       "XAR12"
     ],
-    "current_overlay": "XAR12",
-    "last_completed_overlay": "XAR12"
+    "report": "XDM_ANDROID_XAR13_DOWNLOADS_TRUTHFUL_ACTIONS_REPORT.md",
+    "docs": "docs/remediation/XAR13-DOWNLOADS-TRUTHFUL-ACTIONS.md",
+    "validator": "tools/validate-xar13-downloads-truthful-actions.py",
+    "validation_task": "verifyXar13DownloadsTruthfulActions",
+    "validation_mode": "intermediate_no_validate",
+    "firefox_extension_invariant": "XFE01 canonical Android Firefox extension production source remains unchanged.",
+    "attempt_generation_bound_verification": true,
+    "current_state_action_reload": true,
+    "native_hls_owner_actions": true,
+    "truthful_batch_archive": true,
+    "tag_unassign_supported": true,
+    "fresh_redownload_handoff_before_queue": true,
+    "same_exact_url_approval_preservation": true,
+    "completed_requires_artifact_commit": true,
+    "indeterminate_active_progress": true,
+    "batch_action_planner_matches_organize_ui": true
   }
 }

@@ -256,7 +256,7 @@ private fun XdmRouteContent(
                 onBulkPause = viewModel::bulkPause,
                 onBulkResume = viewModel::bulkResume,
                 onCreateTag = viewModel::createTag,
-                onAssignTag = viewModel::assignTag,
+                onSetTagAssignment = viewModel::setTagAssignment,
                 onSaveSearch = viewModel::saveSearch,
                 onDeleteSavedSearch = viewModel::deleteSavedSearch,
                 onPauseAll = viewModel::pauseAll,

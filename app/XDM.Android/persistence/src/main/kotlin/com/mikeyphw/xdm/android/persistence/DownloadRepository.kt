@@ -18,6 +18,11 @@ import com.mikeyphw.xdm.android.model.TrustedBlockManifest
 import com.mikeyphw.xdm.android.model.VerificationRecord
 import com.mikeyphw.xdm.android.model.BackendType
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadBulkActionResult
+import com.mikeyphw.xdm.android.model.DownloadActionExecutionTruth
+import com.mikeyphw.xdm.android.model.DownloadActionKind
+import com.mikeyphw.xdm.android.model.DownloadActionExecutionStatus
+import com.mikeyphw.xdm.android.model.DownloadActionExecutionResult
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -730,9 +735,91 @@ class DownloadRepository(private val database: AppDatabase) {
     suspend fun setArchived(ids: List<String>, archived: Boolean) {
         if (ids.isNotEmpty()) database.downloadDao().setArchived(ids, archived, System.currentTimeMillis())
     }
+
+    suspend fun setArchivedTruthfully(observed: List<Download>, archived: Boolean): DownloadBulkActionResult = database.withTransaction {
+        val action = if (archived) DownloadActionKind.Archive else DownloadActionKind.Unarchive
+        val accepted = mutableListOf<DownloadActionExecutionResult>()
+        val rejected = mutableListOf<DownloadActionExecutionResult>()
+        observed.distinctBy(Download::id).forEach { original ->
+            val current = database.downloadDao().findById(original.id)?.toModel()
+            if (current == null) {
+                rejected += DownloadActionExecutionResult(
+                    downloadId = original.id,
+                    action = action,
+                    status = DownloadActionExecutionStatus.RejectedStaleState,
+                    message = "The download entry no longer exists.",
+                )
+                return@forEach
+            }
+            if (!DownloadActionExecutionTruth.sameObservedRevision(original, current)) {
+                rejected += DownloadActionExecutionTruth.staleRevisionResult(current, action)
+                return@forEach
+            }
+            if (archived && current.state in DownloadActionExecutionTruth.activeStates) {
+                rejected += DownloadActionExecutionResult(
+                    downloadId = current.id,
+                    action = action,
+                    status = DownloadActionExecutionStatus.RejectedActiveOwner,
+                    message = "${current.fileName} is still controlled by active ${current.backend.name} ownership and remains visible until that owner stops.",
+                    attemptGeneration = current.attemptGeneration,
+                    rowRevision = current.rowRevision,
+                )
+                return@forEach
+            }
+            if (current.archived == archived) {
+                accepted += DownloadActionExecutionResult(
+                    downloadId = current.id,
+                    action = action,
+                    status = DownloadActionExecutionStatus.NoOp,
+                    message = "${current.fileName} was already ${if (archived) "archived" else "visible"}.",
+                    attemptGeneration = current.attemptGeneration,
+                    rowRevision = current.rowRevision,
+                )
+                return@forEach
+            }
+            val updated = current.copy(
+                archived = archived,
+                updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.rowRevision + 1L),
+            )
+            val changed = database.downloadGraphTransactionDao().updateDownloadOwnedRevision(
+                updated.redactedForPersistence().toEntity(),
+                current.observedAttemptGeneration,
+                current.rowRevision,
+            )
+            if (changed) {
+                synchronizeAppMediaOutputLocked(updated)
+                accepted += DownloadActionExecutionResult(
+                    downloadId = current.id,
+                    action = action,
+                    status = DownloadActionExecutionStatus.Accepted,
+                    message = "${current.fileName} ${if (archived) "archived" else "unarchived"} after a current-state check.",
+                    attemptGeneration = current.attemptGeneration,
+                    rowRevision = current.rowRevision,
+                )
+            } else {
+                rejected += DownloadActionExecutionResult(
+                    downloadId = current.id,
+                    action = action,
+                    status = DownloadActionExecutionStatus.RejectedPersistence,
+                    message = "${current.fileName} changed while the archive mutation was committing.",
+                    attemptGeneration = current.attemptGeneration,
+                    rowRevision = current.rowRevision,
+                )
+            }
+        }
+        DownloadBulkActionResult(action, observed.size, accepted, rejected)
+    }
+
+    suspend fun findDownloadsByIds(ids: Collection<String>): List<Download> =
+        ids.distinct().mapNotNull { id -> database.downloadDao().findById(id)?.toModel() }
+
     suspend fun saveTag(tag: DownloadTag) = database.organizationDao().upsertTag(tag.toEntity())
-    suspend fun assignTag(downloadId: String, tagId: String) = database.organizationDao().upsertTagAssignment(DownloadTagCrossRef(downloadId, tagId))
-    suspend fun removeTag(downloadId: String, tagId: String) = database.organizationDao().deleteTagAssignment(downloadId, tagId)
+    suspend fun setTagAssignment(downloadId: String, tagId: String, assigned: Boolean) {
+        if (assigned) database.organizationDao().upsertTagAssignment(DownloadTagCrossRef(downloadId, tagId))
+        else database.organizationDao().deleteTagAssignment(downloadId, tagId)
+    }
+    suspend fun assignTag(downloadId: String, tagId: String) = setTagAssignment(downloadId, tagId, true)
+    suspend fun removeTag(downloadId: String, tagId: String) = setTagAssignment(downloadId, tagId, false)
     suspend fun saveSavedSearch(search: SavedSearch) = database.organizationDao().upsertSavedSearch(search.toEntity())
     suspend fun deleteSavedSearch(id: String) = database.organizationDao().deleteSavedSearch(id)
     suspend fun saveDestinationRule(rule: DestinationRule) = database.organizationDao().upsertDestinationRule(rule.toEntity())

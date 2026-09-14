@@ -179,6 +179,26 @@ class DownloadActionPlannerTest {
         assertTrue(actions.any { it.kind == DownloadActionKind.RestartFromZero })
     }
 
+
+    @Test
+    fun batchPlannerOnlyExposesOrganizeImplementedActions() {
+        val selected = listOf(download(DownloadState.Downloading), download(DownloadState.Paused), download(DownloadState.Completed))
+        val kinds = DownloadActionPlanner.batchActionsFor(selected).map { it.kind }.toSet()
+        assertTrue(DownloadActionKind.Pause in kinds)
+        assertTrue(DownloadActionKind.Resume in kinds)
+        assertTrue(DownloadActionKind.Archive in kinds)
+        assertTrue(DownloadActionKind.Unarchive in kinds)
+        assertFalse(DownloadActionKind.CopyLink in kinds)
+        assertFalse(DownloadActionKind.DeleteRecord in kinds)
+    }
+
+    @Test
+    fun startNowPolicyOverrideUsesCurrentQueuePolicyOnly() {
+        val queued = download(DownloadState.Queued, errorMessage = "Queue policy: Waiting for schedule")
+        assertTrue(DownloadActionExecutionTruth.policyOverrideFromCurrent(queued))
+        assertFalse(DownloadActionExecutionTruth.policyOverrideFromCurrent(queued.copy(state = DownloadState.Downloading)))
+    }
+
     private fun download(state: DownloadState, errorMessage: String? = null) = Download(
         id = "download-id",
         fileName = "file.bin",

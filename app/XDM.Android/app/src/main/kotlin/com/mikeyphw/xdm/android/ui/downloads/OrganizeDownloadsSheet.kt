@@ -55,7 +55,7 @@ internal fun OrganizeDownloadsContent(
     onBulkPause: () -> Unit,
     onBulkResume: () -> Unit,
     onCreateTag: (String) -> Unit,
-    onAssignTag: (DownloadTag) -> Unit,
+    onSetTagAssignment: (DownloadTag, Boolean) -> Unit,
     onSaveSearch: (String, String, DownloadState?, Boolean) -> Unit,
     onApplySavedSearch: (SavedSearch) -> Unit,
     onDeleteSavedSearch: (SavedSearch) -> Unit,
@@ -67,8 +67,11 @@ internal fun OrganizeDownloadsContent(
     var tagName by remember { mutableStateOf("") }
     var searchName by remember { mutableStateOf("") }
     val batchActions = DownloadActionPlanner.batchActionsFor(selectedDownloads)
-    val canBulkPause = batchActions.any { it.kind == DownloadActionKind.Pause && it.enabled }
-    val canBulkResume = batchActions.any { it.kind == DownloadActionKind.Resume && it.enabled }
+    fun batchEnabled(kind: DownloadActionKind): Boolean = batchActions.any { it.kind == kind && it.enabled }
+    val canBulkPause = batchEnabled(DownloadActionKind.Pause)
+    val canBulkResume = batchEnabled(DownloadActionKind.Resume)
+    val canArchive = batchEnabled(DownloadActionKind.Archive)
+    val canUnarchive = batchEnabled(DownloadActionKind.Unarchive)
 
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
@@ -116,8 +119,8 @@ internal fun OrganizeDownloadsContent(
                 XdmActionFlowRow {
                     TextButton(onClick = onBulkPause, enabled = canBulkPause) { Text("Pause") }
                     TextButton(onClick = onBulkResume, enabled = canBulkResume) { Text("Resume") }
-                    TextButton(onClick = { onArchiveSelected(true) }, enabled = selectedDownloads.isNotEmpty()) { Text("Archive") }
-                    TextButton(onClick = { onArchiveSelected(false) }, enabled = selectedDownloads.isNotEmpty()) { Text("Unarchive") }
+                    TextButton(onClick = { onArchiveSelected(true) }, enabled = canArchive) { Text("Archive") }
+                    TextButton(onClick = { onArchiveSelected(false) }, enabled = canUnarchive) { Text("Unarchive") }
                 }
                 if (selectedDownloads.isEmpty()) {
                     XdmMetadataText("Long-press a download to enter selection mode without adding permanent Select chips to every row.")
@@ -141,15 +144,18 @@ internal fun OrganizeDownloadsContent(
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Create tag") }
                 if (tags.isNotEmpty()) {
+                    XdmMetadataText("Tap a selected tag again to unassign it from all selected downloads; mixed selections assign missing rows first.")
                     XdmActionFlowRow {
                         tags.forEach { tag ->
+                            val selectedCount = selectedDownloads.count { download ->
+                                tagAssignments.any { assignment -> assignment.downloadId == download.id && assignment.tagId == tag.id }
+                            }
+                            val allSelectedHaveTag = selectedDownloads.isNotEmpty() && selectedCount == selectedDownloads.size
                             FilterChip(
-                                selected = selectedDownloads.any { download ->
-                                    tagAssignments.any { assignment -> assignment.downloadId == download.id && assignment.tagId == tag.id }
-                                },
-                                onClick = { onAssignTag(tag) },
+                                selected = selectedCount > 0,
+                                onClick = { onSetTagAssignment(tag, !allSelectedHaveTag) },
                                 enabled = selectedDownloads.isNotEmpty(),
-                                label = { Text(tag.name) },
+                                label = { Text(if (allSelectedHaveTag) "Remove ${tag.name}" else tag.name) },
                             )
                         }
                     }

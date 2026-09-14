@@ -51,6 +51,8 @@ import com.mikeyphw.xdm.android.model.DestinationRuleMatch
 import com.mikeyphw.xdm.android.model.Download
 import com.mikeyphw.xdm.android.model.CompletedArtifactCapabilities
 import com.mikeyphw.xdm.android.model.DownloadActionKind
+import com.mikeyphw.xdm.android.model.DownloadBulkActionResult
+import com.mikeyphw.xdm.android.model.DownloadActionExecutionTruth
 import com.mikeyphw.xdm.android.model.DownloadTag
 import com.mikeyphw.xdm.android.model.DownloadTagAssignment
 import com.mikeyphw.xdm.android.model.DownloadState
@@ -1362,11 +1364,12 @@ class MainViewModel(
 
     fun startIgnoringQueuePolicy(download: Download) {
         viewModelScope.launch(Dispatchers.IO) {
+            val current = repository.findDownload(download.id) ?: return@launch
             queueIntelligenceCoordinator.requestStart(
-                downloadId = download.id,
+                downloadId = current.id,
                 userVisible = true,
                 manual = true,
-                policyOverride = true,
+                policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(current),
             )
         }
     }
@@ -1933,7 +1936,17 @@ class MainViewModel(
     }
 
     fun assignTag(download: Download, tag: DownloadTag) {
-        viewModelScope.launch(Dispatchers.IO) { repository.assignTag(download.id, tag.id) }
+        setTagAssignment(listOf(download), tag, assigned = true)
+    }
+
+    fun setTagAssignment(downloads: List<Download>, tag: DownloadTag, assigned: Boolean) {
+        val ids = downloads.map { it.id }.toSet()
+        if (ids.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.findDownloadsByIds(ids).forEach { current ->
+                repository.setTagAssignment(current.id, tag.id, assigned)
+            }
+        }
     }
 
     fun saveSearch(name: String, query: String, state: DownloadState?, includeArchived: Boolean) {
@@ -1955,28 +1968,48 @@ class MainViewModel(
     }
 
     fun archiveDownloads(downloads: List<Download>, archived: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) { repository.setArchived(downloads.map { it.id }, archived) }
+        if (downloads.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val nativeIds = hashSetOf<String>()
+            for (item in downloads) {
+                if (databaseNativeHlsOwnership(item.id)) nativeIds += item.id
+            }
+            val retainedActiveNativeIds = downloads
+                .filter { archived && it.id in nativeIds && it.state in DownloadActionExecutionTruth.activeStates }
+                .mapTo(hashSetOf()) { it.id }
+            val result = repository.setArchivedTruthfully(
+                downloads.filterNot { it.id in retainedActiveNativeIds },
+                archived,
+            )
+            if (retainedActiveNativeIds.isNotEmpty()) {
+                android.util.Log.w("XDMDownloadsAction", "Archive retained ${retainedActiveNativeIds.size} Native HLS-owned active download(s) visibly instead of hiding active work.")
+            }
+            logBulkActionResult(result)
+        }
     }
 
     fun bulkPause(downloads: List<Download>) {
-        val ids = downloads.filter { it.state in setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading) }.map { it.id }.toSet()
+        val ids = downloads.map { it.id }.toSet()
         if (ids.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            // Runtime owners control their own work; never make a Room-only pause that leaves bytes writing.
-            ids.forEach { id ->
-                if (databaseNativeHlsOwnership(id)) nativeHlsMediaManager.pause(id) else runCatching { transferRuntime.pause(id) }
-            }
+            repository.findDownloadsByIds(ids)
+                .filter { it.state in setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing) }
+                .forEach { current ->
+                    if (databaseNativeHlsOwnership(current.id)) nativeHlsMediaManager.pause(current.id) else runCatching { transferRuntime.pause(current.id) }
+                }
         }
     }
 
     fun bulkResume(downloads: List<Download>) {
-        val candidates = downloads.filter { it.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower) }
-        if (candidates.isEmpty()) return
+        val ids = downloads.map { it.id }.toSet()
+        if (ids.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            candidates.forEach { download ->
-                if (databaseNativeHlsOwnership(download.id)) nativeHlsMediaManager.resume(download.id)
-                else queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
-            }
+            repository.findDownloadsByIds(ids)
+                .filter { it.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower, DownloadState.Failed, DownloadState.RecoveryRequired) }
+                .forEach { current ->
+                    if (databaseNativeHlsOwnership(current.id)) nativeHlsMediaManager.resume(current.id)
+                    else queueIntelligenceCoordinator.requestStart(current.id, userVisible = true, manual = true)
+                }
         }
     }
 
@@ -2062,11 +2095,12 @@ class MainViewModel(
 
     fun startNow(download: Download) {
         viewModelScope.launch(Dispatchers.IO) {
+            val current = repository.findDownload(download.id) ?: return@launch
             queueIntelligenceCoordinator.requestStart(
-                downloadId = download.id,
+                downloadId = current.id,
                 userVisible = true,
                 manual = true,
-                policyOverride = download.errorMessage.orEmpty().startsWith("Queue policy:"),
+                policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(current),
             )
         }
     }
@@ -2080,12 +2114,15 @@ class MainViewModel(
             val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
                 val current = repository.findDownload(download.id) ?: return@withContext "This download entry was already removed."
                 if (current.state !in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)) {
-                    runCatching { transferRuntime.cancel(current.id) }.getOrElse {
-                        return@withContext "The active transfer could not be stopped, so its entry was not removed."
+                    val nativeHls = databaseNativeHlsOwnership(current.id)
+                    runCatching {
+                        if (nativeHls) nativeHlsMediaManager.cancel(current.id) else transferRuntime.cancel(current.id)
+                    }.getOrElse {
+                        return@withContext "The active ${if (nativeHls) "Native HLS/media" else "transfer"} owner could not be stopped, so its entry was not removed."
                     }
                     val afterCancel = repository.findDownload(current.id)
                     if (afterCancel != null && afterCancel.state !in setOf(DownloadState.Cancelled, DownloadState.Failed, DownloadState.RecoveryRequired)) {
-                        return@withContext "The transfer is still active. Its entry was not removed."
+                        return@withContext "The current backend still owns this transfer. Its entry was not removed or hidden."
                     }
                 }
                 val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
@@ -2235,9 +2272,12 @@ class MainViewModel(
                 if (current.state in setOf(DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing)) {
                     return@withContext "Stop the active operation before replacing its source URL."
                 }
-                MediaRequestHandoffStore.replaceDownloadUrl(current.id, normalized)
                 val persisted = ExternalUrlPolicy.persistableUrl(normalized) ?: normalized.substringBefore('?')
-                repository.save(current.copy(sourceUrl = persisted, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
+                val saved = repository.save(current.copy(sourceUrl = persisted, errorMessage = null, updatedAtEpochMs = System.currentTimeMillis()))
+                if (!saved) return@withContext "The download changed while the replacement URL was being saved. The old request context was retained."
+                if (!MediaRequestHandoffStore.replaceDownloadUrl(current.id, normalized)) {
+                    return@withContext "The URL was saved, but exact request context could not be rebound. Review the source before starting."
+                }
                 "Replaced the source URL while preserving destination, queue, checksum, backend preference, and request context allowed for the new host."
             }
             onResult(message)
@@ -2274,7 +2314,8 @@ class MainViewModel(
         // evidence for the existing attempt. If preparation fails, the old attempt remains intact.
         val (message, replacementId) = createFreshRedownload(current, startImmediately = false)
         if (replacementId == null) return message
-        runCatching { transferRuntime.cancel(current.id) }
+        if (databaseNativeHlsOwnership(current.id)) runCatching { nativeHlsMediaManager.cancel(current.id) }
+        else runCatching { transferRuntime.cancel(current.id) }
         repository.deleteBackendTask(current.id)
         repository.deleteFinalizationForDownload(current.id)
         queueIntelligenceCoordinator.requestStart(replacementId, userVisible = true, manual = true)
@@ -2328,11 +2369,29 @@ class MainViewModel(
             completedArtifactGeneration = null,
             completedArtifactBytes = null,
         )
-        if (!repository.createReplacementDownloadPreservingMediaLineage(current.id, retry, now)) {
-            return "A newer durable state prevented XDM from creating the replacement download. Nothing was restarted." to null
+        val replacementExactArg = exactUrl.takeUnless { it == handoff?.exactUrl }
+        val handoffPrepared = if (handoff != null) {
+            MediaRequestHandoffStore.cloneDownload(current.id, newId, replacementExactArg, targetAttemptGeneration = retry.attemptGeneration)
+        } else {
+            MediaRequestHandoffStore.remember(
+                downloadId = newId,
+                headers = emptyMap(),
+                redactedSummary = "Fresh redownload from saved source URL",
+                isExpiringUrl = ExternalUrlPolicy.hasCredentialBearingQuery(exactUrl),
+                exactUrl = exactUrl,
+                requestKind = inferDownloadRequestKind(exactUrl),
+                transferShape = inferTransferShape(exactUrl, current.mimeType),
+                attemptGeneration = retry.attemptGeneration,
+                subjectGeneration = retry.attemptGeneration,
+            )
+            true
         }
-        check(MediaRequestHandoffStore.cloneDownload(current.id, newId, exactUrl, targetAttemptGeneration = retry.attemptGeneration)) {
-            "Could not clone the exact request handoff for the replacement generation"
+        if (!handoffPrepared) {
+            return "Could not clone the exact request handoff for the replacement generation. Nothing was restarted." to null
+        }
+        if (!repository.createReplacementDownloadPreservingMediaLineage(current.id, retry, now)) {
+            MediaRequestHandoffStore.forget(newId)
+            return "A newer durable state prevented XDM from creating the replacement download. Nothing was restarted." to null
         }
         repository.checksumExpectations(current.id).forEach { expectation ->
             repository.saveChecksumExpectation(
@@ -5167,6 +5226,13 @@ class MainViewModel(
                     queueIntelligenceCoordinator.requestStart(current.id, userVisible = true, manual = true)
                 else -> Unit
             }
+        }
+    }
+
+    private fun logBulkActionResult(result: DownloadBulkActionResult) {
+        if (result.rejectedCount > 0) {
+            android.util.Log.w("XDMDownloadsAction", result.summary)
+            result.rejected.take(8).forEach { rejected -> android.util.Log.w("XDMDownloadsAction", rejected.message) }
         }
     }
 

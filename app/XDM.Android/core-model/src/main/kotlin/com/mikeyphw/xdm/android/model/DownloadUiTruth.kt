@@ -36,6 +36,10 @@ data class DownloadActionContext(
     val postProcessingInputAvailable: Boolean = false,
     val publicSourceUrl: String? = null,
     val exactRequestReplayAvailable: Boolean = false,
+    val backendLabel: String = "Backend pending",
+    val ownerLabel: String = "Durable backend owner",
+    val nativeHlsOwned: Boolean = false,
+    val completionDurablyCommitted: Boolean = true,
 ) {
     fun canMoveUp(): Boolean = queuePosition != null && queuePosition > 1
     fun canMoveDown(): Boolean = queuePosition != null && queuePosition < queueSize
@@ -73,17 +77,26 @@ object DownloadUiTruthPlanner {
             .filter { (it.queueId ?: "default") == (download.queueId ?: "default") && it.state in queueStates }
             .sortedWith(compareByDescending<Download> { it.priority }.thenBy { it.createdAtEpochMs })
         val position = queue.indexOfFirst { it.id == download.id }.takeIf { it >= 0 }?.plus(1)
+        val currentAttempt = download.attemptGeneration
         return DownloadActionContext(
             queuePosition = position,
             queueSize = queue.size,
-            latestVerification = verificationRecords.filter { it.downloadId == download.id }.maxByOrNull { it.updatedAtEpochMs },
-            latestChecksum = checksumResults.filter { it.downloadId == download.id }.maxByOrNull { it.verifiedAtEpochMs },
+            latestVerification = verificationRecords
+                .filter { it.downloadId == download.id && it.attemptGeneration == currentAttempt }
+                .maxByOrNull { it.updatedAtEpochMs },
+            latestChecksum = checksumResults
+                .filter { it.downloadId == download.id && it.attemptGeneration == currentAttempt }
+                .maxByOrNull { it.verifiedAtEpochMs },
             validatedPartialAvailable = validatedPartialAvailable && download.state in resumableStates,
             artifact = artifact,
             backendMigrationAvailable = backendMigrationAvailable,
             postProcessingInputAvailable = postProcessingInputAvailable,
             publicSourceUrl = ExternalUrlPolicy.persistableUrl(download.sourceUrl),
             exactRequestReplayAvailable = exactRequestReplayAvailable,
+            backendLabel = download.backend.name,
+            ownerLabel = if (download.backend == BackendType.Native && exactRequestReplayAvailable) "Native HLS/media owner" else download.backend.name,
+            nativeHlsOwned = download.backend == BackendType.Native && exactRequestReplayAvailable,
+            completionDurablyCommitted = DownloadActionExecutionTruth.completedArtifactCommitted(download),
         )
     }
 
@@ -148,13 +161,14 @@ object DownloadUiTruthPlanner {
         val supporting = when {
             download.state == DownloadState.Completed -> completedStatus(context)
             policyReason != null -> policyReason
-            download.state == DownloadState.Queued -> queueText ?: status
+            download.state == DownloadState.Queued -> listOfNotNull(queueText ?: status, context.backendLabel.takeIf(String::isNotBlank)).joinToString(" • ")
             download.state == DownloadState.Failed && !download.errorMessage.isNullOrBlank() -> download.errorMessage.orEmpty()
             download.state == DownloadState.RecoveryRequired && !download.errorMessage.isNullOrBlank() -> download.errorMessage.orEmpty()
             else -> status
         }
         val trailing = when {
             download.state == DownloadState.Downloading && download.speedBytesPerSecond > 0L -> "${download.speedBytesPerSecond} B/s"
+            download.state in DownloadActionExecutionTruth.activeStates && download.speedBytesPerSecond == 0L -> context.ownerLabel
             download.state == DownloadState.Queued -> queueText ?: "Queued"
             else -> badge
         }
@@ -189,7 +203,14 @@ object DownloadUiTruthPlanner {
         else -> download.totalBytes?.takeIf { it > 0L }?.let { download.progressFraction }
     }
 
-    private fun completedStatus(context: DownloadActionContext): String = when (context.artifact.health) {
+    fun indeterminateProgressVisible(download: Download, context: DownloadActionContext): Boolean =
+        download.state in setOf(DownloadState.Connecting, DownloadState.Repairing, DownloadState.Finalizing) ||
+            (download.state == DownloadState.Downloading && download.totalBytes == null) ||
+            (download.state == DownloadState.Verifying && context.latestVerification?.totalBytes == null)
+
+    private fun completedStatus(context: DownloadActionContext): String = when {
+        !context.completionDurablyCommitted -> "Completion pending durable artifact metadata"
+        else -> when (context.artifact.health) {
         CompletedArtifactHealth.Missing -> "Completed record; saved file is missing"
         CompletedArtifactHealth.PermissionLost -> "Completed record; storage permission was lost"
         CompletedArtifactHealth.ProviderChanged -> "Completed record; storage provider changed"
@@ -201,8 +222,11 @@ object DownloadUiTruthPlanner {
             else -> "Download complete; verification not confirmed"
         }
     }
+    }
 
-    private fun completedBadge(context: DownloadActionContext): String = when (context.artifact.health) {
+    private fun completedBadge(context: DownloadActionContext): String = when {
+        !context.completionDurablyCommitted -> "Committing"
+        else -> when (context.artifact.health) {
         CompletedArtifactHealth.Missing -> "File missing"
         CompletedArtifactHealth.PermissionLost -> "Access lost"
         CompletedArtifactHealth.ProviderChanged -> "Storage changed"
@@ -213,6 +237,7 @@ object DownloadUiTruthPlanner {
             context.verificationPassed() -> "Verified"
             else -> "Completed"
         }
+    }
     }
 
     private val queueStates = setOf(
