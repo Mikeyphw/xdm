@@ -4986,55 +4986,101 @@
     "validation_mode": "intermediate_no_validate",
     "validator": "tools/validate-xar07-native-http-protocol.py"
   },
-
-    "xar08_aria2_ownership": {
-      "canonical_section": "S08",
-      "canonical_findings_closed": 23,
-      "canonical_ids": [
-        "S08-01",
-        "S08-02",
-        "S08-03",
-        "S08-04",
-        "S08-05",
-        "S08-06",
-        "S08-07",
-        "S08-08",
-        "S08-09",
-        "S08-10",
-        "S08-11",
-        "S08-12",
-        "S08-13",
-        "S08-15",
-        "S08-16",
-        "S08-17",
-        "DS4-S08-01",
-        "DS4-S08-02",
-        "DS4-S08-03",
-        "DS4-S08-04",
-        "DS4-S08-05",
-        "DS4-S08-06",
-        "RERUN34-S08-01"
-      ],
-      "depends_on": [
-        "XAR02",
-        "XAR03",
-        "XAR06",
-        "XAR07"
-      ],
-      "overlay": "XAR08",
-      "roadmap_position": "8 of 17",
-      "validator": "tools/validate-xar08-aria2-ownership.py",
-      "validation_task": "verifyXar08Aria2Ownership",
-      "report": "XDM_ANDROID_XAR08_ARIA2_OWNERSHIP_REPORT.md",
-      "docs": "docs/remediation/XAR08-ARIA2-OWNERSHIP.md",
-      "capability_truth_feature_aware": true,
-      "session_sanitized_before_launch": true,
-      "removal_fail_closed": true,
-      "completed_requires_terminal_mapping_persistence": true,
-      "recovered_complete_requires_publication_verification": true,
-      "validation_mode": "intermediate_no_validate"
-    }
-,
+  "xar08_aria2_ownership": {
+    "canonical_findings_closed": 23,
+    "canonical_ids": [
+      "S08-01",
+      "S08-02",
+      "S08-03",
+      "S08-04",
+      "S08-05",
+      "S08-06",
+      "S08-07",
+      "S08-08",
+      "S08-09",
+      "S08-10",
+      "S08-11",
+      "S08-12",
+      "S08-13",
+      "S08-15",
+      "S08-16",
+      "S08-17",
+      "DS4-S08-01",
+      "DS4-S08-02",
+      "DS4-S08-03",
+      "DS4-S08-04",
+      "DS4-S08-05",
+      "DS4-S08-06",
+      "RERUN34-S08-01"
+    ],
+    "canonical_section": "S08",
+    "capability_truth_feature_aware": true,
+    "completed_requires_terminal_mapping_persistence": true,
+    "depends_on": [
+      "XAR02",
+      "XAR03",
+      "XAR06",
+      "XAR07"
+    ],
+    "docs": "docs/remediation/XAR08-ARIA2-OWNERSHIP.md",
+    "overlay": "XAR08",
+    "recovered_complete_requires_publication_verification": true,
+    "removal_fail_closed": true,
+    "report": "XDM_ANDROID_XAR08_ARIA2_OWNERSHIP_REPORT.md",
+    "roadmap_position": "8 of 17",
+    "session_sanitized_before_launch": true,
+    "validation_mode": "intermediate_no_validate",
+    "validation_task": "verifyXar08Aria2Ownership",
+    "validator": "tools/validate-xar08-aria2-ownership.py"
+  },
+  "xar09_scheduler_recovery": {
+    "canonical_findings_closed": 21,
+    "canonical_ids": [
+      "S09-01",
+      "S09-02",
+      "S09-03",
+      "S09-04",
+      "S09-05",
+      "S09-06",
+      "S09-07",
+      "S09-08",
+      "S09-09",
+      "S09-10",
+      "S09-11",
+      "S09-12",
+      "S09-13",
+      "S09-14",
+      "S09-15",
+      "DS5-S09-01",
+      "DS5-S09-02",
+      "DS5-S09-03",
+      "DS5-S09-04",
+      "DS5-S09-05",
+      "RERUN56-S09-01"
+    ],
+    "canonical_section": "S09",
+    "depends_on": [
+      "XAR02",
+      "XAR03",
+      "XAR07",
+      "XAR08"
+    ],
+    "docs": "docs/remediation/XAR09-SCHEDULER-RECOVERY.md",
+    "foreground_claim_release_guarded": true,
+    "immediate_wakeup_consumed_durably": true,
+    "logs_compacted": true,
+    "overlay": "XAR09",
+    "recovery_lease_enabled": true,
+    "report": "XDM_ANDROID_XAR09_SCHEDULER_RECOVERY_REPORT.md",
+    "retry_identity_request_backend_scoped": true,
+    "roadmap_position": "9 of 17",
+    "system_ids_retired_on_delete": true,
+    "terminal_notifications_request_identity_fenced": true,
+    "uidt_notification_after_authorization": true,
+    "validation_mode": "intermediate_no_validate",
+    "validation_task": "verifyXar09SchedulerRecovery",
+    "validator": "tools/validate-xar09-scheduler-recovery.py"
+  },
   "xar_applied_overlay_archives": [
     "xdm_android_xar01_build_signing_native_provenance_v1.tar.gz",
     "xdm_android_xar02_concurrency_cas_ownership_v2.tar.gz",
@@ -5042,7 +5088,9 @@
     "xdm_android_xar04_navigation_session_ownership_v1.tar.gz",
     "xdm_android_xar05_external_intake_admission_v1.tar.gz",
     "xdm_android_xar06_storage_publication_v1.tar.gz",
-    "xdm_android_xar07_native_http_protocol_v1.tar.gz"
+    "xdm_android_xar07_native_http_protocol_v1.tar.gz",
+    "xdm_android_xar08_aria2_ownership_v1.tar.gz",
+    "xdm_android_xar09_scheduler_recovery_v1.tar.gz"
   ],
   "xar_roadmap": {
     "applied_overlays": [
@@ -5052,9 +5100,11 @@
       "XAR04",
       "XAR05",
       "XAR06",
-      "XAR07"
+      "XAR07",
+      "XAR08",
+      "XAR09"
     ],
-    "current_overlay": "XAR08",
-    "last_completed_overlay": "XAR08"
+    "current_overlay": "XAR09",
+    "last_completed_overlay": "XAR09"
   }
 }

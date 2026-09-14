@@ -32,7 +32,10 @@ class TransferForegroundService : Service() {
         queueIntelligence = (application as QueueIntelligenceProvider).queueIntelligenceCoordinator
         notifications = TransferNotifications(this)
         systemIds = TransferSystemIdRegistry(this)
-        startForeground()
+        if (!startForeground()) {
+            stopSelf()
+            return
+        }
         terminalJob = scope.launch {
             runtime.terminalEvents.collectLatest { event ->
                 notifications.terminalIfFirst(
@@ -43,12 +46,13 @@ class TransferForegroundService : Service() {
                     destinationUri = event.destinationUri,
                     mimeType = event.mimeType,
                     attemptGeneration = event.attemptGeneration,
+                    requestIdentity = event.requestIdentity,
                 )?.let { notification ->
                     runCatching {
                         getSystemService(android.app.NotificationManager::class.java)
                             .notify(systemIds.idFor(event.downloadId), notification)
                     }.onSuccess {
-                        notifications.markTerminalDispatched(event.downloadId, event.attemptGeneration, event.state)
+                        notifications.markTerminalDispatched(event.downloadId, event.attemptGeneration, event.state, event.requestIdentity)
                     }
                 }
             }
@@ -78,6 +82,8 @@ class TransferForegroundService : Service() {
                             ownedClaims[id] = queueClaimToken
                             try {
                                 runtime.execute(id, queueClaimToken)
+                            } catch (error: Throwable) {
+                                queueIntelligence.releaseFailedExecutionOwner(id, queueClaimToken, "Foreground service execution failed before completion: ${error.message ?: error::class.java.simpleName}")
                             } finally {
                                 ownedClaims.remove(id, queueClaimToken)
                                 AndroidExecutionClaimRegistry.release(id, queueClaimToken)
@@ -143,14 +149,14 @@ class TransferForegroundService : Service() {
         (application as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
 
     @SuppressLint("InlinedApi")
-    private fun startForeground() {
+    private fun startForeground(): Boolean = runCatching {
         ServiceCompat.startForeground(
             this,
             TransferNotifications.ACTIVE_NOTIFICATION_ID,
             notifications.active(ActiveTransferSummary()),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
         )
-    }
+    }.isSuccess
 
     companion object { const val ACTION_START = "com.mikeyphw.xdm.android.action.START_TRANSFER" }
 }

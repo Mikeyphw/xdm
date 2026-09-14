@@ -22,6 +22,14 @@ class TransferSystemIdRegistry(context: Context) {
         next
     }
 
+    /** XAR09: retire per-download Android IDs once the durable download and retry owners are gone. */
+    fun retire(downloadId: String): Boolean = synchronized(PROCESS_LOCK) {
+        val key = "download.$downloadId"
+        if (!preferences.contains(key)) return@synchronized false
+        preferences.edit(commit = true) { remove(key) }
+        true
+    }
+
     companion object {
         private val PROCESS_LOCK = Any()
         private const val PREFS = "xdm_transfer_system_ids"

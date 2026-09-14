@@ -20,6 +20,7 @@ import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.scheduler.FileBackedQueueSchedulingRecoveryStore
 import com.mikeyphw.xdm.android.scheduler.QueueSchedulingRecoveryCoordinator
 import com.mikeyphw.xdm.android.scheduler.QueueSchedulingRecoveryProvider
+import com.mikeyphw.xdm.android.scheduler.SchedulerRecoveryLeaseCoordinator
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStopReasonRecorder
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceProvider
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceWorker
@@ -240,17 +241,37 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         }
         QueueIntelligenceWorker.schedule(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            // XAR09: process-independent lease prevents app startup, boot restore, and package
+            // restore from running the same ownership recovery concurrently.
+            val recoveryLeaseCoordinator = SchedulerRecoveryLeaseCoordinator(this@XdmApplication)
+            val recoveryLease = recoveryLeaseCoordinator.tryAcquire("application-startup")
             // Each phase is isolated so one failure cannot silently suppress later reconciliation.
-            // Admission stays fail-closed unless every critical startup phase succeeds.
+            // Admission stays fail-closed only for migration/runtime/native-HLS recovery failures;
+            // condition-monitor startup failure must not keep the durable hold once transfer recovery is safe.
             val migration = runCatching { sensitivePersistenceMigrator.migrateIfNeeded() }
             if (migration.isSuccess) {
                 postProcessingAutomationManager.startAutomaticProcessing()
             }
-            val recovery = transferRuntime.recoverForStartup()
+            val recovery = if (recoveryLease != null) {
+                transferRuntime.recoverForStartup()
+            } else {
+                TransferExecutionRuntime.RuntimeStartupRecovery(
+                    scanSucceeded = false,
+                    ownershipSucceeded = false,
+                    interruptedSucceeded = false,
+                    restoredCount = 0,
+                    reconciledCount = 0,
+                )
+            }
             // Native HLS waits for canonical publication-journal recovery so a destination that
             // committed just before process death is adopted instead of remuxed/published twice.
-            val nativeHlsRecovery = runCatching { nativeHlsMediaManager.recoverInterruptedJobs() }
+            val nativeHlsRecovery: Result<Int> = if (recoveryLease != null) {
+                runCatching { nativeHlsMediaManager.recoverInterruptedJobs() }
+            } else {
+                Result.failure(IllegalStateException("Startup recovery lease is held by another owner."))
+            }
             val monitor = runCatching { queueConditionMonitor.start() }
+            val monitorStarted = monitor.isSuccess
             migration.exceptionOrNull()?.let { error ->
                 problemReporter.report(
                     area = com.mikeyphw.xdm.android.model.DebugArea.Persistence,
@@ -287,10 +308,11 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                     dedupeKey = "startup-native-hls-recovery",
                 )
             }
-            if (migration.isSuccess && recovery.admissionSafe && nativeHlsRecovery.isSuccess && monitor.isSuccess) {
+            if (migration.isSuccess && recovery.admissionSafe && nativeHlsRecovery.isSuccess) {
                 queueIntelligenceCoordinator.clearStartupRecoveryHold()
                 QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
             }
+            recoveryLease?.let { recoveryLeaseCoordinator.release(it, "startup-recovery-finished") }
         }
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             transferRuntime.terminalEvents.collectLatest { event ->

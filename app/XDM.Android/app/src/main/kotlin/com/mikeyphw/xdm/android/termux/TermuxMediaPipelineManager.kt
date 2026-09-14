@@ -2211,6 +2211,10 @@ class TermuxMediaPipelineManager(
         jobs.forEach { job ->
             cleanupJobBridges(job)
             dao.clearTerminalBridgeUris(job.id, System.currentTimeMillis())
+            // XAR09: clearing a finished Download must hide/delete retryable Termux-owned media
+            // outputs in the same ownership unit instead of deleting the owner job and leaving
+            // library rows that still point at retryable/removed bridge artifacts.
+            repository.hideMediaOutput("media-output:termuxjob:${job.id}:${job.attemptGeneration}")
         }
         return true
     }

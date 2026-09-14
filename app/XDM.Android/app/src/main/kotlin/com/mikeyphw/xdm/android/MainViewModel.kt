@@ -2044,7 +2044,9 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             repository.findDownloadsByStates(finished).forEach { candidate ->
                 if (termuxMediaPipelineManager.prepareDownloadGraphDeletion(candidate.id)) {
-                    repository.deleteDownloadEntryIfTerminal(candidate, finished)
+                    if (repository.deleteDownloadEntryIfTerminal(candidate, finished)) {
+                        queueIntelligenceCoordinator.retireAndroidSystemId(candidate.id)
+                    }
                 }
             }
         }
@@ -2094,8 +2096,10 @@ class MainViewModel(
                 val deleted = repository.deleteDownloadEntryIfTerminal(terminalCurrent, terminalStates)
                 if (!deleted) return@withContext "The transfer changed while deletion was being committed. Its entry was not removed."
                 MediaRequestHandoffStore.forget(current.id)
-                if (repository.findDownload(current.id) == null) "Deleted the download entry and its complete database graph after an atomic terminal-state check."
-                else "The database did not confirm deletion of the download entry."
+                if (repository.findDownload(current.id) == null) {
+                    queueIntelligenceCoordinator.retireAndroidSystemId(current.id)
+                    "Deleted the download entry and its complete database graph after an atomic terminal-state check."
+                } else "The database did not confirm deletion of the download entry."
             }
             onResult(message)
         }
@@ -2144,8 +2148,10 @@ class MainViewModel(
                     val deleted = repository.deleteDownloadEntryIfTerminal(terminalCurrent, terminalStates)
                     if (!deleted) return@withContext "The saved file was deleted, but the entry changed before atomic graph deletion and was retained for review."
                     MediaRequestHandoffStore.forget(current.id)
-                    if (repository.findDownload(current.id) == null) "Deleted the saved file and download entry after an atomic terminal-state check."
-                    else "The file was deleted, but the download entry could not be removed."
+                    if (repository.findDownload(current.id) == null) {
+                        queueIntelligenceCoordinator.retireAndroidSystemId(current.id)
+                        "Deleted the saved file and download entry after an atomic terminal-state check."
+                    } else "The file was deleted, but the download entry could not be removed."
                 } else {
                     repository.save(
                         current.copy(

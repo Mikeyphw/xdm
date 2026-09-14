@@ -44,8 +44,17 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
                     ClaimedExecutionAuthorization.Ready -> Unit
                 }
                 val download = runtime.findDownload(claimedDownloadId) ?: return Result.success()
-                withLiveForeground(runtime, download.id, download.fileName) {
-                    executeAndNotify(download.id, download.fileName, queueClaimToken, coordinator, runtime)
+                try {
+                    withLiveForeground(runtime, download.id, download.fileName) {
+                        executeAndNotify(download.id, download.fileName, queueClaimToken, coordinator, runtime)
+                    }
+                } catch (error: Throwable) {
+                    coordinator.releaseFailedExecutionOwner(
+                        download.id,
+                        queueClaimToken,
+                        "WorkManager foreground setup or execution failed before a legal owner could run: ${error.message ?: error::class.java.simpleName}",
+                    )
+                    return Result.retry()
                 }
                 return Result.success()
             }
@@ -71,6 +80,12 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Throwable) {
+            withContext(NonCancellable + Dispatchers.IO) {
+                ownedClaims.forEach { (downloadId, token) ->
+                    coordinator.releaseFailedExecutionOwner(downloadId, token, "WorkManager execution owner failed before completion; durable claim released for retry.")
+                }
+                ownedClaims.clear()
+            }
             Result.retry()
         } finally {
             if (isStopped) pauseAndRecordStop()
@@ -108,6 +123,7 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
             },
             mimeType = current?.mimeType,
             attemptGeneration = current?.attemptGeneration ?: 0L,
+            requestIdentity = current?.let { runtime.terminalRequestIdentity(it, state) }.orEmpty(),
         )
         coordinator.recordTerminalEvent(event)
         TransferNotifications(applicationContext).terminalIfFirst(
@@ -118,12 +134,13 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
             destinationUri = event.destinationUri,
             mimeType = event.mimeType,
             attemptGeneration = event.attemptGeneration,
+            requestIdentity = event.requestIdentity,
         )?.let { notification ->
             runCatching {
                 applicationContext.getSystemService(NotificationManager::class.java)
                     .notify(TransferSystemIdRegistry(applicationContext).idFor(downloadId), notification)
             }.onSuccess {
-                TransferNotifications(applicationContext).markTerminalDispatched(event.downloadId, event.attemptGeneration, event.state)
+                TransferNotifications(applicationContext).markTerminalDispatched(event.downloadId, event.attemptGeneration, event.state, event.requestIdentity)
             }
         }
     }
@@ -196,6 +213,7 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         private const val IMMEDIATE_WORK = "xdm-queue-intelligence-now"
         private const val CLAIMED_PREFIX = "xdm-transfer-claimed-"
         private const val RETRY_PREFIX = "xdm-transfer-retry-"
+        private const val PRECISION_WAKEUP_TAG = "xdm-scheduler-precision-wakeup"
         private const val INPUT_CLAIMED_DOWNLOAD_ID = "claimed_download_id"
         private const val INPUT_QUEUE_CLAIM_TOKEN = "queue_claim_token"
         private const val FOREGROUND_NOTIFICATION_ID = 4608
@@ -236,8 +254,13 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
             val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>()
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
                 .addTag(RETRY_PREFIX + downloadId)
+                .addTag(PRECISION_WAKEUP_TAG)
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(RETRY_PREFIX + downloadId, ExistingWorkPolicy.REPLACE, request)
+        }
+
+        fun schedulePrecisionWakeup(context: Context, downloadId: String, wakeAtEpochMs: Long) {
+            scheduleRetry(context, downloadId, wakeAtEpochMs)
         }
 
         fun cancelRetry(context: Context, downloadId: String) {

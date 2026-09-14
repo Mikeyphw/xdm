@@ -23,7 +23,9 @@ class QueueRetryLedger(context: Context) {
             putInt(prefix + "attempt", record.attempt)
             putLong(prefix + "failureAt", record.lastFailureAtEpochMs)
             putLong(prefix + "next", record.nextRetryAtEpochMs)
-            putBoolean(prefix + "secureRequired", secureContextPresent || preferences.getBoolean(prefix + "secureRequired", false))
+            // XAR09: secure-context requirement belongs to this exact failed request/backend/source identity.
+            // A later failure with a different URL/backend/source must not inherit a sticky auth hold.
+            putBoolean(prefix + "secureRequired", secureContextPresent)
         }
         return record
     }
@@ -56,7 +58,15 @@ class QueueRetryLedger(context: Context) {
     }
 
     private fun failureIdentity(download: Download): String {
-        val material = "${download.attemptGeneration}|${download.errorMessage.orEmpty().trim()}"
+        val material = listOf(
+            download.attemptGeneration.toString(),
+            download.sourceUrl,
+            download.destinationUri,
+            download.backend.name,
+            download.requestedBackend.name,
+            download.mimeType.orEmpty(),
+            download.errorMessage.orEmpty().trim(),
+        ).joinToString("|")
         return MessageDigest.getInstance("SHA-256").digest(material.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
     }
 }

@@ -32,6 +32,7 @@ import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.inferDownloadRequestKind
 import com.mikeyphw.xdm.android.transfer.inferTransferShape
 import java.io.File
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
@@ -119,6 +120,7 @@ class TransferExecutionRuntime(
     suspend fun execute(downloadId: String, queueClaimToken: Long): DownloadState {
         val before = store.find(downloadId) ?: return DownloadState.Failed
         if (before.state in TERMINAL_STATES) return before.state
+        if (queueClaimToken > 0L) resetStopIntentForNewExecution(downloadId, queueClaimToken)
         val job = ensureExecutionJob(downloadId, queueClaimToken) ?: return store.find(downloadId)?.state ?: DownloadState.Failed
         job.join()
         return store.find(downloadId)?.state ?: DownloadState.Failed
@@ -137,6 +139,12 @@ class TransferExecutionRuntime(
                 AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
             }
         }
+    }
+
+    /** XAR09: a fresh scheduler/UIDT/FGS owner must not inherit a process-local pause/cancel from an older attempt. */
+    fun resetStopIntentForNewExecution(downloadId: String, queueClaimToken: Long) {
+        if (queueClaimToken <= 0L) return
+        commandControl(downloadId).clearForNewExecution()
     }
 
     /**
@@ -457,7 +465,18 @@ class TransferExecutionRuntime(
                         updatedAtEpochMs = download.nextUpdatedAt(),
                     ),
                 )
-                _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, DownloadState.RecoveryRequired, message, download.destinationUri, download.mimeType, existingOwnership.generation))
+                _terminalEvents.tryEmit(
+                    TransferTerminalEvent(
+                        downloadId = download.id,
+                        fileName = download.fileName,
+                        state = DownloadState.RecoveryRequired,
+                        message = message,
+                        destinationUri = download.destinationUri,
+                        mimeType = download.mimeType,
+                        attemptGeneration = existingOwnership.generation,
+                        requestIdentity = terminalRequestIdentity(download, DownloadState.RecoveryRequired),
+                    ),
+                )
                 return
             }
         }
@@ -606,7 +625,18 @@ class TransferExecutionRuntime(
             ),
         )
         if (state == DownloadState.Paused || state == DownloadState.Failed || state == DownloadState.RecoveryRequired) {
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, state, storedMessage, current.destinationUri, current.mimeType, attemptGenerations[download.id] ?: requestGeneration(download.id)))
+            _terminalEvents.tryEmit(
+                TransferTerminalEvent(
+                    downloadId = download.id,
+                    fileName = download.fileName,
+                    state = state,
+                    message = storedMessage,
+                    destinationUri = current.destinationUri,
+                    mimeType = current.mimeType,
+                    attemptGeneration = attemptGenerations[download.id] ?: requestGeneration(download.id),
+                    requestIdentity = terminalRequestIdentity(current, state),
+                ),
+            )
         }
     }
 
@@ -637,7 +667,18 @@ class TransferExecutionRuntime(
                 }
             } ?: download.destinationUri
             val storedMimeType = storedAfterCompletion?.mimeType ?: download.mimeType
-            _terminalEvents.tryEmit(TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id] ?: requestGeneration(download.id)))
+            _terminalEvents.tryEmit(
+                TransferTerminalEvent(
+                    downloadId = download.id,
+                    fileName = download.fileName,
+                    state = finalState,
+                    message = finalMessage,
+                    destinationUri = storedDestination,
+                    mimeType = storedMimeType,
+                    attemptGeneration = attemptGenerations[download.id] ?: requestGeneration(download.id),
+                    requestIdentity = terminalRequestIdentity(storedAfterCompletion ?: download, finalState),
+                ),
+            )
         }
     }
 
@@ -1043,6 +1084,22 @@ class TransferExecutionRuntime(
         )
     }
 
+    fun terminalRequestIdentity(download: Download, state: DownloadState): String {
+        val handoff = MediaRequestHandoffStore.forDownload(download.id)
+        val material = listOf(
+            download.id,
+            download.attemptGeneration.toString(),
+            state.name,
+            handoff?.exactUrl ?: download.sourceUrl,
+            download.destinationUri,
+            download.backend.name,
+            download.requestedBackend.name,
+            handoff?.pageUrl.orEmpty(),
+            handoff?.redactedSummary.orEmpty(),
+        ).joinToString("|")
+        return MessageDigest.getInstance("SHA-256").digest(material.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    }
+
     private fun commandControl(downloadId: String): DownloadCommandControl =
         commandControls.computeIfAbsent(downloadId) { DownloadCommandControl() }
 
@@ -1054,6 +1111,11 @@ class TransferExecutionRuntime(
         fun request(state: DesiredTransferState): Long {
             desired = state
             return generation.incrementAndGet()
+        }
+
+        fun clearForNewExecution() {
+            desired = DesiredTransferState.None
+            generation.incrementAndGet()
         }
     }
 

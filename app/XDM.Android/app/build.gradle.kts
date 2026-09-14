@@ -437,6 +437,15 @@ val verifyXar08Aria2Ownership = tasks.register<Exec>("verifyXar08Aria2Ownership"
     trackStaticValidation("xar08-aria2-ownership")
 }
 
+
+val verifyXar09SchedulerRecovery = tasks.register<Exec>("verifyXar09SchedulerRecovery") {
+    group = "verification"
+    description = "Verify XAR09 scheduler, foreground work, retry-owner reconciliation, and S09 coverage contracts."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar09-scheduler-recovery.py")
+    trackStaticValidation("xar09-scheduler-recovery")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -494,6 +503,7 @@ val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGat
         verifyXar06StoragePublication,
         verifyXar07NativeHttpProtocol,
         verifyXar08Aria2Ownership,
+        verifyXar09SchedulerRecovery,
         verifyFfmpeg04FullReleaseSeal,
         verifyFfmpegRoadmapPostSealHotfix,
         verifyGradleTaskGraphOptimization,

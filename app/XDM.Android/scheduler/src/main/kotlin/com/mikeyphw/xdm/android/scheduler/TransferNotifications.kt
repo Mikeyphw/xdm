@@ -159,10 +159,11 @@ class TransferNotifications(private val context: Context) {
         destinationUri: String? = null,
         mimeType: String? = null,
         attemptGeneration: Long = 0L,
+        requestIdentity: String = "",
     ): Notification? {
         val profile = notificationProfile(state, fileName, message)
         val record = TerminalNotificationRecord(
-            key = TerminalNotificationKey(downloadId, attemptGeneration, state),
+            key = TerminalNotificationKey(downloadId, attemptGeneration, state, requestIdentity),
             title = profile.title,
             text = profile.text,
             actions = TerminalNotificationActionPolicy.actionsFor(state, downloadId),
@@ -176,10 +177,10 @@ class TransferNotifications(private val context: Context) {
         return terminal(downloadId, fileName, state, message, destinationUri, mimeType)
     }
 
-    fun markTerminalDispatched(downloadId: String, attemptGeneration: Long, state: DownloadState) {
+    fun markTerminalDispatched(downloadId: String, attemptGeneration: Long, state: DownloadState, requestIdentity: String = "") {
         phase4Coordinator.markTerminalNotificationDispatched(
             TerminalNotificationRecord(
-                key = TerminalNotificationKey(downloadId, attemptGeneration, state),
+                key = TerminalNotificationKey(downloadId, attemptGeneration, state, requestIdentity),
                 title = "",
                 text = "",
                 actions = emptyList(),

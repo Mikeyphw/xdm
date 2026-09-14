@@ -9,16 +9,22 @@ class TransferRestoreWorker(appContext: Context, params: WorkerParameters) : Cor
     override suspend fun doWork(): Result {
         val runtime = (applicationContext as? TransferRuntimeProvider)?.transferRuntime ?: return Result.retry()
         val queue = (applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator ?: return Result.retry()
-        // Boot/package restore may run long after normal app startup. Take the same durable gate
-        // explicitly so no queue start races ownership reconciliation.
-        queue.installStartupRecoveryHold()
-        val recovery = runtime.recoverForStartup()
-        TransferNotifications(applicationContext).notifyRestored(recovery.restoredCount)
-        if (recovery.admissionSafe) {
-            queue.clearStartupRecoveryHold()
-            QueueIntelligenceWorker.enqueueImmediate(applicationContext)
-            return Result.success()
+        val leaseCoordinator = SchedulerRecoveryLeaseCoordinator(applicationContext)
+        val lease = leaseCoordinator.tryAcquire("restore-worker") ?: return Result.retry()
+        try {
+            // Boot/package restore may run long after normal app startup. Take the same durable gate
+            // explicitly so no queue start races ownership reconciliation.
+            queue.installStartupRecoveryHold()
+            val recovery = runtime.recoverForStartup()
+            if (recovery.admissionSafe) {
+                TransferNotifications(applicationContext).notifyRestored(recovery.restoredCount)
+                queue.clearStartupRecoveryHold()
+                QueueIntelligenceWorker.enqueueImmediate(applicationContext)
+                return Result.success()
+            }
+            return Result.retry()
+        } finally {
+            leaseCoordinator.release(lease, "restore-worker-finished")
         }
-        return Result.retry()
     }
 }

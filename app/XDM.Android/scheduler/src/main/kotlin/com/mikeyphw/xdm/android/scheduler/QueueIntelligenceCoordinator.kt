@@ -109,7 +109,7 @@ class QueueIntelligenceCoordinator(
                 )
             }
             val nextEligibleAtEpochMs = decision.nextEligibleAtEpochMs
-            if (nextEligibleAtEpochMs != null) QueueIntelligenceWorker.scheduleRetry(appContext, download.id, nextEligibleAtEpochMs)
+            if (nextEligibleAtEpochMs != null) QueueIntelligenceWorker.schedulePrecisionWakeup(appContext, download.id, nextEligibleAtEpochMs)
             if (decision.canStart) {
                 val claimed = claimForLaunch(download, queue, decision, manual, activeCount)
                 if (claimed) {
@@ -117,8 +117,7 @@ class QueueIntelligenceCoordinator(
                     AndroidExecutionClaimRegistry.install(current.id, current.updatedAtEpochMs)
                     val launch = executionStarter.start(current.id, current.totalBytes, userVisible, current.updatedAtEpochMs)
                     if (!launch.accepted) {
-                        AndroidExecutionClaimRegistry.release(current.id, current.updatedAtEpochMs)
-                        repository.releaseQueueLaunchClaim(current.id, current.attemptGeneration, current.updatedAtEpochMs, "Queue policy: Android execution owner could not be scheduled.")
+                        releaseFailedExecutionOwner(current.id, current.updatedAtEpochMs, "Queue policy: Android execution owner could not be scheduled.")
                         val rejected = hold("Execution unavailable", "Android could not accept a legal execution owner; the durable queue claim was released for retry.")
                         decisionLedger.record(download, rejected, conditions.nowEpochMs)
                         refreshStatusMessage(rejected)
@@ -182,6 +181,9 @@ class QueueIntelligenceCoordinator(
             }
 
             val now = System.currentTimeMillis()
+            // XAR09: durable threshold-crossing wakeups are consumed by the worker that observes them,
+            // not dropped as in-memory nudges. The periodic sweep remains only a fallback.
+            phase4Coordinator.consumeImmediateReevaluations(now)
             val queues = repository.queues.first().associateBy(QueueDefinition::id)
             val schedules = repository.schedules.first()
             val downloads = repository.downloads.first()
@@ -242,7 +244,7 @@ class QueueIntelligenceCoordinator(
                         QueueHoldReason.UnsupportedFailure, QueueHoldReason.PermanentFailure, QueueHoldReason.NonRetryableFailure -> manualReview++
                         null -> Unit
                     }
-                    decision.nextEligibleAtEpochMs?.let { QueueIntelligenceWorker.scheduleRetry(appContext, download.id, it) }
+                    decision.nextEligibleAtEpochMs?.let { QueueIntelligenceWorker.schedulePrecisionWakeup(appContext, download.id, it) }
                     if (decision.canStart) {
                         if (claimForLaunch(download, queue, decision, manual = false, activeCount = activeCount)) {
                             val claimed = repository.findDownload(download.id) ?: download.copy(state = DownloadState.Connecting)
@@ -284,13 +286,21 @@ class QueueIntelligenceCoordinator(
         }
     }
 
+    suspend fun releaseFailedExecutionOwner(downloadId: String, queueClaimToken: Long, message: String) {
+        val current = repository.findDownload(downloadId)
+        AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
+        if (current != null && current.state == DownloadState.Connecting && current.updatedAtEpochMs == queueClaimToken) {
+            repository.releaseQueueLaunchClaim(current.id, current.attemptGeneration, queueClaimToken, message)
+            recordImmediateReevaluation("execution-owner-release", current.id)
+        }
+    }
+
     suspend fun reconcile(): QueueIntelligenceSummary {
         val outcome = evaluateAndClaim()
         outcome.eligibleDownloads.forEach { download ->
             val launch = executionStarter.start(download.id, download.totalBytes, userVisible = false, queueClaimToken = download.updatedAtEpochMs)
             if (!launch.accepted) {
-                AndroidExecutionClaimRegistry.release(download.id, download.updatedAtEpochMs)
-                repository.releaseQueueLaunchClaim(download.id, download.attemptGeneration, download.updatedAtEpochMs, "Queue policy: Android execution owner could not be scheduled.")
+                releaseFailedExecutionOwner(download.id, download.updatedAtEpochMs, "Queue policy: Android execution owner could not be scheduled.")
             }
         }
         return outcome.summary
@@ -332,6 +342,11 @@ class QueueIntelligenceCoordinator(
 
     fun recordImmediateReevaluation(source: String, coalesceKey: String = "queue-intelligence") {
         phase4Coordinator.requestImmediateReevaluation(source, coalesceKey, System.currentTimeMillis())
+        QueueIntelligenceWorker.enqueueImmediate(appContext)
+    }
+
+    fun retireAndroidSystemId(downloadId: String) {
+        TransferSystemIdRegistry(appContext).retire(downloadId)
     }
 
     fun clearDecisionHistory() {

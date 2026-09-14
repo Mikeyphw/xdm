@@ -30,6 +30,8 @@ data class TransferTerminalEvent(
     val destinationUri: String? = null,
     val mimeType: String? = null,
     val attemptGeneration: Long = 0L,
+    /** SHA-256 fence over source URL, destination, backend and selected exact request identity. */
+    val requestIdentity: String = "",
 )
 
 internal fun String.stableSystemId(): Int = (hashCode() and 0x3fffffff).coerceAtLeast(1)

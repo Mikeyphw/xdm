@@ -166,7 +166,18 @@ data class RecoveryExecutionPlan(
     val message: String,
 )
 
-data class TerminalNotificationKey(val downloadId: String, val attemptGeneration: Long, val state: DownloadState)
+data class TerminalNotificationKey(
+    val downloadId: String,
+    val attemptGeneration: Long,
+    val state: DownloadState,
+    /**
+     * XAR09: terminal notification replay is fenced not only to the attempt generation, but also
+     * to the executable request/backend/source identity that produced the terminal state. Older
+     * call sites default to an empty identity so historical records remain readable; production
+     * terminal events populate this with a SHA-256 digest of URL/destination/backend/source data.
+     */
+    val requestIdentity: String = "",
+)
 
 enum class NotificationActionVisibility { Show, Hide }
 
@@ -185,7 +196,7 @@ data class TerminalNotificationRecord(
     val createdAtEpochMs: Long,
     val dispatchedAtEpochMs: Long? = null,
 ) {
-    val idempotencyKey: String get() = "${key.downloadId}:${key.attemptGeneration}:${key.state.name}"
+    val idempotencyKey: String get() = "${key.downloadId}:${key.attemptGeneration}:${key.state.name}:${key.requestIdentity}"
 }
 
 data class NotificationPermissionState(

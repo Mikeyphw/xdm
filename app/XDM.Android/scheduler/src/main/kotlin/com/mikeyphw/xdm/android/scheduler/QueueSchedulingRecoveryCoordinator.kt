@@ -44,6 +44,7 @@ interface QueueSchedulingRecoveryStore {
     fun saveSystemStopReason(record: SystemStopReasonRecord)
     fun systemStopReasons(downloadId: String): List<SystemStopReasonRecord>
     fun saveImmediateReevaluation(event: ImmediateReevaluationEvent)
+    fun consumeImmediateReevaluation(coalesceKey: String, consumedAtEpochMs: Long): Boolean
     fun pendingImmediateReevaluations(): List<ImmediateReevaluationEvent>
     fun saveRecoveryPlan(plan: RecoveryExecutionPlan)
     fun recoveryPlan(downloadId: String, attemptGeneration: Long): RecoveryExecutionPlan?
@@ -70,6 +71,7 @@ class InMemoryQueueSchedulingRecoveryStore : QueueSchedulingRecoveryStore {
     override fun saveSystemStopReason(record: SystemStopReasonRecord) { stopReasons += record }
     override fun systemStopReasons(downloadId: String): List<SystemStopReasonRecord> = stopReasons.filter { it.downloadId == downloadId }
     override fun saveImmediateReevaluation(event: ImmediateReevaluationEvent) { reevaluations[event.coalesceKey] = event }
+    override fun consumeImmediateReevaluation(coalesceKey: String, consumedAtEpochMs: Long): Boolean = reevaluations.remove(coalesceKey) != null
     override fun pendingImmediateReevaluations(): List<ImmediateReevaluationEvent> = reevaluations.values.toList()
     override fun saveRecoveryPlan(plan: RecoveryExecutionPlan) { recoveryPlans[planKey(plan.downloadId, plan.attemptGeneration)] = plan }
     override fun recoveryPlan(downloadId: String, attemptGeneration: Long): RecoveryExecutionPlan? = recoveryPlans[planKey(downloadId, attemptGeneration)]
@@ -204,17 +206,39 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
         listOf("reevaluate", event.id, event.source, event.coalesceKey, event.createdAtEpochMs.toString(), event.durable.toString()),
     )
 
-    override fun pendingImmediateReevaluations(): List<ImmediateReevaluationEvent> {
+    /** XAR09: durable immediate wakeups are consumed by writing an explicit tombstone. */
+    override fun consumeImmediateReevaluation(coalesceKey: String, consumedAtEpochMs: Long): Boolean = synchronized(lock) {
+        val pending = pendingImmediateReevaluationsLocked()
+        if (pending.none { it.coalesceKey == coalesceKey }) return@synchronized false
+        appendLocked("immediate-reevaluations.log", listOf("reevaluate-consumed", coalesceKey, consumedAtEpochMs.toString()))
+        true
+    }
+
+    override fun pendingImmediateReevaluations(): List<ImmediateReevaluationEvent> = synchronized(lock) {
+        pendingImmediateReevaluationsLocked()
+    }
+
+    private fun pendingImmediateReevaluationsLocked(): List<ImmediateReevaluationEvent> {
         val coalesced = LinkedHashMap<String, ImmediateReevaluationEvent>()
-        readLines("immediate-reevaluations.log").forEach { fields ->
-            runCatching {
-                coalesced[fields[3]] = ImmediateReevaluationEvent(
-                    id = fields[1],
-                    source = fields[2],
-                    coalesceKey = fields[3],
-                    createdAtEpochMs = fields[4].toLong(),
-                    durable = fields[5].toBoolean(),
-                )
+        val consumed = linkedSetOf<String>()
+        readLinesUnlocked("immediate-reevaluations.log").forEach { fields ->
+            when (fields.getOrNull(0)) {
+                "reevaluate" -> runCatching {
+                    val key = fields[3]
+                    if (key !in consumed) {
+                        coalesced[key] = ImmediateReevaluationEvent(
+                            id = fields[1],
+                            source = fields[2],
+                            coalesceKey = key,
+                            createdAtEpochMs = fields[4].toLong(),
+                            durable = fields[5].toBoolean(),
+                        )
+                    }
+                }
+                "reevaluate-consumed" -> fields.getOrNull(1)?.let { key ->
+                    consumed += key
+                    coalesced.remove(key)
+                }
             }
         }
         return coalesced.values.toList()
@@ -272,6 +296,7 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
                     record.key.downloadId,
                     record.key.attemptGeneration.toString(),
                     record.key.state.name,
+                    record.key.requestIdentity,
                     record.title,
                     record.text,
                     record.createdAtEpochMs.toString(),
@@ -299,17 +324,19 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
         readLinesUnlocked("terminal-notifications.log").forEach { fields ->
             when (fields.getOrNull(0)) {
                 "terminal" -> runCatching {
+                    val hasRequestIdentity = fields.size >= 11
                     TerminalNotificationRecord(
                         key = com.mikeyphw.xdm.android.model.TerminalNotificationKey(
                             downloadId = fields[2],
                             attemptGeneration = fields[3].toLong(),
                             state = DownloadState.valueOf(fields[4]),
+                            requestIdentity = if (hasRequestIdentity) fields[5] else "",
                         ),
-                        title = fields[5],
-                        text = fields[6],
+                        title = if (hasRequestIdentity) fields[6] else fields[5],
+                        text = if (hasRequestIdentity) fields[7] else fields[6],
                         actions = TerminalNotificationActionPolicy.actionsFor(DownloadState.valueOf(fields[4]), fields[2]),
-                        createdAtEpochMs = fields[7].toLong(),
-                        dispatchedAtEpochMs = fields.getOrNull(8)?.toLongOrNull(),
+                        createdAtEpochMs = (if (hasRequestIdentity) fields[8] else fields[7]).toLong(),
+                        dispatchedAtEpochMs = (if (hasRequestIdentity) fields.getOrNull(9) else fields.getOrNull(8))?.toLongOrNull(),
                     )
                 }.getOrNull()?.let { records[it.idempotencyKey] = it }
                 "terminal-dispatched" -> fields.getOrNull(2)?.toLongOrNull()?.let { dispatchedAt ->
@@ -356,6 +383,27 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
             out.write('\n'.code)
             out.fd.sync()
         }
+        compactLogIfNeededLocked(name)
+    }
+
+    private fun compactLogIfNeededLocked(name: String, maxLines: Int = MAX_LOG_LINES) {
+        val target = file(name)
+        if (!target.isFile) return
+        val lines = target.readLines(Charsets.UTF_8)
+        if (lines.size <= maxLines) return
+        val compacted = lines.takeLast(maxLines)
+        val tmp = File(target.parentFile, "${target.name}.compact")
+        FileOutputStream(tmp, false).use { out ->
+            compacted.forEach { line ->
+                out.write(line.toByteArray(Charsets.UTF_8))
+                out.write('\n'.code)
+            }
+            out.fd.sync()
+        }
+        if (!tmp.renameTo(target)) {
+            tmp.copyTo(target, overwrite = true)
+            tmp.delete()
+        }
     }
 
     private fun readLines(name: String): List<List<String>> = synchronized(lock) { readLinesUnlocked(name) }
@@ -369,6 +417,8 @@ class FileBackedQueueSchedulingRecoveryStore(private val root: File) : QueueSche
     private fun csv(value: String): List<String> = value.split(',').filter(String::isNotBlank)
     private fun encode(value: String): String = Base64.getUrlEncoder().withoutPadding().encodeToString(value.toByteArray(Charsets.UTF_8))
     private fun decode(value: String): String = String(Base64.getUrlDecoder().decode(value), Charsets.UTF_8)
+
+    companion object { private const val MAX_LOG_LINES = 2048 }
 }
 
 class QueueSchedulingRecoveryCoordinator(private val store: QueueSchedulingRecoveryStore) {
@@ -408,6 +458,13 @@ class QueueSchedulingRecoveryCoordinator(private val store: QueueSchedulingRecov
         )
         store.saveImmediateReevaluation(event)
         return event
+    }
+
+    /** XAR09: queued condition-threshold wakeups are consumed only after a worker observes them. */
+    fun consumeImmediateReevaluations(nowEpochMs: Long = System.currentTimeMillis()): List<ImmediateReevaluationEvent> {
+        val pending = store.pendingImmediateReevaluations()
+        pending.forEach { store.consumeImmediateReevaluation(it.coalesceKey, nowEpochMs) }
+        return pending
     }
 
     fun planRecovery(

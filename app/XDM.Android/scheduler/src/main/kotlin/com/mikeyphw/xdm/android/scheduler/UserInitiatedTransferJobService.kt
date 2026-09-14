@@ -29,64 +29,82 @@ class UserInitiatedTransferJobService : JobService() {
         val queue = (application as QueueIntelligenceProvider).queueIntelligenceCoordinator
         val notifications = TransferNotifications(this)
         val notificationId = TransferSystemIdRegistry(this).idFor(downloadId)
-        setNotification(
-            params,
-            notificationId,
-            notifications.active(ActiveTransferSummary(activeCount = 1, primaryDownloadId = downloadId), downloadId),
-            JOB_END_NOTIFICATION_POLICY_REMOVE,
-        )
         jobs[params.jobId] = scope.launch {
-            when (queue.authorizeClaimedExecution(downloadId, queueClaimToken)) {
-                ClaimedExecutionAuthorization.TemporarilyHeld -> {
+            var updater: Job? = null
+            var terminalState: DownloadState? = null
+            try {
+                when (queue.authorizeClaimedExecution(downloadId, queueClaimToken)) {
+                    ClaimedExecutionAuthorization.TemporarilyHeld -> {
+                        jobFinished(params, true)
+                        return@launch
+                    }
+                    ClaimedExecutionAuthorization.Stale -> {
+                        jobFinished(params, false)
+                        return@launch
+                    }
+                    ClaimedExecutionAuthorization.Ready -> Unit
+                }
+                val initial = runtime.findDownload(downloadId)
+                // XAR09: initial UIDT notification happens only after the durable queue claim is authorized.
+                val initialNotificationSet = runCatching {
+                    setNotification(
+                        params,
+                        notificationId,
+                        notifications.active(runtime.liveSummaryFor(downloadId, initial?.fileName ?: "Download"), downloadId),
+                        JOB_END_NOTIFICATION_POLICY_REMOVE,
+                    )
+                }.isSuccess
+                if (!initialNotificationSet) {
+                    queue.releaseFailedExecutionOwner(downloadId, queueClaimToken, "UIDT notification setup failed after authorization; durable claim released.")
                     jobFinished(params, true)
-                    jobs.remove(params.jobId)
                     return@launch
                 }
-                ClaimedExecutionAuthorization.Stale -> {
-                    jobFinished(params, false)
-                    jobs.remove(params.jobId)
-                    return@launch
-                }
-                ClaimedExecutionAuthorization.Ready -> Unit
-            }
-            val initial = runtime.findDownload(downloadId)
-            val throttle = NotificationUpdateThrottle()
-            val updater = launch {
-                runtime.liveProgress.collectLatest {
-                    if (throttle.shouldPublish()) {
-                        val exact = runtime.liveSummaryFor(downloadId, initial?.fileName ?: "Download")
-                        setNotification(params, notificationId, notifications.active(exact, downloadId), JOB_END_NOTIFICATION_POLICY_REMOVE)
+                val throttle = NotificationUpdateThrottle()
+                updater = launch {
+                    runtime.liveProgress.collectLatest {
+                        if (throttle.shouldPublish()) {
+                            val exact = runtime.liveSummaryFor(downloadId, initial?.fileName ?: "Download")
+                            runCatching { setNotification(params, notificationId, notifications.active(exact, downloadId), JOB_END_NOTIFICATION_POLICY_REMOVE) }
+                        }
                     }
                 }
-            }
-            val state = runtime.execute(downloadId, queueClaimToken)
-            updater.cancel()
-            val result = runtime.findDownload(downloadId)
-            notifications.terminalIfFirst(
-                downloadId = downloadId,
-                fileName = result?.fileName ?: "Download",
-                state = state,
-                message = result?.errorMessage,
-                destinationUri = result?.let { download ->
-                    if (state == DownloadState.Completed && download.completedArtifactGeneration == download.attemptGeneration) {
-                        download.completedArtifactUri
-                    } else {
-                        download.destinationUri
+                val state = runtime.execute(downloadId, queueClaimToken)
+                terminalState = state
+                updater.cancel()
+                val result = runtime.findDownload(downloadId)
+                val requestIdentity = result?.let { runtime.terminalRequestIdentity(it, state) }.orEmpty()
+                notifications.terminalIfFirst(
+                    downloadId = downloadId,
+                    fileName = result?.fileName ?: "Download",
+                    state = state,
+                    message = result?.errorMessage,
+                    destinationUri = result?.let { download ->
+                        if (state == DownloadState.Completed && download.completedArtifactGeneration == download.attemptGeneration) {
+                            download.completedArtifactUri
+                        } else {
+                            download.destinationUri
+                        }
+                    },
+                    mimeType = result?.mimeType,
+                    attemptGeneration = result?.attemptGeneration ?: 0L,
+                    requestIdentity = requestIdentity,
+                )?.let { terminal ->
+                    runCatching {
+                        setNotification(params, notificationId, terminal, JOB_END_NOTIFICATION_POLICY_DETACH)
+                    }.onSuccess {
+                        notifications.markTerminalDispatched(downloadId, result?.attemptGeneration ?: 0L, state, requestIdentity)
                     }
-                },
-                mimeType = result?.mimeType,
-                attemptGeneration = result?.attemptGeneration ?: 0L,
-            )?.let { terminal ->
-                runCatching {
-                    setNotification(params, notificationId, terminal, JOB_END_NOTIFICATION_POLICY_DETACH)
-                }.onSuccess {
-                    notifications.markTerminalDispatched(downloadId, result?.attemptGeneration ?: 0L, state)
                 }
+                val reschedule = state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
+                jobFinished(params, reschedule)
+            } catch (error: Throwable) {
+                queue.releaseFailedExecutionOwner(downloadId, queueClaimToken, "UIDT coroutine failed before completion: ${error.message ?: error::class.java.simpleName}")
+                jobFinished(params, true)
+            } finally {
+                updater?.cancel()
+                AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
+                jobs.remove(params.jobId)
             }
-            AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
-            val reschedule = state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
-            jobFinished(params, reschedule)
-            jobs.remove(params.jobId)
         }
         return true
     }
