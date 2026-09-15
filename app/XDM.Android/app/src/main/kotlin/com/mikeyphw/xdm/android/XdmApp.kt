@@ -432,6 +432,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
                         onValidate = viewModel::validateRecoveryRecord,
                         onRemove = viewModel::removeRecoveryRecord,
                         onValidateAll = viewModel::validateAllRecoveryRecords,
+                        onLocateFile = viewModel::locateRecoveryFile,
                         selectedDownloadId = state.selectedRecoveryDownloadId,
                         selectedAction = state.selectedRecoveryAction,
                     )

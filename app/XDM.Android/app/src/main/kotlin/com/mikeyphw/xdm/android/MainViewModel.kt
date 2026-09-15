@@ -2771,7 +2771,39 @@ class MainViewModel(
     }
 
     fun validateAllRecoveryRecords(records: List<RecoveryRecord>) {
-        viewModelScope.launch(Dispatchers.IO) { records.forEach { executeRecoveryRecord(it) } }
+        viewModelScope.launch(Dispatchers.IO) {
+            records.filter { record ->
+                record.safeToResume || record.classification in setOf(
+                    com.mikeyphw.xdm.android.model.RecoveryClassification.CompletionRecovered,
+                    com.mikeyphw.xdm.android.model.RecoveryClassification.FinalizationInterrupted,
+                )
+            }.forEach { executeRecoveryRecord(it) }
+        }
+    }
+
+    fun locateRecoveryFile(record: RecoveryRecord, selected: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = record.downloadId?.let { repository.findDownload(it) } ?: return@launch
+            if (current.attemptGeneration != record.attemptGeneration) return@launch
+            val outcome = downloadArtifactActionManager.validateRecoverySelection(current, selected)
+            if (!outcome.success || outcome.canonicalUri == null) {
+                repository.save(current.copy(
+                    state = DownloadState.RecoveryRequired,
+                    errorMessage = outcome.message,
+                    updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.updatedAtEpochMs + 1L),
+                ))
+                return@launch
+            }
+            repository.save(current.copy(
+                completedArtifactUri = outcome.canonicalUri,
+                completedArtifactGeneration = current.attemptGeneration,
+                completedArtifactBytes = current.completedArtifactBytes ?: current.totalBytes ?: current.bytesReceived,
+                state = DownloadState.Completed,
+                errorMessage = null,
+                updatedAtEpochMs = maxOf(System.currentTimeMillis(), current.updatedAtEpochMs + 1L),
+            ))
+            repository.deleteRecovery(record.id)
+        }
     }
 
     private suspend fun executeRecoveryRecord(record: RecoveryRecord) {
@@ -2909,7 +2941,7 @@ class MainViewModel(
                 repository.save(
                     stale.copy(
                         state = DownloadState.RecoveryRequired,
-                        errorMessage = "Locate-file recovery requires an explicit Android document selection matching this attempt. Automatic path substitution is blocked.",
+                        errorMessage = "Choose the original file with Android's document picker; XDM will verify its size before reassociating it.",
                         updatedAtEpochMs = maxOf(System.currentTimeMillis(), stale.updatedAtEpochMs + 1L),
                     ),
                 )

@@ -31,6 +31,36 @@ data class DownloadArtifactOutcome(
 class DownloadArtifactActionManager(private val context: Context) {
     private val resolver: ContentResolver get() = context.contentResolver
 
+    suspend fun validateRecoverySelection(download: Download, selected: Uri): DownloadArtifactOutcome = withContext(Dispatchers.IO) {
+        if (selected.scheme != ContentResolver.SCHEME_CONTENT) {
+            return@withContext DownloadArtifactOutcome(false, "Choose a document provided through Android storage.")
+        }
+        val persisted = runCatching {
+            resolver.takePersistableUriPermission(selected, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }.isSuccess
+        if (!persisted) {
+            return@withContext DownloadArtifactOutcome(false, "XDM could not retain access to the selected document.")
+        }
+        val readableBytes = runCatching {
+            resolver.openFileDescriptor(selected, "r")?.use { descriptor -> descriptor.statSize }
+        }.getOrNull()?.takeIf { it >= 0L }
+            ?: return@withContext DownloadArtifactOutcome(false, "The selected document is not readable.")
+        val expected = download.completedArtifactBytes
+            ?: download.totalBytes?.takeIf { it > 0L }
+            ?: download.bytesReceived.takeIf { it > 0L }
+        if (expected != null && readableBytes != expected) {
+            return@withContext DownloadArtifactOutcome(
+                false,
+                "The selected document is $readableBytes bytes; this attempt requires exactly $expected bytes.",
+            )
+        }
+        DownloadArtifactOutcome(
+            success = true,
+            message = "Selected document validated and reassociated with this download attempt.",
+            canonicalUri = selected.toString(),
+        )
+    }
+
     suspend fun inspect(download: Download): CompletedArtifactCapabilities = withContext(Dispatchers.IO) {
         if (download.state != DownloadState.Completed) {
             return@withContext CompletedArtifactCapabilities(

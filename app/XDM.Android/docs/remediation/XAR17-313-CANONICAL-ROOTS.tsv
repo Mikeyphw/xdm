@@ -1,0 +1,314 @@
+overlay	section	section_name	canonical_id	origin	severity	title	source_report
+XAR01	S01	Build & Packaging	S01-01	baseline		Active CI does not provision required NDK 29	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-02	baseline		Optional native runtimes are effectively mandatory build-time dependencies	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-03	baseline		Direct release builds can consume unpinned aria2 bytes	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-04	baseline		Stable toolchain verifier checks the wrong CI workflow	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-05	baseline		Browser release gate version drift	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-06	baseline		Advertised release helper is weaker/incomplete relative to release contract	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-07	baseline		FFmpeg 16 KB release evidence is incomplete	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-08	baseline		Devtool may satisfy required artifacts with stale cached APK/AAB outputs	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-09	baseline		Static release validators can false-green important build conditions	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-10	baseline		aria2 distribution notice packaging is not evidenced	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-11	baseline		CI path-filter drift surface	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR01	S01	Build & Packaging	S01-12	baseline		bundletool acquisition is not self-contained	XDM_ANDROID_BUG_HUNT_S01_BUILD_PACKAGING_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-01	baseline		Confirmed: cold external Add Download restores to the wrong previous route	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-02	baseline		Confirmed architecture defect: navigation return state has split ownership	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-03	baseline		Confirmed evidence defect: expanded adaptive instrumentation test constructs an internally inconsistent shell	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-04	baseline		Confirmed coverage gap: no behavioral process-death navigation restoration test	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-05	baseline		Confirmed evidence-quality weakness: many navigation tests assert source text, not behavior	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-06	baseline		Probable foldable edge case: only the first `FoldingFeature` is considered	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-07	baseline		Confirmed observability/test semantics issue: fallback shell can be tagged as Medium even when the window class is Expanded	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR04	S02	Shell & Navigation	S02-08	baseline		Performance/lifecycle inefficiency: `uiState` is collected twice in the Activity composition	XDM_ANDROID_BUG_HUNT_S02_SHELL_NAVIGATION_AUDIT.md
+XAR05	S03	External Intake	S03-01	baseline		Share-sheet URL intake regressed from Add Download to media-only capture	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-02	baseline		Advertised document/binary shares are silently incompatible with `content://`	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-03	baseline		`ACTION_SEND_MULTIPLE` exposes multi-share semantics but consumes one URL	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-04	baseline		Editing an external URL can send the original site's credentials to another host	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-05	baseline		“Inspect media” can act on a different URL than the UI displays	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-06	baseline		Metadata preflight follows redirects outside the transfer security boundary	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-07	baseline		Direct browser capture synthesizes private-network approval	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-08	baseline		Direct browser capture has weaker process-death durability than encrypted capture	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-09	baseline		Intake promises HTTP/FTP that execution intentionally rejects	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-10	baseline		Manual private/LAN downloads have no approval path	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-11	baseline		Private DNS destinations cannot receive approval reliably	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-12	baseline		Magnet intake exists in one model but is unusable through Add review	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-13	baseline		Trusted Tasker enqueue bypasses normal admission policy	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-14	baseline		Only the first 16 pending automation commands recover at startup	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-15	baseline		Malformed generic handoffs disappear without structured rejection	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-16	baseline		Current tests specify mutually exclusive redirect behavior	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-17	baseline		Explicit idempotency key aliases different commands if reused	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-18	baseline		Redacted URL is also used as duplicate identity	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-19	baseline		Filename inference has low-severity parser defects	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR05	S03	External Intake	S03-20	baseline		Review-first product contract and trusted automation disagree	XDM_ANDROID_BUG_HUNT_S03_EXTERNAL_INTAKE_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-01	baseline		A failed atomic queue claim can be undone by a stale hold write	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-02	baseline		`togglePause()` writes a UI/presentation composite back as a durable entity	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-03	baseline		Queue reprioritization can overwrite a concurrent queue claim	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-04	baseline		Generic `Download` stale-write protection is not optimistic CAS	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-05	baseline		Native HLS pause/resume commands are fire-and-forget and can reorder	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-06	baseline		Destination selection is last-completion-wins, not last-intent-wins	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-07	baseline		Live destination validation set has a lost-update race	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-08	baseline		Queue and schedule mutations are whole-row last-writer-wins	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-09	baseline		Diagnostic/self-test running guards are non-atomic	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-10	baseline		Critical orchestration races lack direct behavioral tests	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-11	baseline		S04 validation contracts are internally stale/inconsistent	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR02	S04	Domain State & Concurrency	S04-12	baseline		MainViewModel remains a very broad ordering boundary	XDM_ANDROID_BUG_HUNT_S04_DOMAIN_STATE_CONCURRENCY_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-01	baseline		Automation command persistence can regress newer durable state	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-02	baseline		Sensitive-persistence migration races live automation replay	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-03	baseline		The latest Room migration is not behaviorally validated	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-04	baseline		Finalization-journal identity conflicts with its unique DB key	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-05	baseline		Native-HLS durable state has no stale-writer protection	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-06	baseline		Queue replacement can persist a nonexistent queue ID	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-07	baseline		Full 1→24 Room schema validation is impossible with committed schemas	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-09	baseline		Selected media variant is not a relational invariant	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-10	baseline		In-memory finalization tests hide Room's unique-index behavior	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-11	baseline		Safer repository invariants coexist with directly unsafe DAO primitives	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR03	S05	Persistence / Migrations	S05-12	baseline		Sensitive persistence cleanup is permanently marker-gated	XDM_ANDROID_BUG_HUNT_S05_PERSISTENCE_MIGRATIONS_AUDIT.md
+XAR06	S06	Storage / Publication	S06-01	baseline		Direct shared-storage completions cannot be opened/shared/managed through XDM	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-02	baseline		Rename-on-conflict loses the actual committed filename	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-03	baseline		MediaStore overwrite can destroy both the old file and the new replacement	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-04	baseline		Provider-backed in-progress publication cannot be fully recovered after process death	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-05	baseline		A successful content commit can silently lose its final journal update and then delete staging evidence	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-06	baseline		Content-destination capacity accounting mixes two filesystems	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-07	baseline		SAF/content staging capacity is not independently checked	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-08	baseline		Rename/delete mutate the physical artifact before durable metadata reconciliation	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-09	baseline		Rename-on-conflict has an external filesystem TOCTOU overwrite window	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-10	baseline		Direct Storage Doctor does not test the finalization primitive production requires	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-11	baseline		Destination health does not actually classify low space, and Add preflight does not enforce expected-size capacity	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-12	baseline		SAF health proves query permission, not actual create/write capability	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-13	baseline		Startup orphan cleanup cannot discover provider artifacts	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-14	baseline		Storage safety has little real Android provider test coverage	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR06	S06	Storage / Publication	S06-15	baseline		File staging identity depends on backend ownership serialization	XDM_ANDROID_BUG_HUNT_S06_STORAGE_PUBLICATION_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-01	baseline		Sensitive request headers can cross HTTPS origins during redirects	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-02	baseline		Pause/cancel cannot reliably cancel a response body read	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-03	baseline		HEAD length can be incorrectly trusted when a valid 206 reports unknown total length	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-04	baseline		Final-save retry publishes staging without revalidating transfer integrity	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-05	baseline		Native backend advertises selective repair that production does not execute	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-06	baseline		Dormant selective repair bypasses native per-hop security controls	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-07	baseline		HTML/error-page rejection does not cover many ordinary binary downloads	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-08	baseline		Metadata probes bypass the engine's retry/backoff policy	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-09	baseline		`Retry-After` HTTP-date form is not honored	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-10	baseline		Per-host connection/backoff policy is charged to the pre-redirect host	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-11	baseline		Ranged body reads are not capped to the declared segment boundary	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-12	baseline		Selective repair verifies repaired blocks but not untouched trusted blocks before commit	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-13	baseline		Native HTTP behavioral coverage misses the highest-risk protocol edges	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-14	baseline		`Content-Range` parser is stricter syntactically but weaker semantically than HTTP requires	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR07	S07	Native HTTP Transfer	S07-15	baseline		Native-transfer source validators can false-green protocol behavior	XDM_ANDROID_BUG_HUNT_S07_NATIVE_HTTP_TRANSFER_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-01	baseline		`saveSession()` failure can leave stale session entries after XDM forgets the task	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-02	baseline		saved-session tasks are loaded before XDM validates download ownership	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-03	baseline		`remove()` fails open when RPC is unavailable	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-04	baseline		credential-bearing mirror URLs bypass aria2's signed-URL prohibition	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-05	baseline		magnet is advertised as supported, but XDM's ownership/finalization model is single-file `addUri`	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-06	baseline		SFTP is advertised even though XDM's global request-security gate rejects it	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-07	baseline		artifact-only recovery declares aria2 partial state safe where migration logic says it may be sparse and unsafe	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-08	baseline		Room mapping state and aria2 session state are not durably ordered	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-09	baseline		aria2 child lifetime is not bound to the Android app process	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-10	baseline		automatic selection sends ordinary large/mirrored HTTPS transfers to a backend with redirects disabled	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-11	baseline		capability truth ignores aria2's actual `enabledFeatures`	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-12	baseline		temporary RPC-secret launch files are not cleaned on normal startup after a previous process crash	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-13	baseline		aria2 runtime log is append-only with no retention bound	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-15	baseline		no Android instrumentation test exercises the packaged aria2 runtime end to end	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-16	baseline		current source validators give mixed/stale evidence	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR08	S08	Embedded aria2 Backend	S08-17	baseline		status polling scales linearly with active aria2 tasks	XDM_ANDROID_BUG_HUNT_S08_ARIA2_BACKEND_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-01	baseline		Startup recovery can detach durable/UI state from a still-active backend	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-02	baseline		WorkManager foreground setup failure can strand newly claimed queue rows	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-03	baseline		Scheduler retry and XDM's stop-state transition invalidate each other	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-04	baseline		Boot/package restore can run the full recovery pipeline twice concurrently	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-05	baseline		UIDT can remain logically unfinished after an unexpected coroutine failure	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-06	baseline		Foreground-service exception can skip service shutdown after claim release	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-07	baseline		Immediate reevaluation events can be dropped despite being labeled durable	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-08	baseline		Schedule-window execution relies on an inexact 15-minute periodic sweep	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-09	baseline		Short-window precision is detected but unused	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-10	baseline		Pending terminal-notification replay is not fenced to the current attempt	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-11	baseline		Scheduler recovery/audit logs grow without compaction	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-12	baseline		Per-download Android system IDs are never retired	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-13	baseline		Real scheduler lifecycle behavior has no Android instrumentation coverage	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-14	baseline		Green contract validators encode implementation markers, not scheduler behavior	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR09	S09	Scheduler / Background Execution	S09-15	baseline		Some queue-condition threshold crossings have no immediate observer	XDM_ANDROID_BUG_HUNT_S09_SCHEDULER_BACKGROUND_EXECUTION_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-01	baseline		Firefox in-page FAB exposes privileged captured headers through page-readable open Shadow DOM	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-02	baseline		Direct v3 custom-scheme capture is unauthenticated, forgeable/interceptable, skips review, and composes with synthetic private-network approval	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-03	baseline		Cross-origin HLS variants/tracks inherit parent Cookie/Authorization headers	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-04	baseline		Signed-URL deduplication retains stale exact URL while adopting newest request headers/fingerprint	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-05	baseline		Direct-v3 freshness/replay is receiver-generated rather than sender-authenticated; revision is forgeable	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-07	baseline		WebView userscript site scoping is lost after document-start registration and registrations cannot be removed	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-08	baseline		Userscript wildcard matcher is broken for ordinary `@match` / `@include` patterns	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-09	baseline		Correlated WebView page JS can override Cookie/Authorization and other sensitive native request headers	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-10	baseline		Built-in WebView native request correlation is URL-only, allowing evidence to be rebound across requests/frames	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-11	baseline		WebView JavaScript bridge accepts unbounded raw JSON before parsing/bounding	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-12	baseline		Current documentation/security assertions contradict the production v3 behavior	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR10	S10	Browser / WebView / Handoff	S10-13	baseline		Tests/validators encode several risky implementation markers and omit current end-to-end adversarial paths	XDM_ANDROID_BUG_HUNT_S10_BROWSER_WEBVIEW_HANDOFF_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-01	baseline		DASH `SegmentTemplate` representations are reduced to `BaseURL` and later executed as direct media URLs	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-02	baseline		HLS child-resolution probing can send master credentials to a different origin	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-03	baseline		Per-variant request headers are flattened and copied to every selected FFmpeg input	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-04	baseline		The 768 KiB bounded manifest probe can become authoritative without proving that the manifest was complete	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-05	baseline		HLS master live/protection facts are sampled from only the first three video children and then applied globally	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-06	baseline		HLS `CLOSED-CAPTIONS` are modeled as a network subtitle input pointing back at the master playlist	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-07	baseline		DASH periods are flattened into one set of simultaneously selectable alternatives	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-08	baseline		HLS rendition parsing omits valid alternative-video relationships	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-09	baseline		Large or ambiguous transport segments can escape fragment filtering and appear as standalone media	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-10	baseline		Logical HLS segment attribution is heuristic and can attach evidence to the wrong capture	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-11	baseline		Resolver UI can remain “Ready” after manifest metadata has expired	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-12	baseline		DASH XML hardening silently ignores parser-feature failures	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-13	baseline		HLS subtitle MIME/track semantics are flattened enough to mislead diagnostics and selection	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR11	S11	Media Detection / Resolution	S11-14	baseline		S11 test coverage is substantial but misses the format-boundary cases carrying the highest risk	XDM_ANDROID_BUG_HUNT_S11_MEDIA_DETECTION_RESOLUTION_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-01	baseline		Managed Termux process controls reject the legitimately owned child	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-02	baseline		Native-HLS cancellation can race after destination commit and orphan a completed artifact	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-03	baseline		Embedded FFmpeg bypasses XDM's per-hop network security boundary	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-04	baseline		Termux FFmpeg fallback can cross DNS/redirect/private-network boundaries that eligibility never checks	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-05	baseline		Native HLS buffers entire remote manifests, segments, maps, and keys in heap without a size cap	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-06	baseline		Native-HLS pause/cancel no longer cancels the OkHttp call after response headers arrive	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-07	baseline		Termux bridge artifacts are deliberately published in shared Downloads while still transient	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-08	baseline		Native HLS accepts any HTTP 206 for a byte-range request without validating `Content-Range`	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-09	baseline		Termux output verification is weaker than embedded verification and can silently lose selected streams	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-10	baseline		Embedded FFmpeg data-plane operations have no XDM-enforced wall-clock timeout	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-11	baseline		FFmpeg verification treats a missing probed duration as valid even when duration is expected	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-12	baseline		The advertised media retry/backoff policy is not the production retry mechanism	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-13	baseline		Native-HLS storage preflight discards byte counts that are known from HLS byte ranges	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-14	baseline		The FF04 device acceptance test is packaged by Devtool but explicitly not executed by the configured target	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR12	S12	Media Execution / Post-processing	S12-15	baseline		Current green release validators do not exercise the high-risk execution semantics in this section	XDM_ANDROID_BUG_HUNT_S12_MEDIA_EXECUTION_POSTPROCESSING_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-01	baseline		Native HLS progress can appear frozen in Downloads	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-02	baseline		Old verification/checksum evidence can label a newer attempt	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-04	baseline		Multi-select planning and execution use different state contracts	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-05	baseline		Replace source URL can announce success after rejected persistence	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-07	baseline		Queue reorder rejection is invisible to the user	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-08	baseline		Active indeterminate phases show no progress indicator	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-09	baseline		Download cards no longer show the required backend label	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-10	baseline		Batch action planner exposes actions the Organize UI never implements	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-11	baseline		Live runtime can expose Completed before durable completed-artifact metadata exists	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-12	baseline		Bulk transfer actions provide no per-item failure result	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-13	baseline		Workspace restoration is inconsistent around multi-select/action state	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-14	baseline		Clear finished history can partially succeed without explaining retained records	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR13	S13	Downloads UI / Actions	S13-15	baseline		Existing test/validator evidence misses the integration failures	XDM_ANDROID_BUG_HUNT_S13_DOWNLOADS_UI_ACTIONS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-01	baseline		Proxy profile has no production network consumer	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-02	baseline		Default “safe local checks” can create real schedulable downloads	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-03	baseline		“Validate all safely” is an execution command, not a validation command	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-04	baseline		Diagnostic surfaces report three different Room schema versions	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-05	baseline		Debug Workbench capability health is hard-coded healthy	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-06	baseline		Several “runtime self-tests” are unconditional design assertions	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-07	baseline		“Portable” settings snapshots include device-bound destination grants	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-08	baseline		Invalid settings imports fail silently and erase the pasted input	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-09	baseline		Release-readiness evidence is not bound to the artifact it attests	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-10	baseline		Diagnostic export ZIP retention is unbounded	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-11	baseline		Rolling debug recorder ignores failed rotation	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-12	baseline		Diagnostic runner has no per-test execution deadline	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-13	baseline		Debug/Settings validator estate is not internally coherent	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR14	S14	Settings / Diagnostics	S14-14	baseline		Private-storage diagnostic probe is not cleaned up	XDM_ANDROID_BUG_HUNT_S14_SETTINGS_DIAGNOSTICS_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-01	baseline		Artwork loader bypasses the guarded network boundary	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-02	baseline		Exported `MainActivity` accepts forgeable internal direct-capture approval state	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-03	baseline		Secure request-envelope expiry sweep blocks `Application.onCreate()`	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-04	baseline		Browser capture session registry scales without a retention bound	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-05	baseline		Artwork loading has unbounded aggregate in-flight memory/decode work	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-06	baseline		Exported share review can block the UI on attacker-controlled `ClipData` URI coercion	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-07	baseline		`TransferExecutionRuntime` catches coroutine cancellation as runtime failure	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-08	baseline		Live progress path performs unthrottled O(n) UI projection	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-09	baseline		Portable settings snapshot is copied as ordinary clipboard data	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-10	baseline		Artwork cache write failures can leave stale temp files or publish invalid cache entries	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR15	S15	Privacy / Security / Performance	S15-11	baseline		Current accessibility/performance/thumbnail seals are not behavioral evidence for the risky paths	XDM_ANDROID_BUG_HUNT_S15_CROSS_CUTTING_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-01	baseline		Signed release publication is not gated by validation or device evidence	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-02	baseline		Upgrade matrix erases the fixture it says the previous build must carry	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-03	baseline		Upgrade/reboot “smoke” never starts the application or validates recovered state	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-04	baseline		Phase-11 release rows overclaim what the mapped runner executes	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-05	baseline		AAB signer pin and certificate-expiry verification are both defective	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-06	baseline		APK-set verifier requires every split to look like a monolithic APK	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-07	baseline		JNI packaging contract contradicts the 16 KB verifier and release documentation	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-08	baseline		The generated APK set is never installed or upgraded	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-09	baseline		Attested publication metadata can claim requirements before they run	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-10	baseline		Publication evidence is incomplete and some auxiliary evidence is not integrity-bound	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR16	S16	End-to-end Release Seal	S16-11	baseline		No canonical gate executes the required end-to-end user journeys on the signed release	XDM_ANDROID_BUG_HUNT_S16_END_TO_END_RELEASE_SEAL_AUDIT.md
+XAR01	S01	Build & Packaging	DS1-S01-01	deep-addition	High	Release signer pin is not bound to configured signing certificate	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR01	S01	Build & Packaging	DS1-S01-02	deep-addition	High	FFmpeg/OpenSSL cache can self-attest stale or modified outputs as current pinned build	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR01	S01	Build & Packaging	DS1-S01-03	deep-addition	High	Wrong NDK revision accepted and attested as requested NDK 29	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR01	S01	Build & Packaging	DS1-S01-04	deep-addition	High	Termux native LLVM fallback is unpinned and absent from cache/provenance identity	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR01	S01	Build & Packaging	DS1-S01-05	deep-addition	High	Release signer preflight is bypassable through direct release packaging tasks	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR01	S01	Build & Packaging	DS1-S01-06	deep-addition	Medium	FFmpeg generated license assets omitted from installer Gradle outputs	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	DS1-S02-01	deep-addition	High	Reentrant Add navigation resets active download admission	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	DS1-S02-02	deep-addition	High	External Add review uses single mutable slot without command/generation ownership	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	DS1-S02-03	deep-addition	High	Editable in-flight Add form can diverge from captured duplicate decision request	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	DS1-S02-04	deep-addition	High	Activity actions dispatch by display text and can execute wrong/contextless operations	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	DS1-S02-05	deep-addition	Medium	Two-pane automatic detail selection can auto-open compact modal	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	DS1-S02-06	deep-addition	Medium	Problem-notification target ID is not durable across process death	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	DS1-S02-07	deep-addition	Medium	Nullable navigation override resurrects stale durable selections during async clears	XDM_ANDROID_DEEP_SUBSET1_AUDIT_20260913.md
+XAR05	S03	External Intake	DS2-S03-01	deep-addition	High	Browser-declared stable media IDs can alias different CaptureMedia commands and captures	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR05	S03	External Intake	DS2-S03-02	deep-addition	Medium-High	Caller-supplied requestFingerprint is used as the candidate dedup key and can drop distinct media candidates	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR05	S03	External Intake	DS2-S03-03	deep-addition	High	Browser-capture approvals are scoped to the primary payload URL, not the imported candidate and variant graph	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR05	S03	External Intake	DS2-S03-04	deep-addition	High	External Add admission commits the Download before the exact request handoff sidecar is durable	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR02	S04	Domain State & Concurrency	DS2-S04-01	deep-addition	Critical	Media capture import/refresh can overwrite a capture after it was linked to a download	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR02	S04	Domain State & Concurrency	DS2-S04-02	deep-addition	High	Stale media refresh can destructively replace the current variant set without a generation owner	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR02	S04	Domain State & Concurrency	DS2-S04-03	deep-addition	High	Browser media session sidecars accept equal-revision last-writer-wins replacement	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR02	S04	Domain State & Concurrency	DS2-S04-04	deep-addition	High	Exact request handoff sidecars are unversioned per-subject replacements independent of Room state	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR02	S04	Domain State & Concurrency	DS2-S04-05	deep-addition	High	Embedded FFmpeg MediaOutput states are blind upserts and can be resurrected or downgraded by late callbacks	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR02	S04	Domain State & Concurrency	DS2-S04-06	deep-addition	Medium	Browser capture session registry replaces equal-revision summaries instead of merging candidates	XDM_ANDROID_DEEP_SUBSET2_AUDIT_20260913.md
+XAR03	S05	Persistence / Migrations	DS3-S05-01	deep-addition	High	Checksum, verification, and trusted-block evidence is generation-labelled but stored as mutable per-download slots	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR03	S05	Persistence / Migrations	DS3-S05-02	deep-addition	High	Scanner recovery-record IDs omit attempt generation and artifact identity for download-owned recovery evidence	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR03	S05	Persistence / Migrations	DS3-S05-03	deep-addition	High	Startup publication-journal bridge ignores fsynced local evidence whenever any Room finalization row exists	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR03	S05	Persistence / Migrations	DS3-S05-04	deep-addition	High	Redownload post-processing clone is non-transactional, idempotency-claimless, and not bound to the target download generation	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR03	S05	Persistence / Migrations	DS3-S05-05	deep-addition	Medium-High	Automatic post-processing recovery derives generation from backend task ownership instead of completed download metadata	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR03	S05	Persistence / Migrations	DS3-S05-06	deep-addition	Medium-High	Native-HLS completion deletes every recovery record for the download, regardless of attempt or classification	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR06	S06	Storage / Publication	DS3-S06-01	deep-addition	Medium-High	Zero-byte committed publications are rejected by Android provider recovery proof	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR06	S06	Storage / Publication	DS3-S06-02	deep-addition	High	Publication artifact generation is derived from staging file mtime rather than an attempt-owned monotonic token	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR06	S06	Storage / Publication	DS3-S06-03	deep-addition	High	MediaStore Resume policy becomes destructive replacement when a staging file exists	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR06	S06	Storage / Publication	DS3-S06-04	deep-addition	High	Content-destination staging and journals are keyed by downloadId + filename but not attemptGeneration	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR06	S06	Storage / Publication	DS3-S06-05	deep-addition	Low-Medium	Filesystem destination health probes create directories as a side effect	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR06	S06	Storage / Publication	DS3-S06-06	deep-addition	Medium-High	Provider publication treats missing post-copy size metadata as success and deletes staging evidence	XDM_ANDROID_DEEP_SUBSET3_AUDIT_20260913.md
+XAR07	S07	Native HTTP Transfer	DS4-S07-01	deep-addition	High	Non-ranged complete-body writes are uncapped until EOF, so a lying server can exhaust storage before the trusted-length guard fires.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR07	S07	Native HTTP Transfer	DS4-S07-02	deep-addition	High	Cold full-body GET responses are not revalidated against the probe validator or expected representation before bytes are accepted.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR07	S07	Native HTTP Transfer	DS4-S07-03	deep-addition	Medium-High	Request expectedLength is used for capacity and UI truth but dropped from the durable checkpoint when remote metadata length is unknown.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR07	S07	Native HTTP Transfer	DS4-S07-04	deep-addition	High	pause() and cancel() can overwrite a completed native HTTP transfer after final promotion has already committed.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR07	S07	Native HTTP Transfer	DS4-S07-05	deep-addition	Medium	Selective repair has no per-target single-flight guard and uses millisecond temp/backup names, so concurrent repairs can collide.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR08	S08	Embedded aria2 Backend	DS4-S08-01	deep-addition	High	aria2 cancel can publish a just-completed output instead of honoring the user cancellation boundary.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR08	S08	Embedded aria2 Backend	DS4-S08-02	deep-addition	High	reconcile() classifies aria2 Complete as safeToResume ActiveTaskVerified without running final output/publication verification.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR08	S08	Embedded aria2 Backend	DS4-S08-03	deep-addition	Medium-High	"Recovered Complete is persisted as ""Complete"" while XDM terminal mapping truth expects ""Completed""."	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR08	S08	Embedded aria2 Backend	DS4-S08-04	deep-addition	High	A RetiredForMigration aria2 mapping can be resurrected by reconciliation status refresh.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR08	S08	Embedded aria2 Backend	DS4-S08-05	deep-addition	Medium-High	FinalizationFailed is treated as terminal, blocking ordinary resume/cancel recovery paths after destination publication fails.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR08	S08	Embedded aria2 Backend	DS4-S08-06	deep-addition	Medium	aria2 lifecycle probe saves the session before removing its probe result, allowing diagnostic GIDs to persist into xdm.session.	XDM_ANDROID_DEEP_SUBSET4_AUDIT_20260913.md
+XAR09	S09	Scheduler / Background Execution	DS5-S09-01	deep-addition	High	Process-local pause/cancel intent is never cleared, so a later start/resume/retry can be immediately self-cancelled or self-paused.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR09	S09	Scheduler / Background Execution	DS5-S09-02	deep-addition	High	A queue-condition-monitor startup failure keeps the durable startup-recovery hold installed even after transfer recovery is safe.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR09	S09	Scheduler / Background Execution	DS5-S09-03	deep-addition	Medium-High	Retry-ledger secure-context requirement is sticky and its failure identity omits URL, backend, source, and request identity.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR09	S09	Scheduler / Background Execution	DS5-S09-04	deep-addition	Medium	Boot/package restore posts a restored-download notification before knowing whether recovery is admission-safe, then retries unsafe recovery.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR09	S09	Scheduler / Background Execution	DS5-S09-05	deep-addition	Medium-High	UIDT initial notification setup happens before claim authorization and has no guarded cleanup path.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR10	S10	Browser / WebView / Handoff	DS5-S10-01	deep-addition	High	Firefox privileged request evidence is not cleared on same-tab navigation, so a new document can inherit an older document’s request proof.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR10	S10	Browser / WebView / Handoff	DS5-S10-02	deep-addition	Medium-High	Firefox privileged evidence is a single exact-URL slot, so parallel or repeated same-URL requests can overwrite requestId/generation before page correlation.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR10	S10	Browser / WebView / Handoff	DS5-S10-03	deep-addition	Medium-High	Auto-offer suppression is committed before handoff construction and in-page offer success are known.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR10	S10	Browser / WebView / Handoff	DS5-S10-04	deep-addition	Medium-High	Oversized capture sessions silently fall back to a single direct capture, dropping multi-candidate/variant/track evidence.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR10	S10	Browser / WebView / Handoff	DS5-S10-05	deep-addition	Medium	Response classification can replay proposed pre-send headers when final sent-header evidence is unavailable or still pending.	XDM_ANDROID_DEEP_SUBSET5_AUDIT_20260913.md
+XAR11	S11	Media Detection / Resolution	DS6-S11-01	deep-addition	High	Page response Content-Length is rebound onto discovered media URLs that were only extracted from HTML/JSON.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR11	S11	Media Detection / Resolution	DS6-S11-02	deep-addition	Medium-High	Cookie/session requirement is computed from every variant, so an unselected credential-bearing URL can force the selected safe path into session/fallback handling.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR11	S11	Media Detection / Resolution	DS6-S11-03	deep-addition	High	DASH audio AdaptationSets are not auto-selected, so BestVideo either falls out of embedded FFmpeg or verifies a video-only output while audio exists.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR11	S11	Media Detection / Resolution	DS6-S11-04	deep-addition	Medium-High	Queued media specs mark expiring URLs only from the primary/master URL and capture expiry, ignoring selected child URLs.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR12	S12	Media Execution / Post-processing	DS6-S12-01	deep-addition	High	Native HLS writes EXT-X-MAP initialization bytes before every segment, producing duplicated init sections in the final concat.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR12	S12	Media Execution / Post-processing	DS6-S12-02	deep-addition	Medium-High	AES-128 KEY tags without URI are admitted as native-executable and fail only after the job is already running.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR12	S12	Media Execution / Post-processing	DS6-S12-03	deep-addition	Medium-High	EXT-X-GAP is ignored even though the part model has a Skipped state, so valid playlists with missing segments fail instead of skipping gaps.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR12	S12	Media Execution / Post-processing	DS6-S12-04	deep-addition	Medium-High	EXT-X-DISCONTINUITY-SEQUENCE is ignored, so durable part identity can collide across playlist reloads with shifted discontinuity bases.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR12	S12	Media Execution / Post-processing	DS6-S12-05	deep-addition	Medium	Implicit EXT-X-BYTERANGE offsets are tracked globally, so a URI switch can inherit the previous resource offset.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR12	S12	Media Execution / Post-processing	DS6-S12-06	deep-addition	Medium	Segment URIs without preceding EXTINF are accepted with a 1 ms duration, allowing invalid playlists to become native-executable.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR12	S12	Media Execution / Post-processing	DS6-S12-07	deep-addition	High	Native HLS credential headers are scoped by host only, not full origin, so same-host sibling ports can receive another origin’s Cookie/Authorization.	XDM_ANDROID_DEEP_SUBSET6_AUDIT_20260913.md
+XAR13	S13	Downloads UI / Actions	DS7-S13-01	deep-addition	High	Resume/Retry actions persist a stale UI Download snapshot before launching the queue.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR13	S13	Downloads UI / Actions	DS7-S13-02	deep-addition	High	Start Now can bypass current queue policy because policyOverride is derived from the stale UI error string.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR13	S13	Downloads UI / Actions	DS7-S13-03	deep-addition	High	Restart from zero retires generic transfer state but does not cancel a Native HLS-owned worker.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR13	S13	Downloads UI / Actions	DS7-S13-04	deep-addition	Medium-High	Delete Download Entry does not route nonterminal Native HLS rows through Native HLS ownership.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR13	S13	Downloads UI / Actions	DS7-S13-05	deep-addition	Medium-High	Archive Selected can hide active transfers without stopping or warning about active work.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR13	S13	Downloads UI / Actions	DS7-S13-06	deep-addition	Medium	Tag chips show selected state but only assign; there is no Organize path to unassign a tag.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR14	S14	Settings / Diagnostics	DS7-S14-01	deep-addition	High	Exporting a historical diagnostics run mixes that run with the current support report, timeline, and problem incidents.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR14	S14	Settings / Diagnostics	DS7-S14-02	deep-addition	High	Diagnostics redaction preserves URL path segments and the final scanner does not detect path-embedded credentials.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR14	S14	Settings / Diagnostics	DS7-S14-03	deep-addition	Medium-High	Support report Copy/Export bypasses the final diagnostics ZIP scanner and uses ordinary clipboard/share APIs.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR14	S14	Settings / Diagnostics	DS7-S14-04	deep-addition	Medium-High	Debug run history is written non-atomically and corrupt runs are silently dropped.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR14	S14	Settings / Diagnostics	DS7-S14-05	deep-addition	Medium-High	Settings import is partial and trusts external object IDs for upsert replacement.	XDM_ANDROID_DEEP_SUBSET7_AUDIT_20260913.md
+XAR15	S15	Privacy / Security / Performance	DS8-S15-04	deep-addition	Medium-High	All-files storage permission is unconditional in the main manifest and enforced by validators, leaving no scoped-storage release lane.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR15	S15	Privacy / Security / Performance	DS8-S15-05	deep-addition	Medium	Legacy external-storage permissions are requested automatically on launch instead of being tied to a direct-storage destination action.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR16	S16	End-to-end Release Seal	DS8-S16-01	deep-addition	High	Android CI verifies a release APK payload before the workflow builds any release APK.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR16	S16	End-to-end Release Seal	DS8-S16-02	deep-addition	High	run-final-release-gate.sh --ci exits after static validation while the full device/release matrix is only printed for humans.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR16	S16	End-to-end Release Seal	DS8-S16-04	deep-addition	High	FinalPublicReleaseGate treats missing aria2 payload verification as a warning even though release inventory/docs require aria2.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR16	S16	End-to-end Release Seal	DS8-S16-05	deep-addition	High	FinalPublicReleaseGate ignores real-device smoke, FFmpeg payload, lint, and native-symbol evidence fields that the build already defines.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR16	S16	End-to-end Release Seal	DS8-S16-06	deep-addition	Medium-High	AAB verification does not enforce the release inventory’s required entries, version metadata, package identity, or ABI-specific runtime library.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR16	S16	End-to-end Release Seal	DS8-S16-07	deep-addition	Medium-High	The release artifact helper builds only assembleRelease plus SHA-256 files while CI merely syntax-checks the helper.	XDM_ANDROID_DEEP_SUBSET8_AUDIT_20260913.md
+XAR04	S02	Shell & Navigation	RERUN-S02-01	post-handoff-rerun	Medium	Add Download sheet can restore stale external-draft form state into a later manual Add session	XDM_ANDROID_SUBSECTION_1_2_RERUN_BUG_HUNT_20260913.md
+XAR05	S03	External Intake	RERUN-S03-01	post-handoff-rerun	High	Proposed/final browser request headers are captured but not durably persisted/restored for external command execution	XDM_ANDROID_SUBSECTION_1_2_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_2_3_RERUN_BUG_HUNT_20260913.md
+XAR05	S03	External Intake	RERUN23-S03-02	post-handoff-rerun	High	Page-observation proof fields are stripped across durable external-command restore, disabling proof enforcement after replay	XDM_ANDROID_SUBSECTION_2_3_RERUN_BUG_HUNT_20260913.md
+XAR06	S06	Storage / Publication	RERUN23-S06-01	post-handoff-rerun	Medium-High	File-backed Resume can replace an existing final file based only on stale staging-file existence	XDM_ANDROID_SUBSECTION_2_3_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_3_4_RERUN_BUG_HUNT_20260913.md
+XAR07	S07	Native HTTP Transfer	RERUN34-S07-01	post-handoff-rerun	Medium-High	Native HTTP pause can downgrade Failed/RecoveryRequired quarantine states into clean Paused	XDM_ANDROID_SUBSECTION_3_4_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_4_5_RERUN_BUG_HUNT_20260913.md
+XAR08	S08	Embedded aria2 Backend	RERUN34-S08-01	post-handoff-rerun	High	aria2 completion is acknowledged even if terminal mapping/ownership metadata persistence fails	XDM_ANDROID_SUBSECTION_3_4_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_4_5_RERUN_BUG_HUNT_20260913.md
+XAR10	S10	Browser / WebView / Handoff	RERUN45-S10-01	post-handoff-rerun	Medium-High	Firefox site-mode filtering does not gate background capture or manual popup send	XDM_ANDROID_SUBSECTION_4_5_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_5_6_RERUN_BUG_HUNT_20260913.md
+XAR09	S09	Scheduler / Background Execution	RERUN56-S09-01	post-handoff-rerun	Medium-High	Clear completed deletes retryable Termux media owner jobs while leaving retryable media library output rows	XDM_ANDROID_SUBSECTION_5_6_RERUN_BUG_HUNT_20260913.md
+XAR12	S12	Media Execution / Post-processing	RERUN56-S12-01	post-handoff-rerun	Medium-High	Native HLS AES-128 explicit IVs are padded/truncated instead of strictly validated	XDM_ANDROID_SUBSECTION_5_6_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_6_7_RERUN_BUG_HUNT_20260913.md
+XAR13	S13	Downloads UI / Actions	RERUN67-S13-01	post-handoff-rerun	Medium-High	Fresh redownload/restart can queue a replacement before proving the exact request handoff was cloned	XDM_ANDROID_SUBSECTION_6_7_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_7_REST_RERUN_BUG_HUNT_20260913.md
+XAR14	S14	Settings / Diagnostics	RERUN67-S14-01	post-handoff-rerun	Medium	Exact host destination rules behave like wildcard subdomain rules	XDM_ANDROID_SUBSECTION_6_7_RERUN_BUG_HUNT_20260913.md; XDM_ANDROID_SUBSECTION_7_REST_RERUN_BUG_HUNT_20260913.md
+XAR13	S13	Downloads UI / Actions	RERUN7R-S13-01	post-handoff-rerun	Medium-High	Fresh redownload/restart clears exact-URL approvals even when preserving the same request URL	XDM_ANDROID_SUBSECTION_7_REST_RERUN_BUG_HUNT_20260913.md
+XAR14	S14	Settings / Diagnostics	RERUN7R-S14-01	post-handoff-rerun	Medium	Settings export/import does not escape its own field delimiter	XDM_ANDROID_SUBSECTION_7_REST_RERUN_BUG_HUNT_20260913.md

@@ -198,10 +198,17 @@ fun RecoveryScreen(
     onValidate: (RecoveryRecord) -> Unit,
     onRemove: (RecoveryRecord) -> Unit,
     onValidateAll: (List<RecoveryRecord>) -> Unit = {},
+    onLocateFile: (RecoveryRecord, android.net.Uri) -> Unit = { _, _ -> },
     selectedDownloadId: String? = null,
     selectedAction: String? = null,
 ) {
     val context = LocalContext.current
+    var pendingLocate by remember { mutableStateOf<RecoveryRecord?>(null) }
+    val locateFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val record = pendingLocate
+        pendingLocate = null
+        if (uri != null && record != null) onLocateFile(record, uri)
+    }
     if (records.isEmpty()) {
         EmptyFeatureScreen("Recovery is clear", "No orphaned, interrupted, or hidden storage items were detected.")
         return
@@ -226,7 +233,13 @@ fun RecoveryScreen(
             )
         }
         items(orderedRecords, key = RecoveryRecord::id) { record ->
-            RecoveryRecordCard(record, onValidate, onRemove, selected = record.downloadId == selectedDownloadId)
+            RecoveryRecordCard(
+                record,
+                onValidate,
+                onRemove,
+                onLocate = { selected -> pendingLocate = selected; locateFile.launch(arrayOf("*/*")) },
+                selected = record.downloadId == selectedDownloadId,
+            )
         }
     }
 }
@@ -264,7 +277,7 @@ internal fun RecoveryStorageDoctorCard(
     }
 }
 @Composable
-internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit, selected: Boolean = false) {
+internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRecord) -> Unit, onRemove: (RecoveryRecord) -> Unit, onLocate: (RecoveryRecord) -> Unit = {}, selected: Boolean = false) {
     var technicalExpanded by remember(record.id) { mutableStateOf(false) }
     var confirmForget by remember(record.id) { mutableStateOf(false) }
     val guidance = RecoveryStorageDoctor.itemGuidance(record)
@@ -283,7 +296,9 @@ internal fun RecoveryRecordCard(record: RecoveryRecord, onValidate: (RecoveryRec
             StatusPill(if (record.safeToResume) "Safe to resume" else "Needs review", if (record.safeToResume) XdmStatusTone.Success else XdmStatusTone.Warning)
         }
         XdmActionFlowRow {
-            Button(onClick = { onValidate(record) }) { Text(recoveryPrimaryActionLabel(record)) }
+            Button(onClick = {
+                if (record.recommendedAction == RecoveryAction.LocateFile) onLocate(record) else onValidate(record)
+            }) { Text(recoveryPrimaryActionLabel(record)) }
             TextButton(onClick = { technicalExpanded = !technicalExpanded }) { Text(if (technicalExpanded) "Hide technical details" else "Technical details") }
             TextButton(onClick = { confirmForget = true }) { Text("Forget record") }
         }

@@ -23,14 +23,19 @@ $ADB -s "$serial" reboot
 $ADB -s "$serial" wait-for-device
 sleep 8
 $ADB -s "$serial" shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 | tee "$EVIDENCE_DIR/launch-after-reboot.txt"
+$ADB -s "$serial" shell pidof "$pkg" | tee "$EVIDENCE_DIR/process-after-reboot.txt"
+$ADB -s "$serial" shell dumpsys package "$pkg" | grep -E 'versionCode=|versionName=' | tee "$EVIDENCE_DIR/package-after-reboot.txt"
 python3 - "$EVIDENCE_DIR" "$serial" <<'PY'
 from pathlib import Path
 import json, sys, time
 out=Path(sys.argv[1]); serial=sys.argv[2]
-required=['install-previous.txt','launch-previous.txt','upgrade-current-apk.txt','launch-upgraded-apk.txt','install-apk-set.txt','launch-after-reboot.txt']
+required=['install-previous.txt','launch-previous.txt','upgrade-current-apk.txt','launch-upgraded-apk.txt','install-apk-set.txt','launch-after-reboot.txt','process-after-reboot.txt','package-after-reboot.txt']
 missing=[r for r in required if not out.joinpath(r).is_file() or not out.joinpath(r).read_text(errors='ignore').strip()]
 if missing:
     raise SystemExit('missing XAR16 device evidence: '+', '.join(missing))
+for install in ('install-previous.txt','upgrade-current-apk.txt'):
+    if 'Success' not in out.joinpath(install).read_text(errors='ignore'):
+        raise SystemExit(f'{install} does not prove package installation success')
 out.joinpath('xar16-device-matrix.json').write_text(json.dumps({
     'schemaVersion':1,
     'roadmapOverlay':'XAR16',

@@ -50,6 +50,7 @@ jobs:
           python3 tools/verify-phase10-backup-policy.py
           python3 tools/validate-uix-r6-accessibility-performance-release-seal.py
           python3 tools/validate-bug-hunt-phase11-validation-matrix.py
+          python3 tools/validate-xar17-313-root-closure.py
           bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
           python3 tools/validate-xar16-release-evidence-seal.py
           bash tools/run-final-release-gate.sh --ci
@@ -65,6 +66,28 @@ jobs:
             app/XDM.Android/browser-extension/build/outputs/xpi/*.xpi
             app/XDM.Android/browser-extension/build/outputs/xpi/release-artifacts.json
           if-no-files-found: error
+
+  instrumentation:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.1'
+      - name: Android instrumentation matrix
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: cd app/XDM.Android && bash tools/run-bug-hunt-phase11-validation-matrix.sh --device-only
 
   signed-release:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v')
@@ -117,8 +140,23 @@ jobs:
           python3 tools/install-aria2-runtime.py --download-official --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --require-trusted-digest
       - name: Build pinned FFmpeg runtime
         run: python3 tools/install-ffmpeg-runtime.py --build-pinned
-      - name: Signed release gate
-        run: bash tools/run-xar16-signed-release-gate.sh --ci
+      - name: Fetch provenance-pinned previous release fixture
+        env:
+          XDM_PREVIOUS_RELEASE_APK_URL: ${{ secrets.XDM_PREVIOUS_RELEASE_APK_URL }}
+          XDM_PREVIOUS_RELEASE_APK_SHA256: ${{ secrets.XDM_PREVIOUS_RELEASE_APK_SHA256 }}
+        run: |
+          test -n "$XDM_PREVIOUS_RELEASE_APK_URL"
+          test -n "$XDM_PREVIOUS_RELEASE_APK_SHA256"
+          curl --fail --location --proto '=https' "$XDM_PREVIOUS_RELEASE_APK_URL" --output "$XDM_XAR16_PREVIOUS_RELEASE_APK"
+          printf '%s  %s\n' "$XDM_PREVIOUS_RELEASE_APK_SHA256" "$XDM_XAR16_PREVIOUS_RELEASE_APK" | sha256sum --check --strict
+      - name: Signed release, instrumentation, install, upgrade, and reboot gate
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: cd app/XDM.Android && ./gradlew :app:connectedDebugAndroidTest && bash tools/run-xar16-signed-release-gate.sh --ci
       - name: Attest Android publication metadata
         uses: actions/attest@v4
         with:
