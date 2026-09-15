@@ -5,6 +5,7 @@ namespace XDM.BrowserMedia.Tests;
 
 public sealed class BrowserHostInstallerTests
 {
+    private static readonly string[] BrowserExtensionOrigins = ["chrome-extension://abcdefghijklmnopabcdefghijklmnop/"];
     [Fact]
     public async Task RepairsCanonicalFirefoxProtocolAndChromiumFamilyManifests()
     {
@@ -146,7 +147,7 @@ public sealed class BrowserHostInstallerTests
                     path = host,
                     type = "stdio",
                     xdm_protocol_version = BrowserNativeProtocol.ProtocolVersion,
-                    allowed_origins = new[] { "chrome-extension://abcdefghijklmnopabcdefghijklmnop/" }
+                    allowed_origins = BrowserExtensionOrigins
                 }));
 
             BrowserHostInstallationStatus status = installer.GetStatus();

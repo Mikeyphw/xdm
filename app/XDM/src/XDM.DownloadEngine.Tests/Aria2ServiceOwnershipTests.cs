@@ -21,7 +21,7 @@ public sealed class Aria2ServiceOwnershipTests
                 }
                 Aria2TaskSnapshot[] page = Enumerable.Range(offset, take)
                     .Select(index => new Aria2TaskSnapshot(
-                        index.ToString("x16"),
+                        index.ToString("x16", System.Globalization.CultureInfo.InvariantCulture),
                         Aria2TaskStatus.Waiting,
                         $"task-{index}",
                         $"/tmp/task-{index}",

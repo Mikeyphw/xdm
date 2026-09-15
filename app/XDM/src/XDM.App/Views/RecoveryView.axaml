@@ -1,4 +1,5 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl KeyboardNavigation.TabNavigation="Continue"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="XDM.App.Views.RecoveryView"
              AutomationProperties.Name="{Binding Localization[ui_recovery_workbench]}">

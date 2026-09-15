@@ -219,8 +219,8 @@ public sealed class MediaDownloadServiceTests
                 SubtitleFormatIds: ["sub"])));
 
             Assert.False(File.Exists(destination));
-            Assert.False(Directory.EnumerateFiles(directory, "*.srt", SearchOption.TopDirectoryOnly).Any(File.Exists));
-            Assert.False(Directory.EnumerateFiles(directory, "*.xdm-finalizing*", SearchOption.TopDirectoryOnly).Any());
+            Assert.DoesNotContain(Directory.EnumerateFiles(directory, "*.srt", SearchOption.TopDirectoryOnly), File.Exists);
+            Assert.DoesNotContain(Directory.EnumerateFiles(directory, "*.xdm-finalizing*", SearchOption.TopDirectoryOnly), _ => true);
         }
         finally
         {

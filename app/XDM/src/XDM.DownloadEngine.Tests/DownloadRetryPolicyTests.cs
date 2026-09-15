@@ -18,10 +18,10 @@ public sealed class DownloadRetryPolicyTests
     {
         DownloadRetryPolicy policy = new(4, TimeSpan.FromMilliseconds(10), 0);
 
-        Assert.False(policy.IsTransient(new HttpRequestException("not found", null, HttpStatusCode.NotFound)));
-        Assert.False(policy.IsTransient(new HttpRequestException("forbidden", null, HttpStatusCode.Forbidden)));
-        Assert.True(policy.IsTransient(new HttpRequestException("busy", null, HttpStatusCode.ServiceUnavailable)));
-        Assert.True(policy.IsTransient(new HttpRequestException("throttled", null, HttpStatusCode.TooManyRequests)));
+        Assert.False(DownloadRetryPolicy.IsTransient(new HttpRequestException("not found", null, HttpStatusCode.NotFound)));
+        Assert.False(DownloadRetryPolicy.IsTransient(new HttpRequestException("forbidden", null, HttpStatusCode.Forbidden)));
+        Assert.True(DownloadRetryPolicy.IsTransient(new HttpRequestException("busy", null, HttpStatusCode.ServiceUnavailable)));
+        Assert.True(DownloadRetryPolicy.IsTransient(new HttpRequestException("throttled", null, HttpStatusCode.TooManyRequests)));
     }
 
 }

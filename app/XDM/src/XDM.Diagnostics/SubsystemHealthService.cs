@@ -500,10 +500,7 @@ public sealed class SubsystemHealthService : ISubsystemHealthService, IDisposabl
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(SubsystemHealthService));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, typeof(SubsystemHealthService));
     }
 
     private static string GetOrigin(string? value)

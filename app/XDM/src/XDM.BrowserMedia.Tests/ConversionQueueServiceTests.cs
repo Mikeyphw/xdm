@@ -36,7 +36,7 @@ public sealed class ConversionQueueServiceTests
         string jobId = queue.Enqueue(new ConversionRequest("one.mp4", "one.converted.mp4", "mp4-copy"));
         await WaitUntilAsync(() => queue.Current.Jobs.Any(job => job.Id == jobId && job.State == ConversionJobState.Completed));
 
-        Assert.Equal(1, conversion.Sources.Count);
+        Assert.Single(conversion.Sources);
         Assert.Equal(ConversionJobState.Completed, Assert.Single(queue.Current.Jobs).State);
     }
 

@@ -111,7 +111,7 @@ public sealed class BrowserCaptureAcknowledgementStore
     private void PruneLocked()
     {
         DateTimeOffset threshold = DateTimeOffset.UtcNow - Retention;
-        foreach (string key in _records!.Where(pair => pair.Value.CreatedAtUtc < threshold)
+        foreach (string key in (_records ??= new()).Where(pair => pair.Value.CreatedAtUtc < threshold)
                      .Select(static pair => pair.Key)
                      .ToArray())
         {

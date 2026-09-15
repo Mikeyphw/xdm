@@ -73,6 +73,9 @@ public sealed class FinalizationFilePromoterTests
             FinalizationMarker marker = new(
                 FinalizationMarker.CurrentVersion,
                 sourcePayload.Length,
+                ChecksumAlgorithm: null,
+                Checksum: null,
+                CreatedAt: DateTimeOffset.UtcNow,
                 Stage: FinalizationStage.Prepared,
                 SourcePath: source,
                 UpdatedAt: DateTimeOffset.UtcNow,
@@ -103,6 +106,9 @@ public sealed class FinalizationFilePromoterTests
             FinalizationMarker marker = new(
                 FinalizationMarker.CurrentVersion,
                 payload.Length,
+                ChecksumAlgorithm: null,
+                Checksum: null,
+                CreatedAt: DateTimeOffset.UtcNow,
                 ExpectedSha256: Convert.ToHexString(SHA256.HashData(payload)),
                 ExpectedSha512: new string('0', 128));
 

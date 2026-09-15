@@ -106,9 +106,17 @@ public partial class ScheduleEditorViewModel : ObservableObject
     private BandwidthProfile? bandwidthProfile;
 
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822")]
     public WeekDays ToSelectedDays()
     {
-        WeekDays selectedDays = ToSelectedDays();
+        WeekDays selectedDays = WeekDays.None;
+        if (MondayEnabled) selectedDays |= WeekDays.Monday;
+        if (TuesdayEnabled) selectedDays |= WeekDays.Tuesday;
+        if (WednesdayEnabled) selectedDays |= WeekDays.Wednesday;
+        if (ThursdayEnabled) selectedDays |= WeekDays.Thursday;
+        if (FridayEnabled) selectedDays |= WeekDays.Friday;
+        if (SaturdayEnabled) selectedDays |= WeekDays.Saturday;
+        if (SundayEnabled) selectedDays |= WeekDays.Sunday;
         return selectedDays;
     }
 

@@ -203,7 +203,7 @@ public sealed class HlsManifestParserTests
 
             Assert.Equal(plain, await File.ReadAllBytesAsync(result.Path));
             Assert.Equal(2, segmentCalls);
-            Assert.True(Directory.EnumerateFiles(workspace, "checkpoint.json", SearchOption.AllDirectories).Any(File.Exists));
+            Assert.Contains(Directory.EnumerateFiles(workspace, "checkpoint.json", SearchOption.AllDirectories), File.Exists);
         }
         finally
         {
@@ -346,7 +346,7 @@ public sealed class HlsManifestParserTests
                 CancellationToken.None);
 
             Assert.Equal("rebuilt", await File.ReadAllTextAsync(result.Path));
-            Assert.True(Directory.EnumerateFiles(formatDirectory, "checkpoint.json.corrupt-*").Any(File.Exists));
+            Assert.Contains(Directory.EnumerateFiles(formatDirectory, "checkpoint.json.corrupt-*"), File.Exists);
             Assert.True(File.Exists(Path.Combine(formatDirectory, "checkpoint.json")));
         }
         finally

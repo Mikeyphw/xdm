@@ -75,7 +75,7 @@ public sealed class SubsystemHealthServiceTests
 
             SubsystemHealthSnapshot result = await service.RefreshAsync(directory);
 
-            SubsystemHealthCheckResult browser = Assert.Single(result.Checks.Where(static check => check.Id == "browser-bridge"));
+            SubsystemHealthCheckResult browser = Assert.Single(result.Checks, static check => check.Id == "browser-bridge");
             Assert.Equal(SubsystemHealthStatus.Degraded, browser.Status);
             Assert.Contains("stale", browser.Summary, StringComparison.OrdinalIgnoreCase);
         }

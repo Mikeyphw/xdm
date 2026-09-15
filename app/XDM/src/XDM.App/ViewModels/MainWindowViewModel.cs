@@ -1505,10 +1505,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return true;
         }
 
-        if (SelectedConversionJob?.State is ConversionJobState.Queued
-            or ConversionJobState.Inspecting
-            or ConversionJobState.Converting
-            or ConversionJobState.Finalizing)
+        if (SelectedConversionJob?.State is "Queued" or "Inspecting" or "Converting" or "Finalizing")
         {
             return _conversionQueueService.Cancel(SelectedConversionJob.Id);
         }

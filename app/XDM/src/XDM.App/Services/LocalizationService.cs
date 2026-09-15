@@ -13,7 +13,7 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
     private readonly ISettingsService _settingsService;
     private readonly LegacyTranslationCatalog _legacyCatalog;
     private readonly Dictionary<string, string> _modernEnglish;
-    private readonly IReadOnlyDictionary<string, Dictionary<string, string>> _modernResources;
+    private readonly Dictionary<string, Dictionary<string, string>> _modernResources;
     private readonly CultureInfo _systemCulture;
     private LanguageDefinition _currentLanguage;
     private CultureInfo _culture;
@@ -69,7 +69,7 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
 
         string? legacyKey = _legacyCatalog.FindLegacyKey(english);
         return legacyKey is null
-            ? english
+            ? english!
             : _legacyCatalog.GetString(_currentLanguage.Id, legacyKey, english);
     }
 
@@ -180,7 +180,7 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
         }
     }
 
-    private static IReadOnlyDictionary<string, Dictionary<string, string>> LoadModernResourceCatalog(
+    private static Dictionary<string, Dictionary<string, string>> LoadModernResourceCatalog(
         Dictionary<string, string> english)
     {
         Dictionary<string, Dictionary<string, string>> resources = new(StringComparer.OrdinalIgnoreCase)

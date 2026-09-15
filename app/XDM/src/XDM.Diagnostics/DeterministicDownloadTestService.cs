@@ -161,10 +161,7 @@ public sealed class DeterministicDownloadTestService : IDeterministicDownloadTes
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(DeterministicDownloadTestService));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, typeof(DeterministicDownloadTestService));
     }
 
     private void Publish(DeterministicDownloadTestResult result)
