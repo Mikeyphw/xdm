@@ -5,11 +5,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Xar07NativeHttpProtocolContractTest {
-    private val sourceRoot = File(".").absoluteFile.parentFile ?: File(".")
+    private val sourceRoot = generateSequence(File(".").absoluteFile) { it.parentFile }
+        .first { File(it, "transfer-native/src/main").isDirectory }
+
+    private fun source(name: String): String = File(sourceRoot, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/$name").readText()
 
     @Test
     fun nativeHttpKeepsCallsTrackedThroughBodyReadAndBoundsWrites() {
-        val source = File(sourceRoot, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").readText()
+        val source = source("NativeHttpDownloadBackend.kt")
         assertTrue(source.contains("executeTracked(control, builder.build())"))
         assertTrue(source.contains("control.activeCalls += call"))
         assertTrue(source.contains("return block(response)"))
@@ -19,7 +22,7 @@ class Xar07NativeHttpProtocolContractTest {
 
     @Test
     fun metadataAndRepresentationTruthAreFailClosed() {
-        val source = File(sourceRoot, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").readText()
+        val source = source("NativeHttpDownloadBackend.kt")
         assertTrue(source.contains("range.totalLength ?: if (range.rangeSupported) null else length"))
         assertTrue(source.contains("Complete response does not match the probed representation validator"))
         assertTrue(source.contains("Content-Range total is unknown while the expected remote length is known"))
@@ -29,7 +32,7 @@ class Xar07NativeHttpProtocolContractTest {
 
     @Test
     fun finalizationAndControlsCannotDowngradeCommittedOrQuarantinedWork() {
-        val source = File(sourceRoot, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").readText()
+        val source = source("NativeHttpDownloadBackend.kt")
         assertTrue(source.contains("verifyCheckpointBeforePromotion"))
         assertTrue(source.contains("Native finalization requires a persisted checkpoint integrity graph"))
         assertTrue(source.contains("NON_DOWNGRADABLE_STATES"))
@@ -38,9 +41,9 @@ class Xar07NativeHttpProtocolContractTest {
 
     @Test
     fun redirectsRetryAndSelectiveRepairAreBoundedByProtocolTruth() {
-        val native = File(sourceRoot, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt").readText()
-        val models = File(sourceRoot, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeTransferModels.kt").readText()
-        val repair = File(sourceRoot, "transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeSelectiveRepairService.kt").readText()
+        val native = source("NativeHttpDownloadBackend.kt")
+        val models = source("NativeTransferModels.kt")
+        val repair = source("NativeSelectiveRepairService.kt")
         assertTrue(native.contains("sanitizeRedirectCredentials"))
         assertTrue(native.contains("Authorization", ignoreCase = false))
         assertTrue(native.contains("parseHttpDate(raw)?.toInstant()"))
