@@ -378,6 +378,7 @@ public partial class App : Application
         services.AddSingleton<IDiagnosticBundleService, DiagnosticBundleService>();
         services.AddSingleton<IBrowserIntegrationService, LoopbackBrowserIntegrationService>();
         services.AddSingleton<IExternalToolRunner, ExternalToolRunner>();
+        services.AddSingleton<IYtDlpNetworkPolicyProvider, SettingsYtDlpNetworkPolicyProvider>();
         services.AddSingleton<IYtDlpProvider, YtDlpProvider>();
         services.AddSingleton<IFfmpegService, FfmpegService>();
         services.AddSingleton<IConversionService, ConversionService>();

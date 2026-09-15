@@ -7,16 +7,26 @@ public sealed class YtDlpProvider : IYtDlpProvider
 {
     private const int CatalogOutputLimitBytes = 16 * 1024 * 1024;
     private readonly IExternalToolRunner _runner;
+    private readonly IYtDlpNetworkPolicyProvider _networkPolicyProvider;
     private readonly string? _configuredExecutablePath;
 
-    public YtDlpProvider(IExternalToolRunner runner)
-        : this(runner, null)
+    public YtDlpProvider(IExternalToolRunner runner, IYtDlpNetworkPolicyProvider networkPolicyProvider)
+        : this(runner, networkPolicyProvider, null)
     {
     }
 
     internal YtDlpProvider(IExternalToolRunner runner, string? executablePath)
+        : this(runner, StaticYtDlpNetworkPolicyProvider.SystemDefault, executablePath)
+    {
+    }
+
+    internal YtDlpProvider(
+        IExternalToolRunner runner,
+        IYtDlpNetworkPolicyProvider networkPolicyProvider,
+        string? executablePath)
     {
         _runner = runner;
+        _networkPolicyProvider = networkPolicyProvider;
         _configuredExecutablePath = executablePath;
     }
 
@@ -76,7 +86,8 @@ public sealed class YtDlpProvider : IYtDlpProvider
             return null;
         }
 
-        string? metadataConfigPath = await CreateMetadataConfigAsync(metadata, cancellationToken).ConfigureAwait(false);
+        YtDlpNetworkPolicy networkPolicy = _networkPolicyProvider.Current;
+        string? metadataConfigPath = await CreateMetadataConfigAsync(metadata, networkPolicy, cancellationToken).ConfigureAwait(false);
         try
         {
             List<string> arguments =
@@ -101,9 +112,14 @@ public sealed class YtDlpProvider : IYtDlpProvider
                 TimeSpan.FromMinutes(2),
                 CatalogOutputLimitBytes,
                 cancellationToken).ConfigureAwait(false);
-            if (!result.Succeeded || string.IsNullOrWhiteSpace(result.StandardOutput))
+            if (!result.Succeeded)
             {
-                return null;
+                return CreateDiagnosticCatalog(source, "yt-dlp could not extract this URL", result.StandardError);
+            }
+
+            if (string.IsNullOrWhiteSpace(result.StandardOutput))
+            {
+                return CreateDiagnosticCatalog(source, "yt-dlp did not return catalog JSON for this URL", result.StandardError);
             }
 
             return ParseCatalog(source, result.StandardOutput);
@@ -224,7 +240,7 @@ public sealed class YtDlpProvider : IYtDlpProvider
             kind,
             url,
             GetString(format, "ext"),
-            string.Join(",", new[] { videoCodec, audioCodec }.Where(static codec => !string.IsNullOrWhiteSpace(codec) && codec != "none")),
+            CombineCodecs(videoCodec, audioCodec),
             GetLong(format, "tbr") is long tbr ? tbr * 1000 : null,
             GetInt(format, "width"),
             GetInt(format, "height"),
@@ -236,11 +252,44 @@ public sealed class YtDlpProvider : IYtDlpProvider
             providerData);
     }
 
+
+    private static string? CombineCodecs(string? videoCodec, string? audioCodec)
+    {
+        bool hasVideo = !string.IsNullOrWhiteSpace(videoCodec) && !string.Equals(videoCodec, "none", StringComparison.OrdinalIgnoreCase);
+        bool hasAudio = !string.IsNullOrWhiteSpace(audioCodec) && !string.Equals(audioCodec, "none", StringComparison.OrdinalIgnoreCase);
+        return (hasVideo, hasAudio) switch
+        {
+            (true, true) => string.Concat(videoCodec, ",", audioCodec),
+            (true, false) => videoCodec,
+            (false, true) => audioCodec,
+            _ => null
+        };
+    }
+
+    private static MediaCatalog CreateDiagnosticCatalog(Uri source, string summary, string? details)
+    {
+        string normalizedDetails = string.Join(" ", (details ?? string.Empty)
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        string description = string.IsNullOrWhiteSpace(normalizedDetails)
+            ? summary
+            : $"{summary}: {normalizedDetails}";
+        return new MediaCatalog(source, MediaKind.Unknown, source.Host, false, [], description, "yt-dlp");
+    }
+
     private static async Task<string?> CreateMetadataConfigAsync(
         MediaRequestMetadata metadata,
+        YtDlpNetworkPolicy networkPolicy,
         CancellationToken cancellationToken)
     {
         List<string> lines = [];
+        if (networkPolicy.ForceDirect)
+        {
+            lines.Add($"--proxy {EscapeConfigValue(string.Empty)}");
+        }
+        else if (IsSafeConfigValue(networkPolicy.ProxyUri))
+        {
+            lines.Add($"--proxy {EscapeConfigValue(networkPolicy.ProxyUri!)}");
+        }
         if (IsSafeConfigValue(metadata.UserAgent))
         {
             lines.Add($"--user-agent {EscapeConfigValue(metadata.UserAgent!)}");

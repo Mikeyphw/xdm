@@ -317,7 +317,7 @@ public sealed class ConversionService : IConversionService
         ConversionPresetDefinition definition,
         CancellationToken cancellationToken)
     {
-        IReadOnlySet<string> requiredEncoders = RequiredEncoders(definition);
+        HashSet<string> requiredEncoders = RequiredEncoders(definition);
         if (requiredEncoders.Count == 0)
         {
             return;
@@ -351,7 +351,7 @@ public sealed class ConversionService : IConversionService
         }
     }
 
-    private static IReadOnlySet<string> RequiredEncoders(ConversionPresetDefinition definition)
+    private static HashSet<string> RequiredEncoders(ConversionPresetDefinition definition)
     {
         HashSet<string> required = new(StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<string> arguments = definition.FfmpegArguments;

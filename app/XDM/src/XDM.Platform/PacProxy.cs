@@ -62,9 +62,9 @@ public sealed partial class PacProxy : IWebProxy
         Uri scriptUri,
         ICredentials? credentials,
         TimeSpan timeout,
-        CancellationToken cancellationToken = default,
         bool bypassLocal = false,
-        IReadOnlyList<string>? bypassList = null)
+        IReadOnlyList<string>? bypassList = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scriptUri);
         if (!scriptUri.IsAbsoluteUri || scriptUri.Scheme is not ("http" or "https" or "file"))

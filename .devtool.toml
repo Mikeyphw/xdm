@@ -17,7 +17,15 @@ restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
 build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
 test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
 run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
-package_command = "bash app/XDM/eng/qualify-prerelease.sh"
+package_command = "bash app/XDM/eng/rem18-final-release-seal.sh --devtool-package-step"
+
+# REM18 creates final-seal evidence during the package command itself.
+# Do not require this artifact after restore/build/test, or Devtool reports
+# ARTIFACT_MISSING before the package step has run.
+[targets.xdm_modern.artifacts]
+required = false
+verify = false
+paths = ["artifacts/rem18-final-seal/rem18-final-seal-evidence.tar.gz"]
 
 [targets.xdm_android]
 type = "android"

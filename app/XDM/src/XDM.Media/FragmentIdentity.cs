@@ -19,10 +19,10 @@ internal static class FragmentIdentity
     public static string ShortHash(params string?[] parts)
     {
         using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Span<byte> length = stackalloc byte[4];
         foreach (string? part in parts)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(part ?? string.Empty);
-            Span<byte> length = stackalloc byte[4];
             System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(length, bytes.Length);
             hash.AppendData(length);
             hash.AppendData(bytes);

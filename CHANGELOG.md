@@ -1,4 +1,11 @@
 
+## XDM Desktop REM18 v7 — post-XAR16 rebase
+
+- Replayed the parked `xdm_modern` REM18 final release seal over the post-XAR16-v18 base.
+- Fixed parked .NET/analyzer issues in logging, single-instance locking, yt-dlp policy wiring, diagnostic fallbacks, and REM18 test assertions.
+- Preserved Android Gradle low-memory task graph settings from XAR16 v18.
+
+
 ## Gradle task-graph optimization v2
 
 - Fix Gradle 9.7 work validation by making `verifyFfmpegRuntime` explicitly depend on `installPinnedFfmpegRuntime` and `verifyAria2Runtime` explicitly depend on `installOfficialAria2Runtime`; these verifiers consume installer-declared outputs, so ordering alone is insufficient.

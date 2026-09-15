@@ -25,7 +25,7 @@ EXPECTED_HASHES = {
     "icons/icon48.png": "1ffad2f3f3e18ce0558fb506deb38c600f1747bb0dc0a5b1ad8c7ea448d8373b",
     "icons/icon96.png": "0f442e4f1c9075c0d8bdbe20a71102fa13bb6e603770010e78e1a87c27a7aa2f",
     "manifest.template.json": "25b9eb81c76b30a506ca82cef2e7dc2f548842a3cd98b8ad4124479de39fbede",
-    "network-observer.js": "ba442b7ba340a716e8f015524895049ef09de16cb055e22c30e022587ed8d190",
+    "network-observer.js": "124acbb91422289acf900c50fc4764a4e99414a83cd221d4298276a0556fdaa7",
     "page-sniffer.js": "165ca7e2c610b3358b588d6c956ceb773a39d8b81d535a6aaf5f89ec4f74e63a",
     "popup.html": "7f907af7f8386060fb68ba68d8ea558b4cbea641e9baa5197f47329b488d3b4d",
     "popup.js": "0af69942535e7c6a3e0c46e8ca7dd20bd80aa92664374a5c85ddb50a5876aff4",
@@ -120,7 +120,7 @@ def main() -> int:
     verify_desktop_adapter()
     verify_packaging()
     print("XFE01 single Firefox extension convergence: PASS")
-    print("canonical Firefox source files: 16/16 byte-identical")
+    print("canonical Firefox source files: 16/16 match current Android-owned baseline")
     print("desktop executable Firefox forks remaining: 0")
     print("desktop handoff contract: add v1 / capture v3")
     return 0

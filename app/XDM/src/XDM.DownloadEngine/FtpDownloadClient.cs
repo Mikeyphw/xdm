@@ -252,8 +252,8 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             : await WaitWithTimeoutAsync(
                 Dns.GetHostAddressesAsync(host, cancellationToken),
                 timeout,
-                cancellationToken,
-                "FTP DNS lookup").ConfigureAwait(false);
+                "FTP DNS lookup",
+                cancellationToken).ConfigureAwait(false);
 
         IEnumerable<IPAddress> candidates = preferredAddressFamily is AddressFamily preferred
             ? addresses.OrderByDescending(address => address.AddressFamily == preferred)
@@ -267,8 +267,8 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
                 await WaitWithTimeoutAsync(
                     client.ConnectAsync(address, port, cancellationToken).AsTask(),
                     timeout,
-                    cancellationToken,
-                    "FTP TCP connect").ConfigureAwait(false);
+                    "FTP TCP connect",
+                    cancellationToken).ConfigureAwait(false);
                 return client;
             }
             catch (OperationCanceledException)
@@ -310,8 +310,8 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
                     },
                     cancellationToken),
                 timeout,
-                cancellationToken,
-                "FTP TLS handshake").ConfigureAwait(false);
+                "FTP TLS handshake",
+                cancellationToken).ConfigureAwait(false);
             return ssl;
         }
         catch
@@ -449,8 +449,8 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
     private static async Task<T> WaitWithTimeoutAsync<T>(
         Task<T> task,
         TimeSpan? timeout,
-        CancellationToken cancellationToken,
-        string operation)
+        string operation,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -467,8 +467,8 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
     private static async Task WaitWithTimeoutAsync(
         Task task,
         TimeSpan? timeout,
-        CancellationToken cancellationToken,
-        string operation)
+        string operation,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -617,15 +617,15 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             CancellationToken cancellationToken)
         {
             await WaitWithTimeoutAsync(
-                _writer.WriteLineAsync(command.AsMemory(), cancellationToken).AsTask(),
+                _writer.WriteLineAsync(command.AsMemory(), cancellationToken),
                 _operationTimeout,
-                cancellationToken,
-                "FTP control write").ConfigureAwait(false);
+                "FTP control write",
+                cancellationToken).ConfigureAwait(false);
             await WaitWithTimeoutAsync(
                 _writer.FlushAsync(cancellationToken),
                 _operationTimeout,
-                cancellationToken,
-                "FTP control flush").ConfigureAwait(false);
+                "FTP control flush",
+                cancellationToken).ConfigureAwait(false);
             return await ExpectCoreAsync(expectedCodes, cancellationToken).ConfigureAwait(false);
         }
 
@@ -636,8 +636,8 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
             string? firstLine = await WaitWithTimeoutAsync(
                 _reader.ReadLineAsync(cancellationToken).AsTask(),
                 _operationTimeout,
-                cancellationToken,
-                "FTP control response").ConfigureAwait(false);
+                "FTP control response",
+                cancellationToken).ConfigureAwait(false);
             if (firstLine is null)
             {
                 throw new IOException("The FTP server closed the control connection.");
@@ -658,8 +658,8 @@ public sealed class FtpDownloadClient : IFtpDownloadClient
                     string? line = await WaitWithTimeoutAsync(
                         _reader.ReadLineAsync(cancellationToken).AsTask(),
                         _operationTimeout,
-                        cancellationToken,
-                        "FTP multiline response").ConfigureAwait(false);
+                        "FTP multiline response",
+                        cancellationToken).ConfigureAwait(false);
                     if (line is null)
                     {
                         throw new IOException("The FTP server closed a multiline response.");

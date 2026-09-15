@@ -1337,7 +1337,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
     private DownloadAdmissionPreview PreviewAdmissionCore(
         DownloadRequest request,
-        IReadOnlySet<string>? reservedPaths)
+        HashSet<string>? reservedPaths)
     {
         string fileName = request.ResolveFileName();
         OrganizationSettings organization = (_settingsService.Current.Organization ?? OrganizationSettings.Default).Normalize();
@@ -2000,7 +2000,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         {
             foreach (DownloadSession candidate in _sessions.Values)
             {
-                if (before.TryGetValue(candidate.Id, out PersistedDownload persisted))
+                if (before.TryGetValue(candidate.Id, out PersistedDownload? persisted) && persisted is not null)
                 {
                     RestorePersistedState(candidate, persisted);
                     _applicationState.UpsertDownload(CreateSnapshot(candidate));
@@ -4022,7 +4022,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         await CompleteFromPartialAsync(session, partialPath, downloadedBytes).ConfigureAwait(false);
     }
 
-    private void PreserveUnvalidatedPartial(DownloadSession session, string partialPath)
+    private static void PreserveUnvalidatedPartial(DownloadSession session, string partialPath)
     {
         if (!File.Exists(partialPath))
         {
@@ -4905,7 +4905,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             session.QueueOrder = item.QueueOrder;
             session.EntityTag = item.EntityTag;
             session.LastModified = item.LastModified;
-            session.ConnectionCount = item.ConnectionCount;
+            session.ConnectionCount = Math.Clamp(item.ConnectionCount, 1, 32);
             session.Priority = item.Priority;
             session.SourcePage = item.SourcePage;
             session.BrowserRequestId = string.IsNullOrWhiteSpace(item.BrowserRequestId)
@@ -5048,7 +5048,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
     private string ResolveDestinationPath(
         DownloadRequest request,
         string fileName,
-        IReadOnlySet<string>? reservedPaths = null)
+        HashSet<string>? reservedPaths = null)
     {
         string candidate = Path.Combine(request.DestinationDirectory, fileName);
         bool sessionCollision = _sessions.Values.Any(session =>
@@ -5959,7 +5959,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         }
     }
 
-    private static void ReconcileRecoveredState(
+    private void ReconcileRecoveredState(
         DownloadSession session,
         ResumeCheckpoint? checkpoint,
         bool allowDownloadIdMismatch = false)
@@ -6102,7 +6102,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         DeleteTransferArtifacts(destinationPath);
     }
 
-    private async Task<RelinkValidationResult> ValidateRelinkCandidateAsync(
+    private static async Task<RelinkValidationResult> ValidateRelinkCandidateAsync(
         DownloadSession session,
         string fullPath,
         CancellationToken cancellationToken)
@@ -6867,7 +6867,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         public string QueueId { get; set; }
 
-        public string? CategoryId { get; }
+        public string? CategoryId { get; set; }
 
         public int QueueOrder { get; set; }
 
@@ -6875,7 +6875,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
         public DateTimeOffset? LastModified { get; set; }
 
-        public int ConnectionCount { get; }
+        public int ConnectionCount { get; set; }
 
         public string Method { get; }
 

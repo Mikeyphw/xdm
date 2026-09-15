@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 
@@ -21,6 +22,8 @@ public sealed class ActivationRequestedEventArgs(string? payload) : EventArgs
 
 public sealed class SingleInstanceCoordinator : IDisposable
 {
+    private static readonly ConcurrentDictionary<string, byte> InProcessLocks = new(StringComparer.Ordinal);
+
     private readonly string _lockFilePath;
     private readonly int _activationPort;
     private static readonly TimeSpan ActivationClientDeadline = TimeSpan.FromSeconds(2);
@@ -63,22 +66,33 @@ public sealed class SingleInstanceCoordinator : IDisposable
             return true;
         }
 
+        if (!InProcessLocks.TryAdd(_lockFilePath, 0))
+        {
+            _lastAcquireStatus = SingleInstanceAcquireStatus.AlreadyRunning;
+            return false;
+        }
+
         try
         {
             _lockStream = new FileStream(
                 _lockFilePath,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
-                FileShare.ReadWrite,
+                OperatingSystem.IsMacOS() ? FileShare.None : FileShare.ReadWrite,
                 bufferSize: 1,
                 FileOptions.DeleteOnClose);
             try
             {
-                _lockStream.Lock(0, 1);
+                if (!OperatingSystem.IsMacOS())
+                {
+                    _lockStream.Lock(0, 1);
+                }
+
                 _lockHeld = true;
             }
             catch (IOException)
             {
+                InProcessLocks.TryRemove(_lockFilePath, out _);
                 _lockStream.Dispose();
                 _lockStream = null;
                 _lastAcquireStatus = SingleInstanceAcquireStatus.AlreadyRunning;
@@ -95,11 +109,13 @@ public sealed class SingleInstanceCoordinator : IDisposable
         }
         catch (IOException)
         {
+            InProcessLocks.TryRemove(_lockFilePath, out _);
             _lastAcquireStatus = SingleInstanceAcquireStatus.AlreadyRunning;
             return false;
         }
         catch (UnauthorizedAccessException)
         {
+            InProcessLocks.TryRemove(_lockFilePath, out _);
             _lastAcquireStatus = SingleInstanceAcquireStatus.LockUnavailable;
             return false;
         }
@@ -253,7 +269,10 @@ public sealed class SingleInstanceCoordinator : IDisposable
         {
             try
             {
-                _lockStream.Unlock(0, 1);
+                if (!OperatingSystem.IsMacOS())
+                {
+                    _lockStream.Unlock(0, 1);
+                }
             }
             catch (IOException)
             {
@@ -264,6 +283,7 @@ public sealed class SingleInstanceCoordinator : IDisposable
         }
 
         _lockStream?.Dispose();
+        InProcessLocks.TryRemove(_lockFilePath, out _);
         ActivationRequested = null;
         GC.SuppressFinalize(this);
     }

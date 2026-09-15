@@ -1,6 +1,10 @@
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
 
+python (Join-Path $RepoRoot "app/XDM/eng/validate-xfe01-single-firefox-extension.py")
+python (Join-Path $RepoRoot "app/XDM/eng/rem18-ledger-audit.py")
+python (Join-Path $RepoRoot "app/XDM/eng/rem18-release-matrix-audit.py")
+
 & (Join-Path $PSScriptRoot "validate-modern.ps1")
 
 $Forbidden = @(

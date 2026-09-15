@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "overlay": "REM18",
+  "overlayIndex": 18,
+  "overlayTotal": 18,
+  "purpose": "Cross-boundary E2E, concurrency, platform matrix, and final release seal fault-injection contract.",
+  "scenarios": [
+    {
+      "id": "browser-native-host-stalled-client",
+      "findingIds": [
+        "S13-12",
+        "S16-07"
+      ],
+      "boundary": "browser/native-host/loopback/process",
+      "mustProve": [
+        "bounded native message read/write",
+        "acknowledgement before duplicate capture admission",
+        "listener shutdown does not abort in-flight capture decision"
+      ]
+    },
+    {
+      "id": "shutdown-during-browser-admission",
+      "findingIds": [
+        "S16-07"
+      ],
+      "boundary": "shutdown/download admission/browser IPC/persistence",
+      "mustProve": [
+        "admission freeze precedes checkpoint snapshot",
+        "new requests are rejected after freeze",
+        "clean marker is written only after service teardown"
+      ]
+    },
+    {
+      "id": "diagnostics-post-crash-redaction-bundle",
+      "findingIds": [
+        "S14-10"
+      ],
+      "boundary": "crash/event/transfer/browser/settings/support bundle",
+      "mustProve": [
+        "credentials and tokens are removed",
+        "URI userinfo is reduced to origin",
+        "private local paths are normalized",
+        "bundle is published atomically"
+      ]
+    },
+    {
+      "id": "aria2-process-death-resume",
+      "findingIds": [
+        "S16-07"
+      ],
+      "boundary": "aria2 process/RPC/download manager/recovery",
+      "mustProve": [
+        "RPC loss records degraded health",
+        "resume identity survives restart",
+        "stale GIDs cannot overwrite active ownership"
+      ]
+    },
+    {
+      "id": "ffmpeg-output-pressure-timeout-cancel",
+      "findingIds": [
+        "S13-12",
+        "S16-07"
+      ],
+      "boundary": "FFmpeg process/conversion queue/publication/cleanup",
+      "mustProve": [
+        "stdout and stderr are drained concurrently",
+        "timeout kills process tree and awaits exit",
+        "partial conversion output is not published",
+        "restart scavenges abandoned finalizing markers"
+      ]
+    },
+    {
+      "id": "updater-swap-power-loss-rollback-window",
+      "findingIds": [
+        "S13-12",
+        "S16-07"
+      ],
+      "boundary": "external updater/package/release trust/health monitor",
+      "mustProve": [
+        "old process wait is bounded",
+        "external recovery marker survives install replacement",
+        "rollback remains armed until observed health window passes",
+        "malformed transaction is quarantined"
+      ]
+    },
+    {
+      "id": "hls-dash-workspace-collision-subtitle-publication",
+      "findingIds": [
+        "S13-12",
+        "S16-07"
+      ],
+      "boundary": "media catalog/HLS/DASH/workspaces/subtitles/finalization",
+      "mustProve": [
+        "workspace locks prevent cross-job collision",
+        "checkpoint identities own fragment order",
+        "subtitle files retain extension and publish only after media success",
+        "DRM and redirect-base metadata remain visible"
+      ]
+    },
+    {
+      "id": "network-proxy-mirror-origin-change",
+      "findingIds": [
+        "S16-07"
+      ],
+      "boundary": "settings/proxy/PAC/credential resolver/download restore",
+      "mustProve": [
+        "proxy load failure is fail-closed",
+        "PAC failure does not route DIRECT silently",
+        "credentials are rebound per origin after mirror change"
+      ]
+    },
+    {
+      "id": "resume-recovery-corrupt-journal-disk-pressure",
+      "findingIds": [
+        "S16-07"
+      ],
+      "boundary": "native transfer/finalization/checksum/disk/recovery",
+      "mustProve": [
+        "corrupt checkpoints are quarantined",
+        "server generation changes prevent resume append",
+        "checksum mismatch prevents final publication",
+        "disk pressure is reported without unsafe overwrite"
+      ]
+    }
+  ]
+}

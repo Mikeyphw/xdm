@@ -166,7 +166,7 @@ public sealed class JsonDownloadHistoryStore : IDownloadHistoryStore
 
     private string GetBackupPath() => $"{_historyPath}.bak";
 
-    private sealed class UnsupportedHistorySchemaException(string message) : InvalidDataException(message);
+    private sealed class UnsupportedHistorySchemaException(string message) : Exception(message);
 
     private sealed record HistoryEnvelope(
         string Format,

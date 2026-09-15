@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseline": "overlay-22-upstream-parity-corrections",
-  "updatedAt": "2026-07-12T16:00:00Z",
+  "updatedAt": "2026-09-14T15:56:00Z",
   "features": [
     {
       "id": "download.http-single-stream",
@@ -35,7 +35,7 @@
         "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs"
       ],
       "automatedTests": [
-        "XDM.DownloadEngine.Tests.DownloadManagerTests.ResumesFromExistingPartialFile"
+        "XDM.DownloadEngine.Tests.DownloadManagerTests.RetriesTruncatedResponseAndResumesFromCheckpoint"
       ],
       "targetOverlay": "13",
       "notes": "Uses Range and If-Range with persisted validators."
@@ -1686,5 +1686,6 @@
       "targetOverlay": "22",
       "notes": "The maintained modernization scope explicitly targets Linux and Windows. macOS is excluded by product decision and is not built or restored by the active solution qualification."
     }
-  ]
+  ],
+  "notes": "REM18 v6 final seal rebased after XFE01; canonical Firefox extension references come from the Android-owned extension, while REM18 release-gate corrections are preserved."
 }

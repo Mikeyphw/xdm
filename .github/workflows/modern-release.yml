@@ -88,6 +88,13 @@ jobs:
       - run: dotnet build app/XDM/XDM.Modern.sln -c Release --no-restore -p:Version=${{ needs.resolve.outputs.version }} -p:ContinuousIntegrationBuild=true
       - run: dotnet test app/XDM/XDM.Modern.sln -c Release --no-build
       - run: dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj -c Release --no-build -- --validate-bootstrap
+      - name: REM18 final release seal audit
+        if: runner.os == 'Linux'
+        run: bash app/XDM/eng/rem18-final-release-seal.sh --static-only
+      - name: REM18 final release seal audit
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./app/XDM/eng/rem18-final-release-seal.ps1 -StaticOnly
 
   package:
     needs: [resolve, qualify]

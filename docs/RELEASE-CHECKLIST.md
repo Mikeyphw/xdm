@@ -89,3 +89,18 @@
 - [ ] URI, diagnostics, screenshots, logs, and release metadata contain no raw credentials
 
 Record device model, Android version, IronFox version, XDM variant/version, extension SHA-256, tester, and date with the release evidence.
+
+
+## REM18 final seal evidence
+
+- [ ] Devtool applied **REM18, overlay 18 of 18**, with validation enabled.
+- [ ] `dotnet restore`, Release build, Release tests, and bootstrap validation passed for `app/XDM/XDM.Modern.sln`.
+- [ ] `app/XDM/eng/rem18-ledger-audit.py` reported 258/258 Closed and reconciled 67 High / 153 Medium / 38 Low.
+- [ ] Linux and Windows x64/arm64 package topology was executed or structurally qualified by the REM18 release matrix.
+- [ ] Official Windows artifacts are Authenticode-signed and verified before stable release publication.
+- [ ] `artifacts/rem18-final-seal/` contains ledger, release-matrix, package/smoke, and final summary evidence.
+
+
+## Firefox extension convergence
+
+Before publishing a REM18 desktop release, confirm that each package contains `XDM-Firefox.xpi` built from `app/XDM.Android/browser-extension/src/main/extension/xdm-firefox`, and that `python3 app/XDM/eng/validate-xfe01-single-firefox-extension.py` passes.

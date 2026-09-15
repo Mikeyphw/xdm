@@ -64,13 +64,19 @@ public static class AtomicFile
     public static Task WriteAllBytesAsync(
         string destinationPath,
         ReadOnlyMemory<byte> payload,
-        CancellationToken cancellationToken = default,
-        bool createBackup = false)
+        bool createBackup = false,
+        CancellationToken cancellationToken = default)
         => WriteAsync(
             destinationPath,
             async stream => await stream.WriteAsync(payload, cancellationToken).ConfigureAwait(false),
             createBackup,
             cancellationToken);
+
+    public static Task WriteAllBytesAsync(
+        string destinationPath,
+        ReadOnlyMemory<byte> payload,
+        CancellationToken cancellationToken)
+        => WriteAllBytesAsync(destinationPath, payload, createBackup: false, cancellationToken);
 
     public static void Quarantine(string path, string reason)
     {

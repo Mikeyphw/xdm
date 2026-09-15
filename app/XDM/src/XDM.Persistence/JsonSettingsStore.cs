@@ -128,7 +128,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         return settings.Normalize();
     }
 
-    private sealed class UnsupportedSettingsSchemaException(string message) : InvalidDataException(message);
+    private sealed class UnsupportedSettingsSchemaException(string message) : Exception(message);
 
     private static string GetDefaultSettingsPath()
     {

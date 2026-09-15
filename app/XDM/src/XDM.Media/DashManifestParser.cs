@@ -46,17 +46,24 @@ internal static partial class DashManifestParser
         minimumUpdate = TimeSpan.FromSeconds(Math.Clamp(minimumUpdate.TotalSeconds, 1, 60));
         Uri rootBase = ResolveBase(manifestUri, FirstChildValue(root, "BaseURL"));
         List<DashRepresentation> representations = [];
+        int periodIndex = 0;
         foreach (XElement period in Children(root, "Period"))
         {
+            string periodId = Attribute(period, "id") ?? $"period-{periodIndex:D4}";
             TimeSpan? periodDuration = ParseDuration(Attribute(period, "duration")) ?? duration;
             Uri periodBase = ResolveBase(rootBase, FirstChildValue(period, "BaseURL"));
+            int adaptationIndex = 0;
             foreach (XElement adaptation in Children(period, "AdaptationSet"))
             {
+                string adaptationId = Attribute(adaptation, "id") ?? $"adaptation-{adaptationIndex:D4}";
                 Uri adaptationBase = ResolveBase(periodBase, FirstChildValue(adaptation, "BaseURL"));
                 string? adaptationMime = Attribute(adaptation, "mimeType");
                 string? adaptationContentType = Attribute(adaptation, "contentType");
                 string? adaptationCodecs = Attribute(adaptation, "codecs");
                 string? language = Attribute(adaptation, "lang");
+                string? adaptationRole = FirstRoleValue(adaptation);
+                bool adaptationDefault = IsDefaultSelection(adaptation);
+                bool adaptationEncrypted = ContainsChild(adaptation, "ContentProtection");
                 DashSegmentTemplate? adaptationTemplate = ParseTemplate(FirstChild(adaptation, "SegmentTemplate"));
                 DashSegmentList? adaptationList = ParseList(adaptationBase, FirstChild(adaptation, "SegmentList"));
                 foreach (XElement representation in Children(adaptation, "Representation"))
@@ -79,8 +86,16 @@ internal static partial class DashManifestParser
                         list = new DashSegmentList(null, [representationBase]);
                     }
 
+                    string scopedId = string.Join(
+                        ':',
+                        periodIndex.ToString(CultureInfo.InvariantCulture),
+                        periodId,
+                        adaptationIndex.ToString(CultureInfo.InvariantCulture),
+                        adaptationId,
+                        id);
                     representations.Add(new DashRepresentation(
                         id,
+                        scopedId,
                         kind,
                         representationBase,
                         mime,
@@ -92,10 +107,21 @@ internal static partial class DashManifestParser
                         language,
                         Attribute(representation, "label") ?? Attribute(adaptation, "label"),
                         periodDuration,
+                        periodId,
+                        periodIndex,
+                        adaptationId,
+                        adaptationIndex,
+                        FirstRoleValue(representation) ?? adaptationRole,
+                        IsDefaultSelection(representation) || adaptationDefault,
+                        ContainsChild(representation, "ContentProtection") || adaptationEncrypted,
                         template,
                         list));
                 }
+
+                adaptationIndex++;
             }
+
+            periodIndex++;
         }
 
         if (representations.Count == 0)
@@ -467,6 +493,23 @@ internal static partial class DashManifestParser
 
         return uri;
     }
+
+
+    private static string? FirstRoleValue(XElement parent)
+        => Children(parent, "Role")
+            .Select(static role => Attribute(role, "value"))
+            .FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value));
+
+    private static bool IsDefaultSelection(XElement parent)
+        => Children(parent, "Role").Any(static role =>
+            string.Equals(Attribute(role, "value"), "main", StringComparison.OrdinalIgnoreCase))
+            || Children(parent, "Accessibility").Any(static accessibility =>
+                string.Equals(Attribute(accessibility, "value"), "default", StringComparison.OrdinalIgnoreCase))
+            || Children(parent, "EssentialProperty").Any(static property =>
+                string.Equals(Attribute(property, "value"), "default", StringComparison.OrdinalIgnoreCase));
+
+    private static bool ContainsChild(XElement parent, string localName)
+        => FirstChild(parent, localName) is not null;
 
     private static string? FirstChildValue(XElement parent, string localName)
         => FirstChild(parent, localName)?.Value.Trim();

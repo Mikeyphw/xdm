@@ -1,0 +1,4956 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "REM18 final release seal overlay",
+  "generatedAt": "2026-09-13T18:18:00-03:00",
+  "sourceAudit": "XDM Desktop frozen S00-S16 deep bug hunt, 258 findings",
+  "expectedTotals": {
+    "total": 258,
+    "severity": {
+      "HIGH": 67,
+      "MEDIUM": 153,
+      "LOW": 38
+    }
+  },
+  "closureRule": "Every frozen finding must be Closed and Regression-covered or Non-applicable-with-evidence before release.",
+  "findings": [
+    {
+      "id": "S00-01",
+      "severity": "HIGH",
+      "title": "Bootstrap qualification is guaranteed to fail after the ninth navigation section was added",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM01",
+      "overlayName": "Qualification, build graph, and evidence foundation",
+      "dependencies": [],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM01_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S00-02",
+      "severity": "HIGH",
+      "title": "Windows validation can report false success after native `dotnet` failures",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM01",
+      "overlayName": "Qualification, build graph, and evidence foundation",
+      "dependencies": [],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM01_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S00-03",
+      "severity": "MEDIUM",
+      "title": "The documented zero-warning release contract is not enforced",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM01",
+      "overlayName": "Qualification, build graph, and evidence foundation",
+      "dependencies": [],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM01_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S00-04",
+      "severity": "MEDIUM",
+      "title": "SDK baseline is contradictory and deliberately drifts",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM01",
+      "overlayName": "Qualification, build graph, and evidence foundation",
+      "dependencies": [],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM01_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S00-05",
+      "severity": "MEDIUM",
+      "title": "Package smoke is not representative of the actual desktop package topology",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM01",
+      "overlayName": "Qualification, build graph, and evidence foundation",
+      "dependencies": [],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM01_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S00-06",
+      "severity": "MEDIUM",
+      "title": "Release/prerelease package runtime qualification covers only x64 and does not smoke the final release matrix",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM01",
+      "overlayName": "Qualification, build graph, and evidence foundation",
+      "dependencies": [],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM01_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S00-07",
+      "severity": "MEDIUM",
+      "title": "Final-parity evidence can report completeness without proving gate behavior",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM01",
+      "overlayName": "Qualification, build graph, and evidence foundation",
+      "dependencies": [],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM01_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S00-08",
+      "severity": "LOW",
+      "title": "Accessibility test matrix is stale at eight page fixtures",
+      "sourceReport": "XDM_DESKTOP_S00_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-01",
+      "severity": "HIGH",
+      "title": "startup can fail core initialization yet still present `CoreReady = true`",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-02",
+      "severity": "HIGH",
+      "title": "`async void` close persistence is outside the real shutdown boundary",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-03",
+      "severity": "MEDIUM",
+      "title": "window-state I/O is only partially best-effort and can escape UI lifecycle events",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-04",
+      "severity": "MEDIUM",
+      "title": "native/platform application quit is conflated with ordinary window close",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-05",
+      "severity": "MEDIUM",
+      "title": "single-instance activation is not cryptographically or logically bound to the instance lock",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-06",
+      "severity": "MEDIUM",
+      "title": "lock acquisition errors are indistinguishable from \"another XDM is running\"",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-07",
+      "severity": "MEDIUM",
+      "title": "persisted placement is restored without validating the current display topology",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-08",
+      "severity": "MEDIUM",
+      "title": "conversion navigation uses localized display text as an identity key",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-09",
+      "severity": "MEDIUM",
+      "title": "global Escape fans out cancellation to three independent subsystems",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-10",
+      "severity": "MEDIUM",
+      "title": "recovery-session metadata is an unguarded hard dependency for application startup",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-11",
+      "severity": "LOW",
+      "title": "numeric navigation and its accessibility/help contract stop at 8 for a 9-section shell",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-12",
+      "severity": "LOW",
+      "title": "mini-window transfer controls diverge from the main-window action state",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-13",
+      "severity": "LOW",
+      "title": "safe-mode behavior and safe-mode status copy disagree about aria2",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S01-14",
+      "severity": "LOW",
+      "title": "recovery and window-state services disagree on the window-state file they own",
+      "sourceReport": "XDM_DESKTOP_S01_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-01",
+      "severity": "HIGH",
+      "title": "Every progress snapshot can trigger O(N) synchronous filesystem probing and list rebuild on the UI thread",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-02",
+      "severity": "MEDIUM",
+      "title": "Partial batch success destroys failed/unparsed source input and associated retry metadata",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-03",
+      "severity": "MEDIUM",
+      "title": "URL duplicate identity incorrectly case-folds path/query data",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-04",
+      "severity": "MEDIUM",
+      "title": "Auto-category assignment changes category ID but does not apply that category's configured destination",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-05",
+      "severity": "MEDIUM",
+      "title": "Auto-category matching cannot match supported compound extensions such as the default `tar.gz`",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-06",
+      "severity": "MEDIUM",
+      "title": "Destination-conflict preview is not a faithful preview of the request that will actually be admitted",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-07",
+      "severity": "MEDIUM",
+      "title": "Queued downloads are incorrectly exposed as non-pausable in the desktop UI",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-08",
+      "severity": "MEDIUM",
+      "title": "\u201cRemove from history\u201d cancels and removes an active live transfer",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-09",
+      "severity": "MEDIUM",
+      "title": "Drag/drop import can overwrite real import failures with a success-like \u201cProcessed N files\u201d message",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-10",
+      "severity": "MEDIUM",
+      "title": "Bulk action loops are non-transactional, abort on the first thrown operation, and have inaccurate success counts",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-11",
+      "severity": "MEDIUM",
+      "title": "Removed downloads leak state/timeline bookkeeping for the lifetime of the main ViewModel",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-12",
+      "severity": "MEDIUM",
+      "title": "Linux/other case-sensitive filesystems are treated as case-insensitive for active destination ownership",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-13",
+      "severity": "MEDIUM",
+      "title": "History-retention controls advertise ranges that settings normalization will never preserve",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-14",
+      "severity": "LOW",
+      "title": "Download-list import can report a duplicate focus as a newly imported download",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S02-15",
+      "severity": "LOW",
+      "title": "Add/drop validation copy excludes protocols XDM actually supports",
+      "sourceReport": "XDM_DESKTOP_S02_DEEP_RECHECK_20260912.md",
+      "overlay": "REM05",
+      "overlayName": "Downloads UX, admission preview, history actions, and UI performance",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM05_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-01",
+      "severity": "HIGH",
+      "title": "FTP can finalize a truncated payload as Completed when `SIZE` is known",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-02",
+      "severity": "HIGH",
+      "title": "FTP resume appends without validating remote identity against the existing partial",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-03",
+      "severity": "HIGH",
+      "title": "Single-stream HTTP resume is allowed with no identity validator",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-04",
+      "severity": "HIGH",
+      "title": "Segmented resume trusts stale segment files by index and length only",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-05",
+      "severity": "HIGH",
+      "title": "Fresh segmented transfers are permitted without any validator and can mix object generations",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-06",
+      "severity": "HIGH",
+      "title": "Declared `ExpectedLength` is discarded for unknown-length HTTP responses",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-07",
+      "severity": "HIGH",
+      "title": "Finalization can overwrite a file created after admission even when the download was not configured for overwrite",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-08",
+      "severity": "MEDIUM",
+      "title": "Configured HTTP request timeout does not bound response-body reads",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-09",
+      "severity": "MEDIUM",
+      "title": "FTP bypasses the configured network connect/request timeout model entirely",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-10",
+      "severity": "MEDIUM",
+      "title": "Automatic HTTP decompression conflicts with resumable byte-coordinate assumptions",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-11",
+      "severity": "MEDIUM",
+      "title": "Permanent HTTP status failures are classified as transient retries",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-12",
+      "severity": "MEDIUM",
+      "title": "Retry and segmented-transfer policy settings are snapshotted at manager construction",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-13",
+      "severity": "MEDIUM",
+      "title": "Unix disk-space preflight queries `/`, not the destination's actual mounted filesystem",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-14",
+      "severity": "MEDIUM",
+      "title": "FTP payload is not forced to stable storage before finalization",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S03-15",
+      "severity": "LOW",
+      "title": "Extreme remote length values can escape the transfer exception boundary via arithmetic overflow",
+      "sourceReport": "XDM_DESKTOP_S03_DEEP_RECHECK_20260912.md",
+      "overlay": "REM06",
+      "overlayName": "Native HTTP/FTP transfer integrity, resume identity, retry, and disk safety",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM06_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-01",
+      "severity": "HIGH",
+      "title": "aria2 task snapshots are silently truncated to the first 100 waiting and 100 stopped tasks",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-02",
+      "severity": "HIGH",
+      "title": "RPC/process health loss can leave XDM-owned aria2 downloads stuck indefinitely",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-03",
+      "severity": "HIGH",
+      "title": "queue/policy/shutdown cancellation can report a transfer stopped even when aria2 failed to stop it",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-04",
+      "severity": "HIGH",
+      "title": "uncertain `aria2.addUri` can fall back to native and create two writers",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-05",
+      "severity": "HIGH",
+      "title": "XDM does not persist the returned aria2 GID until after a second RPC refresh",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-06",
+      "severity": "HIGH",
+      "title": "restart/uncertain-add adoption identifies tasks by destination path alone",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-07",
+      "severity": "MEDIUM",
+      "title": "aria2 bypasses XDM's effective queue/app/smart-transfer speed policy",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-08",
+      "severity": "MEDIUM",
+      "title": "RPC parsing/validation exceptions can permanently fault polling or an active download task",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-09",
+      "severity": "MEDIUM",
+      "title": "`ContinueDownloads=false` is overridden for XDM-created aria2 tasks",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-10",
+      "severity": "MEDIUM",
+      "title": "per-download `ConnectionCount` affects backend selection but not aria2 execution",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-11",
+      "severity": "MEDIUM",
+      "title": "size-based automatic aria2 routing is unreachable for a normal first-time Add Download",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-12",
+      "severity": "MEDIUM",
+      "title": "aria2 waiting tasks consume XDM concurrency leases before they are active",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-13",
+      "severity": "MEDIUM",
+      "title": "moving a live download to another queue bypasses the destination queue's runtime state and lease",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-14",
+      "severity": "MEDIUM",
+      "title": "several aria2 settings are exposed in external-RPC mode but only configure the managed process",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-15",
+      "severity": "MEDIUM",
+      "title": "\u201cApply aria2 configuration\u201d can report success after configuration failure",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-16",
+      "severity": "MEDIUM",
+      "title": "failed direct pause leaves `PauseRequested` latched true while transfer can remain active",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S04-17",
+      "severity": "LOW",
+      "title": "aria2 numeric UI ranges disagree with normalization limits",
+      "sourceReport": "XDM_DESKTOP_S04_DEEP_RECHECK_20260912.md",
+      "overlay": "REM07",
+      "overlayName": "aria2 ownership, RPC state, queue policy, and backend convergence",
+      "dependencies": [
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM07_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-01",
+      "severity": "HIGH",
+      "title": "Recovery validation can declare an unproven partial \u201cReady to resume\u201d",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-02",
+      "severity": "HIGH",
+      "title": "Workbench permits Resume while classification still says remote validation is required",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-03",
+      "severity": "HIGH",
+      "title": "aria2 completion does not enforce all configured expected checksums",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-04",
+      "severity": "HIGH",
+      "title": "One malformed finalization journal can abort recovery initialization for the entire download manager",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-05",
+      "severity": "HIGH",
+      "title": "Relink can mark an arbitrary file Completed without enforcing known length or expected checksum",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-06",
+      "severity": "MEDIUM",
+      "title": "aria2 completion omits the local SHA-256 integrity record when no independent checksum exists",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-07",
+      "severity": "MEDIUM",
+      "title": "unreadable checksum workflow sidecar can abort manager initialization globally",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-08",
+      "severity": "MEDIUM",
+      "title": "checksum workflow sidecars are not ownership-bound to the destination they were loaded for",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-09",
+      "severity": "MEDIUM",
+      "title": "a second configured expected checksum is not durably recoverable without the checksum sidecar",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-10",
+      "severity": "MEDIUM",
+      "title": "failed Verify-and-Repair checksum outcome is removed from the Recovery workbench",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-11",
+      "severity": "MEDIUM",
+      "title": "Recovery Resume dismisses the candidate before the resumed transfer proves it is safe/successful",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-12",
+      "severity": "MEDIUM",
+      "title": "\u201cRemove recovery record\u201d is not persistent and can reappear on the next scan",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-13",
+      "severity": "MEDIUM",
+      "title": "segment-only orphan recovery artifacts are not discoverable",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-14",
+      "severity": "MEDIUM",
+      "title": "Recovery coordinator reads finalization journals with incompatible JSON serializer defaults",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-15",
+      "severity": "MEDIUM",
+      "title": "unclean aria2 transfers can be misclassified as \u201cMissing partial file\u201d despite data existing at the destination",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-16",
+      "severity": "MEDIUM",
+      "title": "verification/repair status can remain latched after exceptional or cancelled operations",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-17",
+      "severity": "LOW",
+      "title": "Recovery enables Verify and Repair for classifications/protocols where repair is guaranteed to reject",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S05-18",
+      "severity": "LOW",
+      "title": "checkpoint destination ownership comparison is case-sensitive even on Windows",
+      "sourceReport": "XDM_DESKTOP_S05_DEEP_RECHECK_20260912.md",
+      "overlay": "REM08",
+      "overlayName": "Recovery, checksum, finalization, relink, and repair integrity",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM08_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-01",
+      "severity": "HIGH",
+      "title": "every download progress snapshot can enqueue another durable scheduler evaluation",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-02",
+      "severity": "HIGH",
+      "title": "expired schedule runs absorb later unrelated queue downloads",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-03",
+      "severity": "HIGH",
+      "title": "independent schedule completion workflows cancel each other",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-04",
+      "severity": "HIGH",
+      "title": "a single periodic evaluation exception can permanently stop the scheduler loop",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-05",
+      "severity": "HIGH",
+      "title": "editing the queue of an active schedule mixes the old run with the new definition and can strand the run",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-06",
+      "severity": "MEDIUM",
+      "title": "downloads added and completed entirely inside an active window are never part of the run",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-07",
+      "severity": "MEDIUM",
+      "title": "scheduler and manual queue ownership share one uncounted request root",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-08",
+      "severity": "MEDIUM",
+      "title": "malformed schedule times silently become different valid times",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-09",
+      "severity": "MEDIUM",
+      "title": "selecting no weekdays silently enables the schedule every day",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-10",
+      "severity": "MEDIUM",
+      "title": "corrupt or transiently unreadable scheduler state silently loses the once-per-window identity",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-11",
+      "severity": "MEDIUM",
+      "title": "scheduler state permission failures are not consistently contained at load/event boundaries",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-12",
+      "severity": "MEDIUM",
+      "title": "removed schedule IDs are never pruned from persisted runtime state and can suppress a recreated schedule",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-13",
+      "severity": "MEDIUM",
+      "title": "process-start failures outside two caught exception types can silently fault a fire-and-forget completion workflow",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-14",
+      "severity": "LOW",
+      "title": "the visible Cancel button cannot cancel the antivirus phase even though a cancellation token exists",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-15",
+      "severity": "LOW",
+      "title": "countdown UI accepts 24 hours but persistence silently clamps it to 300 seconds",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-16",
+      "severity": "LOW",
+      "title": "antivirus timeout UI accepts 1\u201386,400 seconds but normalization stores only 5\u20133,600",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S06-17",
+      "severity": "LOW",
+      "title": "the UI can create more than 64 schedules but settings normalization silently drops extras",
+      "sourceReport": "XDM_DESKTOP_S06_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-01",
+      "severity": "HIGH",
+      "title": "the default \u201cAsk each time\u201d confirmation path generates an operation rejected by the native protocol",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-02",
+      "severity": "HIGH",
+      "title": "Chromium Manifest V3 event listeners are registered only after asynchronous startup and can miss the event that wakes the service worker",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-03",
+      "severity": "HIGH",
+      "title": "enhanced request metadata is correlated by URL instead of the browser\u2019s unique request ID",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-04",
+      "severity": "HIGH",
+      "title": "POST capture can silently replay a different empty or truncated request body",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-05",
+      "severity": "HIGH",
+      "title": "capture-batch loses already-successful per-item acknowledgements if a later item hits a transport/protocol exception",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-06",
+      "severity": "HIGH",
+      "title": "extension batch timeout is shorter than the valid sequential processing time of a batch",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-07",
+      "severity": "HIGH",
+      "title": "browser request identity is collapsed to URL-only duplicate identity before acknowledgement",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-08",
+      "severity": "MEDIUM",
+      "title": "GET browser metadata required for safe replay is discarded on app restart while the transfer remains resumable",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-09",
+      "severity": "MEDIUM",
+      "title": "loopback authentication can become impossible when token persistence fails, while the app still starts with a fresh in-memory token",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-10",
+      "severity": "MEDIUM",
+      "title": "browser-known expected file size is discarded when creating the engine request",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-11",
+      "severity": "MEDIUM",
+      "title": "capture RequestId is validated and echoed but never used as an idempotency key",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-12",
+      "severity": "MEDIUM",
+      "title": "native-host and loopback capture deadlines are both exactly 20 seconds, leaving no response budget",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-13",
+      "severity": "MEDIUM",
+      "title": "Chromium host-manifest \u201ccompatibility\u201d checks syntax, not the expected extension identity",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-14",
+      "severity": "MEDIUM",
+      "title": "MV3 enhanced request metadata is kept only in volatile service-worker global state",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-15",
+      "severity": "MEDIUM",
+      "title": "user-entered full URLs in Included sites evaluate differently in JavaScript and the native rule evaluator",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-16",
+      "severity": "MEDIUM",
+      "title": "unexpected loopback listener failure can leave status stuck at \u201cListening\u201d with no self-recovery",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-17",
+      "severity": "LOW",
+      "title": "ordinary browser capture ignores the protocol SourcePage and stores Referer as SourcePage",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S07-18",
+      "severity": "LOW",
+      "title": "launch-origin verification fails open when either side of the identity comparison is absent",
+      "sourceReport": "XDM_DESKTOP_S07_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-01",
+      "severity": "HIGH",
+      "title": "redirected HLS/DASH manifests resolve relative child URIs against the pre-redirect URL",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-02",
+      "severity": "HIGH",
+      "title": "DASH `Representation@Id` is treated as globally unique even though identity is scoped by AdaptationSet/Period",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-03",
+      "severity": "HIGH",
+      "title": "HLS selection IDs are positional and can silently change meaning between discovery and download",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-04",
+      "severity": "HIGH",
+      "title": "HLS AUDIO/SUBTITLES group association is discarded, allowing incompatible or unrelated rendition combinations",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-05",
+      "severity": "HIGH",
+      "title": "yt-dlp fallback is never attempted when the preliminary ordinary HTTP GET fails",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-06",
+      "severity": "HIGH",
+      "title": "media inbox selection can retain the previous item's auto-generated destination and overwrite its output",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-07",
+      "severity": "HIGH",
+      "title": "DASH `ContentProtection`/DRM signaling is ignored and every DASH format is advertised as unencrypted",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-08",
+      "severity": "HIGH",
+      "title": "DASH multi-Period presentations are flattened into simultaneous format alternatives and lose temporal presentation identity",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-09",
+      "severity": "MEDIUM",
+      "title": "destination extension is always inferred as `.mp4` regardless of selected format/container",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-10",
+      "severity": "MEDIUM",
+      "title": "direct audio URLs recognized by extension are classified as `Muxed`, breaking Audio-only semantics",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-11",
+      "severity": "MEDIUM",
+      "title": "generic content types ignore strong filename evidence for direct media",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-12",
+      "severity": "MEDIUM",
+      "title": "\u201cUp to Np\u201d quality choices are not hard maximums",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-13",
+      "severity": "MEDIUM",
+      "title": "yt-dlp audio/video bitrate metadata ignores `abr`/`vbr` and relies only on `tbr`",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-14",
+      "severity": "MEDIUM",
+      "title": "yt-dlp formats with neither usable audio nor video codec are misclassified as Audio",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-15",
+      "severity": "MEDIUM",
+      "title": "XDM proxy/network routing settings are not propagated to yt-dlp",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-16",
+      "severity": "MEDIUM",
+      "title": "DASH Role/default semantics are discarded, so deterministic audio/subtitle preference can select commentary/dub tracks",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-17",
+      "severity": "MEDIUM",
+      "title": "yt-dlp discovery exceptions are not fully contained at manual/browser media orchestration boundaries",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-18",
+      "severity": "MEDIUM",
+      "title": "media inbox deduplication ignores request metadata and collapses distinct authenticated capture contexts",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-19",
+      "severity": "MEDIUM",
+      "title": "yt-dlp subtitle selection IDs are positional and can drift across catalog refresh",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-20",
+      "severity": "MEDIUM",
+      "title": "HLS master live/VOD classification trusts only the first variant and fails toward \u201clive\u201d",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-21",
+      "severity": "LOW",
+      "title": "DASH duration is parsed successfully and then dropped from the public catalog",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S08-22",
+      "severity": "LOW",
+      "title": "yt-dlp nonzero exits discard extractor diagnostics and collapse to a generic \u201cnot recognized\u201d result",
+      "sourceReport": "XDM_DESKTOP_S08_DEEP_RECHECK_20260912.md",
+      "overlay": "REM11",
+      "overlayName": "Media discovery, manifest/catalog identity, format selection, and yt-dlp routing",
+      "dependencies": [
+        "REM04",
+        "REM06",
+        "REM10"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM11_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-01",
+      "severity": "HIGH",
+      "title": "reusable media workspace is not owned by one execution/request and has no concurrency lock",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-02",
+      "severity": "HIGH",
+      "title": "assembly ignores the current execution plan/checkpoint and concatenates every `.part` file in the fragment directory",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-03",
+      "severity": "HIGH",
+      "title": "completed fragment identity is only ID + file existence, not URI/range/content generation",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-04",
+      "severity": "HIGH",
+      "title": "HLS initialization-map marker and fragment checkpoint are not transactional, allowing restart to remove the required init section",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-05",
+      "severity": "HIGH",
+      "title": "HLS byte-range execution validates only `206` + byte count, not the returned `Content-Range` coordinates",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-06",
+      "severity": "HIGH",
+      "title": "dynamic DASH `SegmentList` IDs are positional, so a sliding list can silently reuse old bytes for new segments",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-07",
+      "severity": "HIGH",
+      "title": "open-ended dynamic DASH `SegmentTimeline` can stop making forward progress",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-08",
+      "severity": "MEDIUM",
+      "title": "a mismatched checkpoint still contributes its old `DownloadedBytes`",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-09",
+      "severity": "MEDIUM",
+      "title": "a missing completed part is re-downloaded but its old bytes remain in checkpoint accounting",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-10",
+      "severity": "MEDIUM",
+      "title": "live capture duration is neither cumulative across resume nor a hard execution deadline",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-11",
+      "severity": "MEDIUM",
+      "title": "implicit HLS BYTERANGE offsets are carried across resources without enforcing the same-resource rule",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-12",
+      "severity": "MEDIUM",
+      "title": "AES-128 decryption suppresses PKCS#7 failure and retries with no padding",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-13",
+      "severity": "MEDIUM",
+      "title": "HLS can buffer up to 1 GiB for one segment/map entirely in managed memory",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-14",
+      "severity": "MEDIUM",
+      "title": "DASH's 1 GiB segment safety limit is enforced only after the full file has already been written",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-15",
+      "severity": "MEDIUM",
+      "title": "external provider fragment checkpoint IDs are positional and not stable across provider refresh/retry",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-16",
+      "severity": "MEDIUM",
+      "title": "every subtitle payload is materialized as `.vtt` without conversion",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-17",
+      "severity": "MEDIUM",
+      "title": "multiple selected subtitle tracks with the same language overwrite one another",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-18",
+      "severity": "MEDIUM",
+      "title": "subtitles are committed outside the workspace before main-media finalization succeeds",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-19",
+      "severity": "MEDIUM",
+      "title": "fragment retry treats permanent HTTP status failures as transient",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-20",
+      "severity": "MEDIUM",
+      "title": "sanitized format-directory names can collide and share fragment/checkpoint state",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-21",
+      "severity": "LOW",
+      "title": "HLS `.downloading` temporary files are not cleaned up on write/cancellation failure",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-22",
+      "severity": "LOW",
+      "title": "stream assembly `.assembling` files are not cleaned on failure/cancellation",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S09-23",
+      "severity": "LOW",
+      "title": "malformed checkpoint JSON is silently treated as \u201cno checkpoint\u201d without quarantine or stale-artifact reconciliation",
+      "sourceReport": "XDM_DESKTOP_S09_DEEP_RECHECK_20260912.md",
+      "overlay": "REM12",
+      "overlayName": "HLS/DASH/live fragment execution, checkpoint identity, and workspace isolation",
+      "dependencies": [
+        "REM03",
+        "REM06",
+        "REM11"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM12_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-01",
+      "severity": "HIGH",
+      "title": "bounded diagnostic-output enforcement can deadlock FFmpeg until the long process timeout",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-02",
+      "severity": "HIGH",
+      "title": "timestamp preservation occurs after publication, so a Failed job can already have replaced the destination",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-03",
+      "severity": "MEDIUM",
+      "title": "cancellation/timeout reports control back without waiting for FFmpeg termination",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-04",
+      "severity": "MEDIUM",
+      "title": "`ConversionQueueService.Dispose()` does not wait for its worker or active conversion to settle",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-05",
+      "severity": "MEDIUM",
+      "title": "conversion health/preset admission does not validate the exact encoders required by selectable presets",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-06",
+      "severity": "MEDIUM",
+      "title": "the advertised 120 device profiles are only 10 encoding recipes with different family labels",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-07",
+      "severity": "MEDIUM",
+      "title": "media post-processing blindly stream-copies into the destination container without compatibility validation",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-08",
+      "severity": "MEDIUM",
+      "title": "media mux has a fixed six-hour wall-clock timeout unrelated to captured duration/size",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-09",
+      "severity": "MEDIUM",
+      "title": "post-download conversion enqueue failure is reported as if the completed media download failed",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-10",
+      "severity": "MEDIUM",
+      "title": "the UI advertises Cancel during final publication after the service's last cancellation check",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-11",
+      "severity": "MEDIUM",
+      "title": "one `Changed` subscriber exception can permanently kill the conversion worker while enqueue continues accepting jobs",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-12",
+      "severity": "MEDIUM",
+      "title": "abnormal app/process termination leaves large GUID conversion temporaries with no recovery/scavenging path",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-13",
+      "severity": "LOW",
+      "title": "media FFmpeg finalization files are not cleaned after mux failure or cancellation",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-14",
+      "severity": "LOW",
+      "title": "FFmpeg mux success is not validated for output existence/non-empty content before publication",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-15",
+      "severity": "LOW",
+      "title": "structured FFmpeg duration/speed progress is parsed and then discarded before the queue/UI",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-16",
+      "severity": "LOW",
+      "title": "manual Conversion UI trims valid Unix source/destination filenames",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-17",
+      "severity": "LOW",
+      "title": "changing the selected preset overwrites a user-entered destination path",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S10-18",
+      "severity": "LOW",
+      "title": "terminal conversion history is unbounded for the process lifetime",
+      "sourceReport": "XDM_DESKTOP_S10_DEEP_RECHECK_20260912.md",
+      "overlay": "REM13",
+      "overlayName": "FFmpeg, conversion queue, post-processing, publication, and cleanup",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM12"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM13_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-01",
+      "severity": "HIGH",
+      "title": "settings-load failure can silently bypass a previously required proxy",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-02",
+      "severity": "HIGH",
+      "title": "saved server credentials follow a transfer onto mirrors for different hosts",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-03",
+      "severity": "HIGH",
+      "title": "unsupported or unusable PAC results fail open to `DIRECT`",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-04",
+      "severity": "MEDIUM",
+      "title": "PAC mode ignores the Settings bypass-local and bypass-list controls",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-05",
+      "severity": "MEDIUM",
+      "title": "saved server credentials are not re-resolved when a persisted download is restored",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-06",
+      "severity": "MEDIUM",
+      "title": "Save Settings persistence failures escape the normal UI-command error boundary",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-07",
+      "severity": "MEDIUM",
+      "title": "Settings UI accepts values far outside the persisted network schema and silently clamps them",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-08",
+      "severity": "MEDIUM",
+      "title": "Settings export mixes unsaved editor values with persisted values",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-09",
+      "severity": "MEDIUM",
+      "title": "the legacy translation bridge can translate only a small fraction of the modern UI",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-10",
+      "severity": "MEDIUM",
+      "title": "dozens of visible XAML strings bypass localization entirely",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-11",
+      "severity": "MEDIUM",
+      "title": "MiniWindow does not participate in the main localization/accessibility application path",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-12",
+      "severity": "MEDIUM",
+      "title": "system-language fallback ignores script/region and chooses the first neutral-language match",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-13",
+      "severity": "LOW",
+      "title": "unsaved credential/default-connection editor values can affect new downloads before Settings is saved",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM04",
+      "overlayName": "Settings, proxy/network policy, and credential isolation",
+      "dependencies": [
+        "REM01",
+        "REM03"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM04_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-14",
+      "severity": "LOW",
+      "title": "Hindi and Malagasy packs are shipped and mapped in code but absent from the language index",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S11-15",
+      "severity": "LOW",
+      "title": "several Settings choice controls expose raw enum identifiers instead of localized labels",
+      "sourceReport": "XDM_DESKTOP_S11_DEEP_RECHECK_20260912.md",
+      "overlay": "REM14",
+      "overlayName": "Localization, accessibility, navigation, mini-window, and shell parity",
+      "dependencies": [
+        "REM01",
+        "REM05"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM14_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-01",
+      "severity": "HIGH",
+      "title": "destructive Delete/Prune state changes are committed before history persistence, so failed saves resurrect stale records",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-02",
+      "severity": "HIGH",
+      "title": "Relocate commits the file move before durable history, so a failed history save leaves the next restart pointing at the old missing path",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-03",
+      "severity": "HIGH",
+      "title": "history restore performs no semantic uniqueness validation and can start two writers for the same destination",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-04",
+      "severity": "HIGH",
+      "title": "\u201ccredential-free\u201d download-list exports write full signed/query-bearing URLs verbatim",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-05",
+      "severity": "MEDIUM",
+      "title": "settings backup is created on every save but never used for recovery",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-06",
+      "severity": "MEDIUM",
+      "title": "history backup recovery is bypassed for I/O/permission failures even when a valid backup exists",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-07",
+      "severity": "MEDIUM",
+      "title": "enabled history retention is not continuously/automatically enforced during a long-running process",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-08",
+      "severity": "MEDIUM",
+      "title": "newer settings schemas are silently downgraded instead of rejected or preserved",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-09",
+      "severity": "MEDIUM",
+      "title": "download history has no schema/envelope version, so incompatible future history cannot be detected before rewrite",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-10",
+      "severity": "MEDIUM",
+      "title": "redacted settings exports carry an `IncludesSecrets` flag that import ignores, so importing them silently clears configured secrets",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-11",
+      "severity": "MEDIUM",
+      "title": "advertised Java-style `.properties` migration does not implement Java Properties parsing semantics",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-12",
+      "severity": "MEDIUM",
+      "title": "imported mirror URLs are deduplicated case-insensitively across the entire absolute URI",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-13",
+      "severity": "MEDIUM",
+      "title": "download-list import validates backend preference but not `DownloadPriority`",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-14",
+      "severity": "MEDIUM",
+      "title": "ordinary metadata mutations update live state before durable persistence and are not rolled back on save failure",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-15",
+      "severity": "LOW",
+      "title": "Settings import commits before the user can review the imported result despite migration guidance saying to review before saving",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-16",
+      "severity": "LOW",
+      "title": "several durable writers leave `.tmp` files behind when serialization/write/move fails",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S12-17",
+      "severity": "LOW",
+      "title": "legacy import result counts preserved baseline data as if it were imported",
+      "sourceReport": "XDM_DESKTOP_S12_DEEP_RECHECK_20260912.md",
+      "overlay": "REM03",
+      "overlayName": "Persistence, history, schema, import/export, and transactional state",
+      "dependencies": [
+        "REM01",
+        "REM02"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM03_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-01",
+      "severity": "HIGH",
+      "title": "Linux \u201cLog out\u201d terminates every session owned by the user",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-02",
+      "severity": "HIGH",
+      "title": "Windows Sleep/Hibernate use an unsupported `rundll32` call to `SetSuspendState`",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-03",
+      "severity": "MEDIUM",
+      "title": "power capability discovery equates executable presence with actual capability and authorization",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-04",
+      "severity": "MEDIUM",
+      "title": "`PlatformCommandRunner`'s \u201cbounded output\u201d limit is applied only after unbounded buffering",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-05",
+      "severity": "MEDIUM",
+      "title": "timeout/cancellation process-tree guarantees fail open when `Kill` fails",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-06",
+      "severity": "MEDIUM",
+      "title": "Windows desktop-toast prerequisites are absent, so the Windows notification path is not a valid complete delivery contract",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM15",
+      "overlayName": "Desktop notifications and Smart Transfer environment integration",
+      "dependencies": [
+        "REM04",
+        "REM09"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM15_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-07",
+      "severity": "MEDIUM",
+      "title": "desktop notification execution has no deadline and can block an awaited workflow indefinitely",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM15",
+      "overlayName": "Desktop notifications and Smart Transfer environment integration",
+      "dependencies": [
+        "REM04",
+        "REM09"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM15_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-08",
+      "severity": "MEDIUM",
+      "title": "notification delivery failures are silently treated as if a desktop notification was shown",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM15",
+      "overlayName": "Desktop notifications and Smart Transfer environment integration",
+      "dependencies": [
+        "REM04",
+        "REM09"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM15_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-09",
+      "severity": "MEDIUM",
+      "title": "shell/open failures can escape user-facing platform commands instead of becoming an operation error",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-10",
+      "severity": "MEDIUM",
+      "title": "one idle loopback client can monopolize the single-instance activation listener indefinitely",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-11",
+      "severity": "MEDIUM",
+      "title": "Smart Transfer \u201cAuto\u201d environment detection is incomplete on both maintained desktop platforms",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM15",
+      "overlayName": "Desktop notifications and Smart Transfer environment integration",
+      "dependencies": [
+        "REM04",
+        "REM09"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM15_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S13-12",
+      "severity": "LOW",
+      "title": "S13's real OS/process semantics are almost entirely untested despite parity marking them complete",
+      "sourceReport": "XDM_DESKTOP_S13_DEEP_RECHECK_20260912.md",
+      "overlay": "REM18",
+      "overlayName": "Cross-boundary E2E, concurrency, platform-matrix, and final release seal",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM05",
+        "REM06",
+        "REM07",
+        "REM08",
+        "REM09",
+        "REM10",
+        "REM11",
+        "REM12",
+        "REM13",
+        "REM14",
+        "REM15",
+        "REM16",
+        "REM17"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered-final-seal",
+      "evidence": [
+        "app/XDM/eng/rem18-final-release-seal.sh",
+        "app/XDM/eng/rem18-release-matrix-audit.py",
+        "app/XDM/eng/rem18-fault-injection-matrix.json",
+        "app/XDM/src/XDM.Parity.Tests/Rem18FinalSealCoverageTests.cs"
+      ]
+    },
+    {
+      "id": "S14-01",
+      "severity": "HIGH",
+      "title": "the \u201credacted\u201d support bundle can still export real credentials",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-02",
+      "severity": "MEDIUM",
+      "title": "normal application logging bypasses the diagnostics redaction boundary",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-03",
+      "severity": "MEDIUM",
+      "title": "diagnostics are volatile, so a post-crash support bundle loses the evidence needed to diagnose the crash",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-04",
+      "severity": "MEDIUM",
+      "title": "support bundles reintroduce full local filesystem paths and user-identifying environment data",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-05",
+      "severity": "MEDIUM",
+      "title": "browser/extension health can remain Healthy indefinitely after the browser or extension is gone",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-06",
+      "severity": "MEDIUM",
+      "title": "disk probes suppress cleanup failures and can report success while retaining `.xdm-health-*` files",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-07",
+      "severity": "MEDIUM",
+      "title": "the documented \u201cindependent\u201d subsystem checks are not failure-isolated",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-08",
+      "severity": "MEDIUM",
+      "title": "support-bundle publication is non-atomic and failed exports can leave final-named partial archives",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-09",
+      "severity": "MEDIUM",
+      "title": "the advertised health timeouts do not bound synchronous filesystem operations",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S14-10",
+      "severity": "LOW",
+      "title": "parity marks the diagnostic bundle complete without testing the bundle or its privacy boundary end to end",
+      "sourceReport": "XDM_DESKTOP_S14_DEEP_RECHECK_20260912.md",
+      "overlay": "REM18",
+      "overlayName": "Cross-boundary E2E, concurrency, platform-matrix, and final release seal",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM05",
+        "REM06",
+        "REM07",
+        "REM08",
+        "REM09",
+        "REM10",
+        "REM11",
+        "REM12",
+        "REM13",
+        "REM14",
+        "REM15",
+        "REM16",
+        "REM17"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered-final-seal",
+      "evidence": [
+        "app/XDM/eng/rem18-final-release-seal.sh",
+        "app/XDM/eng/rem18-release-matrix-audit.py",
+        "app/XDM/eng/rem18-fault-injection-matrix.json",
+        "app/XDM/src/XDM.Parity.Tests/Rem18FinalSealCoverageTests.cs"
+      ]
+    },
+    {
+      "id": "S15-01",
+      "severity": "HIGH",
+      "title": "the \u201crollback-safe\u201d install swap is not crash/power-loss safe and can leave the application path absent",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-02",
+      "severity": "HIGH",
+      "title": "the new version is marked Healthy immediately at framework startup, destroying rollback protection before the 30-second observation window",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-03",
+      "severity": "MEDIUM",
+      "title": "the official Debian package and the in-app portable updater have incompatible ownership/update models",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-04",
+      "severity": "MEDIUM",
+      "title": "the Debian control file declares none of Avalonia/.NET's required native runtime dependencies",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-05",
+      "severity": "MEDIUM",
+      "title": "Windows signing is optional, but unsigned Windows builds can still become official attested releases",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-06",
+      "severity": "MEDIUM",
+      "title": "manually dispatched stable releases are not bound to the checkout SHA and can publish assets that do not match the release tag",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-07",
+      "severity": "MEDIUM",
+      "title": "the external updater can wait forever for the old XDM PID to exit",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-08",
+      "severity": "MEDIUM",
+      "title": "successful and failed update artifacts have no lifecycle pruning and can accumulate full self-contained installations indefinitely",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-09",
+      "severity": "MEDIUM",
+      "title": "malformed update JSON can fault the fire-and-forget automatic startup check unobserved",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-10",
+      "severity": "MEDIUM",
+      "title": "\u201cmandatory\u201d updates are calculated and announced but never enforced anywhere in the application",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-11",
+      "severity": "MEDIUM",
+      "title": "release metadata generation accepts an invalid minimum-supported version that every current client will reject",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S15-12",
+      "severity": "LOW",
+      "title": "release/parity documentation still asserts that XDM never executes staged updates, while the product now has an external Apply-and-restart updater",
+      "sourceReport": "XDM_DESKTOP_S15_DEEP_RECHECK_20260912.md",
+      "overlay": "REM17",
+      "overlayName": "Updater, rollback, packaging, signing, release metadata, and distribution trust",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM16"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM17_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S16-01",
+      "severity": "MEDIUM",
+      "title": "loopback browser shutdown does not own or await in-flight request handlers",
+      "sourceReport": "XDM_DESKTOP_S16_DEEP_RECHECK_20260912.md",
+      "overlay": "REM10",
+      "overlayName": "Browser bridge, native host, request identity, single-instance IPC, and shutdown ownership",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM06"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM10_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S16-02",
+      "severity": "HIGH",
+      "title": "shutdown never freezes download admission before its recovery/checkpoint snapshot",
+      "sourceReport": "XDM_DESKTOP_S16_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S16-03",
+      "severity": "HIGH",
+      "title": "XDM deletes its unclean-session marker before service teardown has actually completed",
+      "sourceReport": "XDM_DESKTOP_S16_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S16-04",
+      "severity": "MEDIUM",
+      "title": "the 15-second transfer shutdown deadline is defeated by unbounded waits in `DownloadManager.Dispose()`",
+      "sourceReport": "XDM_DESKTOP_S16_DEEP_RECHECK_20260912.md",
+      "overlay": "REM02",
+      "overlayName": "Lifecycle, admission freeze, shutdown, and window-state foundation",
+      "dependencies": [
+        "REM01"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM02_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S16-05",
+      "severity": "HIGH",
+      "title": "cancelling a pending completion action does not guarantee the destructive command will not start",
+      "sourceReport": "XDM_DESKTOP_S16_DEEP_RECHECK_20260912.md",
+      "overlay": "REM09",
+      "overlayName": "Scheduler, completion automation, platform command safety, and destructive-action cancellation",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM06",
+        "REM07"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM09_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S16-06",
+      "severity": "MEDIUM",
+      "title": "untracked diagnostics commands can outlive the ViewModel and have synchronization primitives disposed underneath them",
+      "sourceReport": "XDM_DESKTOP_S16_DEEP_RECHECK_20260912.md",
+      "overlay": "REM16",
+      "overlayName": "Diagnostics, privacy redaction, health checks, logs, and support bundles",
+      "dependencies": [
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM10",
+        "REM15"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered",
+      "evidence": [
+        "XDM_REM16_REPORT",
+        "docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json"
+      ]
+    },
+    {
+      "id": "S16-07",
+      "severity": "LOW",
+      "title": "the final test suite does not exercise the cross-boundary shutdown/concurrency invariants above",
+      "sourceReport": "XDM_DESKTOP_S16_DEEP_RECHECK_20260912.md",
+      "overlay": "REM18",
+      "overlayName": "Cross-boundary E2E, concurrency, platform-matrix, and final release seal",
+      "dependencies": [
+        "REM01",
+        "REM02",
+        "REM03",
+        "REM04",
+        "REM05",
+        "REM06",
+        "REM07",
+        "REM08",
+        "REM09",
+        "REM10",
+        "REM11",
+        "REM12",
+        "REM13",
+        "REM14",
+        "REM15",
+        "REM16",
+        "REM17"
+      ],
+      "status": "Closed",
+      "regressionStatus": "Regression-covered-final-seal",
+      "evidence": [
+        "app/XDM/eng/rem18-final-release-seal.sh",
+        "app/XDM/eng/rem18-release-matrix-audit.py",
+        "app/XDM/eng/rem18-fault-injection-matrix.json",
+        "app/XDM/src/XDM.Parity.Tests/Rem18FinalSealCoverageTests.cs"
+      ]
+    }
+  ]
+}

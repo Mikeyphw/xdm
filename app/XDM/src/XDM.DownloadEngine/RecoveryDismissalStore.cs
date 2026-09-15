@@ -12,14 +12,14 @@ internal sealed record RecoveryDismissalMarker(
     public const int CurrentVersion = 1;
 }
 
-internal sealed class RecoveryDismissalStore
+internal static class RecoveryDismissalStore
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
     };
 
-    public async Task<bool> IsDismissedAsync(
+    public static async Task<bool> IsDismissedAsync(
         string destinationPath,
         CancellationToken cancellationToken = default)
     {
@@ -64,7 +64,7 @@ internal sealed class RecoveryDismissalStore
         }
     }
 
-    public Task SaveAsync(
+    public static Task SaveAsync(
         string destinationPath,
         string candidateId,
         CancellationToken cancellationToken = default)

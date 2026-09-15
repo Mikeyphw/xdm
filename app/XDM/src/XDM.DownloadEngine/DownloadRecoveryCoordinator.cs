@@ -34,7 +34,6 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator, 
     private readonly HttpClient _httpClient;
     private readonly ResumeCheckpointStore _checkpointStore = new();
     private readonly FinalizationJournalStore _finalizationJournalStore = new();
-    private readonly RecoveryDismissalStore _dismissalStore = new();
     private readonly object _sync = new();
     private DownloadRecoveryCandidate[] _current = [];
 
@@ -90,7 +89,7 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator, 
             cancellationToken.ThrowIfCancellationRequested();
             string destinationPath = Path.GetFullPath(item.DestinationPath);
             knownDestinations.Add(destinationPath);
-            if (await _dismissalStore.IsDismissedAsync(destinationPath, cancellationToken).ConfigureAwait(false))
+            if (await RecoveryDismissalStore.IsDismissedAsync(destinationPath, cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
@@ -111,7 +110,7 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator, 
         foreach (string destinationPath in EnumerateArtifactDestinations(GetScanRoots(persisted), cancellationToken))
         {
             if (knownDestinations.Contains(Path.GetFullPath(destinationPath))
-                || await _dismissalStore.IsDismissedAsync(destinationPath, cancellationToken).ConfigureAwait(false))
+                || await RecoveryDismissalStore.IsDismissedAsync(destinationPath, cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
@@ -238,7 +237,7 @@ public sealed class DownloadRecoveryCoordinator : IDownloadRecoveryCoordinator, 
 
         if (persist)
         {
-            await _dismissalStore
+            await RecoveryDismissalStore
                 .SaveAsync(candidate.DestinationPath, candidate.Id, cancellationToken)
                 .ConfigureAwait(false);
         }

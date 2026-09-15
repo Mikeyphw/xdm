@@ -55,3 +55,17 @@ Windows PowerShell:
 ```
 
 Devtool continues to validate only `app/XDM/XDM.Modern.sln`.
+
+
+## REM18 final release seal
+
+The final XDM Desktop release gate is owned by **REM18, overlay 18 of 18**. It is not a documentation-only checkpoint: Devtool must apply the overlay with validation enabled and the final package step must execute `app/XDM/eng/rem18-final-release-seal.sh` or the Windows PowerShell equivalent.
+
+The REM18 gate proves the whole repaired system rather than one feature area. Required evidence includes the full 258-finding closure ledger, Linux/Windows x64/arm64 release matrix coverage, browser/native-host and shutdown concurrency fault injection contracts, diagnostics bundle privacy boundaries, FFmpeg/process cancellation pressure tests, updater rollback observation-window contracts, and release metadata/signing checks.
+
+A release is blocked unless `docs/remediation/XDM_DESKTOP_FINAL_REMEDIATION_LEDGER.json` audits to 258/258 Closed with severity totals of 67 High, 153 Medium, and 38 Low.
+
+
+## Single Firefox extension gate
+
+The desktop final gate includes the XFE01 validator. Firefox support is sealed only when desktop packaging consumes the Android-owned canonical Firefox source and the retired desktop Firefox fork remains non-loadable.

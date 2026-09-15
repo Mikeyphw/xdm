@@ -180,8 +180,7 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
                     && previousStart >= candidateWindow.Value;
                 if (candidateWindow is not null && !alreadyStarted)
                 {
-                    ActiveScheduleRun run = await StartScheduleRunAsync(definition, candidateWindow.Value, snapshot, cancellationToken)
-                        .ConfigureAwait(false);
+                    ActiveScheduleRun run = StartScheduleRun(definition, candidateWindow.Value, snapshot);
                     _runs[run.RunId] = run;
                     lastStarts[definition.ScheduleKey] = candidateWindow.Value;
                 }
@@ -351,11 +350,10 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
         }
     }
 
-    private async Task<ActiveScheduleRun> StartScheduleRunAsync(
+    private static ActiveScheduleRun StartScheduleRun(
         ScheduleDefinitionRuntime definition,
         DateTimeOffset windowStartUtc,
-        ApplicationSnapshot snapshot,
-        CancellationToken cancellationToken)
+        ApplicationSnapshot snapshot)
     {
         string runId = $"{definition.ScheduleKey}:{windowStartUtc:yyyyMMddHHmmss}";
         ActiveScheduleRun run = new(
@@ -688,7 +686,7 @@ public sealed class QueueSchedulerRuntime : IQueueSchedulerRuntime
         }
     }
 
-    private void TrackDownloadsForActiveWindow(
+    private static void TrackDownloadsForActiveWindow(
         ActiveScheduleRun run,
         ApplicationSnapshot snapshot,
         DateTimeOffset windowStartUtc)

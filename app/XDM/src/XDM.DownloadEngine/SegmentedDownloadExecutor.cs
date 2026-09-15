@@ -447,7 +447,7 @@ internal sealed class SegmentedDownloadExecutor
     }
 
 
-    private async Task PrepareSegmentGenerationAsync(
+    private static async Task PrepareSegmentGenerationAsync(
         string segmentDirectory,
         TransferIdentity currentIdentity,
         CancellationToken cancellationToken)

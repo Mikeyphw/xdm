@@ -113,7 +113,7 @@ public sealed class AccessibilityUiArchitectureTests
                     continue;
                 }
 
-                Assert.True(false, $"{element.Name.LocalName}.{attributeName} has non-localized visible text: {value}");
+                Assert.Fail($"{element.Name.LocalName}.{attributeName} has non-localized visible text: {value}");
             }
         }
     }

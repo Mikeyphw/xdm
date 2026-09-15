@@ -5,5 +5,5 @@ version="${1:-$(tr -d '[:space:]' < "$repo_root/VERSION")}"
 rm -rf "$repo_root/artifacts/packages"
 mkdir -p "$repo_root/artifacts/packages"
 for rid in linux-x64 linux-arm64; do
-  "$repo_root/app/XDM/eng/publish-one.sh" "$rid" "$version"
+  bash "$repo_root/app/XDM/eng/publish-one.sh" "$rid" "$version"
 done
