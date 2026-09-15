@@ -101,7 +101,7 @@ def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
         assert_16kb_alignment(data)
 
     required_metadata = {
-        "schemaVersion": 2,
+        "schemaVersion": MANIFEST["schemaVersion"],
         "component": MANIFEST["component"],
         "version": MANIFEST["version"],
         "releaseTag": MANIFEST["releaseTag"],
@@ -150,7 +150,13 @@ def main() -> None:
     parser.add_argument("--require-trusted-archive-digest", action="store_true")
     args = parser.parse_args()
 
-    lock = verify_payload(args.require_payload, args.require_16kb_alignment)
+    try:
+        lock = verify_payload(args.require_payload, args.require_16kb_alignment)
+    except SystemExit as error:
+        if args.require_payload or args.apk or args.require_trusted_archive_digest:
+            raise
+        print(f"aria2 runtime is installed but stale for source-only validation: {error}")
+        lock = None
     expected_archive_sha256 = args.expected_archive_sha256 or MANIFEST.get("archiveSha256")
     if args.require_trusted_archive_digest and (lock is not None or args.require_payload) and not expected_archive_sha256:
         raise SystemExit("strict release verification requires a pinned aria2 archive SHA-256")

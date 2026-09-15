@@ -7,6 +7,16 @@ plugins {
     alias(libs.plugins.room) apply false
 }
 
+// XAR16 v6: all Python-backed validators run without writing __pycache__/pyc files.
+// Prior gates failed because validator tasks generated cache files before the final
+// source-cleanliness check executed. The check remains meaningful for the repository
+// payload while validation itself stays side-effect clean.
+allprojects {
+    tasks.withType<org.gradle.api.tasks.Exec>().configureEach {
+        environment("PYTHONDONTWRITEBYTECODE", "1")
+    }
+}
+
 val verifyStableToolchainBaseline = tasks.register("verifyStableToolchainBaseline") {
     group = "verification"
     description = "Verify XDM Android's pinned stable Gradle/AGP/Kotlin/KSP/Java/SDK baseline."

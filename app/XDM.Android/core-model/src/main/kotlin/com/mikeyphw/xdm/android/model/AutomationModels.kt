@@ -317,7 +317,6 @@ object AutomationCommandIds {
             normalizedPage.orEmpty(),
             normalizedFrame.orEmpty(),
             draft.fileName.textIdentityCommandPart(),
-            draft.mimeType.textIdentityCommandPart(),
             draft.mediaKind.textIdentityCommandPart(),
             draft.stableMediaId.textIdentityCommandPart(),
             (draft.sessionRevision ?: 0L).toString(),

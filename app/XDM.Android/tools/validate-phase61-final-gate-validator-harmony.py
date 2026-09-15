@@ -48,7 +48,7 @@ require(
     "current overlay must point to Phase61 or a later accepted XAR overlay",
 )
 require(61 in manifest.get("project", {}).get("implemented_phases", []), "implemented phases must include 61")
-require(manifest.get("next_phase") in {"media_parity04_browser_ux_userscripts_feedback_final_release_seal", "complete", "phase63_release_readiness_support_bundle_seal", 'phase64_final_android_downloader_rc_seal', 'phase11_validation_matrix', None}, "next phase should mark the field-fix arc complete or point to Phase63 support-bundle seal")
+require(manifest.get("next_phase") in {"media_parity04_browser_ux_userscripts_feedback_final_release_seal", "complete", "phase63_release_readiness_support_bundle_seal", 'phase64_final_android_downloader_rc_seal', 'phase11_validation_matrix', 'XAR17_313_root_closure_audit_final_gate', 'xar17_313_root_closure_audit_final_gate', None}, "next phase should mark the field-fix arc complete or point to Phase63 support-bundle seal")
 require(phase.get("room_schema_unchanged") == 14 or manifest.get('database', {}).get('version', 0) >= 17, "Phase61 validator harmony must survive current schema 17 or newer")
 require(phase.get("top_level_route_added") is False, "Phase61 must not add a top-level route")
 require(phase.get("automatic_transfer_start") is False, "Phase61 must not start transfers automatically")

@@ -1,9 +1,9 @@
 package com.mikeyphw.xdm.android
 
 import java.io.File
-import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 class Xar15PrivacySecurityPerformanceContractTest {
     private val root = File(System.getProperty("user.dir") ?: ".")
@@ -34,6 +34,6 @@ class Xar15PrivacySecurityPerformanceContractTest {
         assertTrue(handoff.contains("fun sweepExpired"))
         assertTrue(app.contains("MediaRequestHandoffStore.sweepExpired()"))
         assertTrue(registry.contains("MAX_SESSIONS"))
-        assertTrue(releaseManifest.contains("MANAGE_EXTERNAL_STORAGE") && releaseManifest.contains("tools:node="remove""))
+        assertTrue(releaseManifest.contains("MANAGE_EXTERNAL_STORAGE") && releaseManifest.contains("tools:node=\"remove\""))
     }
 }

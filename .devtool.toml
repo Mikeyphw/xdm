@@ -34,16 +34,16 @@ prefer_native_termux = true
 [targets.xdm_android.gradle]
 version = "9.7.1"
 provider = "auto"
-max_workers = 2
+max_workers = 1
 structured_events = false
-no_daemon = false
+no_daemon = true
 daemon_idle_timeout_ms = 900000
-parallel = true
+parallel = false
 build_cache = true
 fail_fast = false
 offline = false
 args = [
-  "-Dorg.gradle.parallel=true",
+  "-Dorg.gradle.parallel=false",
   "-Dorg.gradle.vfs.watch=false",
   "-Pkotlin.incremental=true",
   "-Pkotlin.compiler.execution.strategy=in-process",
@@ -74,7 +74,7 @@ test = [
     ":app:testDebugUnitTest",
 ]
 
-lint = ["lintDebug"]
+lint = [":app:lintDebug"]
 clean = ["clean"]
 
 [targets.xdm_android.artifacts]
@@ -85,6 +85,8 @@ external_verification = "required"
 preflight = [
   "verifyStableToolchainBaseline",
   ":app:verifyXar01BuildProvenance",
+  ":app:verifyXar15PrivacySecurityPerformance",
+  ":app:verifyXar16ReleaseEvidenceSeal",
   ":app:verifyGradleTaskGraphOptimization",
   ":app:verifyFfmpeg04FullReleaseSeal",
   ":app:verifyFfmpegRoadmapPostSealHotfix",
@@ -129,10 +131,12 @@ package = [
 ]
 
 lint = [
-  "lintDebug",
+  ":app:lintDebug",
 ]
 
 [env]
+KOTLIN_DAEMON_JVMARGS = "-Xmx512m -XX:MaxMetaspaceSize=256m"
+GRADLE_OPTS = "-Xmx256m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false"
 DOTNET_CLI_TELEMETRY_OPTOUT = "1"
 DOTNET_NOLOGO = "1"
 TZ = ""
@@ -144,74 +148,75 @@ max_workers = 2
 cpu_limit = 2
 
 split_gradle = true
-parallel = true
+parallel = false
 
 no_daemon = false
-stop_daemon_after_phase = false
-low_priority = false
+stop_daemon_after_phase = true
+low_priority = true
 
-gradle_heap_mb = 1280
-gradle_metaspace_mb = 640
-memory_guard_mb = 512
+gradle_heap_mb = 1024
+gradle_metaspace_mb = 512
+memory_guard_mb = 384
 
 [validation.phase_profiles.compile]
-max_workers = 2
-cpu_limit = 2
-gradle_heap_mb = 1280
-memory_guard_mb = 512
-no_daemon = false
-low_priority = false
+max_workers = 1
+cpu_limit = 1
+gradle_heap_mb = 1024
+memory_guard_mb = 384
+no_daemon = true
+low_priority = true
 
 [validation.phase_profiles.preflight]
 max_workers = 1
 cpu_limit = 1
-gradle_heap_mb = 768
-memory_guard_mb = 384
-no_daemon = false
-low_priority = false
+gradle_heap_mb = 640
+memory_guard_mb = 256
+no_daemon = true
+low_priority = true
 
 
 [validation.phase_profiles.dependencies]
 max_workers = 1
 cpu_limit = 1
-gradle_heap_mb = 768
-memory_guard_mb = 384
-no_daemon = false
-low_priority = false
+gradle_heap_mb = 640
+memory_guard_mb = 256
+no_daemon = true
+low_priority = true
 
 
 [validation.phase_profiles.resources]
-max_workers = 2
-cpu_limit = 2
-gradle_heap_mb = 1280
-memory_guard_mb = 512
-no_daemon = false
-low_priority = false
+max_workers = 1
+cpu_limit = 1
+gradle_heap_mb = 1024
+memory_guard_mb = 384
+no_daemon = true
+low_priority = true
 
 
 [validation.phase_profiles.unit-test]
-max_workers = 2
-cpu_limit = 2
-gradle_heap_mb = 1280
-memory_guard_mb = 512
-no_daemon = false
-low_priority = false
+max_workers = 1
+cpu_limit = 1
+gradle_heap_mb = 1024
+memory_guard_mb = 384
+no_daemon = true
+low_priority = true
 
 
 [validation.phase_profiles.package]
-max_workers = 2
-cpu_limit = 2
+max_workers = 1
+cpu_limit = 1
 gradle_heap_mb = 1280
-memory_guard_mb = 640
-no_daemon = false
-low_priority = false
+gradle_metaspace_mb = 512
+memory_guard_mb = 384
+no_daemon = true
+low_priority = true
 
 
 [validation.phase_profiles.lint]
 max_workers = 1
-cpu_limit = 2
-gradle_heap_mb = 1280
-memory_guard_mb = 640
-no_daemon = false
-low_priority = false
+cpu_limit = 1
+gradle_heap_mb = 1024
+memory_guard_mb = 384
+no_daemon = true
+low_priority = true
 

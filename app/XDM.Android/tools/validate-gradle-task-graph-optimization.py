@@ -80,12 +80,40 @@ def array_block(name: str) -> str:
 build_block = array_block("build")
 package_block = array_block("package")
 need('assembleDebug' in build_block, "Devtool build phase no longer assembles debug APK")
+need(re.search(r'"clean"\s*,\s*"assembleDebug"', build_block) is not None, "Devtool build phase must clean stale outputs immediately before assembleDebug")
+need('clean' not in package_block, "Devtool package phase must not repeat clean during Android-test/APK attestation work")
+need(':app:lintDebug' in array_block("lint") and '"lintDebug"' not in array_block("lint"), "Devtool still invokes the root lintDebug aggregate instead of the app-scoped lint gate")
 need('installOfficialAria2Runtime' not in build_block + package_block, "Devtool still schedules aria2 installer redundantly across split phases")
 need('installPinnedFfmpegRuntime' not in build_block + package_block, "Devtool still schedules FFmpeg installer redundantly across split phases")
 need(':app:assembleDebugAndroidTest' in package_block and ':app:verifyFfmpegDebugApkRuntime' in package_block,
      "Devtool package phase lost Android-test/APK runtime attestation")
 need(has(devtool, ':app:verifyGradleTaskGraphOptimization', ':app:verifyFfmpeg04FullReleaseSeal', ':app:verifyFfmpegRoadmapPostSealHotfix'),
      "Devtool preflight does not include optimized graph/self-check and FF04 authorities")
+need(
+    "ReservedCodeCacheSize=256m" in read(ANDROID / "gradle.properties")
+    and "+UseCodeCacheFlushing" in read(ANDROID / "gradle.properties"),
+    "Gradle defaults do not reserve bounded CodeCache for D8/R8 Android-test dex merging on low-RAM Termux",
+)
+
+
+
+# XAR16 v18: validation must remain complete but no longer launch a high-pressure
+# parallel Gradle daemon on the user's low-storage/low-RAM Termux tablet.
+need('org.gradle.parallel=false' in devtool and 'parallel = false' in devtool,
+     "Devtool/Gradle validation still enables parallel execution under Termux memory guard")
+need('no_daemon = true' in devtool and 'stop_daemon_after_phase = true' in devtool,
+     "Devtool validation does not force daemon-free phase isolation after v17 memory-guard failures")
+need('max_workers = 1' in devtool and 'cpu_limit = 1' in devtool,
+     "Devtool validation does not clamp workers/CPU to one for low-memory native Termux validation")
+need('org.gradle.jvmargs=-Xmx1280m' in read(ANDROID / "gradle.properties")
+     and 'org.gradle.workers.max=1' in read(ANDROID / "gradle.properties")
+     and 'org.gradle.daemon=false' in read(ANDROID / "gradle.properties")
+     and 'org.gradle.parallel=false' in read(ANDROID / "gradle.properties"),
+     "gradle.properties does not encode the v18 low-memory Termux execution contract")
+need('-Dorg.gradle.jvmargs=' not in devtool,
+     "Devtool extra Gradle args still inject a duplicate high-pressure org.gradle.jvmargs value")
+need(not (ANDROID / "transfer-native/transfer-native").exists(),
+     "overlay still carries accidental nested transfer-native/transfer-native source mirror")
 
 # aria2 now behaves like the FFmpeg installer: declared inputs/outputs plus packaging ownership.
 need('outputs.upToDateWhen { false }' not in aria_gradle, "aria2 installer is still forced dirty")

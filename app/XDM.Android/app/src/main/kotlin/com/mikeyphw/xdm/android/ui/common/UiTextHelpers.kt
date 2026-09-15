@@ -207,8 +207,7 @@ internal fun firstDownloadUrlFromClipboard(context: Context): String? {
     for (index in 0 until clip.itemCount) {
         val item = clip.getItemAt(index)
         ExternalUrlPolicy.normalizedUrl(item.uri?.toString())?.let { return it }
-        val text = listOfNotNull(item.text?.toString(), item.htmlText).joinToString("
-").take(8_192)
+        val text = listOfNotNull(item.text?.toString(), item.htmlText).joinToString("\n").take(8_192)
         ExternalUrlPolicy.urlsInText(text).firstOrNull()?.let { return it }
         ExternalUrlPolicy.normalizedUrl(text)?.let { return it }
     }

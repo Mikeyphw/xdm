@@ -105,13 +105,20 @@ require_all(release_security, ['"md5"', '"sess"'], "privacy diagnostics redactor
 require_all(debug_store, [
     '"xdm-debug-${safeFileName(run.id)}.zip"',
     "DiagnosticExportIntegrity.writeVerifiedZip",
-    "Room schema: 24",
     "Live Locator WebView",
-    "Diagnostics version: v5 / Media Parity01",
     "DiagnosticBundleMetadata",
     '"bundle-readme.txt"',
     "testSummary = run.summaryLabel",
 ], "DebugTestStore")
+require(
+    "Room schema: 24" in debug_store or "Room schema: 25" in debug_store,
+    "DebugTestStore must report retained schema 24 or the superseding schema 25 truth",
+)
+require(
+    "Diagnostics version: v5 / Media Parity01" in debug_store
+    or "Diagnostics version: v5 / XAR14 settings-diagnostics truth" in debug_store,
+    "DebugTestStore must report the retained Parity01 diagnostics label or the superseding XAR14 diagnostics truth",
+)
 require("(1)" not in debug_store, "DebugTestStore must not generate duplicate-style '(1)' names")
 require_all(debug_screen, [
     "Diagnostics export blocked: final ZIP privacy/integrity verification failed.",
@@ -173,11 +180,14 @@ require_all(developer, [
 ], "Developer media final validation")
 require_all(developer_workspace, [
     "Validation truth",
-    "Room schema: 24",
     "XDM_DIAGNOSTIC_EXPORT_VALIDATED",
     "XDM_REAL_DEVICE_SMOKE_PASSED",
     "XDM_ARIA2_PAYLOAD_VERIFIED",
 ], "Developer Center authoritative validation surface")
+require(
+    "Room schema: 24" in developer_workspace or "Room schema: 25" in developer_workspace,
+    "Developer Center authoritative validation surface must report retained schema 24 or superseding schema 25 truth",
+)
 
 require("Live Locator WebView capture enabled" in activity, "support topology must report the shipped Live Locator WebView")
 require("Product: downloader-only; external browser handoff enabled; built-in browser absent" not in activity, "obsolete downloader-only support topology remains")

@@ -71,6 +71,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
+private const val MAX_BRIDGE_JSON_BYTES = 256 * 1024
+
 private data class MediaLocatorRequestContext(
     val sourceUrl: String,
     val pageUrl: String?,
@@ -780,7 +782,7 @@ class MediaLocatorActivity : ComponentActivity() {
         @JavascriptInterface
         fun observe(rawJson: String) {
             if (rawJson.toByteArray(StandardCharsets.UTF_8).size > MAX_BRIDGE_JSON_BYTES) {
-                debugRecorder.record(DebugArea.WebView, DebugSeverity.Warning, "bridge-observation", "rejected", mapOf("reason" to "payload-too-large"), pageOperationId)
+                debugRecorder.record(DebugArea.WebView, DebugSeverity.Warning, "bridge-observation", "rejected", mapOf("reason" to "payload-too-large"), operationId = pageOperationId)
                 return
             }
             val observation = runCatching { JSONObject(rawJson) }.getOrNull() ?: return

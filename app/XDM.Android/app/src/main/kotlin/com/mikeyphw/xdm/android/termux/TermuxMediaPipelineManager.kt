@@ -1789,6 +1789,7 @@ class TermuxMediaPipelineManager(
             check(repository.saveMediaCaptureWithVariants(refreshedCapture, variants, resolvedAt)) {
                 "Media capture changed while Termux media metadata was resolving"
             }
+            true
         } else {
             repository.saveMediaCapture(refreshedCapture)
         }

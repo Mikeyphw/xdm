@@ -55,6 +55,9 @@ val releaseDocsValidated = validationEvidence("xdm.validation.releaseDocsPassed"
 val routeTopologyValidated = validationEvidence("xdm.validation.routeTopologyPassed")
 val lintValidationPassed = validationEvidence("xdm.validation.lintPassed")
 val nativeSymbolsValidated = validationEvidence("xdm.validation.nativeSymbolsPassed")
+val apkSetInstallVerified = validationEvidence("xdm.validation.apkSetInstalled")
+val publicationEvidenceVerified = validationEvidence("xdm.validation.publicationEvidenceVerified")
+val signedReleaseJourneysPassed = validationEvidence("xdm.validation.signedReleaseJourneysPassed")
 
 android {
     namespace = "com.mikeyphw.xdm.android"
@@ -85,6 +88,9 @@ android {
         buildConfigField("Boolean", "XDM_ROUTE_TOPOLOGY_VALIDATED", routeTopologyValidated.toString())
         buildConfigField("Boolean", "XDM_LINT_VALIDATION_PASSED", lintValidationPassed.toString())
         buildConfigField("Boolean", "XDM_NATIVE_SYMBOLS_VALIDATED", nativeSymbolsValidated.toString())
+        buildConfigField("Boolean", "XDM_APK_SET_INSTALL_VERIFIED", apkSetInstallVerified.toString())
+        buildConfigField("Boolean", "XDM_PUBLICATION_EVIDENCE_VERIFIED", publicationEvidenceVerified.toString())
+        buildConfigField("Boolean", "XDM_SIGNED_RELEASE_JOURNEYS_PASSED", signedReleaseJourneysPassed.toString())
         buildConfigField("Boolean", "XDM_SCOPED_STORAGE_RELEASE_LANE", "true")
         buildConfigField("Boolean", "XDM_ARIA2_PAYLOAD_GATE_CONFIGURED", "true")
         buildConfigField("Boolean", "XDM_FFMPEG_PAYLOAD_GATE_CONFIGURED", "true")
@@ -313,6 +319,7 @@ val staticValidationInputs = files(
 
 
 fun Exec.trackStaticValidation(stampName: String) {
+    environment("PYTHONDONTWRITEBYTECODE", "1")
     inputs.files(staticValidationInputs)
     val stampFile = project.layout.buildDirectory.file("validation/$stampName.stamp")
     outputs.file(stampFile)
@@ -499,6 +506,33 @@ val verifyXar14SettingsDiagnosticsTruth = tasks.register<Exec>("verifyXar14Setti
     trackStaticValidation("xar14-settings-diagnostics-truth")
 }
 
+val verifyXar15PrivacySecurityPerformance = tasks.register<Exec>("verifyXar15PrivacySecurityPerformance") {
+    group = "verification"
+    description = "Verify XAR15 privacy, security, performance, and scoped-storage release-lane contracts."
+    dependsOn(verifyXar14SettingsDiagnosticsTruth)
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar15-privacy-security-performance.py")
+    trackStaticValidation("xar15-privacy-security-performance")
+}
+
+val verifyXar16ReleaseEvidenceSeal = tasks.register<Exec>("verifyXar16ReleaseEvidenceSeal") {
+    group = "verification"
+    description = "Verify XAR16 same-run signed release, APK-set, device, publication, and evidence-seal contracts."
+    dependsOn(verifyXar15PrivacySecurityPerformance)
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-xar16-release-evidence-seal.py")
+    trackStaticValidation("xar16-release-evidence-seal")
+}
+
+tasks.register<Exec>("xdmSignedReleaseSeal") {
+    group = "verification"
+    description = "Run the XAR16 signed release/device/APK-set/publication evidence gate. Requires release signing, bundletool, native runtime and connected-device evidence."
+    dependsOn(verifyXar16ReleaseEvidenceSeal)
+    workingDir(rootProject.projectDir)
+    environment("XDM_XAR16_FULL_RELEASE_GATE", "1")
+    commandLine("bash", "tools/run-xar16-signed-release-gate.sh", "--ci")
+}
+
 val verifyGradleTaskGraphOptimization = tasks.register<Exec>("verifyGradleTaskGraphOptimization") {
     group = "verification"
     description = "Verify XDM Android Gradle task-graph deduplication, incremental runtime setup, and validation coverage preservation."
@@ -547,25 +581,12 @@ tasks.matching { it.name == "assembleDebug" }.configureEach {
 val finalRemediationStaticGate = tasks.register<Exec>("finalRemediationStaticGate") {
     group = "verification"
     description = "Run the canonical XDM final static release gate, including the UX13 end-to-end UI/UX seal."
-    dependsOn(
-        verifyXar01BuildProvenance,
-        verifyXar02ConcurrencyCas,
-        verifyXar03PersistenceGenerationIntegrity,
-        verifyXar04NavigationSessionOwnership,
-        verifyXar05ExternalIntakeAdmission,
-        verifyXar06StoragePublication,
-        verifyXar07NativeHttpProtocol,
-        verifyXar08Aria2Ownership,
-        verifyXar09SchedulerRecovery,
-        verifyXar10BrowserCaptureEvidence,
-        verifyXar11ManifestResolution,
-        verifyXar12MediaExecutionSeal,
-        verifyXar13DownloadsTruthfulActions,
-        verifyXar14SettingsDiagnosticsTruth,
-        verifyFfmpeg04FullReleaseSeal,
-        verifyFfmpegRoadmapPostSealHotfix,
-        verifyGradleTaskGraphOptimization,
-    )
+    // Do not add dependsOn(...) edges from the aggregate final gate back to individual
+    // XAR validators. Devtool already requests those validators explicitly, and older
+    // retained validation wiring can attach finalRemediationStaticGate to the XAR05
+    // admission task. Keeping this aggregate edge-free prevents a Gradle graph cycle
+    // while preserving validation: the shell gate below still executes the canonical
+    // final validator suite when this task runs directly.
     workingDir(rootProject.projectDir)
     // Preserve the historical command line for retained source-contract tests. The environment
     // tells the shell gate that Gradle already executed the FFmpeg/execution DAG exactly once.
@@ -614,7 +635,7 @@ tasks.register("checkBrowserIntegration") {
     group = "verification"
     description = "Run Android browser bridge unit checks and validate the keyless development Firefox extension."
     dependsOn(
-        "testDebugUnitTest",
+        ":browser-integration:testDebugUnitTest",
         ":browser-extension:validateFirefoxExtension",
     )
 }

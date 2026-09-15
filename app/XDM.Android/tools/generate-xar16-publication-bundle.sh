@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+RUN_ID="${XDM_XAR16_RUN_ID:?XDM_XAR16_RUN_ID required}"
+EVIDENCE_DIR="${XDM_XAR16_EVIDENCE_DIR:-build/xar16/evidence/$RUN_ID}"
+OUT_DIR="build/release/publication/xar16-$RUN_ID"
+mkdir -p "$OUT_DIR"
+python3 tools/verify-xar16-release-evidence.py --evidence-dir "$EVIDENCE_DIR" --require-publication-ready --out "$OUT_DIR/release-metadata.json"
+cp "$EVIDENCE_DIR"/phase10-release-attestation.json "$OUT_DIR/"
+cp "$EVIDENCE_DIR"/xar16-same-run-artifacts.json "$OUT_DIR/"
+cp "$EVIDENCE_DIR"/xar16-device-matrix.json "$OUT_DIR/"
+cp "$EVIDENCE_DIR"/xar16-signed-release-journeys.json "$OUT_DIR/"
+find "$OUT_DIR" -type f -maxdepth 1 -print0 | sort -z | xargs -0 sha256sum > "$OUT_DIR/SHA256SUMS"
+find "$OUT_DIR" -type f -maxdepth 1 -print0 | sort -z | xargs -0 sha512sum > "$OUT_DIR/SHA512SUMS"
+echo "$OUT_DIR"

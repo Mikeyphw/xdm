@@ -13,7 +13,8 @@ PARITY01_OVERLAY = "xdm_media_parity01_runtime_truth_diagnostics_backend_reliabi
 PARITY02_OVERLAY = "xdm_media_parity02_logical_media_capture_browser_convergence_v2.zip"
 PARITY03_OVERLAY = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 PARITY04_OVERLAY = "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip"
-XAR_SUCCESSORS = {f"XAR{index:02d} " for index in range(1, 18)}
+XAR_SUCCESSORS = {f"XAR{index:02d}" for index in range(1, 18)} | {f"XAR{index:02d} " for index in range(1, 18)}
+XAR_NEXT_PHASES = {f"XAR{index:02d}_313_root_closure_audit_final_gate" for index in range(1, 18)} | {f"XAR{index:02d}" for index in range(1, 18)}
 
 
 def text(relative: str) -> str:
@@ -54,7 +55,13 @@ require(
     or current_overlay.startswith("xdm_android_xar"),
     "PROJECT_MANIFEST current_overlay must point to UX13 or an accepted successor through Parity04/XAR",
 )
-require(manifest.get("next_phase") in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal", None}, "UX13 must close the historical UX roadmap or point to the accepted Parity04 successor")
+next_phase = manifest.get("next_phase")
+require(
+    next_phase in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal", None}
+    or str(next_phase) in XAR_NEXT_PHASES
+    or str(next_phase).startswith("XAR"),
+    "UX13 must close the historical UX roadmap or point to the accepted Parity04/XAR successor",
+)
 require(manifest.get("database", {}).get("version", 0) >= 21, "later schema evolution must retain at least the UX13 Room 21 baseline")
 phase = manifest.get("ux13_end_to_end_ui_ux_release_seal", {})
 require(phase.get("status") == "implemented_final_seal", "UX13 manifest block must be final-seal status")

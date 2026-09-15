@@ -365,6 +365,7 @@ class MediaDownloadPlanner {
             val explicit = id?.let { wanted -> variants.firstOrNull { it.id == wanted && it.kind == kind } }
             if (explicit != null && (requiredGroup == null || explicit.groupId == requiredGroup)) return explicit.id
             val timeline = video?.manifestTimelineGroupId
+            if (id == null && requiredGroup == null && timeline == null) return null
             val sameTimeline = variants.filter { variant ->
                 variant.kind == kind && (timeline == null || variant.manifestTimelineGroupId == timeline)
             }

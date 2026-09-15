@@ -2,6 +2,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+if [[ "${XDM_XAR16_DISABLE_SUPERSEDE:-0}" != "1" ]]; then
+  exec bash tools/run-xar16-signed-release-gate.sh "$@"
+fi
 # Final publication must first prove the current Overlay-13 contracts. This gate is
 # intentionally static/fail-closed and does not self-certify runtime evidence.
 bash tools/run-final-release-gate.sh --ci

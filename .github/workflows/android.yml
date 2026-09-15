@@ -51,6 +51,7 @@ jobs:
           python3 tools/validate-uix-r6-accessibility-performance-release-seal.py
           python3 tools/validate-bug-hunt-phase11-validation-matrix.py
           bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
+          python3 tools/validate-xar16-release-evidence-seal.py
           bash tools/run-final-release-gate.sh --ci
       - name: Bootstrap wrapper
         run: test -f gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 9.7.1
@@ -82,8 +83,11 @@ jobs:
       XDM_RELEASE_KEY_ALIAS: ${{ secrets.XDM_RELEASE_KEY_ALIAS }}
       XDM_RELEASE_KEY_PASSWORD: ${{ secrets.XDM_RELEASE_KEY_PASSWORD }}
       XDM_RELEASE_SIGNER_SHA256: ${{ secrets.XDM_RELEASE_SIGNER_SHA256 }}
+      XDM_RELEASE_CERTIFICATE_NOT_AFTER: ${{ secrets.XDM_RELEASE_CERTIFICATE_NOT_AFTER }}
       XDM_RELEASE_BUILD_ID: ${{ github.sha }}
       XDM_ARIA2_ARCHIVE_SHA256: ${{ secrets.XDM_ARIA2_ARCHIVE_SHA256 }}
+      XDM_XAR16_PREVIOUS_RELEASE_APK: ${{ github.workspace }}/previous-release.apk
+      XDM_XAR16_FULL_RELEASE_GATE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -114,7 +118,7 @@ jobs:
       - name: Build pinned FFmpeg runtime
         run: python3 tools/install-ffmpeg-runtime.py --build-pinned
       - name: Signed release gate
-        run: bash tools/run-bug-hunt-phase10-release-gate.sh
+        run: bash tools/run-xar16-signed-release-gate.sh --ci
       - name: Attest Android publication metadata
         uses: actions/attest@v4
         with:
@@ -125,5 +129,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: xdm-android-signed-release
-          path: app/XDM.Android/build/release/publication/*
+          path: app/XDM.Android/build/release/publication/**/*
           if-no-files-found: error

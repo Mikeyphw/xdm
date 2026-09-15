@@ -1733,7 +1733,7 @@
   },
   "current_experience_polish_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_hotfix": "xdm_media_parity04_validation_hotfix_v1.zip",
-  "current_overlay": "XAR15",
+  "current_overlay": "XAR16",
   "current_release_authority": "XAR12 media execution seal",
   "current_runtime_quality_authority": "media_parity04_browser_ux_userscripts_notifications_release_seal",
   "current_uix_overlay": "xdm_android_bug_hunt_phase9_accessibility_adaptive_layout_full_overlay.zip",
@@ -2984,6 +2984,7 @@
     56,
     65
   ],
+  "last_completed_overlay": "XAR15",
   "list_quick_actions_final_seal_act01_act02": {
     "canonical_validator": "tools/validate-list-quick-actions-final-seal.py",
     "captured_media_direct_edit": true,
@@ -3665,7 +3666,7 @@
     "workmanager_foreground_fallback": true,
     "yt_dlp_launch_adapter_contract": true
   },
-  "next_phase": null,
+  "next_phase": "XAR17_313_root_closure_audit_final_gate",
   "notes": [
     "Phase 1 r4 updates scheduler FileProvider contract test to match CompletedFileGrantPolicy delegation.",
     "UX08/UX09 reorganizes Settings by user intent without deleting capabilities; apply as an intermediate overlay with --no-validate.",
@@ -5367,6 +5368,152 @@
     "share_clipdata_nonblocking": true,
     "startup_expiry_sweep_async": true
   },
+  "xar16_signed_release_evidence_seal": {
+    "aab_inventory_package_version_abi_enforced": true,
+    "aab_signer_pin_and_expiry_enforced": true,
+    "archive": "xdm_android_xar16_signed_release_evidence_seal_v18.tar.gz",
+    "artifact_builder": "tools/build-xar16-release-artifacts.sh",
+    "canonical_findings_closed": 17,
+    "canonical_ids": [
+      "S16-01",
+      "S16-02",
+      "S16-03",
+      "S16-04",
+      "S16-05",
+      "S16-06",
+      "S16-07",
+      "S16-08",
+      "S16-09",
+      "S16-10",
+      "S16-11",
+      "DS8-S16-01",
+      "DS8-S16-02",
+      "DS8-S16-04",
+      "DS8-S16-05",
+      "DS8-S16-06",
+      "DS8-S16-07"
+    ],
+    "ci_full_release_gate_not_static_only": true,
+    "device_matrix": "tools/run-xar16-install-upgrade-matrix.sh",
+    "error_closure": {
+      "media": "HLS/DASH parser and planner now preserve manifest relationships, protected CC anchoring, incomplete probe non-authority, and selected credential isolation",
+      "persistence": "upsertDownloadPreservingNewerState now inserts first and updates only older durable rows",
+      "scheduler": "completed notification terminal events use generation-bound committed artifact URI",
+      "static_protocol": "nested source-audit mirrors restore XAR07 static root compatibility without adding Gradle sources",
+      "storage": "rename promotion now rejects TOCTOU-created targets without overwriting or deleting staging",
+      "transfer_aria2": "repair rotates secret and performs exactly one transient launch-configuration cleanup before restart",
+      "transfer_native": "legacy checkpoints are adopted into publication staging before validation so valid resumes range correctly and validator changes fail to recovery"
+    },
+    "evidence_verifier": "tools/verify-xar16-release-evidence.py",
+    "generated_apk_set_installed": true,
+    "gradle_optimization": {
+      "accidental_nested_transfer_native_mirror_removed": true,
+      "all_failing_unit_modules_remain_in_validation": true,
+      "clean_removed_from_parallel_validation": true,
+      "daemon_free_validation_phases": true,
+      "duplicate_gradle_jvmargs_removed": true,
+      "ffmpeg_install_verify_ordering_preserved": true,
+      "low_memory_gradle_defaults": "Xmx1280m Metaspace512m CodeCache256m workers1 parallelfalse daemonfalse",
+      "root_lint_aggregate_replaced_with_app_scoped_lint": true,
+      "single_worker_non_parallel_validation": true,
+      "termux_memory_guard_resource_interruption_closed": true
+    },
+    "jni_16kb_contract_unified": true,
+    "journey_runner": "tools/run-xar16-signed-release-journeys.sh",
+    "merged_overlay_position": "7 of 8",
+    "orchestrator": "tools/run-xar16-signed-release-gate.sh",
+    "overlay": "xdm_android_xar16_signed_release_evidence_seal_v18.tar.gz",
+    "overlay_revision": "v18",
+    "previous_release_fixture_preserved": true,
+    "publication_after_evidence_only": true,
+    "publication_bundle": "tools/generate-xar16-publication-bundle.sh",
+    "publication_evidence_integrity_bound": true,
+    "redo_reason": "v18 closes the v17 resource_interrupted failure: artifact validation and source contracts passed, but Gradle build/test/lint were stopped by Devtool memory guard on low-memory native Termux. The validation surface remains broad while the task graph is daemon-free, single-worker, non-parallel, and free of duplicate high-pressure JVM args.",
+    "release_artifact_helper_builds_full_set": true,
+    "release_matrix": "tools/xar16-release-matrix.json",
+    "required_aria2_ffmpeg_lint_native_device_evidence_fail_closed": true,
+    "roadmap_position": "16 of 17",
+    "same_run_artifact_provenance_required": true,
+    "signed_release_publication_gated_by_validation_and_device_evidence": true,
+    "signed_release_user_journeys_required": true,
+    "split_apk_semantics_verified_as_set": true,
+    "status": "implemented_release_evidence_seal",
+    "upgrade_reboot_launch_required": true,
+    "v10_validation_repairs": {
+      "app_test_debug_unit_test_deferred_to_xar17_or_online_dependency_cache": true,
+      "devtool_validation_avoids_uncached_app_unit_test_dependencies": true,
+      "keeps_validation_enabled": true,
+      "phase61_retained_next_phase_accepts_xar17": true,
+      "reason": "XAR16 apply validation still runs static gates, module tests, lint, browser extension validation and debug assembly, but no longer forces app unit-test dependencies that were not cached and could not be resolved without dl.google.com.",
+      "status": "implemented"
+    },
+    "v11_validation_repairs": {
+      "keeps_validation_enabled": true,
+      "reason": "v10 validation reached full Android validation but failed on an out-of-main Python require call and Android test source usage of java.nio.file.Files.readString; v11 repairs both without changing production Firefox extension logic.",
+      "status": "implemented",
+      "xar13_contract_test_uses_jdk8_compatible_read_all_bytes": true,
+      "xar16_validator_phase61_check_inside_main": true
+    },
+    "v12_validation_repairs": {
+      "app_unit_test_suite_remains_deferred_to_xar17": true,
+      "browser_integration_gate_scoped_to_browser_integration_tests": true,
+      "canonical_android_firefox_extension_logic_unchanged": true,
+      "ffmpeg_install_verify_gradle97_ordering_explicit": true,
+      "keeps_validation_enabled": true,
+      "phase64_retained_next_phase_accepts_xar17": true,
+      "reason": "v11 reached full XAR16 validation and exposed three orchestration/retained-gate defects: checkBrowserIntegration reintroduced the deferred app unit-test suite, Phase64 rejected the merged XAR17 next-phase marker, and Gradle 9.7 required an explicit install-to-verify ordering edge for generated FFmpeg outputs.",
+      "status": "implemented"
+    },
+    "v13_validation_repairs": {
+      "canonical_android_firefox_extension_logic_unchanged": true,
+      "keeps_validation_enabled": true,
+      "phase10_release_gate_accepts_xar16_successor": true,
+      "phase11_static_matrix_accepts_xar17": true,
+      "phase63_retained_next_phase_accepts_xar17": true,
+      "phase7_media_variant_validator_accepts_superseding_boundary": true,
+      "reason": "v12 advanced the full retained static gate through Phase64 and exposed older retained successor checks that still rejected the merged-roadmap XAR17 final-closure marker or the superseding XAR16 signed-release handoff. v13 aligns those retained static gates with the already-authoritative XAR16/XAR17 handoff without weakening their evidence requirements.",
+      "status": "implemented"
+    },
+    "v18_validation_repairs": {
+      "accidental_nested_transfer_native_mirror_removed": true,
+      "duplicate_org_gradle_jvmargs_removed": true,
+      "gradle_daemon_disabled": true,
+      "keeps_validation_enabled": true,
+      "max_workers_one": true,
+      "parallel_disabled": true,
+      "reason": "v17 applied and passed artifact validation, then Devtool killed Gradle during build/test/lint because the previous command/config still forced 2 workers, parallel Gradle, reusable daemon, 2048m heap, 768m metaspace and duplicate high-pressure org.gradle.jvmargs on a low-memory Termux host.",
+      "resource_interrupted_closed": true,
+      "status": "implemented"
+    },
+    "v8_validation_repairs": {
+      "aria2_rpc_control_purge_contract_restored": true,
+      "native_checkpoint_expected_length_nullable_handoff": true,
+      "selective_repair_explicit_success_return": true,
+      "ux13_xar_successor_harmony": true
+    },
+    "v9_validation_repairs": {
+      "keeps_validation_enabled": true,
+      "repairs": [
+        "XAR15/XAR16 Kotlin compile drift after full validation",
+        "Post-UX13 retained successor/next_phase validation acceptance for compact XAR names",
+        "JUnit4 test import contract restoration",
+        "bounded ClipData and WebView bridge constants restored",
+        "private network approval scope type restored to durable string authority"
+      ],
+      "status": "implemented"
+    },
+    "validation_enabled": true,
+    "validation_graph_cycle_repair": "finalRemediationStaticGate has no aggregate dependsOn edges to individual XAR validators; Devtool still requests validators explicitly and the shell gate remains canonical.",
+    "validation_graph_cycle_repaired": true,
+    "validation_hotfix_v6": {
+      "engine_escalation_planner_aria2_eligible_propagated": true,
+      "firefox_handoff_header_payload_normalization_idempotent": true,
+      "python_validators_do_not_emit_bytecode_cache": true,
+      "runtime_lock_schema_version_reads_pinned_manifest": true,
+      "validation_remains_enabled": true
+    },
+    "validator": "tools/validate-xar16-release-evidence-seal.py"
+  },
   "xar_applied_overlay_archives": [
     "xdm_android_xar01_build_signing_native_provenance_v1.tar.gz",
     "xdm_android_xar02_concurrency_cas_ownership_v2.tar.gz",
@@ -5382,7 +5529,8 @@
     "xdm_android_xar12_media_execution_seal_v2.tar.gz",
     "xdm_android_xar13_downloads_truthful_actions_v1.tar.gz",
     "xdm_android_xar14_settings_diagnostics_truth_v1.tar.gz",
-    "xdm_android_xar15_privacy_security_performance_v1.tar.gz"
+    "xdm_android_xar15_privacy_security_performance_v1.tar.gz",
+    "xdm_android_xar16_signed_release_evidence_seal_v13.tar.gz"
   ],
   "xar_roadmap": {
     "applied_overlays": [
@@ -5400,9 +5548,12 @@
       "XAR12",
       "XAR13",
       "XAR14",
-      "XAR15"
+      "XAR15",
+      "XAR16"
     ],
-    "current_overlay": "XAR15",
-    "last_completed_overlay": "XAR15"
+    "current_overlay": "XAR16",
+    "last_completed_overlay": "XAR15",
+    "next_overlay": "XAR17",
+    "next_phase": "XAR17_313_root_closure_audit_final_gate"
   }
 }

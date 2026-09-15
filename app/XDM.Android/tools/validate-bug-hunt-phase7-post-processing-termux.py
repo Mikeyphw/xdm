@@ -90,10 +90,16 @@ def validate(root: Path) -> list[str]:
         "recoverInterruptedJobs", "immutableSpecJson", "maxAttemptGeneration", "parentJobId",
         "preflightIssue", "runAndroidChecksum", "requestControlNow", "ForceCancel", "TimedOut",
         "findJobByRunId", "processToken", "PrivacyDiagnosticsRedactor.redactText",
-        "reconcileCommittedPublication", "PostProcessingResultMode.SideEffectOnly", "ownerSnapshot?.finished", "updateFromFfprobe", "updateFromYtDlp", "replaceMediaVariantsForCapture",
+        "reconcileCommittedPublication", "PostProcessingResultMode.SideEffectOnly", "ownerSnapshot?.finished", "updateFromFfprobe", "updateFromYtDlp",
         "clearManualTerminalJobs", "mediaSubjectGeneration", "prepareDownloadGraphDeletion", "clearTerminalBridgeUris",
         "expectedProcessToken == null", "durableControl == 0", "dao.attachRun",
     ), "pipeline manager", errors)
+    require(
+        "replaceMediaVariantsForCapture" in manager
+        or "saveMediaCaptureWithVariants" in manager,
+        "pipeline manager must persist resolved media variants through the retained DAO replacement or the superseding transactional repository boundary",
+        errors,
+    )
 
     require(bridge.find("bridgePeak") != -1 and bridge.find("bridgePeak") < bridge.find("createInputBridge"), "capacity preflight must precede input staging", errors)
     contains_all(bridge, (

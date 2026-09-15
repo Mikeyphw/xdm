@@ -73,8 +73,13 @@ for needle in ['adb install -r "$PREVIOUS_APK"','adb install -r "$CANDIDATE_APK"
     require(needle in upgrade, f'upgrade matrix missing {needle}')
 for needle in ['SHA256SUMS','SHA512SUMS','release-metadata.json','publicationRequires','phase10-sbom.json','phase10-provenance.json','CHECKSUM_ATTESTATION_REQUIRED']:
     require(needle in pub, f'publication bundle missing {needle}')
-for needle in ['signed-release:', 'XDM_RELEASE_KEYSTORE_BASE64', 'XDM_RELEASE_SIGNER_SHA256', 'BUNDLETOOL_JAR=', 'ensure-bundletool.py', 'ndk;${XDM_ANDROID_NDK_VERSION}', 'bash tools/run-bug-hunt-phase10-release-gate.sh', 'actions/attest', 'xdm-android-signed-release']:
+for needle in ['signed-release:', 'XDM_RELEASE_KEYSTORE_BASE64', 'XDM_RELEASE_SIGNER_SHA256', 'BUNDLETOOL_JAR=', 'ensure-bundletool.py', 'ndk;${XDM_ANDROID_NDK_VERSION}', 'actions/attest', 'xdm-android-signed-release']:
     require(needle in workflow, f'Android workflow missing {needle}')
+require(
+    'bash tools/run-bug-hunt-phase10-release-gate.sh' in workflow
+    or 'bash tools/run-xar16-signed-release-gate.sh --ci' in workflow,
+    'Android workflow must run the retained Phase10 signed-release gate or the superseding XAR16 signed-release gate',
+)
 require('app/build/outputs/apk/release/*.apk' not in workflow.split('xdm-android-debug-artifacts',1)[0], 'debug validation job must not search release APK output')
 for needle in ['versionCode 22','versionName 0.21.0','APK-set','16 KB native alignment','device-to-device transfer','SBOM','provenance','checksum attestation','Phase 10 r2 gap closure','Room schema 17','XDM_ARIA2_ARCHIVE_SHA256']:
     require(needle in doc, f'Phase10 doc missing {needle}')

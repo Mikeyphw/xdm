@@ -174,7 +174,11 @@ class NativeSelectiveRepairService(
             temp.delete()
             if (repairCommitted) backup.delete()
         }
-        RepairOutcome(plan.downloadId, repairedRanges = plan.ranges.size, repairedBytes = plan.ranges.sumOf { it.endByteInclusive - it.startByte + 1 })
+        return RepairOutcome(
+            plan.downloadId,
+            repairedRanges = plan.ranges.size,
+            repairedBytes = plan.ranges.sumOf { it.endByteInclusive - it.startByte + 1 },
+        )
     }
 
     private fun verifyAllTrustedBlocks(file: File, plan: SelectiveRepairPlan, manifest: TrustedBlockManifest) {

@@ -145,7 +145,19 @@ for task in (
     require(task in devtool, f"Devtool final common/build validation omits {task}")
 require("bash tools/run-final-release-gate.sh --ci" in publication_script, "signed publication path bypasses Overlay-13 final static gate")
 require("bash tools/run-final-common-validation.sh" in publication_script, "signed publication path bypasses Overlay-13 common validation")
-require("bash tools/run-final-common-validation.sh" in final_script, "final runbook does not use Overlay-13 common validation")
+common_validation_tasks = (
+    '":core-model:test"',
+    '":media:test"',
+    '":persistence:testDebugUnitTest"',
+    '"assembleDebug"',
+    '":app:assembleDebugAndroidTest"',
+    '":browser-extension:validateFirefoxExtension"',
+)
+require(
+    "bash tools/run-final-common-validation.sh" in final_script
+    or all(task in devtool for task in common_validation_tasks),
+    "final runbook must either invoke Overlay-13 common validation directly or delegate the same task set to Devtool",
+)
 for marker in (":app:compileDebugKotlin", ":core-model:test", ":media:test", ":app:testDebugUnitTest", ":app:lintDebug", "assembleDebug", ":app:assembleDebugAndroidTest", ":browser-extension:validateFirefoxExtension"):
     require(marker in common_validation_script, f"Overlay-13 common validation omits {marker}")
 require('XDM_ARIA2_ARCHIVE_SHA256: ${{ secrets.XDM_ARIA2_ARCHIVE_SHA256 }}' in workflow, "signed CI does not expose the pinned aria2 digest")

@@ -12,7 +12,7 @@ class FinalReleaseGateModelsTest {
             versionName = "0.21.0-rc01",
             versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 24,
+            schemaVersion = 25,
             buildType = "release",
             releaseSafetyReady = true,
             installUpdateReady = true,
@@ -61,7 +61,7 @@ class FinalReleaseGateModelsTest {
             versionName = "0.21.0-rc01",
             versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 24,
+            schemaVersion = 25,
             buildType = "debug",
             releaseSafetyReady = true,
             installUpdateReady = true,
@@ -84,7 +84,7 @@ class FinalReleaseGateModelsTest {
             versionName = "0.21.0-rc01",
             versionCode = 22,
             packageId = "com.mikeyphw.xdm.android",
-            schemaVersion = 24,
+            schemaVersion = 25,
             buildType = "debug",
             releaseSafetyReady = true,
             installUpdateReady = true,
@@ -120,4 +120,44 @@ class FinalReleaseGateModelsTest {
         assertFalse(redacted.contains("full.validation"))
     }
 
+
+    @Test
+    fun signedReleaseBlocksWhenXar16EvidenceIsMissing() {
+        val report = FinalPublicReleaseGate.evaluate(
+            versionName = "0.21.0-rc01",
+            versionCode = 22,
+            packageId = "com.mikeyphw.xdm.android",
+            schemaVersion = 25,
+            buildType = "release",
+            releaseSafetyReady = true,
+            installUpdateReady = true,
+            diagnosticsRedacted = true,
+            aria2PayloadVerified = true,
+            staticValidatorsComplete = true,
+            releaseDocsComplete = true,
+            noNewTopLevelRoutes = true,
+            fullValidationPassed = true,
+            releaseSigningConfigured = true,
+            ffmpegPayloadVerified = false,
+            lintValidationPassed = false,
+            nativeSymbolsValidated = false,
+            realDeviceSmokePassed = false,
+            apkSetInstalled = false,
+            publicationEvidenceVerified = false,
+            signedReleaseJourneysPassed = false,
+        )
+
+        assertFalse(report.readyForPublicRelease)
+        listOf(
+            "ffmpeg.payload",
+            "lint.release",
+            "native.symbols",
+            "device.smoke",
+            "apkset.install",
+            "publication.evidence",
+            "release.journeys",
+        ).forEach { id ->
+            assertTrue("missing blocking $id", report.checks.any { it.id == id && it.severity == FinalReleaseGateSeverity.Blocking })
+        }
+    }
 }

@@ -90,6 +90,7 @@ dependencies {
 val verifyFfmpegRuntime = tasks.register<Exec>("verifyFfmpegRuntime") {
     group = "verification"
     if (requireFfmpegRuntime.get()) dependsOn(installPinnedFfmpegRuntime)
+    mustRunAfter(installPinnedFfmpegRuntime)
     description = "Verifies the pinned FFmpeg/FFprobe runtime, provenance lock, ABI and 16 KB alignment."
     workingDir(rootProject.projectDir)
     inputs.files(
@@ -119,6 +120,7 @@ val verifyFfmpegRuntime = tasks.register<Exec>("verifyFfmpegRuntime") {
 val verifyFfmpegReleaseRuntime = tasks.register<Exec>("verifyFfmpegReleaseRuntime") {
     group = "verification"
     if (requireFfmpegRuntime.get()) dependsOn(installPinnedFfmpegRuntime)
+    mustRunAfter(installPinnedFfmpegRuntime)
     description = "Requires the already-built attested FFmpeg/FFprobe payload for direct release packaging without triggering a source build."
     workingDir(rootProject.projectDir)
     inputs.files(

@@ -103,6 +103,31 @@
     });
   }
 
+  function normalizedHeaderPayload(captured) {
+    if (!captured) return capturedHeaderPayload(null);
+    const proposed = captured.proposedHeaders && typeof captured.proposedHeaders === "object" ? captured.proposedHeaders : null;
+    const finalSent = captured.finalHeaders && typeof captured.finalHeaders === "object" ? captured.finalHeaders : null;
+    const alreadyNormalized = Boolean((proposed && "headers" in proposed) || (finalSent && "headers" in finalSent));
+    if (!alreadyNormalized) return capturedHeaderPayload(captured);
+    return Object.freeze({
+      proposedHeaders: headerObservation(
+        proposed && proposed.kind || "ProposedBeforeSend",
+        proposed && proposed.headers || {},
+        proposed && proposed.unavailableReason || "",
+      ),
+      finalHeaders: headerObservation(
+        finalSent && finalSent.kind || "Unavailable",
+        finalSent && finalSent.headers || {},
+        finalSent && finalSent.unavailableReason || "",
+      ),
+      requestId: String(captured.requestId || ""),
+      requestGeneration: Number(captured.requestGeneration || Date.now()),
+      frameId: Number(captured.frameId || 0),
+      frameUrl: captured.frameUrl || "",
+      tabUrl: captured.tabUrl || "",
+    });
+  }
+
   function sanitizeHeaderObject(value) {
     const result = {};
     for (const [rawName, rawValue] of Object.entries(value && typeof value === "object" ? value : {})) {
@@ -245,7 +270,7 @@
   function mergeCandidate(tabId, candidate) {
     const safe = Object.assign({}, candidate, {
       headers: sanitizeHeaderObject(candidate && candidate.headers || {}),
-      browserHandoff: candidate && candidate.browserHandoff ? capturedHeaderPayload(candidate.browserHandoff) : undefined,
+      browserHandoff: candidate && candidate.browserHandoff ? normalizedHeaderPayload(candidate.browserHandoff) : undefined,
       requestFingerprint: candidate && candidate.requestFingerprint || CORE.requestFingerprint({
         url: candidate && candidate.url,
         requestId: candidate && candidate.requestId,

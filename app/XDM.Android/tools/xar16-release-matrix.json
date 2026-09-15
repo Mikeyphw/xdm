@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "roadmapOverlay": "XAR16",
+  "mergedOverlay": "7 of 8",
+  "canonicalRoots": [
+    "S16-01",
+    "S16-02",
+    "S16-03",
+    "S16-04",
+    "S16-05",
+    "S16-06",
+    "S16-07",
+    "S16-08",
+    "S16-09",
+    "S16-10",
+    "S16-11",
+    "DS8-S16-01",
+    "DS8-S16-02",
+    "DS8-S16-04",
+    "DS8-S16-05",
+    "DS8-S16-06",
+    "DS8-S16-07"
+  ],
+  "requiredEvidence": [
+    "same-run-artifacts",
+    "phase10-attestation",
+    "aab-signature-and-expiry",
+    "apk-set-install",
+    "real-device-upgrade-reboot-launch",
+    "signed-release-user-journeys",
+    "publication-checksums",
+    "provenance",
+    "native-runtime-aria2",
+    "native-runtime-ffmpeg",
+    "lint-release",
+    "native-symbols"
+  ],
+  "canonicalJourneys": [
+    "external-add-intake",
+    "native-download-start-pause-resume",
+    "interrupted-recovery-resume",
+    "media-manifest-hls-selection",
+    "storage-publication-open-file",
+    "settings-export-import",
+    "diagnostic-support-bundle-redaction",
+    "upgrade-reboot-recovery"
+  ]
+}

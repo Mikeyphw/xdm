@@ -731,7 +731,14 @@ class DownloadRepository(private val database: AppDatabase) {
         return cloned
     }
 
-    suspend fun updateDownloadCompareAndSwap(download: Download, expectedUpdatedAtEpochMs: Long): Boolean = database.downloadGraphTransactionDao().updateDownloadCompareAndSwap(download.id, expectedUpdatedAtEpochMs, download.state.name, download.bytesReceived, download.totalBytes, download.speedBytesPerSecond, download.errorMessage, download.updatedAtEpochMs) == 1
+    suspend fun updateDownloadCompareAndSwap(download: Download, expectedUpdatedAtEpochMs: Long): Boolean {
+        val durable = download.copy(updatedAtEpochMs = maxOf(download.updatedAtEpochMs, expectedUpdatedAtEpochMs + 1L))
+        return database.downloadGraphTransactionDao().updateDownloadOwnedRevision(
+            durable.redactedForPersistence().toEntity(),
+            download.observedAttemptGeneration,
+            expectedUpdatedAtEpochMs,
+        )
+    }
     suspend fun setArchived(ids: List<String>, archived: Boolean) {
         if (ids.isNotEmpty()) database.downloadDao().setArchived(ids, archived, System.currentTimeMillis())
     }
@@ -1073,8 +1080,6 @@ private fun Download.toEntity() = DownloadEntity(
     completedArtifactUri = completedArtifactUri,
     completedArtifactGeneration = completedArtifactGeneration,
     completedArtifactBytes = completedArtifactBytes,
-    observedAttemptGeneration = attemptGeneration,
-    rowRevision = updatedAtEpochMs,
 )
 private fun QueueEntity.toModel() = QueueDefinition(id, name, isEnabled, maxConcurrent, createdAtEpochMs)
 private fun QueueDefinition.toEntity() = QueueEntity(id, name, isEnabled, maxConcurrent, createdAtEpochMs)

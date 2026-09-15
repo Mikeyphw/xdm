@@ -74,6 +74,7 @@ object EngineEscalationPlanner {
             expiring = expiring,
             blockedByServer = blockedByServer,
             largeDirectFile = largeDirectFile,
+            aria2Eligible = aria2Eligible,
         )
         return EngineEscalationPlan(
             title = "Suggested method",
@@ -89,6 +90,7 @@ object EngineEscalationPlanner {
                 expiring = expiring,
                 blockedByServer = blockedByServer,
                 largeDirectFile = largeDirectFile,
+                aria2Eligible = aria2Eligible,
             ),
             steps = listOf(
                 EngineEscalationStep(

@@ -194,7 +194,6 @@ class Aria2ProcessManager(
 
     suspend fun repair(): Aria2StartResult {
         stop()
-        sessionStore.cleanupTransientLaunchConfigurations()
         val rotatable = secretProvider as? Aria2RotatableSecretProvider
             ?: return failedStart(
                 "aria2 repair could not rotate the private RPC secret.",

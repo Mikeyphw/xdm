@@ -674,16 +674,8 @@ class TransferExecutionRuntime(
             } ?: download.destinationUri
             val storedMimeType = storedAfterCompletion?.mimeType ?: download.mimeType
             _terminalEvents.tryEmit(
-                TransferTerminalEvent(
-                    downloadId = download.id,
-                    fileName = download.fileName,
-                    state = finalState,
-                    message = finalMessage,
-                    destinationUri = storedDestination,
-                    mimeType = storedMimeType,
-                    attemptGeneration = attemptGenerations[download.id] ?: requestGeneration(download.id),
-                    requestIdentity = terminalRequestIdentity(storedAfterCompletion ?: download, finalState),
-                ),
+                TransferTerminalEvent(download.id, download.fileName, finalState, finalMessage, storedDestination, storedMimeType, attemptGenerations[download.id]
+                    ?: requestGeneration(download.id), terminalRequestIdentity(storedAfterCompletion ?: download, finalState)),
             )
         }
     }

@@ -13,7 +13,7 @@ PARITY02_OVERLAY = "xdm_media_parity02_logical_media_capture_browser_convergence
 PARITY03_OVERLAY = "xdm_media_parity03_native_hls_execution_admission_integrity_v2.zip"
 PARITY04_OVERLAY = "xdm_media_parity04_browser_ux_userscripts_notifications_release_seal_v1.zip"
 UX13 = "xdm_android_ux13_end_to_end_ui_ux_release_seal_v1.zip"
-XAR_SUCCESSORS = {f"XAR{index:02d} " for index in range(1, 18)}
+XAR_SUCCESSORS = {f"XAR{index:02d}" for index in range(1, 18)}
 
 
 def text(relative: str) -> str:
@@ -57,7 +57,7 @@ require(
     or current_overlay.startswith("xdm_android_xar"),
     "PROJECT_MANIFEST current_overlay must point to the post-UX13 hotfix or an accepted media parity/XAR successor",
 )
-require(manifest.get("next_phase") in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal", None}, "roadmap must remain complete")
+require(manifest.get("next_phase") in {"complete", "media_parity04_browser_ux_userscripts_feedback_final_release_seal", "XAR17_313_root_closure_audit_final_gate", None}, "roadmap must remain complete")
 current_release_authority = str(manifest.get("current_release_authority", ""))
 require(
     current_release_authority in {"post_ux13_roadmap_completion_hotfix", "media_parity01_runtime_truth_diagnostics_backend_reliability", "media_parity02_logical_media_capture_browser_convergence", "media_parity03_native_hls_execution_admission_integrity", "media_parity04_browser_ux_userscripts_notifications_release_seal"}

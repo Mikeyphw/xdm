@@ -20,6 +20,7 @@ STATIC_VALIDATORS=(
   tools/verify-phase10-backup-policy.py
   tools/validate-phase58-runtime-recovery-execution-guard.py
   tools/validate-bug-hunt-phase11-validation-matrix.py
+  tools/validate-xar16-release-evidence-seal.py
 )
 
 COMMON_TASKS=(
@@ -81,9 +82,8 @@ if [[ "$mode" == "--release-only" ]]; then
   for validator in "${RELEASE_VALIDATORS[@]}"; do
     python3 "$validator"
   done
-  bash tools/run-bug-hunt-phase10-release-gate.sh
-  ./gradlew "${RELEASE_TASKS[@]}"
-  echo "Phase 11 release matrix gate passed"
+  bash tools/run-xar16-signed-release-gate.sh --ci
+  echo "Phase 11 release matrix gate passed through XAR16 signed-release evidence seal"
   exit 0
 fi
 

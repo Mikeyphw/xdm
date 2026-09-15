@@ -108,7 +108,14 @@ object FinalReleaseGateExplainer {
         "release.safety" -> "Privacy, diagnostics, or release-safety checks are incomplete."
         "install.update" -> "Install and update readiness checks are incomplete, so upgrades may not be safe enough for release."
         "diagnostics.redaction" -> "Support exports may expose sensitive request context if this is not fixed."
-        "aria2.payload" -> "Native-only builds can continue, but aria2-enabled release artifacts still need payload verification."
+        "aria2.payload" -> "Publishable release artifacts must carry aria2 payload evidence bound to the signed APK. Native-only debug builds can continue without claiming release readiness."
+        "ffmpeg.payload" -> "Publishable media releases must carry FFmpeg/FFprobe evidence bound to the signed APK."
+        "lint.release" -> "Release lint must pass before publication because it checks manifest, storage, WebView and platform compatibility risks."
+        "native.symbols" -> "Native symbol and 16 KiB alignment evidence is required for the attested ABI-specific release payload."
+        "device.smoke" -> "The signed release must install, launch, upgrade and recover on a real device before publication is claimed."
+        "apkset.install" -> "Generated APK sets must be installed/upgraded as APK sets; inspecting the .apks archive is not enough."
+        "publication.evidence" -> "Publication metadata must be generated only after validation and must be hash-bound to the exact same-run artifacts."
+        "release.journeys" -> "The signed release must execute canonical user journeys for intake, download, recovery, media, storage, settings and diagnostics."
         "validators.complete" -> "The static validator chain is incomplete, so the release gate cannot prove the expected contracts ran."
         "release.docs" -> "Release handoff instructions are incomplete for a publishable artifact."
         "route.topography" -> "A new top-level surface changed the release topology and needs explicit review."
@@ -121,7 +128,8 @@ object FinalReleaseGateExplainer {
 
     private fun safeToIgnoreFor(id: String, severity: FinalReleaseGateSeverity): String = when {
         severity == FinalReleaseGateSeverity.Blocking -> "No. This blocks publishable release artifacts until fixed."
-        id == "aria2.payload" -> "Yes for Native-only debug testing; no for publishable aria2-enabled artifacts."
+        id == "aria2.payload" -> "Yes for Native-only debug testing; no for publishable release artifacts."
+        id in setOf("ffmpeg.payload", "lint.release", "native.symbols", "device.smoke", "apkset.install", "publication.evidence", "release.journeys") -> "Yes only while inspecting debug diagnostics; no for public release packaging."
         id == "full.validation" -> "Yes in debug diagnostics before a full gate run; no for release artifacts."
         severity == FinalReleaseGateSeverity.Info -> "Yes. This is informational."
         else -> "Only for local debugging, not for public release packaging."
@@ -134,7 +142,14 @@ object FinalReleaseGateExplainer {
         "release.safety" -> "Run and fix the release safety validator chain."
         "install.update" -> "Run install/update readiness checks and resolve reported failures."
         "diagnostics.redaction" -> "Fix diagnostic redaction before exporting support bundles or release artifacts."
-        "aria2.payload" -> "Run aria2 payload verification for artifacts that include aria2 support."
+        "aria2.payload" -> "Run aria2 payload verification against the signed release APK."
+        "ffmpeg.payload" -> "Run FFmpeg/FFprobe runtime verification against the signed release APK."
+        "lint.release" -> "Run lintRelease as part of the signed-release gate and fix any reported issues."
+        "native.symbols" -> "Run the native-symbol and 16 KiB verifier against the same-run release artifacts."
+        "device.smoke" -> "Run the XAR16 install/upgrade/reboot launch matrix on a connected device and save the evidence JSON."
+        "apkset.install" -> "Install the generated APK set with bundletool during the XAR16 device matrix."
+        "publication.evidence" -> "Regenerate the XAR16 publication bundle after all artifact and device evidence has passed."
+        "release.journeys" -> "Run the XAR16 signed-release journey runner on the installed signed release."
         "validators.complete" -> "Run the final release gate script and restore any missing validator links."
         "release.docs" -> "Complete release notes, validation scope, and artifact expectations."
         "route.topography" -> "Move the surface under an existing release-approved area or update the topology contract intentionally."
@@ -148,6 +163,14 @@ object FinalReleaseGateExplainer {
     private fun ownerFor(id: String): FinalReleaseGateOwner = when (id) {
         "aria2.payload" -> FinalReleaseGateOwner(
             validator = "tools/verify-aria2-runtime.py",
+            test = "FinalReleaseGateModelsTest",
+        )
+        "ffmpeg.payload" -> FinalReleaseGateOwner(
+            validator = "tools/verify-ffmpeg-runtime.py",
+            test = "FinalReleaseGateModelsTest",
+        )
+        "lint.release", "native.symbols", "device.smoke", "apkset.install", "publication.evidence", "release.journeys" -> FinalReleaseGateOwner(
+            validator = "tools/verify-xar16-release-evidence.py",
             test = "FinalReleaseGateModelsTest",
         )
         "full.validation" -> FinalReleaseGateOwner(
@@ -197,6 +220,13 @@ object FinalPublicReleaseGate {
         noNewTopLevelRoutes: Boolean,
         fullValidationPassed: Boolean,
         releaseSigningConfigured: Boolean,
+        ffmpegPayloadVerified: Boolean = true,
+        lintValidationPassed: Boolean = true,
+        nativeSymbolsValidated: Boolean = true,
+        realDeviceSmokePassed: Boolean = true,
+        apkSetInstalled: Boolean = true,
+        publicationEvidenceVerified: Boolean = true,
+        signedReleaseJourneysPassed: Boolean = true,
     ): FinalReleaseGateReport {
         val normalizedVersion = versionName.trim().ifBlank { "unknown" }
         val normalizedPackageId = packageId.trim().ifBlank { "unknown" }
@@ -287,13 +317,85 @@ object FinalPublicReleaseGate {
                     ),
                 )
             }
+            fun releaseEvidenceSeverity(): FinalReleaseGateSeverity =
+                if (normalizedBuildType == "release") FinalReleaseGateSeverity.Blocking else FinalReleaseGateSeverity.Warning
             if (!aria2PayloadVerified) {
                 add(
                     FinalReleaseGateCheck(
                         id = "aria2.payload",
-                        severity = FinalReleaseGateSeverity.Warning,
+                        severity = releaseEvidenceSeverity(),
                         title = "aria2 payload verification is pending",
-                        detail = "Native-only builds are allowed, but publishable aria2-enabled artifacts must pass payload verification.",
+                        detail = "Publishable releases must verify the aria2 payload against the same signed APK they publish.",
+                    ),
+                )
+            }
+            if (!ffmpegPayloadVerified) {
+                add(
+                    FinalReleaseGateCheck(
+                        id = "ffmpeg.payload",
+                        severity = releaseEvidenceSeverity(),
+                        title = "FFmpeg payload verification is pending",
+                        detail = "Publishable media releases must verify FFmpeg/FFprobe runtime payloads against the signed APK.",
+                    ),
+                )
+            }
+            if (!lintValidationPassed) {
+                add(
+                    FinalReleaseGateCheck(
+                        id = "lint.release",
+                        severity = releaseEvidenceSeverity(),
+                        title = "Release lint evidence is missing",
+                        detail = "XAR16 requires lintRelease evidence before publication metadata can be generated.",
+                    ),
+                )
+            }
+            if (!nativeSymbolsValidated) {
+                add(
+                    FinalReleaseGateCheck(
+                        id = "native.symbols",
+                        severity = releaseEvidenceSeverity(),
+                        title = "Native symbol and 16 KiB evidence is missing",
+                        detail = "Release artifacts must carry native-symbol and 16 KiB alignment evidence for the attested ABI payload.",
+                    ),
+                )
+            }
+            if (!realDeviceSmokePassed) {
+                add(
+                    FinalReleaseGateCheck(
+                        id = "device.smoke",
+                        severity = releaseEvidenceSeverity(),
+                        title = "Real-device smoke evidence is missing",
+                        detail = "The signed APK/APK set must be installed, launched, upgraded, rebooted and re-launched on a real device.",
+                    ),
+                )
+            }
+            if (!apkSetInstalled) {
+                add(
+                    FinalReleaseGateCheck(
+                        id = "apkset.install",
+                        severity = releaseEvidenceSeverity(),
+                        title = "APK-set install evidence is missing",
+                        detail = "The generated APK set must be installed/upgraded as an APK set instead of only being inspected.",
+                    ),
+                )
+            }
+            if (!publicationEvidenceVerified) {
+                add(
+                    FinalReleaseGateCheck(
+                        id = "publication.evidence",
+                        severity = releaseEvidenceSeverity(),
+                        title = "Publication evidence is not verified",
+                        detail = "Publication metadata must be be generated only after validation and hash-bound to same-run artifacts.",
+                    ),
+                )
+            }
+            if (!signedReleaseJourneysPassed) {
+                add(
+                    FinalReleaseGateCheck(
+                        id = "release.journeys",
+                        severity = releaseEvidenceSeverity(),
+                        title = "Signed-release user journeys are missing",
+                        detail = "XAR16 requires signed-release journeys for intake, download, resume/recovery, media, storage, settings and diagnostics.",
                     ),
                 )
             }

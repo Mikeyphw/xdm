@@ -50,7 +50,11 @@ for needle in ['validate-bug-hunt-phase1-external-control-secrets-privacy.py','v
     require(needle in runner, f'Phase 11 runner missing {needle}')
 for task in [':core-model:test',':persistence:testDebugUnitTest',':scheduler:testDebugUnitTest',':media:test',':browser-extension:test',':app:testDebugUnitTest',':app:connectedDebugAndroidTest',':app:lintRelease',':app:bundleRelease']:
     require(task in runner, f'Phase 11 runner missing Gradle task {task}')
-require('run-bug-hunt-phase10-release-gate.sh' in runner, 'Phase 11 runner must include release gate handoff')
+require(
+    'run-bug-hunt-phase10-release-gate.sh' in runner
+    or 'run-xar16-signed-release-gate.sh' in runner,
+    'Phase 11 runner must include the retained Phase10 release gate or the superseding XAR16 signed-release handoff',
+)
 require('run-phase10-install-upgrade-matrix.sh' in runner, 'Phase 11 runner must mention install/upgrade matrix')
 require('--static-only' in runner and '--release-only' in runner and '--device-only' in runner, 'Phase 11 runner must expose static/release/device modes')
 require('bug-hunt-phase11-validation-matrix.json' in runner, 'runner must name matrix file')
@@ -107,7 +111,16 @@ require(phase.get('roadmap_requirement_count') == 80, 'PROJECT_MANIFEST must rec
 require(phase.get('matrix_file') == 'tools/bug-hunt-phase11-validation-matrix.json', 'PROJECT_MANIFEST must point at matrix file')
 require(phase.get('runner') == 'tools/run-bug-hunt-phase11-validation-matrix.sh', 'PROJECT_MANIFEST must point at Phase 11 runner')
 require(phase.get('coverage_levels') == ['unit','instrumentation','device','release'], 'PROJECT_MANIFEST must record coverage levels')
-require(project.get('next_phase') in {'complete', 'media_parity04_browser_ux_userscripts_feedback_final_release_seal', None}, 'PROJECT_MANIFEST next_phase must be complete after bug-hunt Phase 11 or point to accepted Parity04 successor')
+require(
+    project.get('next_phase') in {
+        'complete',
+        'media_parity04_browser_ux_userscripts_feedback_final_release_seal',
+        'XAR17_313_root_closure_audit_final_gate',
+        'xar17_313_root_closure_audit_final_gate',
+        None,
+    },
+    'PROJECT_MANIFEST next_phase must be complete, point to accepted Parity04, or advance to XAR17 final closure',
+)
 
 if errors:
     print('Bug-hunt Phase 11 validation matrix failed:')

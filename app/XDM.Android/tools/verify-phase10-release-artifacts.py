@@ -85,7 +85,7 @@ def verify_bundletool_config(aab: Path, bundletool_jar: str | None, require_16kb
         raise SystemExit('AAB bundletool config does not report PAGE_ALIGNMENT_16K')
     return out
 
-def verify_apk(apk: Path, signer_sha256: str|None, require_16kb: bool, inventory: dict) -> dict:
+def verify_apk(apk: Path, signer_sha256: str|None, require_16kb: bool, inventory: dict, split_apk: bool = False) -> dict:
     if not apk.is_file():
         raise SystemExit(f'APK missing: {apk}')
     if command_available('apksigner'):
@@ -96,14 +96,15 @@ def verify_apk(apk: Path, signer_sha256: str|None, require_16kb: bool, inventory
             raise SystemExit(f'{apk} signer SHA-256 does not match pinned value')
     else:
         raise SystemExit('apksigner is required for release artifact verification')
-    manifest_info = inspect_apk_manifest(apk, inventory.get('versionName','0.21.0'), int(inventory.get('versionCode',22)))
+    manifest_info = inspect_apk_manifest(apk, inventory.get('versionName','0.21.0'), int(inventory.get('versionCode',22))) if not split_apk or apk.name.startswith('base') else {'splitManifestInspection': 'deferred-to-base'}
     entries=[]
     seen=set()
     with zipfile.ZipFile(apk) as z:
         names=z.namelist()
-        for required in inventory.get('requiredApkEntries', []):
-            if required not in names:
-                raise SystemExit(f'release APK missing required inventory entry: {required}')
+        if not split_apk:
+            for required in inventory.get('requiredApkEntries', []):
+                if required not in names:
+                    raise SystemExit(f'release APK missing required inventory entry: {required}')
         supported=set(inventory.get('supportedAbis', []))
         native_abis={n.split('/')[1] for n in names if n.startswith('lib/') and n.endswith('.so') and len(n.split('/')) >= 3}
         if native_abis - supported:
@@ -140,6 +141,12 @@ def verify_aab(aab: Path, require_16kb: bool, signer_sha256: str|None, bundletoo
         if require_16kb and not any('lib/' in n and n.endswith('.so') for n in names):
             # native-free AAB is okay; XDM currently carries aria2 in strict release builds, so this catches missing runtime.
             raise SystemExit('strict release AAB expected at least one native runtime library')
+        for required in inventory.get('requiredAabEntries', []):
+            if required not in names:
+                raise SystemExit(f'AAB missing required inventory entry: {required}')
+        package_name = inventory.get('packageName')
+        if package_name and not any(package_name.encode() in z.read(n) for n in names if n.endswith('AndroidManifest.xml')):
+            raise SystemExit(f'AAB manifest does not contain package identity {package_name}')
         for n in names:
             low=n.lower()
             if any(marker.lower() in low for marker in DEBUG_DENY) or any(marker.lower() in low for marker in inventory.get('forbiddenNameFragments', [])):
@@ -173,11 +180,21 @@ def main():
                 apk_members=[name for name in apks_zip.namelist() if name.endswith('.apk')]
                 if not apk_members:
                     raise SystemExit('APK set contains no generated APKs')
+                aggregate_names=set()
+                base_verified=False
                 for member in apk_members:
                     target=Path(tmpdir)/Path(member).name
                     target.write_bytes(apks_zip.read(member))
-                    split_results.append(verify_apk(target,args.signer_sha256,args.require_16kb,inventory))
-        result['apkSet']={'path':str(args.apks),'sha256':sha256(args.apks),'splitApksVerified':len(split_results)}
+                    with zipfile.ZipFile(target) as split_zip:
+                        aggregate_names.update(split_zip.namelist())
+                    split_results.append(verify_apk(target,args.signer_sha256,args.require_16kb,inventory, split_apk=True))
+                    base_verified = base_verified or Path(member).name.startswith('base')
+                if not base_verified:
+                    raise SystemExit('APK set missing base split APK')
+                for required in inventory.get('requiredApkEntries', []):
+                    if required not in aggregate_names:
+                        raise SystemExit(f'APK set is missing required entry across all splits: {required}')
+        result['apkSet']={'path':str(args.apks),'sha256':sha256(args.apks),'splitApksVerified':len(split_results),'splitSemantics':'set-level-required-inventory'}
     args.out.parent.mkdir(parents=True,exist_ok=True)
     args.out.write_text(json.dumps(result,indent=2)+"\n",encoding='utf-8')
     print(f'Phase 10 release artifact attestation written: {args.out}')

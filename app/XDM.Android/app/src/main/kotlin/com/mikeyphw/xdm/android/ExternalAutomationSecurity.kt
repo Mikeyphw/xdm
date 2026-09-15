@@ -20,6 +20,9 @@ import java.security.SecureRandom
 import java.util.Locale
 import org.json.JSONObject
 
+private const val MAX_CLIP_ITEMS = 24
+private const val MAX_CLIP_TEXT_CHARS = 8_192
+
 internal data class ExternalCallerIdentity(
     val observedPackage: String?,
     val claimedPackage: String?,

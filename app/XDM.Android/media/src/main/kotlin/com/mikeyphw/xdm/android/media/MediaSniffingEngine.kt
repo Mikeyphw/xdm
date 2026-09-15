@@ -367,7 +367,13 @@ class MediaSniffingEngine(
         }
         val manifestVariants = captureCandidates.flatMap { candidate ->
             val parsed = inlineManifest[MediaCaptureService.captureIdFor(candidate.sourceUrl)]?.first.orEmpty()
-            parsed.ifEmpty { candidate.variants }
+            val inlineBodyPresent = inlineManifestBodyPresent(candidate.kind, input.bodyPrefix)
+            val inlineComplete = inlineBodyPresent && manifestProbeComplete(candidate.kind, input.bodyPrefix)
+            when {
+                parsed.isNotEmpty() -> parsed
+                inlineBodyPresent && !inlineComplete -> emptyList()
+                else -> candidate.variants
+            }
         }
         val variants = manifestVariants.distinctBy(MediaVariant::id)
         val manifestDiagnostics = captureCandidates.mapNotNull { candidate ->
@@ -388,6 +394,15 @@ class MediaSniffingEngine(
     }
 
 
+    private fun inlineManifestBodyPresent(kind: MediaSourceKind, bodyPrefix: String?): Boolean {
+        val body = bodyPrefix?.trimStart().orEmpty()
+        if (body.isBlank()) return false
+        return when (kind) {
+            MediaSourceKind.HlsPlaylist -> body.startsWith("#EXTM3U", ignoreCase = true)
+            MediaSourceKind.DashManifest -> body.contains("<MPD", ignoreCase = true)
+            else -> false
+        }
+    }
 
     private fun parseInlineManifest(candidate: MediaCaptureCandidate, bodyPrefix: String?): Pair<List<MediaVariant>, MediaManifestSummary?> {
         val body = bodyPrefix?.trimStart()?.takeIf(String::isNotBlank) ?: return emptyList<MediaVariant>() to null

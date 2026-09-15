@@ -161,7 +161,7 @@ object DownloadUiTruthPlanner {
         val supporting = when {
             download.state == DownloadState.Completed -> completedStatus(context)
             policyReason != null -> policyReason
-            download.state == DownloadState.Queued -> listOfNotNull(queueText ?: status, context.backendLabel.takeIf(String::isNotBlank)).joinToString(" • ")
+            download.state == DownloadState.Queued -> queueText ?: status
             download.state == DownloadState.Failed && !download.errorMessage.isNullOrBlank() -> download.errorMessage.orEmpty()
             download.state == DownloadState.RecoveryRequired && !download.errorMessage.isNullOrBlank() -> download.errorMessage.orEmpty()
             else -> status

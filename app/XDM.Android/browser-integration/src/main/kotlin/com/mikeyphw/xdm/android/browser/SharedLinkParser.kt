@@ -17,6 +17,7 @@ object BrowserHandoffContract {
     const val ExtraFrameUrl = "com.mikeyphw.xdm.android.extra.FRAME_URL"
     const val ExtraProposedRequestHeaders = "com.mikeyphw.xdm.android.extra.PROPOSED_REQUEST_HEADERS"
     const val ExtraFinalRequestHeaders = "com.mikeyphw.xdm.android.extra.FINAL_REQUEST_HEADERS"
+    const val ExtraRequestFingerprint = "com.mikeyphw.xdm.android.extra.REQUEST_FINGERPRINT"
     const val ExtraPageObservationNonce = "com.mikeyphw.xdm.android.extra.PAGE_OBSERVATION_NONCE"
     const val ExtraPageObservationCreatedAt = "com.mikeyphw.xdm.android.extra.PAGE_OBSERVATION_CREATED_AT"
     const val ExtraPageObservationExpiresAt = "com.mikeyphw.xdm.android.extra.PAGE_OBSERVATION_EXPIRES_AT"

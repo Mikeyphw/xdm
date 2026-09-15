@@ -478,7 +478,7 @@ class NativeHttpDownloadBackend(
                     checkpoint = control.preparedDestination.artifacts.checkpointFile.toPath(),
                 )
                 val checkpoint = checkpointStore.load(paths.checkpoint)
-                verifyCheckpointBeforePromotion(control.request, paths, checkpoint, checkpoint.expectedLength)
+                verifyCheckpointBeforePromotion(control.request, paths, checkpoint, checkpoint?.expectedLength)
                 val promotion = control.preparedDestination.promote()
                 runCatching { checkpointStore.delete(control.preparedDestination.artifacts.checkpointFile.toPath()) }
                 control.state.value = control.state.value.copy(
@@ -523,7 +523,7 @@ class NativeHttpDownloadBackend(
             checkpoint = preparedDestination.artifacts.checkpointFile.toPath(),
         )
         Files.createDirectories(paths.partial.parent)
-        val previous = checkpointStore.load(paths.checkpoint)
+        val previous = adoptPreparedOrLegacyCheckpoint(control.request, paths)
         val metadata = probe(control, control.request)
         val trustedLength = metadata.totalLength ?: control.request.expectedLength ?: previous?.expectedLength
         val availableSpace = preparedDestination.availableSpace()
@@ -774,6 +774,28 @@ class NativeHttpDownloadBackend(
             val end = min(total - 1, start + segmentSize - 1)
             NativeSegmentCheckpoint(index, start, end, 0, false)
         }
+    }
+
+    private fun adoptPreparedOrLegacyCheckpoint(request: DownloadRequest, paths: NativeArtifactPaths): NativeCheckpoint? {
+        checkpointStore.load(paths.checkpoint)?.let { return it }
+        val legacy = runCatching { NativeArtifactPaths.fromDestinationUri(request.destinationUri) }.getOrNull() ?: return null
+        if (legacy.checkpoint == paths.checkpoint) return null
+        val checkpoint = checkpointStore.load(legacy.checkpoint) ?: return null
+        if (checkpoint.downloadId != request.id || checkpoint.sourceIdentitySha256 != sha256Identity(request.sourceUrl)) return null
+        if (!Files.exists(legacy.partial)) return null
+        Files.createDirectories(paths.partial.parent)
+        if (legacy.partial != paths.partial) {
+            Files.copy(legacy.partial, paths.partial, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+        val adopted = checkpoint.copy(
+            destinationPath = paths.destinationIdentity,
+            partialPath = paths.partial.toString(),
+            backendInstanceId = runtimeIdentity.instanceId,
+            backendSessionId = runtimeIdentity.sessionId,
+        )
+        checkpointStore.save(paths.checkpoint, adopted)
+        runCatching { checkpointStore.delete(legacy.checkpoint) }
+        return adopted
     }
 
     private fun validateResume(request: DownloadRequest, paths: NativeArtifactPaths, checkpoint: NativeCheckpoint?, metadata: RemoteMetadata) {

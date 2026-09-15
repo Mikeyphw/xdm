@@ -54,6 +54,7 @@ validators=(
   tools/validate-xar13-downloads-truthful-actions.py
   tools/validate-xar14-settings-diagnostics-truth.py
   tools/validate-xar15-privacy-security-performance.py
+  tools/validate-xar16-release-evidence-seal.py
   tools/validate-gradle-task-graph-optimization.py
   tools/validate-ffmpeg02-media-mux-hls-postprocessing.py
   tools/validate-ffmpeg03-runtime-routing-termux-ui-reliability.py
@@ -142,10 +143,17 @@ done
 # 80-row executable-evidence matrix.
 bash tools/run-bug-hunt-phase11-validation-matrix.sh --static-only --ci
 
-FULL_GRADLE_GATE='bash tools/run-final-common-validation.sh && bash tools/run-bug-hunt-phase11-validation-matrix.sh --device-only && bash tools/run-bug-hunt-phase11-validation-matrix.sh --release-only'
+FULL_GRADLE_GATE='XDM_XAR16_FULL_RELEASE_GATE=1 bash tools/run-final-release-gate.sh --ci'
 
 if [[ "${1:-}" == "--ci" ]]; then
-  echo "CI final static gate passed including FF04 embedded FFmpeg/FFprobe full release seal, post-seal roadmap execution ownership, and Media Parity04 browser UX/userscripts/notification seal"
+  if [[ "${XDM_XAR16_IN_PROGRESS:-0}" == "1" ]]; then
+    echo "CI final static gate passed inside XAR16 signed-release orchestration"
+    exit 0
+  fi
+  if [[ "${XDM_XAR16_FULL_RELEASE_GATE:-0}" == "1" ]]; then
+    exec bash tools/run-xar16-signed-release-gate.sh --ci
+  fi
+  echo "CI final static gate passed. XAR16 full signed-release/device/publication evidence requires XDM_XAR16_FULL_RELEASE_GATE=1."
   exit 0
 fi
 

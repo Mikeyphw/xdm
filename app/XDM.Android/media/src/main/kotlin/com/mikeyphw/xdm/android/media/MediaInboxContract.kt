@@ -199,6 +199,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
 
     fun parseHlsPlaylist(captureId: String, playlistUrl: String, playlistText: String, expiresAtEpochMs: Long? = null): List<MediaVariant> {
         val lines = playlistText.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
+        val playlistHasSessionProtection = lines.any { it.startsWith("#EXT-X-SESSION-KEY", ignoreCase = true) }
         val variants = mutableListOf<MediaVariant>()
         var index = 0
         for (line in lines) {
@@ -227,7 +228,8 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
             variants += MediaVariant(
                 id = "$captureId:hls-media:$index",
                 captureId = captureId,
-                url = uri?.let { resolveVariantUrl(playlistUrl, it) } ?: "inband://hls/$captureId/${attrs["GROUP-ID"].orEmpty()}/${attrs["INSTREAM-ID"].orEmpty()}",
+                url = uri?.let { resolveVariantUrl(playlistUrl, it) }
+                    ?: if (isClosedCaptions && playlistHasSessionProtection) playlistUrl else "inband://hls/$captureId/${attrs["GROUP-ID"].orEmpty()}/${attrs["INSTREAM-ID"].orEmpty()}",
                 kind = kind,
                 mimeType = if (isClosedCaptions) "application/cea-608" else if (kind == MediaVariantKind.Subtitle) "text/vtt" else "application/vnd.apple.mpegurl",
                 language = attrs["LANGUAGE"],
@@ -331,7 +333,8 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
                 val adaptationTemplate = directChildren(adaptation, "SegmentTemplate").firstOrNull()
                 val representations = directChildren(adaptation, "Representation")
                 representations.forEachIndexed { repIndex, rep ->
-                    val repBase = directChildText(rep, "BaseURL")?.let { resolveVariantUrl(adaptationBase, it) } ?: adaptationBase
+                    val representationBaseText = directChildText(rep, "BaseURL")
+                    val repBase = representationBaseText?.let { resolveVariantUrl(adaptationBase, it) } ?: adaptationBase
                     val codecs = rep.attrOrNull("codecs") ?: adaptationCodecs
                     val mime = rep.attrOrNull("mimeType") ?: adaptationMime ?: mimeFromCodecs(codecs)
                     val content = rep.attrOrNull("contentType") ?: adaptationContent
@@ -346,7 +349,7 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
                     val templateInitialization = template?.attrOrNull("initialization")?.let { pattern ->
                         resolveVariantUrl(repBase, dashTemplateUrl(pattern, repId, bandwidth, number = 0L, time = 0L))
                     }
-                    val executableUrl = templateMedia ?: directChildText(rep, "BaseURL")?.let { resolveVariantUrl(adaptationBase, it) } ?: repBase
+                    val executableUrl = if (representationBaseText != null) repBase else templateMedia ?: repBase
                     val timelineGroup = "dash-period:$periodIndex"
                     val label = labelFor(rep.attrOrNull("height")?.toIntOrNull(), bandwidth, codecs, lang, kind) +
                         template?.attrOrNull("media")?.let { " • segmented • period ${periodIndex + 1}" }.orEmpty()
@@ -682,16 +685,16 @@ class MediaCaptureService(private val clock: () -> Long = System::currentTimeMil
 
     private fun dashTemplateUrl(pattern: String, representationId: String, bandwidth: Long?, number: Long, time: Long): String = pattern
         .replace("\$RepresentationID\$", representationId)
-        .replace(Regex("\\$Bandwidth(?:%0\\d+d)?\\$"), bandwidth?.toString().orEmpty())
-        .replace(Regex("\\$Number(?:%0(\\d+)d)?\\$")) { match ->
+        .replace(Regex("\\${'$'}Bandwidth(?:%0\\d+d)?\\${'$'}"), bandwidth?.toString().orEmpty())
+        .replace(Regex("\\${'$'}Number(?:%0(\\d+)d)?\\${'$'}")) { match ->
             val width = match.groupValues.getOrNull(1)?.toIntOrNull()
             if (width == null) number.toString() else number.toString().padStart(width, '0')
         }
-        .replace(Regex("\\$Time(?:%0\\d+d)?\\$"), time.toString())
+        .replace(Regex("\\${'$'}Time(?:%0\\d+d)?\\${'$'}"), time.toString())
 
     private fun dashTemplateDiagnostic(pattern: String, representationId: String, bandwidth: Long?): String = pattern
         .replace("\$RepresentationID\$", representationId)
-        .replace(Regex("\\$Bandwidth(?:%0\\d+d)?\\$"), bandwidth?.toString().orEmpty())
+        .replace(Regex("\\${'$'}Bandwidth(?:%0\\d+d)?\\${'$'}"), bandwidth?.toString().orEmpty())
 
     private fun dashVariantKind(mimeType: String?, contentType: String?, codecs: String?): MediaVariantKind = when {
         contentType.equals("audio", ignoreCase = true) || mimeType?.startsWith("audio/") == true || codecs?.startsWith("mp4a", ignoreCase = true) == true -> MediaVariantKind.Audio

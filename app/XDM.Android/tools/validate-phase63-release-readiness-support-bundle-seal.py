@@ -66,7 +66,7 @@ require(
     'current overlay must point to Phase63 or a later accepted XAR overlay',
 )
 require(63 in manifest.get('project', {}).get('implemented_phases', []), 'implemented phases must include 63')
-require(manifest.get('next_phase') in {'phase64_final_android_downloader_rc_seal', 'complete', 'phase11_validation_matrix', 'media_parity04_browser_ux_userscripts_feedback_final_release_seal', None}, 'next phase should point to Phase64 or complete after final RC seal')
+require(manifest.get('next_phase') in {'phase64_final_android_downloader_rc_seal', 'complete', 'phase11_validation_matrix', 'media_parity04_browser_ux_userscripts_feedback_final_release_seal', 'XAR17_313_root_closure_audit_final_gate', 'xar17_313_root_closure_audit_final_gate', None}, 'next phase should point to Phase64, complete, or the accepted XAR17 final-closure gate after final RC seal')
 require(phase.get('status') == 'implemented', 'Phase63 must be implemented')
 require(phase.get('room_schema_unchanged') == 14 or manifest.get('database', {}).get('version', 0) >= 14, 'Phase63 must keep or be superseded by Room schema 14+')
 require(phase.get('top_level_route_added') is False, 'Phase63 must not add a top-level route')

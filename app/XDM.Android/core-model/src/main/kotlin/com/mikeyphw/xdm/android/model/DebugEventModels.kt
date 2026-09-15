@@ -307,7 +307,7 @@ class RollingJsonlDebugEventRecorder(
         entries["debug-metadata.txt"] = redactedMetadata.toByteArray(Charsets.UTF_8)
         entries["redaction-report.txt"] = (
             "XDM Diagnostics & support v5. The exact final ZIP is scanned before export. " +
-                "Cookie, Authorization, token, signature, session/sess, md5, and key-like values are redacted. No automatic upload.\n"
+                "Cookie, Authorization, token, signature, session, sess, md5, and key-like values are redacted. No automatic upload.\n"
             ).toByteArray(Charsets.UTF_8)
         DiagnosticExportIntegrity.writeVerifiedZip(destinationZip, entries)
         destinationZip

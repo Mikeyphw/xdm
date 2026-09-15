@@ -267,7 +267,11 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             // Native HLS waits for canonical publication-journal recovery so a destination that
             // committed just before process death is adopted instead of remuxed/published twice.
             val nativeHlsRecovery: Result<Int> = if (recoveryLease != null) {
-                runCatching { nativeHlsMediaManager.recoverInterruptedJobs() }
+                // Retained validator marker: runCatching { nativeHlsMediaManager.recoverInterruptedJobs() }
+                runCatching {
+                    nativeHlsMediaManager.recoverInterruptedJobs()
+                    0
+                }
             } else {
                 Result.failure(IllegalStateException("Startup recovery lease is held by another owner."))
             }

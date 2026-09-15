@@ -63,10 +63,104 @@ interface DownloadGraphTransactionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertDownloadIgnore(entity: DownloadEntity): Long
 
-    /** Creation-only compatibility entrypoint. Existing rows must use compare-and-set ownership. */
+    /**
+     * Insert first, then update only when the durable row is not newer than the
+     * incoming ownership generation. This preserves the Phase6 recovery contract:
+     * marker-only replays cannot overwrite a later generation or a newer same-generation
+     * row, while idempotent startup adoption can still repair an older persisted row.
+     */
     @Transaction
-    suspend fun upsertDownloadPreservingNewerState(entity: DownloadEntity): Boolean =
-        insertDownloadIgnore(entity) != -1L
+    suspend fun upsertDownloadPreservingNewerState(entity: DownloadEntity): Boolean {
+        if (insertDownloadIgnore(entity) != -1L) return true
+        return updateDownloadIfStoredRowIsNotNewer(entity) == 1
+    }
+
+    @Query("""UPDATE downloads
+        SET fileName = :fileName,
+            sourceUrl = :sourceUrl,
+            destinationUri = :destinationUri,
+            state = :state,
+            backend = :backend,
+            requestedBackend = :requestedBackend,
+            backendSelectionReason = :backendSelectionReason,
+            backendSelectionExplanation = :backendSelectionExplanation,
+            allowBackendFallback = :allowBackendFallback,
+            bytesReceived = :bytesReceived,
+            totalBytes = :totalBytes,
+            speedBytesPerSecond = :speedBytesPerSecond,
+            queueId = :queueId,
+            priority = :priority,
+            createdAtEpochMs = :createdAtEpochMs,
+            updatedAtEpochMs = :updatedAtEpochMs,
+            errorMessage = :errorMessage,
+            userLabel = :userLabel,
+            conflictPolicy = :conflictPolicy,
+            mimeType = :mimeType,
+            archived = :archived,
+            attemptGeneration = :attemptGeneration,
+            completedArtifactUri = :completedArtifactUri,
+            completedArtifactGeneration = :completedArtifactGeneration,
+            completedArtifactBytes = :completedArtifactBytes
+        WHERE id = :id
+          AND (attemptGeneration < :attemptGeneration
+               OR (attemptGeneration = :attemptGeneration AND updatedAtEpochMs < :updatedAtEpochMs))""")
+    suspend fun updateDownloadIfStoredRowIsNotNewerRaw(
+        id: String,
+        fileName: String,
+        sourceUrl: String,
+        destinationUri: String,
+        state: String,
+        backend: String,
+        requestedBackend: String,
+        backendSelectionReason: String,
+        backendSelectionExplanation: String,
+        allowBackendFallback: Boolean,
+        bytesReceived: Long,
+        totalBytes: Long?,
+        speedBytesPerSecond: Long,
+        queueId: String?,
+        priority: Int,
+        createdAtEpochMs: Long,
+        updatedAtEpochMs: Long,
+        errorMessage: String?,
+        userLabel: String?,
+        conflictPolicy: String,
+        mimeType: String?,
+        archived: Boolean,
+        attemptGeneration: Long,
+        completedArtifactUri: String?,
+        completedArtifactGeneration: Long?,
+        completedArtifactBytes: Long?,
+    ): Int
+
+    suspend fun updateDownloadIfStoredRowIsNotNewer(entity: DownloadEntity): Int = updateDownloadIfStoredRowIsNotNewerRaw(
+        id = entity.id,
+        fileName = entity.fileName,
+        sourceUrl = entity.sourceUrl,
+        destinationUri = entity.destinationUri,
+        state = entity.state,
+        backend = entity.backend,
+        requestedBackend = entity.requestedBackend,
+        backendSelectionReason = entity.backendSelectionReason,
+        backendSelectionExplanation = entity.backendSelectionExplanation,
+        allowBackendFallback = entity.allowBackendFallback,
+        bytesReceived = entity.bytesReceived,
+        totalBytes = entity.totalBytes,
+        speedBytesPerSecond = entity.speedBytesPerSecond,
+        queueId = entity.queueId,
+        priority = entity.priority,
+        createdAtEpochMs = entity.createdAtEpochMs,
+        updatedAtEpochMs = entity.updatedAtEpochMs,
+        errorMessage = entity.errorMessage,
+        userLabel = entity.userLabel,
+        conflictPolicy = entity.conflictPolicy,
+        mimeType = entity.mimeType,
+        archived = entity.archived,
+        attemptGeneration = entity.attemptGeneration,
+        completedArtifactUri = entity.completedArtifactUri,
+        completedArtifactGeneration = entity.completedArtifactGeneration,
+        completedArtifactBytes = entity.completedArtifactBytes,
+    )
 
     /**
      * Exact optimistic CAS for an existing Download. The caller supplies the attempt/revision it

@@ -358,6 +358,13 @@ data class MainUiState(
         noNewTopLevelRoutes = false,
         fullValidationPassed = false,
         releaseSigningConfigured = false,
+        ffmpegPayloadVerified = false,
+        lintValidationPassed = false,
+        nativeSymbolsValidated = false,
+        realDeviceSmokePassed = false,
+        apkSetInstalled = false,
+        publicationEvidenceVerified = false,
+        signedReleaseJourneysPassed = false,
     ),
     val releaseSecurityReport: ReleaseSecurityReport = ReleaseSecurityGate.evaluate(
         versionName = "0.21.0",
@@ -823,6 +830,12 @@ class MainViewModel(
         val fullValidationPassed = BuildConfig.XDM_FULL_VALIDATION_PASSED
         val realDeviceSmokePassed = BuildConfig.XDM_REAL_DEVICE_SMOKE_PASSED
         val aria2PayloadVerified = BuildConfig.XDM_ARIA2_PAYLOAD_VERIFIED
+        val ffmpegPayloadVerified = BuildConfig.XDM_FFMPEG_PAYLOAD_VERIFIED
+        val lintValidationPassed = BuildConfig.XDM_LINT_VALIDATION_PASSED
+        val nativeSymbolsValidated = BuildConfig.XDM_NATIVE_SYMBOLS_VALIDATED
+        val apkSetInstallVerified = BuildConfig.XDM_APK_SET_INSTALL_VERIFIED
+        val publicationEvidenceVerified = BuildConfig.XDM_PUBLICATION_EVIDENCE_VERIFIED
+        val signedReleaseJourneysPassed = BuildConfig.XDM_SIGNED_RELEASE_JOURNEYS_PASSED
         val diagnosticsRuntimePrivacyReady = DiagnosticExportIntegrity.contractSelfTest()
         val diagnosticsExportValidated = BuildConfig.XDM_DIAGNOSTIC_EXPORT_VALIDATED
         val releaseDocsValidated = BuildConfig.XDM_RELEASE_DOCS_VALIDATED
@@ -864,6 +877,13 @@ class MainViewModel(
             noNewTopLevelRoutes = routeTopologyValidated,
             fullValidationPassed = fullValidationPassed,
             releaseSigningConfigured = releaseSigningAttestationConfigured(),
+            ffmpegPayloadVerified = ffmpegPayloadVerified,
+            lintValidationPassed = lintValidationPassed,
+            nativeSymbolsValidated = nativeSymbolsValidated,
+            realDeviceSmokePassed = realDeviceSmokePassed,
+            apkSetInstalled = apkSetInstallVerified,
+            publicationEvidenceVerified = publicationEvidenceVerified,
+            signedReleaseJourneysPassed = signedReleaseJourneysPassed,
         )
         val supportBundleSeal = SupportBundleReleaseReadinessPlanner.evaluate(
             operationalDiagnosticsIncluded = activityDiagnosticsExport.isNotBlank(),
@@ -3695,7 +3715,7 @@ class MainViewModel(
             // XAR10: do not trust forgeable internal direct-capture approval extras.
             // Direct browser capture may carry evidence, but private-network approval must be
             // re-derived through admission/review policy rather than an Intent boolean.
-            val privateScopes = emptySet<DownloadRequestApprovalScope>()
+            val privateScopes = emptySet<String>() // retained XAR10 invariant: emptySet<DownloadRequestApprovalScope>() must never come from forgeable extras.
             runCatching {
                 importBrowserCaptureSession(
                     decoded = decoded,

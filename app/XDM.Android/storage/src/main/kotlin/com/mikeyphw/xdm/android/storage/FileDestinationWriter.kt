@@ -85,6 +85,9 @@ class FileDestinationWriter(
                         transaction.inProgress(resolved.toURI().toString()),
                     )
                     try {
+                        if (targetExistedBeforePromotion && safeRequest.conflictPolicy != FilenameConflictPolicy.Overwrite) {
+                            throw java.nio.file.FileAlreadyExistsException(target.toString())
+                        }
                         val moveOptions = if (targetExistedBeforePromotion && safeRequest.conflictPolicy == FilenameConflictPolicy.Overwrite) {
                             arrayOf(StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
                         } else {

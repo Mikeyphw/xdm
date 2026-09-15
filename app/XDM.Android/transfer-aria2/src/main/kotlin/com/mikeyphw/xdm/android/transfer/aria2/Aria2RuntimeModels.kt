@@ -284,6 +284,11 @@ interface Aria2RpcControl {
     suspend fun tellStopped(offset: Int = 0, count: Int = 1000): List<Aria2TaskStatus>
     suspend fun removeDownloadResult(gid: String)
     suspend fun saveSession(): Boolean
+    /**
+     * Clears stale persisted aria2 session results after XDM has durably reconciled ownership.
+     * Implementations must keep this operation behind the same authenticated RPC boundary as saveSession.
+     */
+    suspend fun purgeSavedSession()
     suspend fun shutdown(force: Boolean = false)
 }
 

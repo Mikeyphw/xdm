@@ -562,6 +562,7 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
                     output.flush()
                     pfd.fileDescriptor.sync()
                 }
+                true
             } == true
         } finally {
             runCatching { DocumentsContract.deleteDocument(resolver, probe) }

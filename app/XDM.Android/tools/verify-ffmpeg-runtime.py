@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.json").read_text(encoding="utf-8"))
 LOCK_PATH = ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.lock.json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+MINIMUM_LOCK_SCHEMA = {"schemaVersion": 2}["schemaVersion"]
+
 
 
 def digest_bytes(data: bytes) -> str:
@@ -93,15 +95,15 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
         print("FFmpeg runtime not installed; source checkout remains valid for native-only development")
         return None
     lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+    if int(lock.get("schemaVersion", 0)) < MINIMUM_LOCK_SCHEMA:
+        raise SystemExit("runtime lock schemaVersion is older than the v2 toolchain-provenance contract")
     expected_fields = {
-        "schemaVersion": 2,
         "component": MANIFEST["component"],
         "ffmpegVersion": MANIFEST["ffmpegVersion"],
         "opensslVersion": MANIFEST["opensslVersion"],
         "abi": MANIFEST["abi"],
         "androidApi": MANIFEST["androidApi"],
         "ndkVersion": MANIFEST["ndkVersion"],
-        "ndkRevision": MANIFEST["ndkVersion"],
         "ffmpegSourceSha256": MANIFEST["ffmpegSourceSha256"],
         "opensslSourceSha256": MANIFEST["opensslSourceSha256"],
         "requiredLoadAlignment": MANIFEST["requiredLoadAlignment"],
@@ -110,9 +112,14 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
         "gplEnabled": False,
         "nonfreeEnabled": False,
     }
+    manifest_ndk_revision = MANIFEST.get("ndkRevision")
+    if manifest_ndk_revision is not None:
+        expected_fields["ndkRevision"] = manifest_ndk_revision
     for key, value in expected_fields.items():
         if lock.get(key) != value:
             raise SystemExit(f"runtime lock field {key} differs from the pinned manifest")
+    if not str(lock.get("ndkRevision", "")).strip():
+        raise SystemExit("runtime lock does not record measured NDK revision")
     toolchain_backend = str(lock.get("toolchainBackend", ""))
     if not (toolchain_backend.startswith("ndk:") or toolchain_backend == "termux-native-llvm"):
         raise SystemExit(f"runtime lock has unsupported toolchain backend: {toolchain_backend or '<missing>'}")
@@ -208,7 +215,13 @@ def main() -> None:
     parser.add_argument("--require-16kb-alignment", action="store_true")
     parser.add_argument("--apk", type=Path)
     args = parser.parse_args()
-    lock = verify_installed(args.require_payload, args.require_16kb_alignment)
+    try:
+        lock = verify_installed(args.require_payload, args.require_16kb_alignment)
+    except SystemExit as error:
+        if args.require_payload or args.apk:
+            raise
+        print(f"FFmpeg runtime is installed but stale for source-only validation: {error}")
+        lock = None
     if args.apk:
         if lock is None:
             raise SystemExit("APK verification requires an installed/attested runtime")
