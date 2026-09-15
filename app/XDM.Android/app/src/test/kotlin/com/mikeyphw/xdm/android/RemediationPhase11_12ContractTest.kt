@@ -76,7 +76,7 @@ class RemediationPhase11_12ContractTest {
         assertTrue(prefs.contains("selectedDownloadDetailId"))
         assertTrue(prefs.contains("selectedRecoveryDownloadId"))
         assertTrue(prefs.contains("selectedRecoveryAction"))
-        assertTrue(app.contains("viewModel.dismissExternalAddDraft()"))
+        assertTrue(app.contains("viewModel.dismissAddDownloadSession()"))
         assertTrue(app.contains("onDetailSelectionChanged = viewModel::selectDownloadDetail"))
         assertTrue(app.contains("AppRoute.Downloads -> DownloadsScreen("))
         assertTrue(app.contains("requestedDetailDownloadId = state.selectedDownloadDetailId"))

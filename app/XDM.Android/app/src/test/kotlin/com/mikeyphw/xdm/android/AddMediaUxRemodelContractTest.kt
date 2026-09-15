@@ -72,7 +72,7 @@ class AddMediaUxRemodelContractTest {
         assertTrue(gate.contains("UX13 remains the end-to-end UI/UX baseline"))
         assertTrue(gate.contains("Add/Media UX remodel remains a retained functional milestone"))
         assertTrue(gate.contains("execution/media semantics repair remains its functional baseline"))
-        assertTrue(manifest.contains("\"current_release_authority\": \"media_parity04_browser_ux_userscripts_notifications_release_seal\""))
-        assertTrue(manifest.contains("\"room_schema_current\": 24"))
+        assertTrue(manifest.contains("\"current_release_authority\": \"XAR16 signed release evidence seal\""))
+        assertTrue(manifest.contains("\"room_schema_current\": 25"))
     }
 }

@@ -6,7 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Xar15PrivacySecurityPerformanceContractTest {
-    private val root = File(System.getProperty("user.dir") ?: ".")
+    private val root = generateSequence(File(System.getProperty("user.dir") ?: ".").canonicalFile) { it.parentFile }
+        .first { File(it, "settings.gradle.kts").isFile && File(it, "app/src/main").isDirectory }
     private fun text(path: String) = File(root, path).readText()
 
     @Test

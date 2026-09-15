@@ -54,7 +54,7 @@ class BrowserExtensionPhase41ContractTest {
     fun customSchemeRejectionsDoNotFallThroughToGenericViewIntake() {
         val activity = repo.resolve("app/src/main/kotlin/com/mikeyphw/xdm/android/ExternalAutomationSecurity.kt").readText()
         assertTrue(activity.contains("parseDetailed"))
-        assertTrue(activity.contains("XdmBrowserDeepLinkParseResult.Rejected) return null"))
+        assertTrue(activity.contains("XdmBrowserDeepLinkParseResult.Rejected) {") && activity.contains("Malformed browser handoff was rejected before review."))
         assertTrue(activity.indexOf("parseDetailed") < activity.indexOf("sharedText(activity, intent)"))
     }
 

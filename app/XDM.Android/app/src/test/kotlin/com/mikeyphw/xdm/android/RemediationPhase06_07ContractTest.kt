@@ -50,7 +50,7 @@ class RemediationPhase06_07ContractTest {
         assertTrue(repair.contains("repair-backup-"))
         assertTrue(repair.contains("Selective repair requires atomic replacement"))
         assertTrue(repair.contains("fileSha256(backup) == originalDigest"))
-        assertTrue(repair.contains("verifyRepairedBlocks(target, plan, manifest)"))
+        assertTrue(repair.contains("verifyAllTrustedBlocks(target, plan, manifest)"))
         assertTrue(checkpointStore.contains("completedSha256"))
         assertTrue(checkpointStore.contains("integrityProof"))
     }
@@ -93,7 +93,7 @@ class RemediationPhase06_07ContractTest {
         assertTrue(writer.contains("Raw filesystem destinations are restricted"))
         assertTrue(safety.contains("attemptGeneration"))
         assertTrue(safety.contains("requiredBytesForPublication"))
-        assertTrue(safety.contains("publicationCopy"))
+        assertTrue(safety.contains("PublicationTransaction"))
         assertTrue(safety.contains("FileChannel.open(parent.toPath(), StandardOpenOption.READ)"))
     }
 
@@ -179,7 +179,7 @@ class RemediationPhase06_07ContractTest {
         val schema20 = source("persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/20.json")
         val schema21 = source("persistence/schemas/com.mikeyphw.xdm.android.persistence.AppDatabase/21.json")
 
-        assertTrue(database.contains("version = 24"))
+        assertTrue(database.contains("version = 25"))
         assertTrue(migrations.contains("Migration18To19 = object : Migration(18, 19)"))
         assertTrue(migrations.contains("completedArtifactUri"))
         assertTrue(migrations.contains("completedArtifactGeneration"))

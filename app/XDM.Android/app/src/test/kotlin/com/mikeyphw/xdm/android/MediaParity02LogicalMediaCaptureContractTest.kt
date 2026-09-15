@@ -17,7 +17,7 @@ class MediaParity02LogicalMediaCaptureContractTest {
         val migrations = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt")
         val entities = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt")
         val repository = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt")
-        assertTrue(database.contains("version = 24"))
+        assertTrue(database.contains("version = 25"))
         assertTrue(migrations.contains("Migration22To23 = object : Migration(22, 23)"))
         assertTrue(migrations.contains("media_observations"))
         assertTrue(entities.contains("data class MediaObservationEntity"))

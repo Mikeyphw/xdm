@@ -121,7 +121,7 @@ class ArchitectureContractTest {
         assertTrue("Phase 14 validator is missing", File(root, "tools/validate-phase-14.py").isFile)
         assertTrue("Release safety model is missing", File(root, "core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/ReleaseSecurityModels.kt").isFile)
         assertTrue("Manifest must record implemented phase 14", manifest.contains("14"))
-        assertTrue("Manifest must record current Room schema v24", manifest.contains("\"version\": 24"))
+        assertTrue("Manifest must record current Room schema v25", manifest.contains("\"room_schema_current\": 25") && manifest.contains("\"version\": 25"))
         val phaseFourteenVersion = Regex("""versionName = "0\.(\d+)\.0(?:-(?:alpha01|rc\d+))?"""").find(buildGradle)?.groupValues?.get(1)?.toIntOrNull()
         assertTrue("Build metadata must be at least 0.14", phaseFourteenVersion != null && phaseFourteenVersion >= 14)
         assertTrue("Diagnostics must expose privacy-safe app integrity summary", screens.contains("App integrity"))
@@ -341,7 +341,7 @@ class ArchitectureContractTest {
         assertTrue("Manifest must expose ShareSheet text intake", manifest.contains("android.intent.action.SEND") && manifest.contains("android:mimeType=\"text/*\""))
         assertTrue("Manifest must expose typed browser download-manager VIEW intake", manifest.contains("android:mimeType=\"*/*\"") && manifest.contains("android:scheme=\"http\"") && manifest.contains("android:scheme=\"https\""))
         assertTrue("ShareSheet intake must inspect shared text and clip data", externalIntake.contains("sharedText(activity, intent)") && externalIntake.contains("Intent.EXTRA_TEXT") && externalIntake.contains("intent.clipData"))
-        assertTrue("Browser/share non-media links must open Add instead of being rejected", viewModel.contains("openExternalAddDraft") && viewModel.contains("navigate(AppRoute.Add)"))
+        assertTrue("Browser/share non-media links must open Add instead of being rejected", viewModel.contains("openExternalAddDraft") && viewModel.contains("showAddDownloadSession(AddDownloadNavigationPolicy.externalSession"))
         assertTrue(
             "External Add drafts must survive into UI state",
             (viewModel.contains("externalAddDraft.value = downloadIntakePlanner.fromExternal(") ||
@@ -350,7 +350,7 @@ class ArchitectureContractTest {
                 viewModel.contains("externalAddDraft = review.externalAddDraft"),
         )
         assertTrue("Add route must prefill external links", screens.contains("initialUrl") && screens.contains("Link received") && screens.contains("LaunchedEffect(externalDraftId)"))
-        assertTrue("App shell must pass external drafts to Add", appShell.contains("initialUrl = state.externalAddDraft?.url"))
+        assertTrue("App shell must pass active external drafts to Add", appShell.contains("initialUrl = activeExternalDraft?.url"))
         assertFalse("Supported non-media links must not be rejected as missing media", viewModel.contains("No supported media URL detected"))
     }
 
@@ -921,7 +921,7 @@ class ArchitectureContractTest {
         assertTrue("PromptAddDownload must open Add instead of auto-queuing", viewModel.contains("AutomationCommandAction.PromptAddDownload -> openExternalAddDraft") && viewModel.contains("External download awaiting Add Download confirmation"))
         assertTrue("URL normalization must support ftp for download-manager handoff", models.contains("(?:https?|ftp)://") && models.contains("scheme != \"http\" && scheme != \"https\" && scheme != \"ftp\""))
         assertTrue("Add screen must show external source and no-auto-queue safety copy", screens.contains("externalSourceLabel") && screens.contains("XDM never auto-queues external handoffs"))
-        assertTrue("App shell must pass the external source label", appShell.contains("externalSourceLabel = state.externalAddDraft?.sourceLabel"))
+        assertTrue("App shell must pass the active external source label", appShell.contains("externalSourceLabel = activeExternalDraft?.sourceLabel"))
         assertTrue("Manifest must record Phase 36", manifest.contains("phase36_external_download_handoff") && hasBrowserRemovalLineage(manifest))
         assertTrue("Final release gate must use the current successor validation matrix", runGate.contains("validate-bug-hunt-phase11-validation-matrix.py"))
         assertTrue("CI must include the Phase 36 validator", workflow.contains("validate-phase-36-external-download-handoff.py"))

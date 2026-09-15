@@ -42,7 +42,7 @@ class Ux07LibraryActivityRecoveryContractTest {
         assertTrue(activity.contains("events today"))
         assertTrue(activity.contains("Queue & recovery"))
         assertTrue(app.contains("title = \"Queue & recovery\""))
-        assertTrue(app.contains("\"Retry storage check\" -> viewModel.runQueueIntelligenceNow()"))
+        assertTrue(app.contains("OperationalActivityActionId.RetryStorageCheck -> viewModel.runQueueIntelligenceNow()"))
         assertTrue(operational.contains("QueueHoldReason.StoragePressure -> \"Retry storage check\""))
     }
 }

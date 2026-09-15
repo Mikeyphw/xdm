@@ -296,7 +296,6 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }
 
-
 val repositoryRoot = rootProject.projectDir.parentFile.parentFile
 val staticValidationExtensions = setOf("kt", "kts", "py", "sh", "json", "toml", "xml", "md")
 val staticValidationInputs = files(

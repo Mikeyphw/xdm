@@ -26,7 +26,7 @@ class MediaParity03NativeHlsExecutionContractTest {
         val db = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt")
         val entities = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt")
         val migrations = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Migrations.kt")
-        assertTrue(db.contains("version = 24"))
+        assertTrue(db.contains("version = 25"))
         assertTrue(db.contains("NativeHlsJobEntity::class"))
         assertTrue(db.contains("NativeHlsPartEntity::class"))
         assertTrue(db.contains("abstract fun nativeHlsDao(): NativeHlsDao"))

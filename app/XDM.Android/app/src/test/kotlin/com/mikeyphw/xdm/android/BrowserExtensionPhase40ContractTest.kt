@@ -39,7 +39,7 @@ class BrowserExtensionPhase40ContractTest {
         val fab = File(root, "browser-extension/src/main/extension/xdm-firefox/fab.js").readText()
         val frame = File(root, "browser-extension/src/main/extension/xdm-firefox/frame-bridge.js").readText()
         val background = File(root, "browser-extension/src/main/extension/xdm-firefox/network-observer.js").readText()
-        assertTrue(fab.contains("attachShadow({ mode: \"open\" })"))
+        assertTrue(fab.contains("attachShadow({ mode: \"closed\" })"))
         assertTrue(fab.contains("__xdm_media_fab_host"))
         assertTrue(fab.contains("env(safe-area-inset-bottom)"))
         assertTrue(fab.contains("prefers-reduced-motion"))

@@ -69,7 +69,7 @@ class DownloaderExperiencePhase8CContractTest {
             "recentDecisions.take(4)",
         ).forEach { assertTrue("Phase 8C UI missing $it", screens.contains(it)) }
         assertTrue(viewModel.contains("fun startIgnoringQueuePolicy(download: Download)"))
-        assertTrue(viewModel.contains("policyOverride = true"))
+        assertTrue(viewModel.contains("policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(current)"))
         assertTrue(application.contains("QueueConditionMonitor"))
         assertTrue(application.contains("QueueIntelligenceWorker.enqueueImmediate"))
     }

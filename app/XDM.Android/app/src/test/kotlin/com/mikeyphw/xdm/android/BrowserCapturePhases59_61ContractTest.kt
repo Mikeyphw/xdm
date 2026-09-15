@@ -86,8 +86,8 @@ class BrowserCapturePhases59_61ContractTest {
         assertFalse(config.contains("captureKeyId"))
         assertFalse(config.contains("capturePublicKeySpki"))
         assertFalse(exportModels.contains("appVersion != metadata.appVersion"))
-        assertTrue(lifecycleTest.contains("capture link must not depend on Android app version/key lifecycle"))
-        assertTrue(lifecycleTest.contains("keyless v3 lifecycle test passed"))
+        assertTrue(lifecycleTest.contains("stable capture payload must not depend on Android app version/key lifecycle"))
+        assertTrue(lifecycleTest.contains("sender-bound direct v3 lifecycle test passed"))
     }
 
     private fun source(relative: String): String = File(root, relative).readText()

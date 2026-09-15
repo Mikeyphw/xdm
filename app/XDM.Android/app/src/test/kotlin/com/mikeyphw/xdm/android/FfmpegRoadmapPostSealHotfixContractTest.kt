@@ -45,8 +45,9 @@ class FfmpegRoadmapPostSealHotfixContractTest {
         assertTrue(vm.contains("nativeHlsMediaManager.resume"))
         assertTrue(vm.contains("nativeHlsMediaManager.cancel"))
         assertTrue(app.contains("NativeHlsMediaManager("))
-        assertTrue(app.contains("val recovery = transferRuntime.recoverForStartup()"))
-        assertTrue(app.contains("val nativeHlsRecovery = runCatching { nativeHlsMediaManager.recoverInterruptedJobs() }"))
+        assertTrue(app.contains("transferRuntime.recoverForStartup()"))
+        assertTrue(app.contains("val nativeHlsRecovery: Result<Int>"))
+        assertTrue(app.contains("nativeHlsMediaManager.recoverInterruptedJobs()"))
         assertTrue(manager.contains("reconcileCommittedPublication(job)"))
         assertTrue(manager.contains("FinalizationJournalStage.DestinationCommitted"))
         assertTrue(manager.contains("repository.finalizationForDownload(job.downloadId)"))
@@ -183,7 +184,8 @@ class FfmpegRoadmapPostSealHotfixContractTest {
 
         // Native-HLS RecoveryRequired rows still resume through their durable native owner rather
         // than falling into the ordinary backend retry path.
-        assertTrue(vm.contains("DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(download.id)"))
+        assertTrue(vm.contains("DownloadState.RecoveryRequired"))
+        assertTrue(vm.contains("nativeHlsMediaManager.resume(current.id)"))
     }
 
 }

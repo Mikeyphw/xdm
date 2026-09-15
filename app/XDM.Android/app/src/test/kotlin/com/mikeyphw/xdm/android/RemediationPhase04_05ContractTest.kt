@@ -81,7 +81,7 @@ class RemediationPhase04_05ContractTest {
         assertTrue(coordinator.contains("authorizeClaimedExecution"))
         assertTrue(coordinator.contains("current.state != DownloadState.Connecting"))
         assertTrue(coordinator.contains("current.updatedAtEpochMs != queueClaimToken"))
-        assertTrue(coordinator.contains("download.updatedAtEpochMs + 1L"))
+        assertTrue(coordinator.contains("AndroidExecutionClaimRegistry.install(current.id, current.updatedAtEpochMs)"))
         assertTrue(gate.contains("commit = true"))
         assertTrue(viewModel.contains("queueIntelligenceCoordinator.pauseAllDurably()"))
         assertTrue(viewModel.contains("queueIntelligenceCoordinator.resumeAllManual()"))

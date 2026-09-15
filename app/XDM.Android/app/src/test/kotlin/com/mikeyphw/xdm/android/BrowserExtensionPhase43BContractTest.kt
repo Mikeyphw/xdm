@@ -72,7 +72,7 @@ class BrowserExtensionPhase43BContractTest {
         assertTrue(addSurface.contains("preferMediaInspection -> \"Inspect media\""))
         assertTrue(addSurface.contains("Text(\"Media options\")"))
         assertFalse(addSurface.contains("Media inspection opens the resolver"))
-        assertTrue(shell.contains("externalOrigin = state.externalAddDraft?.origin"))
+        assertTrue(shell.contains("externalOrigin = activeExternalDraft?.origin"))
         assertTrue(viewModel.contains("AutomationCommandSource.BrowserExtension -> DownloadIntakeOrigin.BrowserExtension"))
     }
 

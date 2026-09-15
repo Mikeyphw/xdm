@@ -15,7 +15,7 @@ class Phase52BrowserSessionHealthContractTest {
         assertTrue(screen.contains("Browser session health"))
         assertTrue(screen.contains("BrowserSessionHealthCard"))
         assertTrue(screen.contains("Private browser values are never shown here"))
-        assertTrue(app.contains("BrowserSessionHealthPlanner.evaluate(state.externalAddDraft)"))
+        assertTrue(app.contains("BrowserSessionHealthPlanner.evaluate(activeExternalDraft)"))
         listOf("Cookie", "Authorization", "Bearer", "requestHeaders", "redactedHeaderSummary").forEach { forbidden ->
             assertFalse("Normal Add Download UI must not render $forbidden", screen.contains("Text(\"$forbidden"))
             assertFalse("Normal Add Download UI must not use $forbidden as a visible row", screen.contains("ReviewSummaryRow(\"$forbidden"))

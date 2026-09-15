@@ -42,7 +42,7 @@ class RuntimeFoundationPhase57_58ContractTest {
         assertTrue(aria2Backend.contains("MAPPING_FINALIZATION_FAILED"))
         assertTrue(aria2Backend.contains("code = \"DESTINATION_PUBLICATION\""))
         assertTrue(aria2Backend.contains("state = DownloadState.RecoveryRequired"))
-        assertTrue(aria2Backend.contains("runCatching { updateMapping(mapping, MAPPING_COMPLETED) }"))
+        assertTrue(aria2Backend.contains("updateMapping(mapping, MAPPING_COMPLETED)"))
         assertTrue(runtime.contains("mapping.first == BackendType.Native"))
         assertTrue(runtime.contains("current.errorMessage.orEmpty().startsWith(\"Final save failed\")"))
         assertTrue(runtime.contains("backend.resume(mapping.second)"))

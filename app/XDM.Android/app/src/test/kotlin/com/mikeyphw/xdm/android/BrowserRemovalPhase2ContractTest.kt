@@ -38,7 +38,7 @@ class BrowserRemovalPhase2ContractTest {
         assertTrue(viewModel.contains("fun captureMediaRequest(facts: MediaRequestFacts)"))
         assertTrue(mediaContract.contains("data class MediaRequestFacts"))
         assertTrue(mediaIntake.contains("facts: MediaRequestFacts"))
-        assertTrue(shell.contains("state.externalAddDraft?.let(viewModel::inspectExternalMedia)"))
+        assertTrue(shell.contains("viewModel.inspectExternalMedia(currentDraft)"))
         assertFalse(viewModel.contains("fun openAddFromBrowser"))
         assertFalse(viewModel.contains("fun openBrowserDownload"))
         assertFalse(viewModel.contains("fun captureBrowserMediaUrl"))
@@ -49,7 +49,7 @@ class BrowserRemovalPhase2ContractTest {
         val viewModel = File(androidRoot(), "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val block = viewModel.substringAfter("fun openDownloadReview").substringBefore("fun ")
         assertTrue(block.contains("externalAddDraft.value = draft"))
-        assertTrue(block.contains("navigate(AppRoute.Add)"))
+        assertTrue(block.contains("showAddDownloadSession(AddDownloadNavigationPolicy.externalSession"))
         assertFalse(block.contains("executionStarter.start"))
         assertFalse(block.contains("repository.save("))
     }

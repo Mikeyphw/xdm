@@ -46,7 +46,7 @@ class Ux13EndToEndUiUxReleaseSealContractTest {
         assertTrue(library.contains("Find media"))
         assertTrue(library.contains("Delete saved file"))
         assertTrue(activity.contains("Queue & recovery"))
-        assertTrue(activity.contains("Retry storage check"))
+        assertTrue(activity.contains("onAction: (OperationalActivityEvent) -> Unit"))
         assertTrue(locator.contains("onRenderProcessGone"))
         assertTrue(locator.contains("webViewDisposed = true"))
         assertTrue(locator.contains("recreate()"))
@@ -65,11 +65,11 @@ class Ux13EndToEndUiUxReleaseSealContractTest {
         assertFalse(settings.contains("\"Advanced Debug Workbench\""))
         assertFalse(settings.contains("\"Developer tools\""))
 
-        assertTrue(manifest.contains("\"current_release_authority\": \"media_parity04_browser_ux_userscripts_notifications_release_seal\""))
+        assertTrue(manifest.contains("\"current_release_authority\": \"XAR16 signed release evidence seal\""))
         assertTrue(manifest.contains("\"current_runtime_quality_authority\": \"media_parity04_browser_ux_userscripts_notifications_release_seal\""))
-        assertTrue(manifest.contains("\"next_phase\": \"complete\""))
+        assertTrue(manifest.contains("\"next_phase\": \"XAR17_313_root_closure_audit_final_gate\""))
         assertTrue(manifest.contains("\"validation_deferred\": false"))
-        assertTrue(manifest.contains("\"room_schema_current\": 24") || manifest.contains("\"version\": 24"))
+        assertTrue(manifest.contains("\"room_schema_current\": 25") || manifest.contains("\"version\": 25"))
         assertTrue(finalGate.contains("validate-ux13-end-to-end-ui-ux-release-seal.py"))
         assertTrue(finalGate.contains("run-bug-hunt-phase11-validation-matrix.sh --static-only --ci"))
     }
