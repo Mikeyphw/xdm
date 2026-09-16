@@ -16,7 +16,7 @@ class FinalReleaseGateModelsTest {
             buildType = "release",
             releaseSafetyReady = true,
             installUpdateReady = true,
-            diagnosticsRedacted = true,
+            diagnosticsExportAttested = true,
             aria2PayloadVerified = true,
             staticValidatorsComplete = true,
             releaseDocsComplete = true,
@@ -41,7 +41,7 @@ class FinalReleaseGateModelsTest {
             buildType = "release",
             releaseSafetyReady = false,
             installUpdateReady = false,
-            diagnosticsRedacted = false,
+            diagnosticsExportAttested = false,
             aria2PayloadVerified = false,
             staticValidatorsComplete = false,
             releaseDocsComplete = false,
@@ -65,7 +65,7 @@ class FinalReleaseGateModelsTest {
             buildType = "debug",
             releaseSafetyReady = true,
             installUpdateReady = true,
-            diagnosticsRedacted = true,
+            diagnosticsExportAttested = true,
             aria2PayloadVerified = false,
             staticValidatorsComplete = true,
             releaseDocsComplete = true,
@@ -88,7 +88,7 @@ class FinalReleaseGateModelsTest {
             buildType = "debug",
             releaseSafetyReady = true,
             installUpdateReady = true,
-            diagnosticsRedacted = true,
+            diagnosticsExportAttested = true,
             aria2PayloadVerified = false,
             staticValidatorsComplete = true,
             releaseDocsComplete = true,
@@ -131,7 +131,7 @@ class FinalReleaseGateModelsTest {
             buildType = "release",
             releaseSafetyReady = true,
             installUpdateReady = true,
-            diagnosticsRedacted = true,
+            diagnosticsExportAttested = true,
             aria2PayloadVerified = true,
             staticValidatorsComplete = true,
             releaseDocsComplete = true,
@@ -160,4 +160,20 @@ class FinalReleaseGateModelsTest {
             assertTrue("missing blocking $id", report.checks.any { it.id == id && it.severity == FinalReleaseGateSeverity.Blocking })
         }
     }
+
+    @Test
+    fun missingFinalDiagnosticsAttestationBlocksReleaseWithoutClaimingRuntimeLeak() {
+        val report = FinalPublicReleaseGate.evaluate(
+            versionName = "0.21.0-rc01", versionCode = 22, packageId = "com.mikeyphw.xdm.android",
+            schemaVersion = 25, buildType = "release", releaseSafetyReady = true, installUpdateReady = true,
+            diagnosticsExportAttested = false, aria2PayloadVerified = true, staticValidatorsComplete = true,
+            releaseDocsComplete = true, noNewTopLevelRoutes = true, fullValidationPassed = true,
+            releaseSigningConfigured = true,
+        )
+        val check = report.checks.single { it.id == "diagnostics.export-attestation" }
+        assertEquals("Final diagnostics export redaction is not attested", check.title)
+        assertTrue(check.detail.contains("Runtime redaction is checked separately"))
+        assertFalse(check.title.contains("not redacted", ignoreCase = true))
+    }
+
 }

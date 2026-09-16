@@ -15,6 +15,8 @@ FF01 is the first full overlay in the XDM Android FFmpeg roadmap. It establishes
 
 `tools/install-ffmpeg-runtime.py` owns source download, digest verification, path-safe extraction, OpenSSL cross-build, FFmpeg cross-build, 16 KiB linker flags, executable installation, license extraction, and the generated provenance lock. `tools/verify-ffmpeg-runtime.py` owns source-only validation plus strict runtime/APK attestation when a payload is present or required.
 
+RM03 hardens this boundary further: the FFmpeg configure environment clears the host `PKG_CONFIG_PATH`, exposes only the pinned OpenSSL pkg-config metadata through `PKG_CONFIG_LIBDIR`, and puts the NDK API sysroot library directory ahead of all other link search paths. Every generated FFmpeg/FFprobe payload is parsed before installation and its `PT_INTERP`/`DT_NEEDED` set must satisfy `android-unversioned-sonames-v1`; Linux/Termux dependencies such as `libz.so.1` or `libc.so.6` are rejected. The exact dependency lists are hash-bound in the runtime lock and rechecked both from installed payloads and from the APK.
+
 ## HTTPS trust
 
 The embedded runtime does not disable certificate verification. `AndroidTrustBundleProvider` reads `AndroidCAStore`, materializes X.509 roots into an app-private `noBackupFilesDir` PEM bundle, and the typed command compiler supplies `-tls_verify 1 -ca_file <bundle>` for HTTPS probe/record operations. Header names and values are validated before process launch and no shell command is constructed.

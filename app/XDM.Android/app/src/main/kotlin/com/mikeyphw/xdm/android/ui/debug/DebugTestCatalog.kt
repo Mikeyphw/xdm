@@ -768,11 +768,16 @@ private object Aria2RuntimeDebugTest : StateDebugTest(
                     put("failureKind", diagnostic.kind.name)
                     diagnostic.exitCode?.let { put("exitCode", it.toString()) }
                     put("failureDetail", diagnostic.detail)
+                    diagnostic.binaryPath?.let { put("binaryPath", it) }
+                    diagnostic.binaryAbi?.let { put("binaryAbi", it) }
+                    diagnostic.binarySha256?.let { put("binarySha256", it) }
+                    if (diagnostic.neededLibraries.isNotEmpty()) put("neededLibraries", diagnostic.neededLibraries.joinToString())
+                    diagnostic.repairHint?.let { put("repairHint", it) }
                     diagnostic.logTail?.takeIf { it.isNotBlank() }?.let { put("runtimeLogTail", it) }
                 }
             },
             errorCode = if (passed) null else "aria2-runtime-lifecycle-failed",
-            suggestedAction = if (passed) "No action needed." else "Use Repair aria2, rerun this lifecycle test, and export the verified diagnostics ZIP if it still fails. The failure kind, exit code, and redacted runtime log are included when available.",
+            suggestedAction = if (passed) "No action needed." else failure?.repairHint ?: "Use Repair aria2 for runtime-state/RPC failures, rerun this lifecycle test, and export the verified diagnostics ZIP if it still fails.",
         )
     }
 }

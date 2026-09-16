@@ -13,6 +13,7 @@ class SupportBundleReleaseReadinessPlannerTest {
             installUpdateReadinessIncluded = true,
             finalReleaseWarningsExplained = true,
             realDeviceSmokeStatusIncluded = true,
+            diagnosticsExportAttested = true,
             redactedReportsOnly = true,
             rawUrlsExcluded = true,
             rawHeadersExcluded = true,
@@ -33,13 +34,14 @@ class SupportBundleReleaseReadinessPlannerTest {
     }
 
     @Test
-    fun supportBundleSealBlocksWhenWarningsAreBareOrSessionValuesWouldPersist() {
+    fun supportBundleSealSeparatesMissingAttestationFromRuntimePrivacyFailure() {
         val seal = SupportBundleReleaseReadinessPlanner.evaluate(
             operationalDiagnosticsIncluded = true,
             releaseSecurityIncluded = true,
             installUpdateReadinessIncluded = true,
             finalReleaseWarningsExplained = false,
             realDeviceSmokeStatusIncluded = true,
+            diagnosticsExportAttested = false,
             redactedReportsOnly = true,
             rawUrlsExcluded = true,
             rawHeadersExcluded = true,
@@ -48,9 +50,10 @@ class SupportBundleReleaseReadinessPlannerTest {
         )
 
         assertFalse(seal.readyForSupportHandoff)
-        assertTrue(seal.issueCount == 2)
+        assertTrue(seal.issueCount == 3)
         assertTrue(seal.redactedSummary().contains("needs action"))
         assertTrue(seal.checks.any { it.title == "Final-release warning explanations" && it.status == SupportBundleSealStatus.NeedsAttention })
+        assertTrue(seal.checks.any { it.title == "Final diagnostics export attestation" && it.status == SupportBundleSealStatus.NeedsAttention })
         assertTrue(seal.checks.any { it.title == "Privacy redaction boundary" && it.status == SupportBundleSealStatus.NeedsAttention })
     }
 }

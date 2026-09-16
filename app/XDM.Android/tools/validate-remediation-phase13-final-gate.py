@@ -126,14 +126,14 @@ for validator in (
     "validate-uix-r6-accessibility-performance-release-seal.py",
 ):
     require(validator in final_script, f"final static gate omits {validator}")
-for task in (
-    '":app:finalRemediationStaticGate"',
-    '":browser-extension:test"',
-    '":browser-extension:jsTest"',
-    '":browser-extension:validateFirefoxExtension"',
-    '"lintDebug"',
+for alternatives in (
+    ('":app:finalRemediationStaticGate"',),
+    ('":browser-extension:test"',),
+    ('":browser-extension:jsTest"',),
+    ('":browser-extension:validateFirefoxExtension"',),
+    ('"lintDebug"', '":app:lintDebug"'),
 ):
-    require(task in devtool, f"Devtool final validation configuration omits {task}")
+    require(any(task in devtool for task in alternatives), f"Devtool final validation configuration omits one of {alternatives}")
 
 for task in (
     '":core-model:test"',

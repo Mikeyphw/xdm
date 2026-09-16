@@ -279,13 +279,16 @@ if not devtool_config.is_file():
     ERRORS.append("Repository .devtool.toml is missing")
 else:
     devtool_text = devtool_config.read_text(encoding="utf-8", errors="replace")
-    for task in (
-        '"assembleDebug"', '":app:assembleDebugAndroidTest"',
-        '":core-model:test"', '":core-utils:test"', '":transfer-aria2:test"',
-        '":media:test"', '":app:testDebugUnitTest"', '"lintDebug"',
-    ):
-        if task not in devtool_text:
-            ERRORS.append(f"Devtool final Android gate missing {task}")
+    required_task_alternatives = (
+        ('"assembleDebug"', '":app:assembleDebug"'),
+        ('":app:assembleDebugAndroidTest"',),
+        ('":core-model:test"',), ('":core-utils:test"',), ('":transfer-aria2:test"',),
+        ('":media:test"',), ('":app:testDebugUnitTest"',),
+        ('"lintDebug"', '":app:lintDebug"'),
+    )
+    for alternatives in required_task_alternatives:
+        if not any(task in devtool_text for task in alternatives):
+            ERRORS.append(f"Devtool final Android gate missing one of {alternatives}")
 
 validator = "tools/validate-uix-r6-accessibility-performance-release-seal.py"
 for gate in ("tools/run-final-release-gate.sh", ".github/workflows/android.yml"):

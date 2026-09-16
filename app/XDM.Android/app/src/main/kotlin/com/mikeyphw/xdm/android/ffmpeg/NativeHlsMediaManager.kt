@@ -34,6 +34,9 @@ import com.mikeyphw.xdm.android.persistence.NativeHlsJobEntity
 import com.mikeyphw.xdm.android.persistence.NativeHlsPartEntity
 import com.mikeyphw.xdm.android.scheduler.AndroidTransferRequestSecurityGuard
 import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoff
+import com.mikeyphw.xdm.android.scheduler.TransferRequestSecurityException
+import com.mikeyphw.xdm.android.scheduler.TransferSecurityFailureKind
+import com.mikeyphw.xdm.android.scheduler.ValidatedTransferNetworkTarget
 import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.storage.DestinationRequest
@@ -45,6 +48,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URI
+import java.net.UnknownHostException
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -54,6 +58,7 @@ import javax.crypto.spec.SecretKeySpec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +72,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -509,6 +515,14 @@ class NativeHlsMediaManager(
                 lastError = error
                 dao.updatePart(partEntityId(jobId, part.index), NativeHlsPartState.Failed.name, 0L, part.expectedBytes, null, priorRetries + attempt + 1, error.message?.take(300), System.currentTimeMillis())
                 if (attempt == 2) break
+                // Do not hammer a temporarily unavailable resolver/CDN. DNS validation itself has a
+                // short retry window; this outer part retry gives the whole manifest/key/segment
+                // request another bounded chance without ever bypassing the security guard.
+                val baseDelay = if (
+                    error is TransferRequestSecurityException &&
+                    error.kind == TransferSecurityFailureKind.DnsResolutionFailed
+                ) HLS_DNS_RETRY_BACKOFF_MILLIS else HLS_PART_RETRY_BACKOFF_MILLIS
+                delay(baseDelay * (attempt + 1L))
             }
         }
         throw IllegalStateException("HLS part ${part.index} failed after bounded retries: ${lastError?.message}", lastError)
@@ -520,11 +534,14 @@ class NativeHlsMediaManager(
     private suspend fun fetchBytes(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?, range: String?, maxBytes: Long): ByteArray {
         var current = url
         repeat(6) { redirectCount ->
-            validateRequest(current, headers, handoff, range)
+            // Resolve once inside the security decision, then pin OkHttp to exactly those approved
+            // addresses. This closes the validate-then-resolve-again DNS race while retaining a
+            // fresh security decision for every explicit redirect target.
+            val validatedTarget = validateRequest(current, headers, handoff, range)
             val builder = Request.Builder().url(current)
             filteredHeaders(current, headers, handoff).forEach { (name, value) -> builder.header(name, value) }
             range?.let { builder.header("Range", it) }
-            val runningResponse = executeCancellable(builder.build())
+            val runningResponse = executeCancellable(clientForValidatedTarget(validatedTarget), builder.build())
             val response = runningResponse.response
             try {
                 if (response.code in 300..399) {
@@ -579,8 +596,8 @@ class NativeHlsMediaManager(
         }
     }
 
-    private suspend fun executeCancellable(request: Request): RunningHttpResponse = suspendCancellableCoroutine { continuation ->
-        val call = client.newCall(request)
+    private suspend fun executeCancellable(requestClient: OkHttpClient, request: Request): RunningHttpResponse = suspendCancellableCoroutine { continuation ->
+        val call = requestClient.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
@@ -597,11 +614,16 @@ class NativeHlsMediaManager(
         })
     }
 
-    private suspend fun validateRequest(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?, range: String?) {
+    private suspend fun validateRequest(
+        url: String,
+        headers: Map<String, String>,
+        handoff: MediaRequestHandoff?,
+        range: String?,
+    ): ValidatedTransferNetworkTarget {
         val scopedHeaders = filteredHeaders(url, headers, handoff).toMutableMap()
         range?.let { scopedHeaders["Range"] = it }
         val privateScope = DownloadRequestApprovalScope.forUrl(url)
-        securityGuard.validate(DownloadRequest(
+        val request = DownloadRequest(
             id = "native-hls-security",
             sourceUrl = url,
             destinationUri = "xdm://private/native-hls",
@@ -614,8 +636,19 @@ class NativeHlsMediaManager(
             cleartextCredentialsApproved = handoff?.cleartextCredentialsApproved == true && privateScope != null && privateScope in handoff.cleartextCredentialApprovalScopes,
             privateNetworkApprovalScopes = handoff?.privateNetworkApprovalScopes.orEmpty(),
             cleartextCredentialApprovalScopes = handoff?.cleartextCredentialApprovalScopes.orEmpty(),
-        ))
+        )
+        return securityGuard.validateAndResolveTarget(request, url)
     }
+
+    private fun clientForValidatedTarget(target: ValidatedTransferNetworkTarget): OkHttpClient =
+        client.newBuilder()
+            .dns(Dns { hostname ->
+                if (!hostname.equals(target.host, ignoreCase = true)) {
+                    throw UnknownHostException("HLS transport attempted an unvalidated hostname")
+                }
+                target.addresses
+            })
+            .build()
 
     private fun filteredHeaders(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?): Map<String, String> {
         val handoffOrigin = handoff?.exactUrl?.let(::originKeyForSecurity)
@@ -1021,6 +1054,8 @@ class NativeHlsMediaManager(
         private const val MAX_HLS_INIT_MAP_BYTES = 64L * 1024L * 1024L
         private const val MAX_HLS_SEGMENT_BYTES = 512L * 1024L * 1024L
         private const val MAX_HLS_KEY_BYTES = 16L
+        private const val HLS_PART_RETRY_BACKOFF_MILLIS = 250L
+        private const val HLS_DNS_RETRY_BACKOFF_MILLIS = 500L
         private const val DEFAULT_HLS_READ_BUFFER_BYTES = 64 * 1024
         private val SENSITIVE_NATIVE_HLS_HEADERS = setOf(
             "authorization",

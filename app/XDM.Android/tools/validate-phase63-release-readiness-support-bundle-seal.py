@@ -94,6 +94,7 @@ for needle in [
     'Install/update readiness',
     'Final-release warning explanations',
     'Real-device smoke status',
+    'Final diagnostics export attestation',
     'Privacy redaction boundary',
     'Copy-only support handoff',
     'Private values: full links, raw headers, cookies, authorization values, bearer tokens, signatures, and credential query values are redacted.',
@@ -115,7 +116,7 @@ for forbidden in [
 
 for needle in [
     'supportBundleSealIsReadyWhenAllReleaseSectionsAreRedactedAndPresent',
-    'supportBundleSealBlocksWhenWarningsAreBareOrSessionValuesWouldPersist',
+    'supportBundleSealSeparatesMissingAttestationFromRuntimePrivacyFailure',
     'assertFalse(seal.readyForSupportHandoff)',
     'assertTrue(seal.readyForSupportHandoff)',
 ]:

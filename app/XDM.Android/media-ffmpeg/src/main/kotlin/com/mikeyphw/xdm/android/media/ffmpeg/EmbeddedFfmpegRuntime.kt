@@ -42,6 +42,7 @@ class EmbeddedFfmpegRuntime(
             requiredConfigureFlags = root.getValue("configureFlags").jsonArray.map { it.jsonPrimitive.content }.toSet(),
             forbiddenConfigureFlags = root.getValue("forbiddenConfigureFlags").jsonArray.map { it.jsonPrimitive.content }.toSet(),
             maxCombinedBinaryBytes = root.getValue("maxCombinedBinaryBytes").jsonPrimitive.content.toLong(),
+            dynamicDependencyPolicy = root.getValue("dynamicDependencyPolicy").jsonPrimitive.content,
         )
     }
 
@@ -213,8 +214,13 @@ class EmbeddedFfmpegRuntime(
         require(lock.getValue("ffmpegVersion").jsonPrimitive.content == manifest.ffmpegVersion) { "version lock mismatch" }
         require(lock.getValue("ndkVersion").jsonPrimitive.content == manifest.ndkVersion) { "NDK lock mismatch" }
         require(lock.getValue("buildProfile").jsonPrimitive.content == manifest.buildProfile) { "build profile lock mismatch" }
+        require(lock.getValue("dynamicDependencyPolicy").jsonPrimitive.content == manifest.dynamicDependencyPolicy) { "Android dependency policy lock mismatch" }
         require(lock.getValue("gplEnabled").jsonPrimitive.booleanOrNull != true) { "GPL runtime unexpectedly enabled" }
         require(lock.getValue("nonfreeEnabled").jsonPrimitive.booleanOrNull != true) { "nonfree runtime unexpectedly enabled" }
+        val versionedSoname = Regex("^lib[^/]+\\.so\\.\\d+(?:\\.\\d+)*$")
+        val ffmpegNeeded = lock.getValue("ffmpegNeededLibraries").jsonArray.map { it.jsonPrimitive.content }
+        val ffprobeNeeded = lock.getValue("ffprobeNeededLibraries").jsonArray.map { it.jsonPrimitive.content }
+        require((ffmpegNeeded + ffprobeNeeded).none(versionedSoname::matches)) { "runtime lock contains a versioned non-Android SONAME" }
         val expectedFfmpeg = lock.getValue("ffmpegBinarySha256").jsonPrimitive.content
         val expectedFfprobe = lock.getValue("ffprobeBinarySha256").jsonPrimitive.content
         require(sha256(ffmpegBinary) == expectedFfmpeg) { "FFmpeg payload digest mismatch" }

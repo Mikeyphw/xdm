@@ -65,7 +65,7 @@ class ReleaseSecurityModelsTest {
         )
 
         assertTrue(report.releaseReady)
-        assertEquals("Release gate checks are clean", report.summary)
+        assertEquals("Runtime diagnostics checks are clean", report.summary)
         assertTrue(report.findings.any { it.severity == ReleaseSecuritySeverity.Info })
     }
 }

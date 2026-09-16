@@ -26,6 +26,10 @@ python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment
 python3 tools/install-ffmpeg-runtime.py --build-pinned
 python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment | tee "$EVIDENCE_DIR/ffmpeg-runtime.txt"
 bash tools/run-final-common-validation.sh | tee "$EVIDENCE_DIR/final-common-validation.txt"
+python3 tools/write-rm04-validation-evidence.py \
+  --final-common-log "$EVIDENCE_DIR/final-common-validation.txt" \
+  --run-id "$RUN_ID" \
+  --out "$EVIDENCE_DIR/rm04-validation-seal.json"
 ./gradlew -Pxdm.requireAria2Runtime=true -Pxdm.requireFfmpegRuntime=true \
   -Pxdm.validation.staticPassed=true -Pxdm.validation.fullPassed=true -Pxdm.validation.realDeviceSmokePassed=false \
   -Pxdm.validation.aria2PayloadVerified=true -Pxdm.validation.ffmpegPayloadVerified=true \

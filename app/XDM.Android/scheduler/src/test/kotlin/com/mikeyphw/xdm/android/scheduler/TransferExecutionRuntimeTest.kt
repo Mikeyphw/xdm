@@ -83,7 +83,7 @@ class TransferExecutionRuntimeTest {
     private class ActivationFenceBackend(
         private val store: FakeStore,
     ) : DownloadBackend {
-        override val backendId: String = "activation-fence"
+        override val backendId: String = "native"
         override val runtimeIdentity = BackendRuntimeIdentity("activation-fence-instance", "activation-fence-session")
         var preparedGeneration: Long? = null
             private set

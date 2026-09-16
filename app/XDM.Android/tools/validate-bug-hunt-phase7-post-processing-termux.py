@@ -85,7 +85,12 @@ def validate(root: Path) -> list[str]:
         "handleTransferTerminalEvent", "event.attemptGeneration", "mediaSubjectGeneration",
         "durableClaim = true", "preferences.values", "postProcessingSettings",
     ), "automation", errors)
-    contains_all(transfer, ("attemptGenerations", "existingOwnership.generation", "coordinated.ownership.generation", "requestGeneration(download.id)"), "terminal generation propagation", errors)
+    contains_all(transfer, ("attemptGenerations", "existingOwnership.generation", "requestGeneration(download.id)"), "terminal generation propagation", errors)
+    require(
+        "coordinated.ownership.generation" in transfer or "pending.ownership.generation" in transfer,
+        "terminal generation propagation missing coordinated/pending ownership generation marker",
+        errors,
+    )
     contains_all(manager, (
         "recoverInterruptedJobs", "immutableSpecJson", "maxAttemptGeneration", "parentJobId",
         "preflightIssue", "runAndroidChecksum", "requestControlNow", "ForceCancel", "TimedOut",

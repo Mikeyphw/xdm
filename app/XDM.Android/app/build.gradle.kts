@@ -475,6 +475,22 @@ val verifyRm02PersistenceDownloadsUx = tasks.register<Exec>("verifyRm02Persisten
     trackStaticValidation("rm02-persistence-downloads-ux")
 }
 
+val verifyRm03EmbeddedRuntimesHlsNetworking = tasks.register<Exec>("verifyRm03EmbeddedRuntimesHlsNetworking") {
+    group = "verification"
+    description = "Verify RM03 Android ELF dependency policy, FFmpeg/aria2 runtime attestation, truthful aria2 repair, and HLS validated-DNS pinning."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-rm03-embedded-runtimes-hls-networking.py")
+    trackStaticValidation("rm03-embedded-runtimes-hls-networking")
+}
+
+val verifyRm04DiagnosticsReleaseFinalSeal = tasks.register<Exec>("verifyRm04DiagnosticsReleaseFinalSeal") {
+    group = "verification"
+    description = "Verify RM04 diagnostics truth, final-ZIP attestation semantics, support-bundle separation, and same-run release evidence binding."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-rm04-diagnostics-release-final-seal.py")
+    trackStaticValidation("rm04-diagnostics-release-final-seal")
+}
+
 
 val verifyXar10BrowserCaptureEvidence = tasks.register<Exec>("verifyXar10BrowserCaptureEvidence") {
     group = "verification"

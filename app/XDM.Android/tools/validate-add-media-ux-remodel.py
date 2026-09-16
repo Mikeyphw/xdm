@@ -120,8 +120,8 @@ need(entry.get("adaptive_quality_tracks_only_when_present") is True and entry.ge
      "manifest must seal adaptive-only choices and collapsed media tools")
 need(entry.get("post_dl03_nullable_user_dir_warning_fixed") is True and entry.get("post_dl03_nullable_parent_warning_fixed") is True,
      "manifest must record both warning fixes")
-need(entry.get("room_schema_current") == 21 and entry.get("room_schema_changed") is False,
-     "UX remodel must retain Room schema 21")
+need(entry.get("room_schema_current") == manifest.get("database", {}).get("version") and entry.get("room_schema_changed") is False,
+     "UX remodel must retain its no-schema-change contract while following the authoritative current Room schema")
 need(entry.get("validation_deferred") is False and entry.get("next_overlay") is None,
      "UX remodel validation must not be deferred")
 need("addSheetUsesOneExplicitDownloadActionWithoutSecondConfirmation" in contract and

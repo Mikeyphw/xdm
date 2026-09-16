@@ -14,6 +14,7 @@ val installPinnedFfmpegRuntime = tasks.register<Exec>("installPinnedFfmpegRuntim
     inputs.files(
         layout.projectDirectory.file("runtime/ffmpeg-runtime.json"),
         rootProject.layout.projectDirectory.file("tools/install-ffmpeg-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
     outputs.files(
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so"),
@@ -101,6 +102,7 @@ val verifyFfmpegRuntime = tasks.register<Exec>("verifyFfmpegRuntime") {
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so"),
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libxdm_ffprobe.so"),
         rootProject.layout.projectDirectory.file("tools/verify-ffmpeg-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
     inputs.property("requireFfmpegRuntime", requireFfmpegRuntime)
     val successMarker = layout.buildDirectory.file("validation/verifyFfmpegRuntime.success")
@@ -131,6 +133,7 @@ val verifyFfmpegReleaseRuntime = tasks.register<Exec>("verifyFfmpegReleaseRuntim
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so"),
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libxdm_ffprobe.so"),
         rootProject.layout.projectDirectory.file("tools/verify-ffmpeg-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
     commandLine("python3", "tools/verify-ffmpeg-runtime.py", "--require-payload", "--require-16kb-alignment")
 }

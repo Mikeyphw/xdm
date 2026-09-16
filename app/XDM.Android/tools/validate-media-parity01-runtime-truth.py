@@ -160,7 +160,8 @@ require_all(build, [
 ], "independent BuildConfig validation evidence")
 require_all(main_vm, [
     "DiagnosticExportIntegrity.contractSelfTest()",
-    "diagnosticsRuntimePrivacyReady && diagnosticsExportValidated",
+    "diagnosticsRuntimePrivacyReady = diagnosticsRuntimePrivacyReady",
+    "diagnosticsExportAttested = diagnosticsExportValidated",
     "releaseDocsComplete = releaseDocsValidated",
     "noNewTopLevelRoutes = routeTopologyValidated",
     "aria2PayloadGateRetained = BuildConfig.XDM_ARIA2_PAYLOAD_GATE_CONFIGURED",
@@ -169,7 +170,7 @@ require_all(main_vm, [
 ], "MainViewModel release truth")
 require("releaseDocsComplete = staticValidationPassed" not in main_vm, "release docs must not proxy static validation")
 require("noNewTopLevelRoutes = staticValidationPassed" not in main_vm, "route topology must not proxy static validation")
-require("diagnosticsRedacted = staticValidationPassed" not in main_vm, "diagnostics privacy must not proxy static validation")
+require("diagnosticsExportAttested = staticValidationPassed" not in main_vm, "diagnostics export attestation must not proxy static validation")
 
 require("currentRoomSchemaVersion = 25" in developer, "Developer Center final media validation must use current Room schema 25")
 require("currentRoomSchemaVersion = 21" not in developer, "stale Room schema 21 remains in Developer Center")

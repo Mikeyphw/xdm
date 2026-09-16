@@ -62,5 +62,6 @@
     "--enable-gpl",
     "--enable-nonfree",
     "--enable-version3"
-  ]
+  ],
+  "dynamicDependencyPolicy": "android-unversioned-sonames-v1"
 }

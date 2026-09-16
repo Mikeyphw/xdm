@@ -11,6 +11,7 @@ REQUIRED = [
     'aria2-release-apk.txt',
     'ffmpeg-release-apk.txt',
     'artifacts.sha256',
+    'rm04-validation-seal.json',
 ]
 
 def sha256(p: Path) -> str:
@@ -40,6 +41,7 @@ def main() -> None:
     phase=load_json(d/'phase10-release-attestation.json')
     device=load_json(d/'xar16-device-matrix.json')
     journeys=load_json(d/'xar16-signed-release-journeys.json')
+    rm04=load_json(d/'rm04-validation-seal.json')
     artifacts={item['kind']: item for item in same.get('artifacts', [])}
     for kind in ['apk','aab','apks']:
         if kind not in artifacts: raise SystemExit(f'same-run evidence missing {kind}')
@@ -52,6 +54,17 @@ def main() -> None:
         raise SystemExit('device matrix does not prove APK-set install and upgrade/reboot/launch')
     if not journeys.get('signedReleaseJourneysPassed'):
         raise SystemExit('signed-release journeys did not pass')
+    if rm04.get('roadmapOverlay') != 'RM04' or rm04.get('runId') != same.get('runId'):
+        raise SystemExit('RM04 validation evidence is not bound to the same XAR16 run')
+    if not rm04.get('canonicalNonDeviceValidationPassed'):
+        raise SystemExit('RM04 canonical non-device validation did not pass')
+    for key in ['runtimeDiagnosticsPrivacyContract','finalDiagnosticsZipPrivacyIntegrity','staticValidatorChain','releaseDocsValidator','routeTopologyValidator','fullSelectedTaskValidation']:
+        if not rm04.get(key):
+            raise SystemExit(f'RM04 validation evidence missing {key}')
+    log = rm04.get('finalCommonValidationLog') or {}
+    log_path = Path(log.get('path',''))
+    if not log_path.is_file() or sha256(log_path) != log.get('sha256'):
+        raise SystemExit('RM04 final-common validation log hash mismatch')
     report={
         'schemaVersion':1,
         'roadmapOverlay':'XAR16',
@@ -62,6 +75,7 @@ def main() -> None:
         'phase10Attestation':str(d/'phase10-release-attestation.json'),
         'deviceMatrix':str(d/'xar16-device-matrix.json'),
         'journeys':str(d/'xar16-signed-release-journeys.json'),
+        'rm04ValidationSeal':str(d/'rm04-validation-seal.json'),
     }
     if args.require_publication_ready and not report['publicationReady']:
         raise SystemExit('publication evidence is not ready')

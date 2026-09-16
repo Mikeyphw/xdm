@@ -53,11 +53,17 @@ class Aria2ProcessManager(
         val packaged = probe()
         val failed = _state.value as? Aria2ProcessState.Failed ?: return packaged
         if (!packaged.isAvailable) return packaged
-        val kind = failed.diagnostic?.kind?.name ?: Aria2StartupFailureKind.Unknown.name
-        val exit = failed.diagnostic?.exitCode?.let { " (exit code $it)" }.orEmpty()
+        val diagnostic = failed.diagnostic
+        val kind = diagnostic?.kind?.name ?: Aria2StartupFailureKind.Unknown.name
+        val exit = diagnostic?.exitCode?.let { " (exit code $it)" }.orEmpty()
+        val recovery = if (diagnostic?.kind == Aria2StartupFailureKind.BinaryLoadFailure) {
+            "Install/update XDM with an attested Android aria2 payload, then rerun the authenticated lifecycle test before selecting this backend."
+        } else {
+            "Use Repair aria2, then rerun the authenticated lifecycle test before selecting this backend."
+        }
         return Aria2CapabilityReport(
             availability = Aria2Availability.ProbeFailed,
-            summary = "Packaged aria2 is present, but its managed runtime is unhealthy: $kind$exit. Use Repair aria2, then rerun the authenticated lifecycle test before selecting this backend.",
+            summary = "Packaged aria2 is present, but its managed runtime is unhealthy: $kind$exit. $recovery",
         )
     }
 
@@ -193,7 +199,30 @@ class Aria2ProcessManager(
     }
 
     suspend fun repair(): Aria2StartResult {
+        val priorFailure = (_state.value as? Aria2ProcessState.Failed)?.diagnostic
+        val packagedBefore = probe()
+        if (!packagedBefore.isAvailable) {
+            return failedStart(
+                "aria2 repair cannot continue because the packaged runtime is unavailable or failed attestation.",
+                diagnosticFor(
+                    IllegalStateException(packagedBefore.summary),
+                    kindOverride = Aria2StartupFailureKind.BinaryLoadFailure,
+                ),
+            )
+        }
+        if (priorFailure?.kind == Aria2StartupFailureKind.BinaryLoadFailure) {
+            return failedStart(
+                "aria2 repair cannot rewrite a packaged native executable. Install or update XDM with an attested Android runtime, then rerun the lifecycle test.",
+                priorFailure.copy(
+                    repairHint = "Install/update XDM; packaged native binaries are immutable at runtime. Then rerun the authenticated aria2 lifecycle test.",
+                ),
+            )
+        }
         stop()
+        sessionStore.cleanupTransientLaunchConfigurations()
+        sessionStore.sanitizeSavedSessionToOwnedMetadata()
+        sessionStore.clearRuntimeLease()
+        sessionStore.rotateRuntimeLog()
         val rotatable = secretProvider as? Aria2RotatableSecretProvider
             ?: return failedStart(
                 "aria2 repair could not rotate the private RPC secret.",
@@ -201,12 +230,27 @@ class Aria2ProcessManager(
                     kind = Aria2StartupFailureKind.AuthenticationBoundary,
                     detail = "Configured secret provider does not support rotation.",
                     logTail = safeLogTail(),
+                    binaryPath = packagedBefore.binary?.file?.absolutePath,
+                    binarySha256 = packagedBefore.binary?.sha256,
+                    binaryAbi = packagedBefore.binary?.abi,
+                    neededLibraries = packagedBefore.binary?.neededLibraries.orEmpty(),
+                    repairHint = "Use an app build whose aria2 secret provider supports rotation.",
                 ),
             )
         runCatching { rotatable.rotate() }.getOrElse { error ->
             return failedStart(
                 "aria2 repair could not rotate the private RPC secret: ${safeMessage(error)}",
                 diagnosticFor(error, kindOverride = Aria2StartupFailureKind.AuthenticationBoundary),
+            )
+        }
+        val packagedAfter = probe()
+        if (!packagedAfter.isAvailable || packagedAfter.binary?.sha256 != packagedBefore.binary?.sha256) {
+            return failedStart(
+                "aria2 repair stopped because packaged-runtime attestation changed during repair.",
+                diagnosticFor(
+                    IllegalStateException(packagedAfter.summary),
+                    kindOverride = Aria2StartupFailureKind.BinaryLoadFailure,
+                ),
             )
         }
         return start()
@@ -636,7 +680,26 @@ class Aria2ProcessManager(
             Aria2StartupFailureKind.OrphanRecovery -> safeMessage(error ?: IllegalStateException("Owned orphan aria2 recovery failure"))
             Aria2StartupFailureKind.Unknown -> error?.let(::safeMessage) ?: "No authenticated RPC response was received."
         }
-        return Aria2StartupDiagnostic(kind, detail, exitCode, logTail)
+        val packaged = runCatching { probe() }.getOrNull()?.binary
+        val repairHint = when (kind) {
+            Aria2StartupFailureKind.BinaryLoadFailure -> "Install/update XDM with an attested Android aria2 payload; packaged native binaries cannot be rewritten in place."
+            Aria2StartupFailureKind.ConfigurationInvalid,
+            Aria2StartupFailureKind.AuthenticationBoundary,
+            Aria2StartupFailureKind.ConfigurationCleanup,
+            Aria2StartupFailureKind.PortUnavailable -> "Use Repair aria2 to clear transient runtime state, rotate the private RPC secret, and rerun authenticated readiness."
+            else -> "Rerun the authenticated aria2 lifecycle test; use Repair aria2 when the packaged runtime remains attested."
+        }
+        return Aria2StartupDiagnostic(
+            kind = kind,
+            detail = detail,
+            exitCode = exitCode,
+            logTail = logTail,
+            binaryPath = packaged?.file?.absolutePath,
+            binarySha256 = packaged?.sha256,
+            binaryAbi = packaged?.abi,
+            neededLibraries = packaged?.neededLibraries.orEmpty(),
+            repairHint = repairHint,
+        )
     }
 
     private fun String?.looksLikeBinaryLoadFailure(): Boolean {

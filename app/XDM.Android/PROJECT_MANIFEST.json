@@ -1880,7 +1880,7 @@
     "automatic_upload": false,
     "baseline": "debug_workbench_phase_d2_shell_r4",
     "compile_hygiene": "MediaSniffingLabCard candidate row uses escaped newline; D3 app contract uses safe substring assertions that compile.",
-    "description": "Adds a Media Sniffing Lab inside Settings \u2192 Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
+    "description": "Adds a Media Sniffing Lab inside Settings → Debug Workbench for static shared-sniffer diagnostics with redacted copy reports.",
     "drm_bypass": false,
     "network_page_probe": false,
     "next_phase": "debug_workbench_phase_d4_browser_bridge_add_download_debugger",
@@ -1888,7 +1888,7 @@
     "phase": "D3",
     "revision": "r4",
     "room_schema_unchanged": 14,
-    "settings_location": "Settings \u2192 Debug Workbench \u2192 Media Sniffing Lab",
+    "settings_location": "Settings → Debug Workbench → Media Sniffing Lab",
     "starts_downloads": false,
     "static_sniff_only": true,
     "status": "implemented",
@@ -5591,6 +5591,59 @@
     "validator": "tools/validate-rm02-persistence-downloads-ux.py",
     "validation_task": "verifyRm02PersistenceDownloadsUx",
     "validation_mode": "intermediate_no_validate",
-    "next_overlay": "overlay 3 of 4 \u2014 Embedded Runtimes + HLS Networking"
+    "next_overlay": "overlay 3 of 4 — Embedded Runtimes + HLS Networking"
+  },
+  "rm03_embedded_runtimes_hls_networking": {
+    "status": "implemented",
+    "roadmap_position": "overlay 3 of 4",
+    "scope": "Embedded Runtimes + HLS Networking",
+    "depends_on": "rm02_persistence_downloads_ux",
+    "android_elf_dependency_policy": true,
+    "ffmpeg_ndk_zlib_isolation": true,
+    "ffmpeg_apk_dependency_attestation": true,
+    "aria2_installed_payload_attestation": true,
+    "aria2_truthful_binary_repair_boundary": true,
+    "hls_bounded_dns_retry": true,
+    "hls_validated_dns_pinning": true,
+    "hls_redirect_revalidation": true,
+    "private_network_protection_preserved": true,
+    "room_schema_unchanged": 25,
+    "report": "XDM_RM03_EMBEDDED_RUNTIMES_HLS_NETWORKING_REPORT.md",
+    "docs": "docs/remediation/RM03-EMBEDDED-RUNTIMES-HLS-NETWORKING.md",
+    "validator": "tools/validate-rm03-embedded-runtimes-hls-networking.py",
+    "validation_task": "verifyRm03EmbeddedRuntimesHlsNetworking",
+    "validation_mode": "intermediate_no_validate",
+    "next_overlay": "overlay 4 of 4 — Diagnostics / Release Final Seal"
+  },
+  "rm04_diagnostics_release_final_seal": {
+    "status": "implemented",
+    "roadmap_position": "overlay 4 of 4",
+    "scope": "Diagnostics / Release Final Seal",
+    "depends_on": "rm03_embedded_runtimes_hls_networking",
+    "runtime_and_final_gate_terminology_separated": true,
+    "redaction_and_attestation_semantics_separated": true,
+    "support_bundle_attestation_explicit": true,
+    "same_run_rm04_evidence_hash_bound": true,
+    "xar16_publication_requires_rm04_evidence": true,
+    "full_validation_required": true,
+    "roadmap_complete": true,
+    "room_schema_unchanged": 25,
+    "report": "XDM_RM04_DIAGNOSTICS_RELEASE_FINAL_SEAL_REPORT.md",
+    "docs": "docs/remediation/RM04-DIAGNOSTICS-RELEASE-FINAL-SEAL.md",
+    "validator": "tools/validate-rm04-diagnostics-release-final-seal.py",
+    "validation_task": "verifyRm04DiagnosticsReleaseFinalSeal",
+    "validation_mode": "final_full_validation",
+    "next_overlay": "complete"
+  },
+  "remediation_roadmap_2026_09_16": {
+    "total_overlays": 4,
+    "completed_overlays": [
+      "RM01",
+      "RM02",
+      "RM03",
+      "RM04"
+    ],
+    "current": "complete",
+    "next": "complete"
   }
 }

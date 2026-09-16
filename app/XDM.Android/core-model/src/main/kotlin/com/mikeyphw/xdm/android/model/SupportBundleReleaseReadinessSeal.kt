@@ -56,6 +56,7 @@ object SupportBundleReleaseReadinessPlanner {
         installUpdateReadinessIncluded: Boolean,
         finalReleaseWarningsExplained: Boolean,
         realDeviceSmokeStatusIncluded: Boolean,
+        diagnosticsExportAttested: Boolean,
         redactedReportsOnly: Boolean,
         rawUrlsExcluded: Boolean,
         rawHeadersExcluded: Boolean,
@@ -97,6 +98,13 @@ object SupportBundleReleaseReadinessPlanner {
                 readyDetail = "Manual device evidence status is represented before RC handoff.",
                 blockedDetail = "Real-device smoke status must be visible before RC handoff.",
                 owner = "RealDeviceOperationalSmokeSealPlanner",
+            ),
+            check(
+                title = "Final diagnostics export attestation",
+                ready = diagnosticsExportAttested,
+                readyDetail = "The exact final diagnostics ZIP privacy/integrity validator is attested for this release run.",
+                blockedDetail = "Runtime redaction is active, but final diagnostics ZIP privacy/integrity verification is not attested for this release run.",
+                owner = "DiagnosticExportIntegrity",
             ),
             check(
                 title = "Privacy redaction boundary",

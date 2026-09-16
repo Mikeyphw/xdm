@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "component": "aria2c",
   "version": "1.37.0",
   "releaseTag": "v1.37.0",
@@ -14,5 +14,6 @@
   "minimumBinaryBytes": 500000,
   "license": "GPL-2.0-or-later",
   "licenseAsset": "transfer-aria2/runtime/licenses/GPL-2.0.txt",
-  "sourceNoticeAsset": "transfer-aria2/runtime/licenses/SOURCE-NOTICE.txt"
+  "sourceNoticeAsset": "transfer-aria2/runtime/licenses/SOURCE-NOTICE.txt",
+  "dynamicDependencyPolicy": "android-unversioned-sonames-v1"
 }

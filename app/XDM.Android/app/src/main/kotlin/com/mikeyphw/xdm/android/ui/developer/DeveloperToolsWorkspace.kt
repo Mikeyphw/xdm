@@ -408,7 +408,7 @@ private fun ReleaseReadinessSection(state: MainUiState) {
         XdmSectionHeader("Validation truth")
         XdmMetadataText("Room schema: 25 • topology: Live Locator WebView + external browser handoff", maxLines = 3)
         XdmMetadataText("Static chain: ${if (BuildConfig.XDM_STATIC_VALIDATION_PASSED) "passed" else "not attested"} • full validation: ${if (BuildConfig.XDM_FULL_VALIDATION_PASSED) "passed" else "pending"}", maxLines = 3)
-        XdmMetadataText("Diagnostics final-ZIP gate: ${if (BuildConfig.XDM_DIAGNOSTIC_EXPORT_VALIDATED) "passed" else "not attested"} • route topology: ${if (BuildConfig.XDM_ROUTE_TOPOLOGY_VALIDATED) "passed" else "not attested"}", maxLines = 3)
+        XdmMetadataText("Final diagnostics ZIP attestation: ${if (BuildConfig.XDM_DIAGNOSTIC_EXPORT_VALIDATED) "passed" else "not attested"} • route topology: ${if (BuildConfig.XDM_ROUTE_TOPOLOGY_VALIDATED) "passed" else "not attested"}", maxLines = 3)
         XdmMetadataText("Lint/warnings: ${if (BuildConfig.XDM_LINT_VALIDATION_PASSED) "passed" else "not attested"} • native symbols: ${if (BuildConfig.XDM_NATIVE_SYMBOLS_VALIDATED) "passed" else "not attested"}", maxLines = 3)
         XdmMetadataText("Real-device smoke: ${if (BuildConfig.XDM_REAL_DEVICE_SMOKE_PASSED) "passed" else "pending"} • aria2 payload: ${if (BuildConfig.XDM_ARIA2_PAYLOAD_VERIFIED) "verified" else "optional/unverified"}", maxLines = 3)
         XdmMetadataText("Embedded FFmpeg payload: ${if (BuildConfig.XDM_FFMPEG_PAYLOAD_VERIFIED) "verified" else "not attested"} • final APK gate: ${if (BuildConfig.XDM_FFMPEG_PAYLOAD_GATE_CONFIGURED) "configured" else "missing"}", maxLines = 3)

@@ -162,6 +162,7 @@ import com.mikeyphw.xdm.android.util.sanitizeFileName
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2CapabilityReport
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessManager
 import com.mikeyphw.xdm.android.transfer.aria2.Aria2ProcessState
+import com.mikeyphw.xdm.android.transfer.aria2.Aria2StartupFailureKind
 import com.mikeyphw.xdm.android.transfer.nativeengine.NativeStoragePathProbe
 import com.mikeyphw.xdm.android.termux.TermuxRootMode
 import com.mikeyphw.xdm.android.termux.TermuxBridgeStatus
@@ -352,7 +353,7 @@ data class MainUiState(
         buildType = "debug",
         releaseSafetyReady = false,
         installUpdateReady = false,
-        diagnosticsRedacted = false,
+        diagnosticsExportAttested = false,
         aria2PayloadVerified = false,
         staticValidatorsComplete = false,
         releaseDocsComplete = false,
@@ -383,7 +384,7 @@ data class MainUiState(
         buildType = "debug",
         releaseSafetyComplete = false,
         recoverySurfaceReady = false,
-        diagnosticsExportRedacted = false,
+        diagnosticsRuntimePrivacyReady = false,
         aria2PayloadGateRetained = false,
         updateKeepsPackageIdentity = false,
         releaseSigningConfigured = false,
@@ -703,6 +704,10 @@ class MainViewModel(
                     append("\nCategory: ${diagnostic.kind.name}")
                     append("\n${diagnostic.detail}")
                     diagnostic.exitCode?.let { append("\nExit code: $it") }
+                    diagnostic.binaryAbi?.let { append("\nABI: $it") }
+                    diagnostic.binarySha256?.let { append("\nBinary SHA-256: $it") }
+                    diagnostic.neededLibraries.takeIf { it.isNotEmpty() }?.let { append("\nNative dependencies: ${it.joinToString()}") }
+                    diagnostic.repairHint?.let { append("\nRecovery: $it") }
                     diagnostic.logTail?.takeIf(String::isNotBlank)?.let { append("\nRuntime log tail: $it") }
                 }
             }
@@ -713,7 +718,9 @@ class MainViewModel(
             status = status,
             detail = detail,
             canRunSmokeTest = capability?.isAvailable == true && !smokeRunning,
-            canRepair = capability?.isAvailable == true && !smokeRunning,
+            canRepair = capability?.isAvailable == true &&
+                (processState as? Aria2ProcessState.Failed)?.diagnostic?.kind != Aria2StartupFailureKind.BinaryLoadFailure &&
+                !smokeRunning,
             smokeTestRunning = smokeRunning,
             storageDoctor = storageDoctor,
         )
@@ -858,7 +865,7 @@ class MainViewModel(
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyComplete = releaseSecurityReport.releaseReady,
             recoverySurfaceReady = snapshot.finalizationJournals.none { it.needsRecovery } || snapshot.recovery.isNotEmpty() || snapshot.finalizationJournals.isEmpty(),
-            diagnosticsExportRedacted = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
+            diagnosticsRuntimePrivacyReady = diagnosticsRuntimePrivacyReady,
             aria2PayloadGateRetained = BuildConfig.XDM_ARIA2_PAYLOAD_GATE_CONFIGURED,
             updateKeepsPackageIdentity = packageIdentityStable,
             releaseSigningConfigured = releaseSigningAttestationConfigured(),
@@ -871,7 +878,7 @@ class MainViewModel(
             buildType = BuildConfig.BUILD_TYPE,
             releaseSafetyReady = releaseSecurityReport.releaseReady,
             installUpdateReady = installUpdateReadinessReport.readyForInstall,
-            diagnosticsRedacted = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
+            diagnosticsExportAttested = diagnosticsExportValidated,
             aria2PayloadVerified = aria2PayloadVerified,
             staticValidatorsComplete = staticValidationPassed,
             releaseDocsComplete = releaseDocsValidated,
@@ -892,9 +899,10 @@ class MainViewModel(
             installUpdateReadinessIncluded = installUpdateReadinessReport.readyForInstall,
             finalReleaseWarningsExplained = finalReleaseGateReport.checks.isNotEmpty(),
             realDeviceSmokeStatusIncluded = true,
-            redactedReportsOnly = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
-            rawUrlsExcluded = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
-            rawHeadersExcluded = diagnosticsRuntimePrivacyReady && diagnosticsExportValidated,
+            diagnosticsExportAttested = diagnosticsExportValidated,
+            redactedReportsOnly = diagnosticsRuntimePrivacyReady,
+            rawUrlsExcluded = diagnosticsRuntimePrivacyReady,
+            rawHeadersExcluded = diagnosticsRuntimePrivacyReady,
             sessionValuesPersisted = false,
             copyReportAvailable = true,
         )
@@ -914,8 +922,8 @@ class MainViewModel(
             appendLine(finalReleaseGateReport.redactedExplanationSummary())
             appendLine()
             appendLine("Validation evidence (independent facts)")
-            appendLine("- Runtime diagnostics redaction contract: ${if (diagnosticsRuntimePrivacyReady) "pass" else "fail"}")
-            appendLine("- Final diagnostics export validator: ${if (diagnosticsExportValidated) "passed" else "not attested"}")
+            appendLine("- Runtime diagnostics privacy contract: ${if (diagnosticsRuntimePrivacyReady) "pass" else "fail"}")
+            appendLine("- Final diagnostics export privacy/integrity attestation: ${if (diagnosticsExportValidated) "passed" else "not attested"}")
             appendLine("- Static validator chain: ${if (staticValidationPassed) "passed" else "not attested"}")
             appendLine("- Release docs validator: ${if (releaseDocsValidated) "passed" else "not attested"}")
             appendLine("- Route topology validator: ${if (routeTopologyValidated) "passed" else "not attested"}")
@@ -1435,11 +1443,11 @@ class MainViewModel(
         if (!uiMutationConcurrency.aria2Diagnostics.tryAcquire()) return
         aria2SmokeRunning.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            aria2SmokeMessage.value = "Repairing embedded aria2: stopping the managed process, clearing stale launch configs, and rotating the RPC secret."
+            aria2SmokeMessage.value = "Repairing aria2 runtime state: stopping the managed process, clearing stale launch state, revalidating the packaged binary, and rotating the RPC secret."
             try {
                 val result = aria2ProcessManager.repair()
                 aria2SmokeMessage.value = if (result.started) {
-                    "Embedded aria2 repaired: secret rotated and authenticated loopback RPC verified."
+                    "Embedded aria2 runtime state repaired: payload re-attested, secret rotated, and authenticated loopback RPC verified."
                 } else {
                     (result.state as? Aria2ProcessState.Failed)?.message ?: "Embedded aria2 repair did not reach a running state."
                 }

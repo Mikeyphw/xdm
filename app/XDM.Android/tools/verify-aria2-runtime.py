@@ -10,6 +10,8 @@ import struct
 import zipfile
 from pathlib import Path
 
+from android_elf_runtime import ElfPolicyError, validate_android_runtime_elf
+
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / "transfer-aria2/runtime/aria2-runtime.json").read_text(encoding="utf-8"))
 LOCK_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.lock.json"
@@ -97,6 +99,10 @@ def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
     lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
     data = TARGET.read_bytes()
     validate_elf(data)
+    try:
+        runtime_metadata = validate_android_runtime_elf(data)
+    except ElfPolicyError as error:
+        raise SystemExit(f"aria2 Android dependency policy failed: {error}") from error
     if require_16kb_alignment:
         assert_16kb_alignment(data)
 
@@ -108,10 +114,16 @@ def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
         "abi": MANIFEST["abi"],
         "archiveName": MANIFEST["archiveName"],
         "sourceUrl": MANIFEST["officialUrl"],
+        "dynamicDependencyPolicy": MANIFEST.get("dynamicDependencyPolicy", "android-unversioned-sonames-v1"),
     }
     for key, expected in required_metadata.items():
         if lock.get(key) != expected:
             raise SystemExit(f"aria2 runtime lock field {key} does not match the manifest")
+
+    if list(lock.get("neededLibraries", [])) != list(runtime_metadata["needed"]):
+        raise SystemExit("aria2 runtime lock DT_NEEDED list differs from the packaged ELF")
+    if lock.get("elfInterpreter") != runtime_metadata["interpreter"]:
+        raise SystemExit("aria2 runtime lock ELF interpreter differs from the packaged ELF")
 
     archive_hash = str(lock.get("archiveSha256", "")).lower()
     binary_hash = str(lock.get("binarySha256", "")).lower()
@@ -185,6 +197,12 @@ def main() -> None:
                 if digest_bytes(notice_data) != lock[f"{name}Sha256"]:
                     raise SystemExit(f"APK aria2 {name} differs from the attested notice asset")
         validate_elf(data)
+        try:
+            apk_runtime_metadata = validate_android_runtime_elf(data)
+        except ElfPolicyError as error:
+            raise SystemExit(f"APK aria2 Android dependency policy failed: {error}") from error
+        if list(lock.get("neededLibraries", [])) != list(apk_runtime_metadata["needed"]):
+            raise SystemExit("APK aria2 DT_NEEDED list differs from the attested runtime")
         if args.require_16kb_alignment:
             assert_16kb_alignment(data)
         if len(data) != lock["binarySize"] or digest_bytes(data) != lock["binarySha256"]:

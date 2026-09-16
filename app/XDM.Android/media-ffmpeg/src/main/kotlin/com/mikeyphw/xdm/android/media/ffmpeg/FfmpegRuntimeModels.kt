@@ -29,6 +29,7 @@ data class FfmpegRuntimeManifest(
     val requiredConfigureFlags: Set<String> = emptySet(),
     val forbiddenConfigureFlags: Set<String> = emptySet(),
     val maxCombinedBinaryBytes: Long = Long.MAX_VALUE,
+    val dynamicDependencyPolicy: String = "android-unversioned-sonames-v1",
 )
 
 data class FfmpegRuntimeCapabilityReport(

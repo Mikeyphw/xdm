@@ -107,7 +107,7 @@ object FinalReleaseGateExplainer {
         "database.schema" -> "The installed database schema does not match the release contract and needs a migration decision before shipping."
         "release.safety" -> "Privacy, diagnostics, or release-safety checks are incomplete."
         "install.update" -> "Install and update readiness checks are incomplete, so upgrades may not be safe enough for release."
-        "diagnostics.redaction" -> "Support exports may expose sensitive request context if this is not fixed."
+        "diagnostics.export-attestation" -> "Runtime diagnostics redaction is enforced separately; the final exported ZIP still needs same-run privacy/integrity attestation before publication."
         "aria2.payload" -> "Publishable release artifacts must carry aria2 payload evidence bound to the signed APK. Native-only debug builds can continue without claiming release readiness."
         "ffmpeg.payload" -> "Publishable media releases must carry FFmpeg/FFprobe evidence bound to the signed APK."
         "lint.release" -> "Release lint must pass before publication because it checks manifest, storage, WebView and platform compatibility risks."
@@ -141,7 +141,7 @@ object FinalReleaseGateExplainer {
         "database.schema" -> "Keep reviewed schema 25 and its complete migration chain, or add a reviewed migration and update the release contract."
         "release.safety" -> "Run and fix the release safety validator chain."
         "install.update" -> "Run install/update readiness checks and resolve reported failures."
-        "diagnostics.redaction" -> "Fix diagnostic redaction before exporting support bundles or release artifacts."
+        "diagnostics.export-attestation" -> "Run the final diagnostics ZIP privacy/integrity validator in the same release run and bind its evidence to the publication bundle."
         "aria2.payload" -> "Run aria2 payload verification against the signed release APK."
         "ffmpeg.payload" -> "Run FFmpeg/FFprobe runtime verification against the signed release APK."
         "lint.release" -> "Run lintRelease as part of the signed-release gate and fix any reported issues."
@@ -181,7 +181,7 @@ object FinalReleaseGateExplainer {
             validator = "tools/validate-phase-17.py",
             test = "FinalReleaseGateModelsTest",
         )
-        "diagnostics.redaction" -> FinalReleaseGateOwner(
+        "diagnostics.export-attestation" -> FinalReleaseGateOwner(
             validator = "tools/validate-phase50-operational-repair.py",
             test = "FinalReleaseGateModelsTest",
         )
@@ -213,7 +213,7 @@ object FinalPublicReleaseGate {
         buildType: String,
         releaseSafetyReady: Boolean,
         installUpdateReady: Boolean,
-        diagnosticsRedacted: Boolean,
+        diagnosticsExportAttested: Boolean,
         aria2PayloadVerified: Boolean,
         staticValidatorsComplete: Boolean,
         releaseDocsComplete: Boolean,
@@ -307,13 +307,13 @@ object FinalPublicReleaseGate {
                     ),
                 )
             }
-            if (!diagnosticsRedacted) {
+            if (!diagnosticsExportAttested) {
                 add(
                     FinalReleaseGateCheck(
-                        id = "diagnostics.redaction",
+                        id = "diagnostics.export-attestation",
                         severity = FinalReleaseGateSeverity.Blocking,
-                        title = "Diagnostics are not redacted",
-                        detail = "Support bundles must not expose cookies, bearer tokens, signed URLs, or auth headers.",
+                        title = "Final diagnostics export redaction is not attested",
+                        detail = "Runtime redaction is checked separately. Publishable support bundles must also carry final-ZIP privacy/integrity attestation from the exact release validation run.",
                     ),
                 )
             }

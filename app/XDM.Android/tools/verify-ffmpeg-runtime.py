@@ -10,6 +10,8 @@ import struct
 import zipfile
 from pathlib import Path
 
+from android_elf_runtime import ElfPolicyError, validate_android_runtime_elf
+
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.json").read_text(encoding="utf-8"))
 LOCK_PATH = ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.lock.json"
@@ -68,12 +70,17 @@ def assert_alignment(data: bytes) -> None:
         raise SystemExit("runtime is not 16 KB compatible: " + "; ".join(bad))
 
 
-def validate_payload(name: str, data: bytes, require_alignment: bool) -> None:
+def validate_payload(name: str, data: bytes, require_alignment: bool) -> dict:
     elf_metadata(data)
+    try:
+        runtime_metadata = validate_android_runtime_elf(data)
+    except ElfPolicyError as error:
+        raise SystemExit(f"{name} Android dependency policy failed: {error}") from error
     if len(data) < int(MANIFEST["minimumBinaryBytes"]):
         raise SystemExit(f"{name} is unexpectedly small")
     if require_alignment:
         assert_alignment(data)
+    return runtime_metadata
 
 
 def installed_paths() -> dict[str, Path]:
@@ -111,6 +118,7 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
         "configureFlags": MANIFEST["configureFlags"],
         "gplEnabled": False,
         "nonfreeEnabled": False,
+        "dynamicDependencyPolicy": MANIFEST.get("dynamicDependencyPolicy", "android-unversioned-sonames-v1"),
     }
     manifest_ndk_revision = MANIFEST.get("ndkRevision")
     if manifest_ndk_revision is not None:
@@ -153,7 +161,10 @@ def verify_installed(required: bool, require_alignment: bool) -> dict | None:
             raise SystemExit(f"{name} license asset differs from runtime lock")
     for name, path in paths.items():
         data = path.read_bytes()
-        validate_payload(name, data, require_alignment)
+        runtime_metadata = validate_payload(name, data, require_alignment)
+        needed_key = f"{name}NeededLibraries"
+        if list(lock.get(needed_key, [])) != list(runtime_metadata["needed"]):
+            raise SystemExit(f"{name} DT_NEEDED list differs from runtime lock")
         hash_key = f"{name}BinarySha256"
         bytes_key = f"{name}BinaryBytes"
         actual = digest_bytes(data)
@@ -203,7 +214,9 @@ def verify_apk(apk: Path, lock: dict, require_alignment: bool) -> None:
                 data = zf.read(member)
             except KeyError as error:
                 raise SystemExit(f"{member} missing from {apk}") from error
-            validate_payload(name, data, require_alignment)
+            runtime_metadata = validate_payload(name, data, require_alignment)
+            if list(lock.get(f"{name}NeededLibraries", [])) != list(runtime_metadata["needed"]):
+                raise SystemExit(f"APK {name} DT_NEEDED list differs from the attested runtime")
             if digest_bytes(data) != lock[f"{name}BinarySha256"]:
                 raise SystemExit(f"APK {name} differs from attested runtime payload")
     print(f"APK FFmpeg/FFprobe payload verified: {apk} ({compressed_runtime_bytes} compressed bytes)")

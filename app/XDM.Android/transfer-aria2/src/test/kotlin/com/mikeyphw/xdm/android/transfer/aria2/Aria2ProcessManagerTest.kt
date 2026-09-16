@@ -355,6 +355,58 @@ class Aria2ProcessManagerTest {
     }
 
     @Test
+    fun binaryLoadFailureDoesNotPretendRuntimeRepairCanRewritePackagedPayload() = runTest {
+        val root = Files.createTempDirectory("aria2-binary-load-repair").toFile()
+        val files = FakeRuntimeFiles(root, runtimeLogTail = "CANNOT LINK EXECUTABLE: library libz.so.1 not found")
+        val process = FakeManagedProcess().also { it.complete(1) }
+        val secrets = FakeRotatableSecretProvider()
+        var launches = 0
+        val binary = root.resolve("libaria2c.so").also { it.writeBytes(byteArrayOf(0x7f, 0x45, 0x4c, 0x46)) }
+        val manager = Aria2ProcessManager(
+            capabilityProbe = Aria2CapabilityProbe {
+                Aria2CapabilityReport(
+                    availability = Aria2Availability.Available,
+                    summary = "Ready",
+                    binary = Aria2BinaryDescriptor(
+                        file = binary,
+                        abi = ARIA2_PRIMARY_ABI,
+                        sha256 = "attested-sha",
+                        neededLibraries = listOf("libc.so", "libdl.so"),
+                        dependencyPolicy = "android-unversioned-sonames-v1",
+                    ),
+                    attestationVerified = true,
+                )
+            },
+            sessionStore = files,
+            secretProvider = secrets,
+            processLauncher = Aria2ProcessLauncher { launches += 1; process },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> FakeRpcControl(process) },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 50,
+            pollIntervalMillis = 1,
+        )
+
+        val failedStart = manager.start()
+        assertFalse(failedStart.started)
+        val failed = failedStart.state as Aria2ProcessState.Failed
+        assertEquals(Aria2StartupFailureKind.BinaryLoadFailure, failed.diagnostic?.kind)
+        assertEquals("attested-sha", failed.diagnostic?.binarySha256)
+        assertEquals(listOf("libc.so", "libdl.so"), failed.diagnostic?.neededLibraries)
+
+        val repaired = manager.repair()
+
+        assertFalse(repaired.started)
+        assertEquals(1, launches)
+        assertEquals(0, secrets.rotations)
+        val repairFailure = repaired.state as Aria2ProcessState.Failed
+        assertTrue(repairFailure.message.contains("cannot rewrite a packaged native executable"))
+        assertTrue(repairFailure.diagnostic?.repairHint.orEmpty().contains("Install/update XDM"))
+        assertTrue(manager.effectiveCapability().summary.contains("Install/update XDM"))
+        assertFalse(manager.effectiveCapability().summary.contains("Use Repair aria2"))
+    }
+
+    @Test
     fun repairRotatesSecretAndClearsTransientConfigurationsBeforeRestart() = runTest {
         val root = Files.createTempDirectory("aria2-repair").toFile()
         val files = FakeRuntimeFiles(root)
@@ -377,7 +429,7 @@ class Aria2ProcessManagerTest {
         assertTrue(result.started)
         assertEquals(1, secrets.rotations)
         assertEquals(1L, (result.state as Aria2ProcessState.Running).secretGeneration)
-        assertEquals(1, files.transientCleanupCalls)
+        assertEquals(2, files.transientCleanupCalls)
     }
 
     private fun availableProbe(root: File): Aria2CapabilityProbe {

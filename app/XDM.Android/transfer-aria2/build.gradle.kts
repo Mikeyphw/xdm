@@ -24,6 +24,7 @@ val installOfficialAria2Runtime = tasks.register<Exec>("installOfficialAria2Runt
     inputs.files(
         layout.projectDirectory.file("runtime/aria2-runtime.json"),
         rootProject.layout.projectDirectory.file("tools/install-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
     outputs.files(
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
@@ -108,6 +109,7 @@ val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
         layout.projectDirectory.file("runtime/aria2-runtime.lock.json"),
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
         rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
     inputs.property("requireAlignedAria2Runtime", requireAlignedAria2Runtime)
     val successMarker = layout.buildDirectory.file("validation/verifyAria2Runtime.success")
@@ -143,6 +145,7 @@ val verifyAria2ReleaseRuntime = tasks.register<Exec>("verifyAria2ReleaseRuntime"
         layout.projectDirectory.file("runtime/licenses/SOURCE-NOTICE.txt"),
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
         rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
     doFirst {
         val trustedDigest = trustedAria2ArchiveSha256.orNull

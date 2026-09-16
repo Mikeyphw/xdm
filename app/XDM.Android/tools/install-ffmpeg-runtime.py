@@ -30,6 +30,8 @@ import urllib.request
 from pathlib import Path
 from typing import Iterator
 
+from android_elf_runtime import ElfPolicyError, validate_android_runtime_file
+
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.json"
 LOCK_PATH = ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.lock.json"
@@ -659,8 +661,17 @@ def build_ffmpeg(
     ffprobe_bin = ff_src / "ffprobe"
 
     pkg = openssl_prefix / "lib/pkgconfig"
-    env["PKG_CONFIG_PATH"] = str(pkg)
+    # Never allow the host/Termux pkg-config search path to leak into a cross Android build.
+    # In particular, host zlib metadata can cause an otherwise AArch64 PIE to carry
+    # DT_NEEDED=libz.so.1, which Android's linker cannot satisfy. OpenSSL is the only
+    # pkg-config package this pinned profile intentionally exposes; zlib then resolves
+    # against the NDK sysroot through the compiler/linker fallback check.
+    env["PKG_CONFIG_PATH"] = ""
+    env["PKG_CONFIG_LIBDIR"] = str(pkg)
     common_ld = "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,-z,relro,-z,now"
+    android_lib_dir = toolchain / "sysroot/usr/lib/aarch64-linux-android" / str(manifest["androidApi"])
+    if not android_lib_dir.is_dir():
+        raise SystemExit(f"Android API sysroot libraries are missing: {android_lib_dir}")
     profile_flags = list(manifest["configureFlags"])
     validate_ffmpeg_profile_flags(ff_src, env, profile_flags)
     configure = [
@@ -674,7 +685,7 @@ def build_ffmpeg(
         f"--sysroot={toolchain / 'sysroot'}",
         *profile_flags,
         f"--extra-cflags=-fPIC -O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2 -I{openssl_prefix / 'include'}",
-        f"--extra-ldflags=-L{openssl_prefix / 'lib'} {common_ld}",
+        f"--extra-ldflags=-L{android_lib_dir} -L{openssl_prefix / 'lib'} {common_ld}",
         "--extra-libs=-ldl -lm -lz",
     ]
     configuration = ffmpeg_configuration_payload(configure, manifest, toolchain_identity)
@@ -831,6 +842,10 @@ def main() -> None:
             tmp.chmod(tmp.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
             run([str(bin_dir / "llvm-strip"), "--strip-unneeded", str(tmp)], build_root, env)
             ensure_pie(tmp)
+            try:
+                metadata = validate_android_runtime_file(tmp)
+            except ElfPolicyError as error:
+                raise SystemExit(f"{name} runtime dependency policy failed: {error}") from error
             tmp.replace(target)
 
         license_targets = {
@@ -873,6 +888,9 @@ def main() -> None:
             "httpsProvider": f"OpenSSL {manifest['opensslVersion']}",
             "buildProfile": manifest["buildProfile"],
             "configureFlags": manifest["configureFlags"],
+            "dynamicDependencyPolicy": manifest.get("dynamicDependencyPolicy", "android-unversioned-sonames-v1"),
+            "ffmpegNeededLibraries": list(validate_android_runtime_file(targets["ffmpeg"])["needed"]),
+            "ffprobeNeededLibraries": list(validate_android_runtime_file(targets["ffprobe"])["needed"]),
             "ffmpegLicenseSha256": sha256(license_targets["ffmpeg"]),
             "opensslLicenseSha256": sha256(license_targets["openssl"]),
         }

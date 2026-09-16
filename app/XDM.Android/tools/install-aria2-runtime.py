@@ -18,6 +18,8 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from android_elf_runtime import ElfPolicyError, validate_android_runtime_file
+
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.json"
 LOCK_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.lock.json"
@@ -241,6 +243,10 @@ def main() -> None:
         installed_member = install_payload(archive, extracted, manifest)
         extracted.chmod(0o755)
         validate_elf(extracted, manifest)
+        try:
+            runtime_metadata = validate_android_runtime_file(extracted)
+        except ElfPolicyError as error:
+            raise SystemExit(f"aria2 Android dependency policy failed: {error}") from error
         binary_hash = sha256(extracted)
         binary_size = extracted.stat().st_size
         extracted.replace(target)
@@ -263,6 +269,9 @@ def main() -> None:
             "archiveSha256": archive_hash,
             "binarySha256": binary_hash,
             "binarySize": binary_size,
+            "dynamicDependencyPolicy": manifest.get("dynamicDependencyPolicy", "android-unversioned-sonames-v1"),
+            "neededLibraries": list(runtime_metadata["needed"]),
+            "elfInterpreter": runtime_metadata["interpreter"],
             "sourceUrl": manifest["officialUrl"],
             "sourceKind": "zip" if installed_member else "raw-elf",
             "licenseSha256": sha256(license_path),

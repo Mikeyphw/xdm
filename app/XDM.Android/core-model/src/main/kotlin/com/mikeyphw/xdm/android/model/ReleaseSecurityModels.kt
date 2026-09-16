@@ -25,7 +25,7 @@ data class ReleaseSecurityReport(
     val summary: String get() = when {
         blockingCount > 0 -> "$blockingCount blocking release issue${if (blockingCount == 1) "" else "s"}"
         warningCount > 0 -> "$warningCount release warning${if (warningCount == 1) "" else "s"}"
-        else -> "Release gate checks are clean"
+        else -> "Runtime diagnostics checks are clean"
     }
 }
 
@@ -100,7 +100,7 @@ object ReleaseSecurityGate {
                     ReleaseSecurityFinding(
                         id = "gate.clean",
                         severity = ReleaseSecuritySeverity.Info,
-                        title = "Release gate",
+                        title = "Runtime diagnostics gate",
                         detail = "Privacy, schema and build profile checks passed for this build.",
                     ),
                 )
@@ -216,7 +216,7 @@ object PrivacyDiagnosticsRedactor {
         appendLine("Version: ${report.versionName}")
         appendLine("Build: ${report.buildType}")
         appendLine("Schema: ${report.schemaVersion}")
-        appendLine("Release gate: ${report.summary}")
+        appendLine("Runtime diagnostics gate: ${report.summary}")
         appendLine("Downloads: $downloadCount")
         appendLine("Media captures: $mediaCaptureCount")
         appendLine("Automation commands: $automationCount")

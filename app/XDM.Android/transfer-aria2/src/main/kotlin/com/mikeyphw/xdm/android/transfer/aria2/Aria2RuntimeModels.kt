@@ -22,12 +22,15 @@ data class Aria2BinaryDescriptor(
     val file: File,
     val abi: String,
     val sha256: String,
+    val neededLibraries: List<String> = emptyList(),
+    val dependencyPolicy: String? = null,
 )
 
 data class Aria2CapabilityReport(
     val availability: Aria2Availability,
     val summary: String,
     val binary: Aria2BinaryDescriptor? = null,
+    val attestationVerified: Boolean = false,
 ) {
     val isAvailable: Boolean get() = availability == Aria2Availability.Available && binary != null
 }
@@ -87,6 +90,11 @@ data class Aria2StartupDiagnostic(
     val detail: String,
     val exitCode: Int? = null,
     val logTail: String? = null,
+    val binaryPath: String? = null,
+    val binarySha256: String? = null,
+    val binaryAbi: String? = null,
+    val neededLibraries: List<String> = emptyList(),
+    val repairHint: String? = null,
 )
 
 enum class Aria2OrphanRecovery {

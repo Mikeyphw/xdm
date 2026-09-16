@@ -8,6 +8,10 @@ import java.net.ServerSocket
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class AndroidAria2CapabilityProbe(
     private val context: Context,
@@ -47,6 +51,13 @@ class AndroidAria2CapabilityProbe(
                 "Android installed the aria2 runtime without execute permission.",
             )
         }
+        val binarySha256 = binary.sha256()
+        val attestation = runCatching { readPackagedAttestation(binarySha256) }.getOrElse { error ->
+            return Aria2CapabilityReport(
+                Aria2Availability.BinaryInvalid,
+                "The packaged aria2 runtime failed its installed attestation: ${error.message ?: error::class.java.simpleName}",
+            )
+        }
         if (runCatching { sessionStore.prepare() }.isFailure) {
             return Aria2CapabilityReport(
                 Aria2Availability.RuntimeDirectoryUnavailable,
@@ -55,10 +66,36 @@ class AndroidAria2CapabilityProbe(
         }
         return Aria2CapabilityReport(
             availability = Aria2Availability.Available,
-            summary = "ARM64 aria2 runtime is packaged and ready for an authenticated loopback probe.",
-            binary = Aria2BinaryDescriptor(binary.canonicalFile, ARIA2_PRIMARY_ABI, binary.sha256()),
+            summary = "ARM64 aria2 runtime is hash-attested, dependency-policy verified, and ready for an authenticated loopback probe.",
+            binary = Aria2BinaryDescriptor(
+                file = binary.canonicalFile,
+                abi = ARIA2_PRIMARY_ABI,
+                sha256 = binarySha256,
+                neededLibraries = attestation.neededLibraries,
+                dependencyPolicy = attestation.dependencyPolicy,
+            ),
+            attestationVerified = true,
         )
     }
+
+    private fun readPackagedAttestation(binarySha256: String): PackagedAria2Attestation {
+        val root = context.assets.open("aria2-runtime.lock.json").bufferedReader().use {
+            Json.parseToJsonElement(it.readText()).jsonObject
+        }
+        require(root.getValue("schemaVersion").jsonPrimitive.content.toInt() >= 2) { "runtime lock schema is obsolete" }
+        require(root.getValue("abi").jsonPrimitive.content == ARIA2_PRIMARY_ABI) { "runtime lock ABI mismatch" }
+        require(root.getValue("binarySha256").jsonPrimitive.content.equals(binarySha256, ignoreCase = true)) { "runtime binary digest mismatch" }
+        val dependencyPolicy = root.getValue("dynamicDependencyPolicy").jsonPrimitive.content
+        require(dependencyPolicy == "android-unversioned-sonames-v1") { "runtime dependency policy mismatch" }
+        val needed = root.getValue("neededLibraries").jsonArray.map { it.jsonPrimitive.content }
+        require(needed.none { it.matches(Regex("^lib[^/]+\\.so\\.\\d+(?:\\.\\d+)*$")) }) { "runtime lock contains a versioned non-Android SONAME" }
+        return PackagedAria2Attestation(needed, dependencyPolicy)
+    }
+
+    private data class PackagedAria2Attestation(
+        val neededLibraries: List<String>,
+        val dependencyPolicy: String,
+    )
 }
 
 class AppPrivateAria2SecretProvider(context: Context) : Aria2RotatableSecretProvider {

@@ -45,7 +45,7 @@ object ReleaseInstallReadinessGate {
         buildType: String,
         releaseSafetyComplete: Boolean,
         recoverySurfaceReady: Boolean,
-        diagnosticsExportRedacted: Boolean,
+        diagnosticsRuntimePrivacyReady: Boolean,
         aria2PayloadGateRetained: Boolean,
         updateKeepsPackageIdentity: Boolean,
         releaseSigningConfigured: Boolean,
@@ -119,13 +119,13 @@ object ReleaseInstallReadinessGate {
                     ),
                 )
             }
-            if (!diagnosticsExportRedacted) {
+            if (!diagnosticsRuntimePrivacyReady) {
                 add(
                     ReleaseReadinessCheck(
                         id = "diagnostics.bundle",
                         severity = ReleaseReadinessSeverity.Blocking,
-                        title = "Diagnostic bundle is not redacted",
-                        detail = "Install/update triage must not expose cookies, bearer tokens, or signed URLs.",
+                        title = "Runtime diagnostic redaction is not ready",
+                        detail = "Install/update triage requires the in-app diagnostics privacy contract to redact cookies, bearer tokens, signed URLs, and sensitive headers.",
                     ),
                 )
             }
