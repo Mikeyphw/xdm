@@ -35,10 +35,10 @@ class Rm02PersistenceDownloadsUxContractTest {
         assertTrue(row.contains("TextButton("))
         assertTrue(row.contains("Text(quickAction.label)"))
         assertTrue(row.contains("destinationCardLabel(download)"))
-        assertTrue(destination.contains("Saved to $compactLabel"))
-        assertTrue(destination.contains("Destination: $compactLabel"))
+        assertTrue(destination.contains("Saved to \$compactLabel"))
+        assertTrue(destination.contains("Destination: \$compactLabel"))
         assertTrue(policy.contains("Content-Disposition").not()) // HTTP header parsing stays at intake; this policy consumes the resolved name.
-        assertTrue(policy.contains("download-$hostBase"))
+        assertTrue(policy.contains("download-\$hostBase"))
         assertTrue(policy.contains("isOpaqueIdentifierName"))
         assertFalse(row.contains("122.4 MiBF"))
     }

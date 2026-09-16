@@ -282,7 +282,8 @@ class NativeHttpDownloadBackendTest {
     }
 
     @Test
-    fun reconciledNativeArtifactsRebindToNewGenerationWithoutPayloadCopy() = runBlocking {
+    fun reconciledNativeArtifactsRebindToNewGenerationWithoutPayloadCopy() {
+        runBlocking {
         val directory = Files.createTempDirectory("xdm-native-adopt-generation")
         val destination = directory.resolve("payload.bin")
         val identity = BackendRuntimeIdentity("native-install", "new-session")
@@ -342,6 +343,7 @@ class NativeHttpDownloadBackendTest {
         assertEquals(identity.sessionId, rebound.backendSessionId)
         assertEquals(64L, partial.toFile().length())
         backend.detach(task.taskId)
+        }
     }
 
     @Test
