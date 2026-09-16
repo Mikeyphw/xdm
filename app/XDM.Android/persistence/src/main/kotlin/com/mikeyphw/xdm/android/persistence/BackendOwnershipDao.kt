@@ -29,6 +29,9 @@ interface BackendOwnershipDao {
     @Query("UPDATE ownership_counters SET value = value + 1 WHERE name = :name")
     suspend fun incrementCounter(name: String): Int
 
+    @Query("UPDATE ownership_counters SET value = :minimumValue WHERE name = :name AND value < :minimumValue")
+    suspend fun raiseCounterToAtLeast(name: String, minimumValue: Long): Int
+
     @Query("SELECT value FROM ownership_counters WHERE name = :name")
     suspend fun readCounter(name: String): Long
 

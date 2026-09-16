@@ -239,6 +239,60 @@ class BackendCoordinatorTest {
         assertEquals(BackendOwnershipStatus.Active, store.findByDownload("aria2-activation")?.status)
     }
 
+
+    @Test
+    fun generationIsReservedBeforePreparationAndBoundBeforeActivation() = runBlocking {
+        val backend = FakeBackend("native", BackendType.Native, requiresActivation = true)
+        val store = InMemoryBackendOwnershipStore { 10L }
+        val request = DownloadRequest(
+            id = "generation-fence",
+            sourceUrl = "https://example.test/a",
+            destinationUri = Files.createTempFile("xdm-generation-fence", ".bin").toUri().toString(),
+            fileName = "a",
+            preferredBackend = BackendType.Native,
+            attemptGeneration = 7L,
+        )
+        var callbackGeneration: Long? = null
+
+        val coordinated = BackendCoordinator(BackendRegistry(listOf(backend)), store).add(request) { pending ->
+            callbackGeneration = pending.ownership.generation
+            backend.lifecycleEvents += "before-activation"
+        }
+
+        assertTrue(coordinated.ownership.generation > request.attemptGeneration)
+        assertEquals(coordinated.ownership.generation, backend.lastPrepareAttemptGeneration)
+        assertEquals(coordinated.ownership.generation, backend.lastAddAttemptGeneration)
+        assertEquals(coordinated.ownership.generation, callbackGeneration)
+        assertEquals(listOf("add", "ownership-attached", "before-activation", "activate"), backend.lifecycleEvents)
+    }
+
+    @Test
+    fun beforeActivationFailureNeverStartsPayloadWriterAndPreservesRecoveryOwnership() = runBlocking {
+        val backend = FakeBackend("native", BackendType.Native, requiresActivation = true)
+        val store = InMemoryBackendOwnershipStore { 10L }
+        val request = DownloadRequest(
+            id = "persist-failure",
+            sourceUrl = "https://example.test/a",
+            destinationUri = Files.createTempFile("xdm-persist-failure", ".bin").toUri().toString(),
+            fileName = "a",
+            preferredBackend = BackendType.Native,
+        )
+
+        val result = runCatching {
+            BackendCoordinator(BackendRegistry(listOf(backend)), store).add(request) {
+                error("simulated durable Download write failure")
+            }
+        }
+
+        assertTrue(result.isFailure)
+        assertTrue("activate" !in backend.lifecycleEvents)
+        assertEquals(listOf("task-persist-failure"), backend.detachedTaskIds)
+        val ownership = requireNotNull(store.findByDownload(request.id))
+        assertTrue(ownership.generation > 0L)
+        assertEquals(BackendOwnershipStatus.Reconciled, ownership.status)
+        assertEquals(BackendReconciliationClassification.ResumableArtifact, ownership.reconciliation)
+    }
+
     @Test
     fun failedBackendAddReleasesNewOwnership() = runBlocking {
         val backend = FakeBackend("native", BackendType.Native, failAdd = true)
@@ -262,12 +316,17 @@ private class FakeBackend(
 ) : DownloadBackend {
     val detachedTaskIds = mutableListOf<String>()
     val lifecycleEvents = mutableListOf<String>()
+    var lastPrepareAttemptGeneration: Long? = null
+        private set
+    var lastAddAttemptGeneration: Long? = null
+        private set
     override val runtimeIdentity = BackendRuntimeIdentity("instance-$backendId", sessionId)
     private val state = MutableStateFlow(BackendSnapshot("task", DownloadState.Queued, 0, null, 0))
 
     override suspend fun capabilities() = BackendCapabilities(protocols, true, false, true, false)
 
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
+        lastPrepareAttemptGeneration = request.attemptGeneration
         val destinationKey = DestinationIdentity.key(request.destinationUri, request.fileName)
         return BackendPreparation(
             preparationId = UUID.randomUUID().toString(),
@@ -280,6 +339,7 @@ private class FakeBackend(
     }
 
     override suspend fun add(request: DownloadRequest, preparation: BackendPreparation): BackendTask {
+        lastAddAttemptGeneration = request.attemptGeneration
         if (failAdd) error("boom")
         if (failAddUnavailable) throw BackendUnavailableException("runtime disappeared after preparation")
         lifecycleEvents += "add"

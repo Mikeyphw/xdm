@@ -282,6 +282,69 @@ class NativeHttpDownloadBackendTest {
     }
 
     @Test
+    fun reconciledNativeArtifactsRebindToNewGenerationWithoutPayloadCopy() = runBlocking {
+        val directory = Files.createTempDirectory("xdm-native-adopt-generation")
+        val destination = directory.resolve("payload.bin")
+        val identity = BackendRuntimeIdentity("native-install", "new-session")
+        val backend = NativeHttpDownloadBackend(OkHttpClient(), scope, runtimeIdentity = identity)
+        val oldRequest = request("adopt-generation", "/file", destination, maxConnections = 1).copy(attemptGeneration = 7L)
+        val oldPreparation = backend.prepare(oldRequest)
+        val partial = Paths.get(java.net.URI(oldPreparation.artifacts.primary))
+        val checkpointPath = Paths.get(java.net.URI(oldPreparation.artifacts.companions.first { it.endsWith(".checkpoint.json") }))
+        Files.write(partial, payload.copyOfRange(0, 64))
+        NativeCheckpointStore().save(
+            checkpointPath,
+            NativeCheckpoint(
+                downloadId = oldRequest.id,
+                sourceUrl = oldRequest.sourceUrl,
+                effectiveUrl = oldRequest.sourceUrl,
+                destinationPath = oldPreparation.destinationKey,
+                partialPath = partial.toString(),
+                expectedLength = payload.size.toLong(),
+                etag = "\"stable\"",
+                lastModified = null,
+                rangeSupported = true,
+                segments = listOf(
+                    NativeSegmentCheckpoint(
+                        0, 0, payload.size.toLong() - 1, 64, false,
+                        completedSha256 = sha256(payload.copyOfRange(0, 64)),
+                    ),
+                ),
+                persistedAtEpochMs = 1,
+                attemptGeneration = 7L,
+                backendInstanceId = identity.instanceId,
+                backendSessionId = "old-session",
+                sourceIdentitySha256 = sha256(oldRequest.sourceUrl),
+            ),
+        )
+        backend.discardPreparation(oldPreparation)
+        val oldOwnership = ownership(oldRequest.id, oldPreparation, identity.copy(sessionId = "old-session")).copy(
+            status = BackendOwnershipStatus.Reconciled,
+            reconciliation = BackendReconciliationClassification.ResumableArtifact,
+        )
+        val newRequest = oldRequest.copy(attemptGeneration = 8L)
+
+        val adoptedPreparation = backend.prepareForAdoption(newRequest, oldOwnership)
+        assertEquals(oldPreparation.artifacts, adoptedPreparation.artifacts)
+        assertEquals(64L, partial.toFile().length())
+        val task = backend.add(newRequest, adoptedPreparation)
+        val newOwnership = oldOwnership.copy(
+            generation = 8L,
+            status = BackendOwnershipStatus.Active,
+            runtimeIdentity = identity,
+            backendTaskId = task.taskId,
+        )
+        backend.onOwnershipAttached(task.taskId, newOwnership)
+
+        val rebound = requireNotNull(NativeCheckpointStore().load(checkpointPath))
+        assertEquals(8L, rebound.attemptGeneration)
+        assertEquals(identity.instanceId, rebound.backendInstanceId)
+        assertEquals(identity.sessionId, rebound.backendSessionId)
+        assertEquals(64L, partial.toFile().length())
+        backend.detach(task.taskId)
+    }
+
+    @Test
     fun reconciliationAcceptsMatchingPhysicalPartialAndCheckpoint() = runBlocking {
         val directory = Files.createTempDirectory("xdm-native-reconcile")
         val destination = directory.resolve("payload.bin")

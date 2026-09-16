@@ -27,7 +27,12 @@ class FileDestinationWriter(
         )
     }
 
-    override suspend fun prepare(request: DestinationRequest): PreparedDestination {
+    override suspend fun prepare(request: DestinationRequest): PreparedDestination = prepareInternal(request, null)
+
+    override suspend fun prepareExisting(request: DestinationRequest, artifacts: DestinationArtifacts): PreparedDestination =
+        prepareInternal(request, artifacts)
+
+    private suspend fun prepareInternal(request: DestinationRequest, existingArtifacts: DestinationArtifacts?): PreparedDestination {
         val safeRequest = request.copy(fileName = androidProviderSafeFileName(request.fileName))
         val destination = resolveDestination(safeRequest).toFile()
         destination.parentFile?.mkdirs()
@@ -43,7 +48,7 @@ class FileDestinationWriter(
             else -> throw DestinationConflictException("Destination already exists and requires a conflict decision", conflict)
         }
         val resolvedRequest = safeRequest.copy(destinationUri = resolved.toURI().toString(), fileName = resolved.name)
-        val artifacts = artifactPaths(resolvedRequest)
+        val artifacts = existingArtifacts ?: artifactPaths(resolvedRequest)
         return object : PreparedDestination {
             override val destinationKey: String = resolved.canonicalFile.toURI().normalize().toString()
             override val displayName: String = resolved.name

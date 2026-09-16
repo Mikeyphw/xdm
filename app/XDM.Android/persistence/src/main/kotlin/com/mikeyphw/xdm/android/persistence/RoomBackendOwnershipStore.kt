@@ -17,12 +17,17 @@ class RoomBackendOwnershipStore(
 ) : BackendOwnershipStore {
     private val dao get() = database.backendOwnershipDao()
 
+    override suspend fun reserveGeneration(minimumExclusive: Long): Long = database.withTransaction {
+        reserveGenerationInTransaction(minimumExclusive)
+    }
+
     override suspend fun claim(
         downloadId: String,
         destinationKey: String,
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult = database.withTransaction {
         dao.findClaimByDownload(downloadId)?.let { existing ->
             val model = existing.toModel(dao.findTaskByDownload(downloadId)?.backendTaskId)
@@ -30,13 +35,14 @@ class RoomBackendOwnershipStore(
                 model.backend == backend &&
                 model.artifacts == artifacts &&
                 model.runtimeIdentity == runtimeIdentity &&
-                model.status == BackendOwnershipStatus.Claimed
+                model.status == BackendOwnershipStatus.Claimed &&
+                (reservedGeneration == null || model.generation == reservedGeneration)
             return@withTransaction if (idempotent) OwnershipClaimResult.Claimed(model) else OwnershipClaimResult.Conflict(model)
         }
         dao.findClaimByDestination(destinationKey)?.let { existing ->
             return@withTransaction OwnershipClaimResult.Conflict(existing.toModel(dao.findTaskByDownload(existing.downloadId)?.backendTaskId))
         }
-        createClaim(downloadId, destinationKey, artifacts, backend, runtimeIdentity)
+        createClaim(downloadId, destinationKey, artifacts, backend, runtimeIdentity, reservedGeneration)
     }
 
     override suspend fun adopt(
@@ -46,9 +52,10 @@ class RoomBackendOwnershipStore(
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult = database.withTransaction {
         val existingEntity = dao.findClaimByDownload(downloadId)
-            ?: return@withTransaction createClaim(downloadId, destinationKey, artifacts, backend, runtimeIdentity)
+            ?: return@withTransaction createClaim(downloadId, destinationKey, artifacts, backend, runtimeIdentity, reservedGeneration)
         val existing = existingEntity.toModel(dao.findTaskByDownload(downloadId)?.backendTaskId)
         val adoptable = existing.generation == expectedGeneration &&
             existing.destinationKey == destinationKey &&
@@ -59,7 +66,7 @@ class RoomBackendOwnershipStore(
         if (!adoptable) return@withTransaction OwnershipClaimResult.Conflict(existing)
 
         val now = clock()
-        val generation = nextGeneration(now)
+        val generation = generationForClaimInTransaction(reservedGeneration, expectedGeneration)
         dao.deleteTask(downloadId, expectedGeneration)
         val adopted = existingEntity.copy(
             partialIdentity = artifacts.primary,
@@ -102,6 +109,7 @@ class RoomBackendOwnershipStore(
         artifacts: BackendArtifactIdentity,
         targetBackend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult = database.withTransaction {
         val existingEntity = dao.findClaimByDownload(downloadId)
             ?: error("No ownership exists for $downloadId")
@@ -117,7 +125,7 @@ class RoomBackendOwnershipStore(
             }
         }
         val now = clock()
-        val generation = nextGeneration(now)
+        val generation = generationForClaimInTransaction(reservedGeneration, expectedGeneration)
         dao.deleteTask(downloadId, expectedGeneration)
         val transferred = existingEntity.copy(
             backend = targetBackend.name,
@@ -202,6 +210,7 @@ class RoomBackendOwnershipStore(
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult {
         val now = clock()
         val entity = DestinationClaimEntity(
@@ -213,7 +222,7 @@ class RoomBackendOwnershipStore(
             companionArtifactIdentities = artifacts.companions.encodeCompanions(),
             backendInstanceId = runtimeIdentity.instanceId,
             backendSessionId = runtimeIdentity.sessionId,
-            generation = nextGeneration(now),
+            generation = generationForClaimInTransaction(reservedGeneration),
             status = BackendOwnershipStatus.Claimed.name,
             reconciliation = BackendReconciliationClassification.Pending.name,
             reconciliationMessage = null,
@@ -230,10 +239,29 @@ class RoomBackendOwnershipStore(
         return OwnershipClaimResult.Claimed(entity.toModel())
     }
 
-    private suspend fun nextGeneration(now: Long): Long {
-        dao.seedCounter(OwnershipCounterEntity(GENERATION_COUNTER, now.coerceAtLeast(1)))
+    private suspend fun reserveGenerationInTransaction(minimumExclusive: Long): Long {
+        require(minimumExclusive >= 0L) { "Minimum ownership generation cannot be negative" }
+        require(minimumExclusive < Long.MAX_VALUE) { "Ownership generation space exhausted" }
+        val seed = maxOf(clock().coerceAtLeast(1L), minimumExclusive)
+        dao.seedCounter(OwnershipCounterEntity(GENERATION_COUNTER, seed))
+        dao.raiseCounterToAtLeast(GENERATION_COUNTER, minimumExclusive)
         check(dao.incrementCounter(GENERATION_COUNTER) == 1) { "Could not advance ownership generation" }
-        return dao.readCounter(GENERATION_COUNTER)
+        return dao.readCounter(GENERATION_COUNTER).also { generation ->
+            check(generation > minimumExclusive) { "Ownership generation did not advance past $minimumExclusive" }
+        }
+    }
+
+    private suspend fun generationForClaimInTransaction(
+        reservedGeneration: Long?,
+        minimumExclusive: Long = 0L,
+    ): Long {
+        if (reservedGeneration == null) return reserveGenerationInTransaction(minimumExclusive)
+        require(reservedGeneration > minimumExclusive) {
+            "Reserved ownership generation $reservedGeneration must be greater than $minimumExclusive"
+        }
+        dao.seedCounter(OwnershipCounterEntity(GENERATION_COUNTER, reservedGeneration))
+        dao.raiseCounterToAtLeast(GENERATION_COUNTER, reservedGeneration)
+        return reservedGeneration
     }
 
     private suspend fun requireClaim(downloadId: String, generation: Long): DestinationClaimEntity {

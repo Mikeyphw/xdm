@@ -5514,6 +5514,23 @@
     },
     "validator": "tools/validate-xar16-release-evidence-seal.py"
   },
+  "rm01_transfer_core_recovery_integrity": {
+    "status": "implemented",
+    "roadmap_position": "overlay 1 of 4",
+    "scope": "Transfer Core / Recovery Integrity",
+    "generation_reserved_before_prepare": true,
+    "download_generation_persisted_before_activation": true,
+    "native_adoption_preserves_physical_artifacts": true,
+    "publication_retry_without_redownload": true,
+    "queue_and_recovery_idempotency_fenced": true,
+    "migration_generation_reserved_before_prepare": true,
+    "staging_artifact_retained_across_adoption": true,
+    "report": "XDM_RM01_TRANSFER_CORE_RECOVERY_INTEGRITY_REPORT.md",
+    "docs": "docs/remediation/RM01-TRANSFER-CORE-RECOVERY-INTEGRITY.md",
+    "validator": "tools/validate-rm01-transfer-core-recovery.py",
+    "validation_task": "verifyRm01TransferCoreRecoveryIntegrity",
+    "validation_mode": "intermediate_no_validate"
+  },
   "xar_applied_overlay_archives": [
     "xdm_android_xar01_build_signing_native_provenance_v1.tar.gz",
     "xdm_android_xar02_concurrency_cas_ownership_v2.tar.gz",

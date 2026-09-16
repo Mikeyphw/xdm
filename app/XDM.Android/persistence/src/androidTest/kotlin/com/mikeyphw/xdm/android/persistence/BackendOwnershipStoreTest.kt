@@ -81,6 +81,48 @@ class BackendOwnershipStoreTest {
         }
     }
 
+
+    @Test
+    fun reservedGenerationIsExactAcrossPreparationClaimAndAdoption() = runBlocking {
+        withStore { store ->
+            val firstReserved = store.reserveGeneration(41L)
+            assertTrue(firstReserved > 41L)
+            val artifactSet = artifacts("native")
+            val claimed = store.claim(
+                "reserved",
+                "file:/downloads/a.bin",
+                artifactSet,
+                BackendType.Native,
+                runtime("native", "one"),
+                reservedGeneration = firstReserved,
+            ) as OwnershipClaimResult.Claimed
+            assertEquals(firstReserved, claimed.ownership.generation)
+
+            store.markReconciling("reserved", firstReserved)
+            store.recordReconciliation(
+                "reserved",
+                firstReserved,
+                BackendReconciliationResult(
+                    BackendReconciliationClassification.ResumableArtifact,
+                    "Ready for generation-safe adoption.",
+                    safeToResume = true,
+                ),
+            )
+            val secondReserved = store.reserveGeneration(firstReserved)
+            val adopted = store.adopt(
+                "reserved",
+                firstReserved,
+                claimed.ownership.destinationKey,
+                artifactSet,
+                BackendType.Native,
+                runtime("native", "two"),
+                reservedGeneration = secondReserved,
+            ) as OwnershipClaimResult.Claimed
+            assertEquals(secondReserved, adopted.ownership.generation)
+            assertTrue(secondReserved > firstReserved)
+        }
+    }
+
     @Test
     fun conflictingArtifactIdentityCannotBeAdopted() = runBlocking {
         withStore { store ->

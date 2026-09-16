@@ -459,6 +459,15 @@ val verifyXar09SchedulerRecovery = tasks.register<Exec>("verifyXar09SchedulerRec
 
 
 
+val verifyRm01TransferCoreRecoveryIntegrity = tasks.register<Exec>("verifyRm01TransferCoreRecoveryIntegrity") {
+    group = "verification"
+    description = "Verify RM01 attempt-generation reservation, pre-activation persistence, recovery adoption, migration fencing, and no-redownload publication recovery."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-rm01-transfer-core-recovery.py")
+    trackStaticValidation("rm01-transfer-core-recovery")
+}
+
+
 val verifyXar10BrowserCaptureEvidence = tasks.register<Exec>("verifyXar10BrowserCaptureEvidence") {
     group = "verification"
     description = "Verify XAR10 browser extension, WebView, request-scoped capture evidence, and S10 coverage contracts."

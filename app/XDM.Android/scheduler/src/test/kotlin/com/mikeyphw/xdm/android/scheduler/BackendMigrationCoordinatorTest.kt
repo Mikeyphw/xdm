@@ -58,7 +58,9 @@ class BackendMigrationCoordinatorTest {
         val ownership = requireNotNull(fixture.ownership.findByDownload("download"))
         assertEquals(BackendType.Aria2, ownership.backend)
         assertTrue(ownership.generation > 1)
+        assertEquals(ownership.generation, fixture.target.lastPrepareAttemptGeneration)
         assertEquals(ownership.generation, fixture.target.lastAddAttemptGeneration)
+        assertEquals(ownership.generation, fixture.target.generationObservedAtActivation)
         assertEquals(ownership.generation, fixture.store.items.getValue("download").attemptGeneration)
         assertEquals(BackendType.Aria2, fixture.store.items.getValue("download").backend)
     }
@@ -113,7 +115,9 @@ class BackendMigrationCoordinatorTest {
         val store = FakeStore(download)
         val baseOwnership = InMemoryBackendOwnershipStore { 100L }
         val source = MigrationBackend(BackendType.Native, bytesPresent)
-        val target = MigrationBackend(BackendType.Aria2, 0, failTargetAdd)
+        val target = MigrationBackend(BackendType.Aria2, 0, failTargetAdd).also { backend ->
+            backend.currentDownloadGeneration = { store.items.getValue("download").attemptGeneration }
+        }
         val artifacts = BackendArtifactIdentity("native-v1", "$destination.xdm.part", listOf("$destination.xdm.checkpoint.json"))
         val claim = baseOwnership.claim("download", DestinationIdentity.key(destination, "file.bin"), artifacts, BackendType.Native, source.runtimeIdentity)
         val claimed = (claim as OwnershipClaimResult.Claimed).ownership
@@ -156,8 +160,13 @@ private class MigrationBackend(
     override val backendId = type.name.lowercase()
     override val runtimeIdentity = BackendRuntimeIdentity("instance-$backendId", "session-$backendId")
     val events = mutableListOf<String>()
+    var lastPrepareAttemptGeneration: Long? = null
+        private set
     var lastAddAttemptGeneration: Long? = null
         private set
+    var generationObservedAtActivation: Long? = null
+        private set
+    var currentDownloadGeneration: (() -> Long)? = null
     private val snapshot = MutableStateFlow(BackendSnapshot("task-$backendId", DownloadState.Paused, 0, 1024, 0))
 
     override suspend fun capabilities() = BackendCapabilities(
@@ -170,6 +179,7 @@ private class MigrationBackend(
 
     override suspend fun prepare(request: DownloadRequest): BackendPreparation {
         events += "prepare"
+        lastPrepareAttemptGeneration = request.attemptGeneration
         val destinationKey = DestinationIdentity.key(request.destinationUri, request.fileName)
         return BackendPreparation(
             preparationId = "prepare-$backendId",
@@ -190,7 +200,10 @@ private class MigrationBackend(
 
     override suspend fun discardPreparation(preparation: BackendPreparation) = Unit
     override suspend fun onOwnershipAttached(taskId: String, ownership: BackendOwnership) { events += "attached" }
-    override suspend fun activate(taskId: String) { events += "activate" }
+    override suspend fun activate(taskId: String) {
+        generationObservedAtActivation = currentDownloadGeneration?.invoke()
+        events += "activate"
+    }
     override suspend fun pause(taskId: String) { events += "pause" }
     override suspend fun resume(taskId: String) = Unit
     override suspend fun cancel(taskId: String) = Unit
@@ -226,5 +239,6 @@ private class FailingTransferOwnershipStore(
         artifacts: BackendArtifactIdentity,
         targetBackend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult = error("simulated ownership transfer failure")
 }

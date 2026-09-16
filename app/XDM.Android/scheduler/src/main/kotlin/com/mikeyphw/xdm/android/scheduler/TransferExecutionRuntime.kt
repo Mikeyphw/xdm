@@ -502,24 +502,36 @@ class TransferExecutionRuntime(
             cleartextCredentialsApproved = mediaHandoff?.cleartextCredentialsApproved == true,
             privateNetworkApprovalScopes = mediaHandoff?.privateNetworkApprovalScopes.orEmpty(),
             cleartextCredentialApprovalScopes = mediaHandoff?.cleartextCredentialApprovalScopes.orEmpty(),
-            attemptGeneration = mediaHandoff?.attemptGeneration ?: 0L,
+            // This is only the minimum generation observed at intake. BackendCoordinator reserves
+            // the exact next generation before preparation so staging and publication use one ID.
+            attemptGeneration = maxOf(download.attemptGeneration, mediaHandoff?.attemptGeneration ?: 0L).coerceAtLeast(1L),
         )
         try {
             requestSecurityGuard.validate(request)
             fileNames[download.id] = download.fileName
-            val coordinated = coordinator.add(request)
-            attemptGenerations[download.id] = coordinated.ownership.generation
-            AndroidExecutionClaimRegistry.bindAttemptGeneration(download.id, queueClaimToken, coordinated.ownership.generation)
-            val selectedBase = store.find(download.id) ?: download
-            val selected = selectedBase.copy(
-                backend = coordinated.task.backend,
-                backendSelectionReason = coordinated.recommendation.reason,
-                backendSelectionExplanation = coordinated.recommendation.explanation,
-                allowBackendFallback = download.allowBackendFallback,
-                attemptGeneration = coordinated.ownership.generation,
-                updatedAtEpochMs = selectedBase.nextUpdatedAt(),
-            )
-            persistOrThrow(selected)
+            var selectedForRun: Download? = null
+            val coordinated = coordinator.add(request) { pending ->
+                val generation = pending.ownership.generation
+                check(generation > 0L) { "Backend activation requires a positive attempt generation" }
+                attemptGenerations[download.id] = generation
+                AndroidExecutionClaimRegistry.bindAttemptGeneration(download.id, queueClaimToken, generation)
+                val selectedBase = store.find(download.id) ?: download
+                val selected = selectedBase.copy(
+                    backend = pending.task.backend,
+                    backendSelectionReason = pending.recommendation.reason,
+                    backendSelectionExplanation = pending.recommendation.explanation,
+                    allowBackendFallback = download.allowBackendFallback,
+                    attemptGeneration = generation,
+                    updatedAtEpochMs = selectedBase.nextUpdatedAt(),
+                )
+                // Native/aria2 are still non-writing here. Commit the exact generation to the
+                // Download row before BackendCoordinator is allowed to activate the task.
+                persistOrThrow(selected)
+                selectedForRun = selected
+            }
+            val selected = requireNotNull(selectedForRun) {
+                "Backend coordinator returned without durably binding the attempt generation"
+            }
             val mapping = coordinated.task.backend to coordinated.task.taskId
             backendTaskIds[download.id] = mapping
             when (commandControl(download.id).desired) {

@@ -22,6 +22,7 @@ import com.mikeyphw.xdm.android.transfer.BackendTask
 import com.mikeyphw.xdm.android.transfer.DownloadBackend
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
 import com.mikeyphw.xdm.android.transfer.DownloadRequestApprovalScope
+import com.mikeyphw.xdm.android.storage.DestinationArtifacts
 import com.mikeyphw.xdm.android.storage.DestinationRequest
 import com.mikeyphw.xdm.android.storage.DestinationCapacityPlanner
 import com.mikeyphw.xdm.android.storage.DestinationPublicationException
@@ -116,7 +117,45 @@ class NativeHttpDownloadBackend(
         val preparedDestination = destinationWriter.prepare(request.toDestinationRequest())
         val preparationId = UUID.randomUUID().toString()
         val artifacts = preparedDestination.artifacts.toBackendArtifactIdentity()
-        preparations[preparationId] = NativePreparation(request.id, preparedDestination, artifacts)
+        preparations[preparationId] = NativePreparation(request.id, preparedDestination, artifacts, adoptionSourceGeneration = null)
+        return BackendPreparation(
+            preparationId = preparationId,
+            downloadId = request.id,
+            backend = BackendType.Native,
+            destinationKey = preparedDestination.destinationKey,
+            artifacts = artifacts,
+            runtimeIdentity = runtimeIdentity,
+        )
+    }
+
+    override suspend fun prepareForAdoption(
+        request: DownloadRequest,
+        previousOwnership: BackendOwnership,
+    ): BackendPreparation {
+        require(previousOwnership.backend == BackendType.Native) { "Native backend cannot adopt foreign ownership" }
+        require(previousOwnership.artifacts.format == NATIVE_ARTIFACT_FORMAT) { "Native adoption requires native artifact identity" }
+        require(request.attemptGeneration > previousOwnership.generation) { "Native adoption requires a newer attempt generation" }
+        require(previousOwnership.runtimeIdentity.instanceId == runtimeIdentity.instanceId) {
+            "Native adoption cannot cross backend installation identities"
+        }
+        val existingArtifacts = previousOwnership.artifacts.toDestinationArtifacts()
+        require(existingArtifacts.stagingFile.isFile) { "Native adoption staging file is missing" }
+        require(existingArtifacts.checkpointFile.isFile) { "Native adoption checkpoint is missing" }
+        val preparedDestination = destinationWriter.prepareExisting(request.toDestinationRequest(), existingArtifacts)
+        require(preparedDestination.destinationKey == previousOwnership.destinationKey) {
+            "Native adoption resolved a different final destination"
+        }
+        val artifacts = preparedDestination.artifacts.toBackendArtifactIdentity()
+        require(artifacts == previousOwnership.artifacts) {
+            "Native adoption must retain the reconciled physical artifact set"
+        }
+        val preparationId = UUID.randomUUID().toString()
+        preparations[preparationId] = NativePreparation(
+            request.id,
+            preparedDestination,
+            artifacts,
+            adoptionSourceGeneration = previousOwnership.generation,
+        )
         return BackendPreparation(
             preparationId = preparationId,
             downloadId = request.id,
@@ -141,6 +180,7 @@ class NativeHttpDownloadBackend(
             networkClient = client.newBuilder().dns(NativeRequestSecurityDns(securityContext(request))).build(),
             preparedDestination = nativePreparation.destination,
             artifacts = nativePreparation.artifacts,
+            adoptionSourceGeneration = nativePreparation.adoptionSourceGeneration,
             state = MutableStateFlow(
                 BackendSnapshot(
                     taskId = taskId,
@@ -169,6 +209,7 @@ class NativeHttpDownloadBackend(
         require(ownership.generation == control.request.attemptGeneration) { "Native ownership generation changed before activation" }
         require(ownership.artifacts == control.artifacts) { "Native ownership artifact identity changed before activation" }
         require(ownership.runtimeIdentity.instanceId == runtimeIdentity.instanceId) { "Native ownership belongs to another installation" }
+        rebindAdoptedCheckpoint(control, ownership)
         control.attachedOwnershipGeneration = ownership.generation
         control.state.value = control.state.value.copy(
             attemptGeneration = ownership.generation,
@@ -1230,6 +1271,7 @@ class NativeHttpDownloadBackend(
         val downloadId: String,
         val destination: PreparedDestination,
         val artifacts: BackendArtifactIdentity,
+        val adoptionSourceGeneration: Long?,
     )
 
     private class HostRetryBackoff(private val clock: () -> Long, private val random: Random) {
@@ -1255,6 +1297,7 @@ class NativeHttpDownloadBackend(
         val networkClient: OkHttpClient,
         val preparedDestination: PreparedDestination,
         val artifacts: BackendArtifactIdentity,
+        val adoptionSourceGeneration: Long?,
         val state: MutableStateFlow<BackendSnapshot>,
         var job: Job? = null,
         @Volatile var pauseRequested: Boolean = false,
@@ -1263,6 +1306,52 @@ class NativeHttpDownloadBackend(
         @Volatile var checkpointFlusher: (suspend () -> Unit)? = null,
         @Volatile var attachedOwnershipGeneration: Long? = null,
     )
+
+    private fun BackendArtifactIdentity.toDestinationArtifacts(): DestinationArtifacts {
+        fun localFile(identity: String): java.io.File = requireNotNull(identity.toFilePathOrNull()?.toFile()) {
+            "Native adoption artifact is not a local file URI: $identity"
+        }
+        val checkpointIdentity = companions.firstOrNull { it.endsWith(".checkpoint.json") }
+            ?: error("Native adoption checkpoint identity is missing")
+        val journalIdentity = companions.firstOrNull { it.endsWith(".finalization.json") }
+            ?: error("Native adoption finalization journal identity is missing")
+        return DestinationArtifacts(
+            stagingFile = localFile(primary),
+            checkpointFile = localFile(checkpointIdentity),
+            journalFile = localFile(journalIdentity),
+        )
+    }
+
+    private fun rebindAdoptedCheckpoint(control: TaskControl, ownership: BackendOwnership) {
+        val sourceGeneration = control.adoptionSourceGeneration ?: return
+        require(sourceGeneration < ownership.generation) { "Native adoption generation did not advance" }
+        val paths = NativeArtifactPaths(
+            destinationIdentity = control.preparedDestination.destinationKey,
+            partial = control.preparedDestination.artifacts.stagingFile.toPath(),
+            checkpoint = control.preparedDestination.artifacts.checkpointFile.toPath(),
+        )
+        val checkpoint = requireNotNull(checkpointStore.load(paths.checkpoint)) {
+            "Native adoption checkpoint disappeared before ownership attachment"
+        }
+        require(checkpoint.downloadId == control.request.id) { "Native adoption checkpoint belongs to another download" }
+        require(checkpoint.attemptGeneration == sourceGeneration) { "Native adoption checkpoint generation changed before attachment" }
+        require(checkpoint.backendInstanceId == runtimeIdentity.instanceId) { "Native adoption checkpoint belongs to another installation" }
+        require(checkpoint.partialPath == paths.partial.toString()) { "Native adoption checkpoint points to another staging file" }
+        val expectedSourceIdentity = sha256Identity(control.request.sourceUrl)
+        require(checkpoint.sourceIdentitySha256?.let { it == expectedSourceIdentity }
+            ?: (checkpoint.sourceUrl == control.request.sourceUrl)) {
+            "Native adoption checkpoint belongs to another source request"
+        }
+        checkpointStore.save(
+            paths.checkpoint,
+            checkpoint.copy(
+                attemptGeneration = ownership.generation,
+                backendInstanceId = runtimeIdentity.instanceId,
+                backendSessionId = runtimeIdentity.sessionId,
+                persistedAtEpochMs = maxOf(clock(), checkpoint.persistedAtEpochMs + 1L),
+            ),
+        )
+    }
 
     private fun com.mikeyphw.xdm.android.storage.DestinationArtifacts.toBackendArtifactIdentity() = BackendArtifactIdentity(
         format = NATIVE_ARTIFACT_FORMAT,

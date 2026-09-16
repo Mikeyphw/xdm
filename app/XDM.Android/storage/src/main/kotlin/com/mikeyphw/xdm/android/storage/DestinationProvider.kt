@@ -88,6 +88,13 @@ interface DestinationWriter : DestinationProvider {
     val supportsContentDestinations: Boolean
     fun artifactPaths(request: DestinationRequest): DestinationArtifacts
     suspend fun prepare(request: DestinationRequest): PreparedDestination
+    /**
+     * Rebinds a previously reconciled physical staging set to a newer attempt generation without
+     * copying or renaming payload bytes. The returned destination must publish [artifacts] using
+     * the generation carried by [request]. Writers that cannot prove this safely must reject it.
+     */
+    suspend fun prepareExisting(request: DestinationRequest, artifacts: DestinationArtifacts): PreparedDestination =
+        throw UnsupportedOperationException("This destination writer cannot rebind existing staging artifacts")
     suspend fun previewConflict(request: DestinationRequest): DestinationConflict?
     suspend fun health(destinationUri: String): DestinationHealth
     override suspend fun canWrite(destinationUri: String): Boolean =

@@ -120,14 +120,19 @@ class AndroidDestinationWriter(private val context: Context) : DestinationWriter
         )
     }
 
-    override suspend fun prepare(request: DestinationRequest): PreparedDestination {
+    override suspend fun prepare(request: DestinationRequest): PreparedDestination = prepareInternal(request, null)
+
+    override suspend fun prepareExisting(request: DestinationRequest, artifacts: DestinationArtifacts): PreparedDestination =
+        prepareInternal(request, artifacts)
+
+    private suspend fun prepareInternal(request: DestinationRequest, existingArtifacts: DestinationArtifacts?): PreparedDestination {
         rejectDisallowedRawFileDestination(request.destinationUri)
         if (isFileBackedDestination(request.destinationUri)) {
             ensureDirectAccessIfNeeded(request.destinationUri)
-            return fileWriter.prepare(request)
+            return if (existingArtifacts == null) fileWriter.prepare(request) else fileWriter.prepareExisting(request, existingArtifacts)
         }
         val target = resolveTarget(request)
-        val artifacts = artifactPaths(request)
+        val artifacts = existingArtifacts ?: artifactPaths(request)
         artifacts.stagingFile.parentFile?.mkdirs()
         return object : PreparedDestination {
             override val destinationKey: String = target.destinationKey

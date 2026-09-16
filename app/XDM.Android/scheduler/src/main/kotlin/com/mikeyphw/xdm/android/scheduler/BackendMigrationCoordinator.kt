@@ -149,7 +149,14 @@ class BackendMigrationCoordinator(
         var targetOwnershipGeneration: Long? = null
         var targetTask: BackendTask? = null
         try {
-            val prepared = target.prepare(request)
+            val reservedTargetGeneration = ownershipStore.reserveGeneration(
+                maxOf(download.attemptGeneration.coerceAtLeast(0L), sourceOwnership.generation),
+            )
+            check(reservedTargetGeneration > sourceOwnership.generation) {
+                "Target migration generation must be newer than source ownership"
+            }
+            val targetRequest = request.copy(attemptGeneration = reservedTargetGeneration)
+            val prepared = target.prepare(targetRequest)
             preparation = prepared
             record = record.copy(
                 stage = BackendMigrationStage.TargetPrepared,
@@ -182,6 +189,7 @@ class BackendMigrationCoordinator(
                 artifacts = prepared.artifacts,
                 targetBackend = targetBackend,
                 runtimeIdentity = prepared.runtimeIdentity,
+                reservedGeneration = reservedTargetGeneration,
             )
             val targetOwnership = when (transferred) {
                 is OwnershipClaimResult.Claimed -> transferred.ownership
@@ -196,7 +204,10 @@ class BackendMigrationCoordinator(
             )
             migrationStore.save(record)
 
-            val started = target.add(request.copy(attemptGeneration = targetOwnership.generation), prepared)
+            check(targetOwnership.generation == reservedTargetGeneration) {
+                "Prepared target generation $reservedTargetGeneration does not match transferred ownership generation ${targetOwnership.generation}"
+            }
+            val started = target.add(targetRequest, prepared)
             targetTask = started
             val active = ownershipStore.attachTask(downloadId, targetOwnership.generation, started.taskId)
             target.onOwnershipAttached(started.taskId, active)
@@ -207,11 +218,10 @@ class BackendMigrationCoordinator(
                 updatedAtEpochMs = clock(),
             )
             migrationStore.save(record)
-            if (started.requiresActivation) target.activate(started.taskId)
 
-            // backend_tasks is keyed by ownership generation but queried by download.
-            // Retire the previous generation's persisted task before storing the
-            // newly attached target generation.
+            // The target task is still non-writing here. Persist both backend-task mapping and
+            // Download generation before activation so migration cannot write under an unbound
+            // or source generation after a crash.
             store.deleteBackendTask(downloadId)
             store.saveBackendTask(downloadId, targetBackend, started.taskId, active)
             persistOrThrow(
@@ -232,6 +242,7 @@ class BackendMigrationCoordinator(
                     updatedAtEpochMs = download.nextUpdatedAt(),
                 ),
             )
+            if (started.requiresActivation) target.activate(started.taskId)
             val sourceCleanup = sourceOwnership.backendTaskId?.let { taskId ->
                 runCatching { sourceBackend.finalizeMigrationRetirement(taskId) }.getOrDefault(false)
             } ?: true

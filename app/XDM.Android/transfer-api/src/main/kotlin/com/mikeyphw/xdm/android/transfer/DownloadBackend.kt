@@ -185,6 +185,12 @@ interface DownloadBackend {
     val runtimeIdentity: BackendRuntimeIdentity
     suspend fun capabilities(): BackendCapabilities
     suspend fun prepare(request: DownloadRequest): BackendPreparation
+    /**
+     * Prepares a reconciled physical artifact set for a newer ownership generation. Implementations
+     * must preserve the exact artifact identity recorded by [previousOwnership] while ensuring that
+     * any future publication transaction is bound to [request.attemptGeneration].
+     */
+    suspend fun prepareForAdoption(request: DownloadRequest, previousOwnership: BackendOwnership): BackendPreparation = prepare(request)
     suspend fun add(request: DownloadRequest, preparation: BackendPreparation): BackendTask
     suspend fun add(request: DownloadRequest): BackendTask {
         val preparation = prepare(request)
@@ -236,12 +242,22 @@ sealed interface OwnershipClaimResult {
 }
 
 interface BackendOwnershipStore {
+    /**
+     * Reserves one globally unique ownership generation before any backend artifact is prepared.
+     *
+     * Backends derive staging/checkpoint/publication identities from this generation, so the exact
+     * reserved value must be reused by the subsequent claim/adopt/transfer. Gaps are intentional:
+     * a process may die after reservation and before durable ownership is written.
+     */
+    suspend fun reserveGeneration(minimumExclusive: Long = 0L): Long
+
     suspend fun claim(
         downloadId: String,
         destinationKey: String,
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long? = null,
     ): OwnershipClaimResult
 
     suspend fun adopt(
@@ -251,6 +267,7 @@ interface BackendOwnershipStore {
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long? = null,
     ): OwnershipClaimResult
 
     suspend fun attachTask(downloadId: String, generation: Long, backendTaskId: String): BackendOwnership
@@ -262,6 +279,7 @@ interface BackendOwnershipStore {
         artifacts: BackendArtifactIdentity,
         targetBackend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long? = null,
     ): OwnershipClaimResult
     suspend fun markReconciling(downloadId: String, generation: Long): BackendOwnership
     suspend fun recordReconciliation(
@@ -282,19 +300,25 @@ class InMemoryBackendOwnershipStore(
     private val byDestination = linkedMapOf<String, BackendOwnership>()
     private var nextGeneration = 1L
 
+    override suspend fun reserveGeneration(minimumExclusive: Long): Long = synchronized(this) {
+        reserveGenerationSynchronized(minimumExclusive)
+    }
+
     override suspend fun claim(
         downloadId: String,
         destinationKey: String,
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult = synchronized(this) {
         byDownload[downloadId]?.let { existing ->
             val idempotent = existing.destinationKey == destinationKey &&
                 existing.backend == backend &&
                 existing.artifacts == artifacts &&
                 existing.runtimeIdentity == runtimeIdentity &&
-                existing.status == BackendOwnershipStatus.Claimed
+                existing.status == BackendOwnershipStatus.Claimed &&
+                (reservedGeneration == null || existing.generation == reservedGeneration)
             return@synchronized if (idempotent) OwnershipClaimResult.Claimed(existing) else OwnershipClaimResult.Conflict(existing)
         }
         byDestination[destinationKey]?.let { return@synchronized OwnershipClaimResult.Conflict(it) }
@@ -304,7 +328,7 @@ class InMemoryBackendOwnershipStore(
             destinationKey = destinationKey,
             artifacts = artifacts,
             backend = backend,
-            generation = nextGeneration++,
+            generation = generationForClaimSynchronized(reservedGeneration),
             status = BackendOwnershipStatus.Claimed,
             runtimeIdentity = runtimeIdentity,
             claimedAtEpochMs = now,
@@ -321,6 +345,7 @@ class InMemoryBackendOwnershipStore(
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult = synchronized(this) {
         val existing = byDownload[downloadId] ?: return@synchronized claimSynchronized(
             downloadId,
@@ -328,6 +353,7 @@ class InMemoryBackendOwnershipStore(
             artifacts,
             backend,
             runtimeIdentity,
+            reservedGeneration,
         )
         val adoptable = existing.generation == expectedGeneration &&
             existing.destinationKey == destinationKey &&
@@ -338,7 +364,7 @@ class InMemoryBackendOwnershipStore(
         if (!adoptable) return@synchronized OwnershipClaimResult.Conflict(existing)
         val now = clock()
         val adopted = existing.copy(
-            generation = nextGeneration++,
+            generation = generationForClaimSynchronized(reservedGeneration, minimumExclusive = expectedGeneration),
             status = BackendOwnershipStatus.Claimed,
             runtimeIdentity = runtimeIdentity,
             backendTaskId = null,
@@ -374,6 +400,7 @@ class InMemoryBackendOwnershipStore(
         artifacts: BackendArtifactIdentity,
         targetBackend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult = synchronized(this) {
         val existing = byDownload[downloadId] ?: error("No ownership exists for $downloadId")
         val transferable = existing.generation == expectedGeneration &&
@@ -388,7 +415,7 @@ class InMemoryBackendOwnershipStore(
         val transferred = existing.copy(
             artifacts = artifacts,
             backend = targetBackend,
-            generation = nextGeneration++,
+            generation = generationForClaimSynchronized(reservedGeneration, minimumExclusive = expectedGeneration),
             status = BackendOwnershipStatus.Claimed,
             runtimeIdentity = runtimeIdentity,
             backendTaskId = null,
@@ -446,6 +473,7 @@ class InMemoryBackendOwnershipStore(
         artifacts: BackendArtifactIdentity,
         backend: BackendType,
         runtimeIdentity: BackendRuntimeIdentity,
+        reservedGeneration: Long?,
     ): OwnershipClaimResult {
         byDestination[destinationKey]?.let { return OwnershipClaimResult.Conflict(it) }
         val now = clock()
@@ -454,7 +482,7 @@ class InMemoryBackendOwnershipStore(
             destinationKey = destinationKey,
             artifacts = artifacts,
             backend = backend,
-            generation = nextGeneration++,
+            generation = generationForClaimSynchronized(reservedGeneration),
             status = BackendOwnershipStatus.Claimed,
             runtimeIdentity = runtimeIdentity,
             claimedAtEpochMs = now,
@@ -462,6 +490,25 @@ class InMemoryBackendOwnershipStore(
         )
         put(ownership)
         return OwnershipClaimResult.Claimed(ownership)
+    }
+
+    private fun reserveGenerationSynchronized(minimumExclusive: Long): Long {
+        require(minimumExclusive >= 0L) { "Minimum ownership generation cannot be negative" }
+        require(minimumExclusive < Long.MAX_VALUE) { "Ownership generation space exhausted" }
+        if (nextGeneration <= minimumExclusive) nextGeneration = minimumExclusive + 1L
+        return nextGeneration++
+    }
+
+    private fun generationForClaimSynchronized(reservedGeneration: Long?, minimumExclusive: Long = 0L): Long {
+        if (reservedGeneration == null) return reserveGenerationSynchronized(minimumExclusive)
+        require(reservedGeneration > minimumExclusive) {
+            "Reserved ownership generation $reservedGeneration must be greater than $minimumExclusive"
+        }
+        if (reservedGeneration >= nextGeneration) {
+            require(reservedGeneration < Long.MAX_VALUE) { "Ownership generation space exhausted" }
+            nextGeneration = reservedGeneration + 1L
+        }
+        return reservedGeneration
     }
 
     private fun requireOwnership(downloadId: String, generation: Long): BackendOwnership {
@@ -806,7 +853,14 @@ class BackendCoordinator(
     private val ownershipStore: BackendOwnershipStore,
     private val selectionPolicy: BackendSelectionPolicy = BackendSelectionPolicy(),
 ) {
-    suspend fun add(request: DownloadRequest): CoordinatedBackendTask {
+    suspend fun add(
+        request: DownloadRequest,
+        beforeActivation: suspend (CoordinatedBackendTask) -> Unit = {},
+    ): CoordinatedBackendTask {
+        val existingOwnership = ownershipStore.findByDownload(request.id)
+        val minimumGeneration = maxOf(request.attemptGeneration.coerceAtLeast(0L), existingOwnership?.generation ?: 0L)
+        val reservedGeneration = ownershipStore.reserveGeneration(minimumGeneration)
+        check(reservedGeneration > 0L) { "Backend ownership generation reservation must be positive" }
         val capabilities = registry.capabilitySnapshot()
         val recommendations = selectionPolicy.rankedRecommendations(request, capabilities)
         var lastPreStartFailure: Throwable? = null
@@ -828,7 +882,7 @@ class BackendCoordinator(
                 return@forEachIndexed
             }
             try {
-                return addWithBackend(request, backend, recommendation)
+                return addWithBackend(request, backend, recommendation, reservedGeneration, existingOwnership, beforeActivation)
             } catch (error: BackendPreparationUnavailableException) {
                 lastPreStartFailure = error
                 if (index == recommendations.lastIndex || !request.allowBackendFallback) throw error
@@ -841,10 +895,25 @@ class BackendCoordinator(
         request: DownloadRequest,
         backend: DownloadBackend,
         recommendation: BackendRecommendation,
+        reservedGeneration: Long,
+        existingOwnership: BackendOwnership?,
+        beforeActivation: suspend (CoordinatedBackendTask) -> Unit,
     ): CoordinatedBackendTask {
-        val selectedRequest = request.copy(preferredBackend = recommendation.backend)
+        val selectedRequest = request.copy(
+            preferredBackend = recommendation.backend,
+            attemptGeneration = reservedGeneration,
+        )
+        val adoptionSource = existingOwnership?.takeIf { ownership ->
+            ownership.backend == recommendation.backend &&
+                ownership.status == BackendOwnershipStatus.Reconciled &&
+                ownership.reconciliation == BackendReconciliationClassification.ResumableArtifact
+        }
         val preparation = try {
-            backend.prepare(selectedRequest)
+            if (adoptionSource != null) {
+                backend.prepareForAdoption(selectedRequest, adoptionSource)
+            } else {
+                backend.prepare(selectedRequest)
+            }
         } catch (error: BackendUnavailableException) {
             throw BackendPreparationUnavailableException(error.message ?: "Backend preparation is unavailable", error)
         }
@@ -853,24 +922,49 @@ class BackendCoordinator(
         var adopted = false
         try {
             validatePreparation(request, backend, recommendation.backend, preparation)
-            val existing = ownershipStore.findByDownload(request.id)
-            adopted = existing != null
-            val claim = if (existing == null) {
-                ownershipStore.claim(request.id, preparation.destinationKey, preparation.artifacts, recommendation.backend, preparation.runtimeIdentity)
+            // Claim/adopt against the same ownership snapshot that was used to choose the
+            // preparation path. If another process changes ownership while preparation is in
+            // flight, the expected generation must conflict rather than silently adopting a
+            // preparation that was proven against an older generation.
+            adopted = existingOwnership != null
+            val claim = if (existingOwnership == null) {
+                ownershipStore.claim(
+                    request.id,
+                    preparation.destinationKey,
+                    preparation.artifacts,
+                    recommendation.backend,
+                    preparation.runtimeIdentity,
+                    reservedGeneration = reservedGeneration,
+                )
             } else {
-                ownershipStore.adopt(request.id, existing.generation, preparation.destinationKey, preparation.artifacts, recommendation.backend, preparation.runtimeIdentity)
+                ownershipStore.adopt(
+                    request.id,
+                    existingOwnership.generation,
+                    preparation.destinationKey,
+                    preparation.artifacts,
+                    recommendation.backend,
+                    preparation.runtimeIdentity,
+                    reservedGeneration = reservedGeneration,
+                )
             }
             val claimedOwnership = when (claim) {
                 is OwnershipClaimResult.Claimed -> claim.ownership
                 is OwnershipClaimResult.Conflict -> throw DestinationOwnershipConflictException(claim.existing)
             }
             ownership = claimedOwnership
-            val startedTask = backend.add(selectedRequest.copy(attemptGeneration = claimedOwnership.generation), preparation)
+            check(claimedOwnership.generation == reservedGeneration) {
+                "Prepared artifact generation $reservedGeneration does not match claimed ownership generation ${claimedOwnership.generation}"
+            }
+            val startedTask = backend.add(selectedRequest, preparation)
             task = startedTask
             val active = ownershipStore.attachTask(request.id, claimedOwnership.generation, startedTask.taskId)
             backend.onOwnershipAttached(startedTask.taskId, active)
+            val coordinated = CoordinatedBackendTask(startedTask, active, recommendation)
+            // Native and aria2 create non-writing tasks. The caller must durably bind the
+            // Download row to this exact generation before activation can start payload writes.
+            beforeActivation(coordinated)
             if (startedTask.requiresActivation) backend.activate(startedTask.taskId)
-            return CoordinatedBackendTask(startedTask, active, recommendation)
+            return coordinated
         } catch (error: Throwable) {
             val startedTask = task
             val claimedOwnership = ownership
