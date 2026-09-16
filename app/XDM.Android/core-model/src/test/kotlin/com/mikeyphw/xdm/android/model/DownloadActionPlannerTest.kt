@@ -158,7 +158,7 @@ class DownloadActionPlannerTest {
     }
 
     @Test
-    fun finalSaveRecoveryOffersRetrySaveBeforeGenericRecovery() {
+    fun finalSaveRecoveryOffersRetryFinalizationBeforeGenericRecovery() {
         val actions = DownloadActionPlanner.actionsFor(
             download(
                 DownloadState.RecoveryRequired,
@@ -166,9 +166,21 @@ class DownloadActionPlannerTest {
             ),
         )
         assertEquals(DownloadActionKind.Retry, actions.first { it.primary }.kind)
-        assertEquals("Retry save", actions.first { it.primary }.label)
+        assertEquals("Retry finalization", actions.first { it.primary }.label)
         assertTrue(actions.first { it.primary }.supportingText.contains("preserved completed staging file"))
         assertTrue(actions.any { it.kind == DownloadActionKind.ReviewRecovery })
+    }
+
+    @Test
+    fun historicalPublicationFailureDoesNotOfferNetworkRetryAsPrimaryAction() {
+        val actions = DownloadActionPlanner.actionsFor(
+            download(
+                DownloadState.Failed,
+                errorMessage = "Publication generation requires a positive attempt generation",
+            ).copy(bytesReceived = 1024, totalBytes = 1024),
+        )
+        assertEquals(DownloadActionKind.ReviewRecovery, actions.first { it.primary }.kind)
+        assertFalse(actions.any { it.primary && it.label == "Retry" })
     }
 
     @Test

@@ -46,9 +46,9 @@ class RuntimeFoundationPhase57_58ContractTest {
         assertTrue(runtime.contains("mapping.first == BackendType.Native"))
         assertTrue(runtime.contains("current.errorMessage.orEmpty().startsWith(\"Final save failed\")"))
         assertTrue(runtime.contains("backend.resume(mapping.second)"))
-        assertTrue(planner.contains("\"Retry save\""))
+        assertTrue(planner.contains("\"Retry finalization\""))
         assertTrue(planner.contains("preserved completed staging file without intentionally redownloading"))
-        assertTrue(mediaScreen.contains("DownloadState.RecoveryRequired -> if (download.errorMessage.orEmpty().startsWith(\"Final save failed\")) \"Retry save\""))
+        assertTrue(mediaScreen.contains("DownloadPresentationPolicy.isFinalSaveRecovery(download)) \"Retry finalization\""))
     }
 
     @Test

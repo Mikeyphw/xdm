@@ -472,7 +472,7 @@ private fun RecentlyQueuedMediaRow(
             DownloadState.Failed,
             DownloadState.WaitingForNetwork,
             DownloadState.WaitingForPower -> if (download.state == DownloadState.Failed) "Retry" else "Resume"
-            DownloadState.RecoveryRequired -> if (download.errorMessage.orEmpty().startsWith("Final save failed")) "Retry save" else null
+            DownloadState.RecoveryRequired -> if (com.mikeyphw.xdm.android.model.DownloadPresentationPolicy.isFinalSaveRecovery(download)) "Retry finalization" else null
             else -> null
         }
         XdmActionFlowRow(Modifier.padding(start = 68.dp, end = 14.dp, bottom = 6.dp)) {

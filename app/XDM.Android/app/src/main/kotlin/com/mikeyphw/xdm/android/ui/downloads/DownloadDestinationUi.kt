@@ -1,5 +1,7 @@
 package com.mikeyphw.xdm.android
 
+import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.storage.DestinationUris
 
 internal fun destinationUiLabel(destinationUri: String): String {
@@ -33,5 +35,26 @@ internal fun destinationUiHint(destinationUri: String): String {
         value.startsWith("content://", ignoreCase = true) -> "Android stores shared files with access-safe content links instead of raw paths."
         value.startsWith("file://", ignoreCase = true) || value.startsWith("/") -> "Direct file path."
         else -> "Destination is configured and will be resolved when the file is saved."
+    }
+}
+
+
+internal fun destinationCardLabel(download: Download): String {
+    val compactLabel = when (download.destinationUri.trim()) {
+        DestinationUris.DIRECT_DOWNLOADS -> "Download/XDM"
+        DestinationUris.PUBLIC_DOWNLOADS -> "Downloads"
+        DestinationUris.MEDIA_MOVIES -> "Movies"
+        DestinationUris.MEDIA_MUSIC -> "Music"
+        DestinationUris.MEDIA_PICTURES -> "Pictures"
+        DestinationUris.MEDIA_DOCUMENTS -> "Documents"
+        DestinationUris.APP_PRIVATE_DOWNLOADS -> "XDM private folder"
+        else -> destinationUiLabel(download.destinationUri)
+            .removeSuffix(" folder")
+            .removePrefix("Saved in ")
+    }
+    return if (download.state == DownloadState.Completed) {
+        "Saved to $compactLabel"
+    } else {
+        "Destination: $compactLabel"
     }
 }

@@ -12,7 +12,9 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import com.mikeyphw.xdm.android.model.DownloadPresentationPolicy
 import com.mikeyphw.xdm.android.model.DownloadState
+import com.mikeyphw.xdm.android.model.NotificationActionModel
 import com.mikeyphw.xdm.android.model.NotificationPermissionState
 import com.mikeyphw.xdm.android.model.QueueControlCommand
 import com.mikeyphw.xdm.android.model.QueueStateMachinePlanner
@@ -166,7 +168,7 @@ class TransferNotifications(private val context: Context) {
             key = TerminalNotificationKey(downloadId, attemptGeneration, state, requestIdentity),
             title = profile.title,
             text = profile.text,
-            actions = TerminalNotificationActionPolicy.actionsFor(state, downloadId),
+            actions = TerminalNotificationActionPolicy.actionsFor(state, downloadId, message),
             createdAtEpochMs = System.currentTimeMillis(),
             dispatchedAtEpochMs = null,
         )
@@ -213,16 +215,22 @@ class TransferNotifications(private val context: Context) {
     ): Notification {
         ensureChannels()
         val profile = notificationProfile(state, fileName, message)
-        return buildTerminalNotification(downloadId, state, profile.title, profile.text)
+        return buildTerminalNotification(downloadId, state, profile.title, profile.text, TerminalNotificationActionPolicy.actionsFor(state, downloadId, message))
     }
 
     fun terminal(downloadId: String, fileName: String, completed: Boolean, message: String?): Notification =
         terminal(downloadId, fileName, if (completed) DownloadState.Completed else DownloadState.Failed, message)
 
     private fun terminalFromRecord(record: TerminalNotificationRecord): Notification =
-        buildTerminalNotification(record.key.downloadId, record.key.state, record.title, record.text)
+        buildTerminalNotification(record.key.downloadId, record.key.state, record.title, record.text, record.actions)
 
-    private fun buildTerminalNotification(downloadId: String, state: DownloadState, title: String, text: String): Notification {
+    private fun buildTerminalNotification(
+        downloadId: String,
+        state: DownloadState,
+        title: String,
+        text: String,
+        actions: List<NotificationActionModel>,
+    ): Notification {
         ensureChannels()
         val contentIntent = if (state == DownloadState.Completed) openCompletedPendingIntent(downloadId) else openAppPendingIntent(downloadId)
         return NotificationCompat.Builder(context, channelFor(state))
@@ -236,7 +244,7 @@ class TransferNotifications(private val context: Context) {
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_ALL)
             .setContentIntent(contentIntent)
             .apply {
-                TerminalNotificationActionPolicy.actionsFor(state, downloadId).forEach { action ->
+                actions.forEach { action ->
                     when (action.command) {
                         QueueControlCommand.OpenOne -> addAction(android.R.drawable.ic_menu_view, action.label, openCompletedPendingIntent(downloadId))
                         QueueControlCommand.ShareOne -> addAction(android.R.drawable.ic_menu_share, action.label, shareCompletedPendingIntent(downloadId))
@@ -304,16 +312,32 @@ class TransferNotifications(private val context: Context) {
         DownloadState.WaitingForNetwork -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Waiting for network", "The download will continue when its network requirement is available.")
         DownloadState.WaitingForPower -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Waiting for power", "The download will continue when its power requirement is satisfied.")
         DownloadState.Queued, DownloadState.Created -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Download queued", fileName.ifBlank { "Waiting for an execution slot." })
-        DownloadState.RecoveryRequired -> NotificationProfile(
-            android.R.drawable.stat_notify_error,
-            "Download needs action",
-            sanitizeNotificationText(message, "Download needs recovery before it can resume. Open XDM for details."),
-        )
-        DownloadState.Failed -> NotificationProfile(
-            android.R.drawable.stat_notify_error,
-            "Download failed",
-            sanitizeNotificationText(message, "Download could not continue. Open XDM for details."),
-        )
+        DownloadState.RecoveryRequired -> if (DownloadPresentationPolicy.isRetryableFinalSaveMessage(message)) {
+            NotificationProfile(
+                android.R.drawable.stat_notify_error,
+                "Couldn't finish download",
+                "The file was transferred, but XDM couldn't finish saving it.",
+            )
+        } else {
+            NotificationProfile(
+                android.R.drawable.stat_notify_error,
+                "Download needs action",
+                sanitizeNotificationText(message, "Download needs recovery before it can resume. Open XDM for details."),
+            )
+        }
+        DownloadState.Failed -> if (DownloadPresentationPolicy.isFinalizationFailureMessage(message)) {
+            NotificationProfile(
+                android.R.drawable.stat_notify_error,
+                "Couldn't finish download",
+                "The file was transferred, but XDM couldn't finish saving it.",
+            )
+        } else {
+            NotificationProfile(
+                android.R.drawable.stat_notify_error,
+                "Download failed",
+                sanitizeNotificationText(message, "Download could not continue. Open XDM for details."),
+            )
+        }
         DownloadState.Connecting -> NotificationProfile(android.R.drawable.stat_sys_download, "Connecting", fileName.ifBlank { "Connecting to the download source." })
         DownloadState.Downloading -> NotificationProfile(android.R.drawable.stat_sys_download, "Downloading", fileName.ifBlank { "Download in progress." })
         DownloadState.Verifying -> NotificationProfile(android.R.drawable.stat_notify_sync_noanim, "Verifying download", fileName.ifBlank { "Checking downloaded data." })

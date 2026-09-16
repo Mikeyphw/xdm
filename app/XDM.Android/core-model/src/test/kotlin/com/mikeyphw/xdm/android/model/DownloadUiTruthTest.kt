@@ -119,6 +119,36 @@ class DownloadUiTruthTest {
     }
 
     @Test
+    fun finalSaveRecoveryShowsTransferCompleteWithoutMisleadingFullProgress() {
+        val item = download(DownloadState.RecoveryRequired).copy(
+            bytesReceived = 1024,
+            totalBytes = 1024,
+            errorMessage = "Final save failed, but the completed staging file is preserved. Retry save after fixing destination access.",
+        )
+        val context = DownloadActionContext()
+        val truth = DownloadUiTruthPlanner.truth(item, context)
+        assertEquals("Needs attention", truth.badge)
+        assertEquals("Finalization failed", truth.status)
+        assertEquals("Transfer complete; final save needs attention", truth.overallProgressText)
+        assertEquals("The file was transferred, but XDM couldn't finish saving it.", truth.supportingText)
+        assertEquals(null, DownloadUiTruthPlanner.phaseProgress(item, context))
+        assertFalse(DownloadUiTruthPlanner.indeterminateProgressVisible(item, context))
+    }
+
+    @Test
+    fun historicalPublicationGenerationFailureUsesFinalizationTruth() {
+        val item = download(DownloadState.Failed).copy(
+            bytesReceived = 1024,
+            totalBytes = 1024,
+            errorMessage = "Publication generation requires a positive attempt generation",
+        )
+        val truth = DownloadUiTruthPlanner.truth(item, DownloadActionContext())
+        assertEquals("Needs attention", truth.badge)
+        assertEquals("Finalization failed", truth.status)
+        assertFalse(truth.supportingText.contains("positive attempt generation"))
+    }
+
+    @Test
     fun activeUnknownLengthTransfersShowIndeterminateProgress() {
         val item = download(DownloadState.Downloading).copy(totalBytes = null)
         val context = DownloadUiTruthPlanner.contextFor(item, listOf(item))

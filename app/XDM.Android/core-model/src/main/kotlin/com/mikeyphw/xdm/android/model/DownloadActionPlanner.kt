@@ -107,14 +107,22 @@ object DownloadActionPlanner {
             deleteHistory(download),
         )
 
-        DownloadState.Failed -> listOf(
-            retry(primary = true),
-            details(),
-            refreshLink(download),
-            copyLink(context),
-            redownload(download, context),
-            deleteHistory(download),
-        )
+        DownloadState.Failed -> if (DownloadPresentationPolicy.isFinalizationFailure(download)) {
+            listOf(
+                reviewRecovery(primary = true),
+                details(),
+                deleteHistory(download),
+            )
+        } else {
+            listOf(
+                retry(primary = true),
+                details(),
+                refreshLink(download),
+                copyLink(context),
+                redownload(download, context),
+                deleteHistory(download),
+            )
+        }
 
         DownloadState.Completed -> buildList {
             if (context.artifact.readable) {
@@ -136,7 +144,7 @@ object DownloadActionPlanner {
             add(deleteFileAndHistory(context))
         }
 
-        DownloadState.RecoveryRequired -> if (download.isFinalSaveRecovery()) {
+        DownloadState.RecoveryRequired -> if (DownloadPresentationPolicy.isFinalSaveRecovery(download)) {
             listOf(
                 retrySave(primary = true),
                 reviewRecovery(),
@@ -312,14 +320,11 @@ private val pausableStates = setOf(DownloadState.Downloading, DownloadState.Conn
 
     private fun retrySave(primary: Boolean = false) = DownloadAction(
         DownloadActionKind.Retry,
-        "Retry save",
+        "Retry finalization",
         DownloadActionIcon.Refresh,
         primary = primary,
         supportingText = "Retry final publication from the preserved completed staging file without intentionally redownloading the payload.",
     )
-
-    private fun Download.isFinalSaveRecovery(): Boolean =
-        errorMessage.orEmpty().startsWith("Final save failed")
 
     private fun startNow(primary: Boolean = false) = DownloadAction(
         DownloadActionKind.StartNow,

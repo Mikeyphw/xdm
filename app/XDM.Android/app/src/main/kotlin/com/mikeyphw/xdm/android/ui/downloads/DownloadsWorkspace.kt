@@ -190,6 +190,8 @@ internal object DownloadsWorkspacePlanner {
         }
         return when {
             policy != null -> "Waiting — $policy"
+            com.mikeyphw.xdm.android.model.DownloadPresentationPolicy.isFinalizationFailure(download) ->
+                "Transfer complete — couldn't finish saving the file"
             download.state == DownloadState.Failed && !download.errorMessage.isNullOrBlank() ->
                 "Failed — ${firstUsefulLine(download.errorMessage.orEmpty())}"
             download.state == DownloadState.RecoveryRequired && !download.errorMessage.isNullOrBlank() ->

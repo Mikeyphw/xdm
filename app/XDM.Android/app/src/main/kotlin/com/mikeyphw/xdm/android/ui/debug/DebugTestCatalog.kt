@@ -510,7 +510,7 @@ private object MediaDownloadTransactionDebugTest : StateDebugTest(
             val linkedDownload = requireNotNull(repository.findDownload(downloadId)) { "Linked Download could not be read back" }
             check(linkedCapture.status == MediaCaptureStatus.DownloadCreated) { "Capture status was ${linkedCapture.status}" }
             check(linkedCapture.downloadId == downloadId) { "Capture linked to ${linkedCapture.downloadId}" }
-            check(linkedDownload.state == DownloadState.Queued) { "Download state was ${linkedDownload.state}" }
+            check(linkedDownload.state == DownloadState.Cancelled) { "Download state was ${linkedDownload.state}" }
             linkedCapture to linkedDownload
         }
         runCatching { repository.deleteMediaCapture(captureId) }

@@ -50,6 +50,7 @@ import com.mikeyphw.xdm.android.model.DestinationPermission
 import com.mikeyphw.xdm.android.model.DestinationRule
 import com.mikeyphw.xdm.android.model.DestinationRuleMatch
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.DownloadPresentationPolicy
 import com.mikeyphw.xdm.android.model.CompletedArtifactCapabilities
 import com.mikeyphw.xdm.android.model.DownloadActionKind
 import com.mikeyphw.xdm.android.model.DownloadBulkActionResult
@@ -1075,6 +1076,12 @@ class MainViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val repaired = repository.repairMediaCaptureDownloadLinks()
+            if (repaired > 0) {
+                android.util.Log.i("XDMMediaIntegrity", "Repaired $repaired stale media capture/output link(s) during startup.")
+            }
+        }
         viewModelScope.launch {
             if (repository.countQueues() == 0) FakeDataSeeder(repository).seedQueuesOnly()
         }
@@ -2490,7 +2497,13 @@ class MainViewModel(
             _downloadAdmissionState.value = DownloadAdmissionUiState(message = error.message ?: "Invalid checksum")
             return
         }
-        val safeName = resolveFileName(url, fileName)
+        val presentationDraft = externalAddDraft.value?.takeIf { it.url == url.trim() }
+        val safeName = resolveFileName(
+            url = url,
+            requestedName = fileName,
+            pageTitle = presentationDraft?.pageTitle,
+            mimeType = presentationDraft?.mimeType,
+        )
         _downloadAdmissionState.value = DownloadAdmissionUiState(inFlight = true, message = "Adding reviewed download…")
         viewModelScope.launch {
             try {
@@ -3469,7 +3482,12 @@ class MainViewModel(
             )
             return
         }
-        val safeName = resolveFileName(url, draft.fileName.orEmpty())
+        val safeName = resolveFileName(
+            url = url,
+            requestedName = draft.fileName.orEmpty(),
+            pageTitle = draft.pageTitle,
+            mimeType = draft.mimeType,
+        )
         val sessionHeaders = transientSessionHeaders(draft.effectiveHeaderBlock, draft.pageUrl, url, draft.cleartextCredentialsApproved)
         val mediaCandidate = mediaCaptureService.candidateFor(url)
         val transferShape = mediaCandidate?.let(::transferShapeForCandidate) ?: inferTransferShape(url)
@@ -5370,16 +5388,19 @@ class MainViewModel(
             protected = record.manifestProtected,
         )
 
-    private fun resolveFileName(url: String, requestedName: String): String {
-        if (requestedName.isNotBlank()) return sanitizeFileName(requestedName)
-        val inferred = runCatching {
-            Uri.parse(url.trim()).lastPathSegment
-                ?.substringBefore('?')
-                ?.substringBefore('#')
-                ?.takeIf { it.isNotBlank() }
-        }.getOrNull()
-        return sanitizeFileName(inferred.orEmpty())
-    }
+    private fun resolveFileName(
+        url: String,
+        requestedName: String,
+        pageTitle: String? = null,
+        mimeType: String? = null,
+    ): String = sanitizeFileName(
+        DownloadPresentationPolicy.resolvedFileName(
+            sourceUrl = url.trim(),
+            requestedName = requestedName,
+            pageTitle = pageTitle,
+            mimeType = mimeType,
+        ),
+    )
 
     class Factory(private val container: AppContainer) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

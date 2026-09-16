@@ -5572,5 +5572,25 @@
     "last_completed_overlay": "XAR15",
     "next_overlay": "XAR17",
     "next_phase": "XAR17_313_root_closure_audit_final_gate"
+  },
+  "rm02_persistence_downloads_ux": {
+    "status": "implemented",
+    "roadmap_position": "overlay 2 of 4",
+    "scope": "Persistence + Downloads UX",
+    "depends_on": "rm01_transfer_core_recovery_integrity",
+    "media_capture_download_integrity": true,
+    "orphan_link_startup_repair": true,
+    "deletion_rebind_before_fk_null": true,
+    "human_readable_download_identity": true,
+    "single_visible_card_recovery_action": true,
+    "finalization_failure_truthful_ui": true,
+    "phase_specific_notification_recovery": true,
+    "room_schema_unchanged": 25,
+    "report": "XDM_RM02_PERSISTENCE_DOWNLOADS_UX_REPORT.md",
+    "docs": "docs/remediation/RM02-PERSISTENCE-DOWNLOADS-UX.md",
+    "validator": "tools/validate-rm02-persistence-downloads-ux.py",
+    "validation_task": "verifyRm02PersistenceDownloadsUx",
+    "validation_mode": "intermediate_no_validate",
+    "next_overlay": "overlay 3 of 4 \u2014 Embedded Runtimes + HLS Networking"
   }
 }

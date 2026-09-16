@@ -114,6 +114,49 @@ interface MediaCaptureDao {
           AND (:variantId IS NULL OR EXISTS(SELECT 1 FROM media_variants WHERE id = :variantId AND captureId = :captureId))""")
     suspend fun selectVariantIfVariantExists(captureId: String, variantId: String?, variantUrl: String?, resolutionStatus: String, updatedAtEpochMs: Long): Int
 
+    /** Repairs legacy/previously-deleted primary links without inventing a Download row.
+     * If another live app-owned output exists, it becomes the capture's primary link; otherwise the
+     * capture returns to MetadataReady and remains reviewable for another Download action. */
+    @Query("""
+        UPDATE media_captures
+        SET downloadId = (
+                SELECT mo.downloadId
+                FROM media_outputs mo
+                JOIN downloads d ON d.id = mo.downloadId
+                WHERE mo.captureId = media_captures.id
+                  AND mo.ownerKind = 'AppDownload'
+                  AND mo.state != 'Hidden'
+                  AND mo.downloadId IS NOT NULL
+                ORDER BY mo.updatedAtEpochMs DESC, mo.createdAtEpochMs DESC
+                LIMIT 1
+            ),
+            status = CASE
+                WHEN EXISTS(
+                    SELECT 1 FROM media_outputs mo
+                    JOIN downloads d ON d.id = mo.downloadId
+                    WHERE mo.captureId = media_captures.id
+                      AND mo.ownerKind = 'AppDownload'
+                      AND mo.state != 'Hidden'
+                      AND mo.downloadId IS NOT NULL
+                ) THEN 'DownloadCreated'
+                ELSE 'MetadataReady'
+            END,
+            updatedAtEpochMs = :updatedAtEpochMs
+        WHERE status = 'DownloadCreated'
+          AND (downloadId IS NULL OR NOT EXISTS(SELECT 1 FROM downloads d WHERE d.id = media_captures.downloadId))
+    """)
+    suspend fun repairOrphanedDownloadLinks(updatedAtEpochMs: Long): Int
+
+    @Query("""
+        UPDATE media_outputs
+        SET state = 'Hidden', updatedAtEpochMs = :updatedAtEpochMs
+        WHERE ownerKind = 'AppDownload'
+          AND state != 'Hidden'
+          AND downloadId IS NULL
+          AND NOT EXISTS(SELECT 1 FROM downloads d WHERE d.id = media_outputs.ownerId)
+    """)
+    suspend fun hideOrphanedAppDownloadOutputs(updatedAtEpochMs: Long): Int
+
     @Query("UPDATE media_captures SET status = :status, downloadId = :downloadId, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
     suspend fun markDownloadCreated(id: String, status: String, downloadId: String, updatedAtEpochMs: Long): Int
 

@@ -22,6 +22,17 @@ class TransferNotificationPolicyContractTest {
         assertFalse(notifications.contains("message ?: fileName"))
     }
 
+    @Test fun finalizationFailureUsesFriendlyCopyAndPhaseSpecificAction() {
+        val root = androidRoot()
+        val notifications = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt").readText()
+        val actions = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TerminalNotificationActionPolicy.kt").readText()
+        assertTrue(notifications.contains("Couldn't finish download"))
+        assertTrue(notifications.contains("The file was transferred, but XDM couldn't finish saving it."))
+        assertTrue(notifications.contains("record.actions"))
+        assertTrue(actions.contains("Retry finalization"))
+        assertTrue(actions.contains("isRetryableFinalSaveMessage(message)"))
+    }
+
     private fun androidRoot(): File = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
         .first { File(it, "settings.gradle.kts").isFile }
 }

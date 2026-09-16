@@ -31,6 +31,12 @@ interface DownloadGraphTransactionDao {
         deleteAria2MappingsForDownload(downloadId)
         deleteDestinationClaimsForDownload(downloadId)
         deleteBackendTasksForDownload(downloadId)
+        // A deleted Download must never leave MediaCapture.status=DownloadCreated pointing at
+        // nothing. Hide the deleted output first, then rebind the capture to another live output or
+        // return it to MetadataReady before the FK SET NULL runs.
+        val mediaRevision = System.currentTimeMillis()
+        hideAppMediaOutputsForDownload(downloadId, mediaRevision)
+        rebindMediaCapturesBeforeDownloadDeletion(downloadId, mediaRevision)
         deleteDownloadRow(downloadId)
     }
 
@@ -52,6 +58,46 @@ interface DownloadGraphTransactionDao {
     suspend fun deleteDestinationClaimsForDownload(downloadId: String)
     @Query("DELETE FROM backend_tasks WHERE downloadId = :downloadId")
     suspend fun deleteBackendTasksForDownload(downloadId: String)
+
+    @Query("""
+        UPDATE media_outputs
+        SET state = 'Hidden', updatedAtEpochMs = :updatedAtEpochMs
+        WHERE ownerKind = 'AppDownload' AND downloadId = :downloadId AND state != 'Hidden'
+    """)
+    suspend fun hideAppMediaOutputsForDownload(downloadId: String, updatedAtEpochMs: Long): Int
+
+    @Query("""
+        UPDATE media_captures
+        SET downloadId = (
+                SELECT mo.downloadId
+                FROM media_outputs mo
+                JOIN downloads d ON d.id = mo.downloadId
+                WHERE mo.captureId = media_captures.id
+                  AND mo.ownerKind = 'AppDownload'
+                  AND mo.state != 'Hidden'
+                  AND mo.downloadId IS NOT NULL
+                  AND mo.downloadId != :downloadId
+                ORDER BY mo.updatedAtEpochMs DESC, mo.createdAtEpochMs DESC
+                LIMIT 1
+            ),
+            status = CASE
+                WHEN status = 'Archived' THEN 'Archived'
+                WHEN EXISTS(
+                    SELECT 1 FROM media_outputs mo
+                    JOIN downloads d ON d.id = mo.downloadId
+                    WHERE mo.captureId = media_captures.id
+                      AND mo.ownerKind = 'AppDownload'
+                      AND mo.state != 'Hidden'
+                      AND mo.downloadId IS NOT NULL
+                      AND mo.downloadId != :downloadId
+                ) THEN 'DownloadCreated'
+                ELSE 'MetadataReady'
+            END,
+            updatedAtEpochMs = :updatedAtEpochMs
+        WHERE downloadId = :downloadId
+    """)
+    suspend fun rebindMediaCapturesBeforeDownloadDeletion(downloadId: String, updatedAtEpochMs: Long): Int
+
     @Query("DELETE FROM downloads WHERE id = :downloadId")
     suspend fun deleteDownloadRow(downloadId: String)
 

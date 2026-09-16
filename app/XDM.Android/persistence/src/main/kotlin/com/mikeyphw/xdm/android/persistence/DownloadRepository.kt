@@ -505,7 +505,32 @@ class DownloadRepository(private val database: AppDatabase) {
     }
     suspend fun selectMediaVariant(captureId: String, variant: MediaVariant, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().selectVariant(captureId, variant.id, ExternalUrlPolicy.persistableUrl(variant.url) ?: variant.url.substringBefore('?'), MediaResolutionStatus.Resolved.name, updatedAtEpochMs)
     suspend fun findMediaCapture(id: String): MediaCaptureRecord? = database.mediaCaptureDao().findById(id)?.toModel()
-    suspend fun markMediaDownloadCreated(captureId: String, downloadId: String, updatedAtEpochMs: Long = System.currentTimeMillis()) = database.mediaCaptureDao().markDownloadCreated(captureId, MediaCaptureStatus.DownloadCreated.name, downloadId, updatedAtEpochMs)
+
+    /** Legacy compatibility entry point kept invariant-safe: a capture is never linked to a Download
+     * id that cannot be read back in the same Room transaction. New media admission should prefer
+     * [createDownloadFromMediaCapture]. */
+    suspend fun markMediaDownloadCreated(
+        captureId: String,
+        downloadId: String,
+        updatedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Int = database.withTransaction {
+        check(database.downloadDao().findById(downloadId) != null) { "Cannot link media capture to a missing Download row" }
+        val updated = database.mediaCaptureDao().markDownloadCreated(
+            captureId,
+            MediaCaptureStatus.DownloadCreated.name,
+            downloadId,
+            updatedAtEpochMs,
+        )
+        check(updated == 1) { "Media capture could not be linked to the durable Download row" }
+        updated
+    }
+
+    /** Repairs old SET NULL/deletion fallout before the UI/debug integrity checks observe it. */
+    suspend fun repairMediaCaptureDownloadLinks(updatedAtEpochMs: Long = System.currentTimeMillis()): Int = database.withTransaction {
+        val hiddenOutputs = database.mediaCaptureDao().hideOrphanedAppDownloadOutputs(updatedAtEpochMs)
+        val repairedCaptures = database.mediaCaptureDao().repairOrphanedDownloadLinks(updatedAtEpochMs)
+        hiddenOutputs + repairedCaptures
+    }
 
     /**
      * Persists a fresh Download id and, when the source Download belongs to a media capture, clones that

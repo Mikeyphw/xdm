@@ -107,6 +107,8 @@ object DownloadUiTruthPlanner {
             ?.removePrefix("Queue policy:")
             ?.trim()
             ?.takeIf(String::isNotBlank)
+        val finalizationFailure = DownloadPresentationPolicy.isFinalizationFailure(download)
+        val finalizationSummary = DownloadPresentationPolicy.finalizationFailureSummary(download)
         val status = when (download.state) {
             DownloadState.Created -> "Ready to queue"
             DownloadState.Queued -> queueText ?: "Waiting in queue"
@@ -119,9 +121,9 @@ object DownloadUiTruthPlanner {
             DownloadState.Repairing -> "Repairing verified damaged ranges"
             DownloadState.Finalizing -> "Committing the completed file"
             DownloadState.Completed -> completedStatus(context)
-            DownloadState.Failed -> "Transfer failed"
+            DownloadState.Failed -> if (finalizationFailure) "Finalization failed" else "Transfer failed"
             DownloadState.Cancelled -> "Cancelled"
-            DownloadState.RecoveryRequired -> "Recovery review required"
+            DownloadState.RecoveryRequired -> if (finalizationFailure) "Finalization failed" else "Recovery review required"
         }
         val badge = when (download.state) {
             DownloadState.Created -> "Ready"
@@ -135,13 +137,14 @@ object DownloadUiTruthPlanner {
             DownloadState.Repairing -> "Repairing"
             DownloadState.Finalizing -> "Finalizing"
             DownloadState.Completed -> completedBadge(context)
-            DownloadState.Failed -> "Failed"
+            DownloadState.Failed -> if (finalizationFailure) "Needs attention" else "Failed"
             DownloadState.Cancelled -> "Cancelled"
-            DownloadState.RecoveryRequired -> "Recovery"
+            DownloadState.RecoveryRequired -> if (finalizationFailure) "Needs attention" else "Recovery"
         }
         val runningVerification = context.latestVerification?.takeIf { it.status == VerificationStatus.Running }
         val verificationTotalBytes = runningVerification?.totalBytes
         val byteProgress = when {
+            finalizationFailure && download.bytesReceived > 0L -> "${download.bytesReceived.coerceAtLeast(0L)} bytes transferred; final save incomplete"
             download.state == DownloadState.Verifying && runningVerification != null && verificationTotalBytes != null && verificationTotalBytes > 0L ->
                 "${runningVerification.bytesVerified.coerceIn(0L, verificationTotalBytes)} of ${verificationTotalBytes} bytes verified"
             download.state == DownloadState.Verifying && runningVerification != null ->
@@ -151,15 +154,17 @@ object DownloadUiTruthPlanner {
             download.bytesReceived > 0L -> "${download.bytesReceived.coerceAtLeast(0L)} bytes received"
             else -> "No payload bytes recorded"
         }
-        val overall = when (download.state) {
-            DownloadState.Verifying -> "Payload received; integrity verification in progress"
-            DownloadState.Repairing -> "Payload received; trusted repair in progress"
-            DownloadState.Finalizing -> "Payload received; destination commit in progress"
-            DownloadState.Completed -> status
+        val overall = when {
+            finalizationFailure -> "Transfer complete; final save needs attention"
+            download.state == DownloadState.Verifying -> "Payload received; integrity verification in progress"
+            download.state == DownloadState.Repairing -> "Payload received; trusted repair in progress"
+            download.state == DownloadState.Finalizing -> "Payload received; destination commit in progress"
+            download.state == DownloadState.Completed -> status
             else -> status
         }
         val supporting = when {
             download.state == DownloadState.Completed -> completedStatus(context)
+            finalizationSummary != null -> finalizationSummary
             policyReason != null -> policyReason
             download.state == DownloadState.Queued -> queueText ?: status
             download.state == DownloadState.Failed && !download.errorMessage.isNullOrBlank() -> download.errorMessage.orEmpty()
@@ -167,6 +172,7 @@ object DownloadUiTruthPlanner {
             else -> status
         }
         val trailing = when {
+            finalizationFailure -> "Transfer complete"
             download.state == DownloadState.Downloading && download.speedBytesPerSecond > 0L -> "${download.speedBytesPerSecond} B/s"
             download.state in DownloadActionExecutionTruth.activeStates && download.speedBytesPerSecond == 0L -> context.ownerLabel
             download.state == DownloadState.Queued -> queueText ?: "Queued"
@@ -189,24 +195,29 @@ object DownloadUiTruthPlanner {
     }
 
     /** Stage-aware progress: verification never reuses the already-complete payload fraction. */
-    fun phaseProgress(download: Download, context: DownloadActionContext): Float? = when (download.state) {
-        DownloadState.Verifying -> context.latestVerification
-            ?.takeIf { it.status == VerificationStatus.Running }
-            ?.let { record ->
-                record.totalBytes?.takeIf { it > 0L }?.let { total ->
-                    (record.bytesVerified.toDouble() / total).coerceIn(0.0, 1.0).toFloat()
+    fun phaseProgress(download: Download, context: DownloadActionContext): Float? {
+        if (DownloadPresentationPolicy.isFinalizationFailure(download)) return null
+        return when (download.state) {
+            DownloadState.Verifying -> context.latestVerification
+                ?.takeIf { it.status == VerificationStatus.Running }
+                ?.let { record ->
+                    record.totalBytes?.takeIf { it > 0L }?.let { total ->
+                        (record.bytesVerified.toDouble() / total).coerceIn(0.0, 1.0).toFloat()
+                    }
                 }
-            }
-        DownloadState.Connecting, DownloadState.Repairing, DownloadState.Finalizing -> null
-        DownloadState.Created, DownloadState.Cancelled -> null
-        DownloadState.Completed -> 1f
-        else -> download.totalBytes?.takeIf { it > 0L }?.let { download.progressFraction }
+            DownloadState.Connecting, DownloadState.Repairing, DownloadState.Finalizing -> null
+            DownloadState.Created, DownloadState.Cancelled -> null
+            DownloadState.Completed -> 1f
+            else -> download.totalBytes?.takeIf { it > 0L }?.let { download.progressFraction }
+        }
     }
 
     fun indeterminateProgressVisible(download: Download, context: DownloadActionContext): Boolean =
-        download.state in setOf(DownloadState.Connecting, DownloadState.Repairing, DownloadState.Finalizing) ||
-            (download.state == DownloadState.Downloading && download.totalBytes == null) ||
-            (download.state == DownloadState.Verifying && context.latestVerification?.totalBytes == null)
+        !DownloadPresentationPolicy.isFinalizationFailure(download) && (
+            download.state in setOf(DownloadState.Connecting, DownloadState.Repairing, DownloadState.Finalizing) ||
+                (download.state == DownloadState.Downloading && download.totalBytes == null) ||
+                (download.state == DownloadState.Verifying && context.latestVerification?.totalBytes == null)
+            )
 
     private fun completedStatus(context: DownloadActionContext): String = when {
         !context.completionDurablyCommitted -> "Completion pending durable artifact metadata"

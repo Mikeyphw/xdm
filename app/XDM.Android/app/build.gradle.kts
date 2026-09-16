@@ -467,6 +467,14 @@ val verifyRm01TransferCoreRecoveryIntegrity = tasks.register<Exec>("verifyRm01Tr
     trackStaticValidation("rm01-transfer-core-recovery")
 }
 
+val verifyRm02PersistenceDownloadsUx = tasks.register<Exec>("verifyRm02PersistenceDownloadsUx") {
+    group = "verification"
+    description = "Verify RM02 media capture/Download integrity, deletion repair, truthful Downloads-card lifecycle semantics, and phase-specific notifications."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-rm02-persistence-downloads-ux.py")
+    trackStaticValidation("rm02-persistence-downloads-ux")
+}
+
 
 val verifyXar10BrowserCaptureEvidence = tasks.register<Exec>("verifyXar10BrowserCaptureEvidence") {
     group = "verification"

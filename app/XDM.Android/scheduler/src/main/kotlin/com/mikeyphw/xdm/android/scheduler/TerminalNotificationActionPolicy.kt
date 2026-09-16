@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android.scheduler
 
+import com.mikeyphw.xdm.android.model.DownloadPresentationPolicy
 import com.mikeyphw.xdm.android.model.DownloadState
 import com.mikeyphw.xdm.android.model.NotificationActionModel
 import com.mikeyphw.xdm.android.model.NotificationActionVisibility
@@ -7,7 +8,7 @@ import com.mikeyphw.xdm.android.model.QueueControlCommand
 
 /** One authority for terminal notification buttons and their durable/debug representation. */
 internal object TerminalNotificationActionPolicy {
-    fun actionsFor(state: DownloadState, downloadId: String): List<NotificationActionModel> = buildList {
+    fun actionsFor(state: DownloadState, downloadId: String, message: String? = null): List<NotificationActionModel> = buildList {
         when (state) {
             DownloadState.Completed -> {
                 add(NotificationActionModel(QueueControlCommand.OpenOne, "Open file", NotificationActionVisibility.Show, downloadId))
@@ -15,8 +16,16 @@ internal object TerminalNotificationActionPolicy {
                 add(NotificationActionModel(QueueControlCommand.StartOne, "Details", NotificationActionVisibility.Show, downloadId))
             }
             DownloadState.Paused -> add(NotificationActionModel(QueueControlCommand.ResumeOne, "Resume", NotificationActionVisibility.Show, downloadId))
-            DownloadState.Failed -> add(NotificationActionModel(QueueControlCommand.RetryOne, "Retry", NotificationActionVisibility.Show, downloadId))
-            DownloadState.RecoveryRequired -> add(NotificationActionModel(QueueControlCommand.ReviewRecovery, "Review recovery", NotificationActionVisibility.Show, downloadId))
+            DownloadState.Failed -> if (DownloadPresentationPolicy.isFinalizationFailureMessage(message)) {
+                add(NotificationActionModel(QueueControlCommand.ReviewRecovery, "Review recovery", NotificationActionVisibility.Show, downloadId))
+            } else {
+                add(NotificationActionModel(QueueControlCommand.RetryOne, "Retry", NotificationActionVisibility.Show, downloadId))
+            }
+            DownloadState.RecoveryRequired -> if (DownloadPresentationPolicy.isRetryableFinalSaveMessage(message)) {
+                add(NotificationActionModel(QueueControlCommand.RetryOne, "Retry finalization", NotificationActionVisibility.Show, downloadId))
+            } else {
+                add(NotificationActionModel(QueueControlCommand.ReviewRecovery, "Review recovery", NotificationActionVisibility.Show, downloadId))
+            }
             else -> Unit
         }
         add(NotificationActionModel(QueueControlCommand.DismissNotification, "Dismiss", NotificationActionVisibility.Show, downloadId))

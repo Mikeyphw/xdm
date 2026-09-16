@@ -49,6 +49,7 @@ validators=(
   tools/validate-xar08-aria2-ownership.py
   tools/validate-xar09-scheduler-recovery.py
   tools/validate-rm01-transfer-core-recovery.py
+  tools/validate-rm02-persistence-downloads-ux.py
   tools/validate-xar10-browser-capture-evidence.py
   tools/validate-xar11-manifest-resolution.py
   tools/validate-xar12-media-execution-seal.py
