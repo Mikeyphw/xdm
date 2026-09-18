@@ -337,9 +337,18 @@ class NativeHlsMediaManager(
                 audioVariantId = original.selectedAudioVariantId,
                 subtitleVariantId = original.selectedSubtitleVariantId,
             )
-            val plan = engine.negotiate(executionCapture, variants, playlist, headers, selection)
+            var plan = engine.negotiate(executionCapture, variants, playlist, headers, selection)
             require(plan.nativeExecutable && !plan.hasSeparateAudio) { "Recovered playlist is no longer executable by native HLS: ${plan.fallbackReason}" }
             require(plan.parts.size == original.partCount) { "Recovered playlist changed part count from ${original.partCount} to ${plan.parts.size}; refresh/review is required." }
+
+            // Byte totals are metadata, not a mirror of bytes already downloaded. For ordinary
+            // unencrypted HLS segments, cheaply probe response metadata before transfer so XDM can
+            // show a real total when the CDN exposes one (Content-Range/Content-Length). If any
+            // segment cannot be sized, keep the byte total unknown and use part-count progress.
+            plan = plan.copy(parts = plan.parts.map { part ->
+                if (part.gap || part.expectedBytes != null || part.key?.isAes128 == true) part
+                else part.copy(expectedBytes = probeResourceLength(part.url, headers, handoff))
+            })
 
             val tempDir = safeTempDirectory(original.tempDirectoryKey)
             tempDir.mkdirs()
@@ -347,6 +356,13 @@ class NativeHlsMediaManager(
             repository.save(download.copy(state = DownloadState.Downloading, updatedAtEpochMs = System.currentTimeMillis()))
 
             val persistedParts = dao.partsForJob(jobId).associateBy { it.partIndex }
+            plan.parts.forEach { part ->
+                val existing = persistedParts[part.index]
+                if (existing != null && partIdentityMatches(existing, part) && existing.expectedBytes != part.expectedBytes) {
+                    dao.updatePart(existing.id, existing.state, existing.bytesReceived, part.expectedBytes, existing.sha256Hex, existing.retryCount, existing.lastError, System.currentTimeMillis())
+                }
+            }
+            updateAggregateProgress(jobId, plan, NativeHlsExecutionStage.Downloading)
             for (part in plan.parts) {
                 ensureNotControlled(download.id)
                 var current = persistedParts[part.index]
@@ -507,7 +523,16 @@ class NativeHlsMediaManager(
                 if (target.exists()) check(target.delete()) { "Unable to replace stale native HLS part ${part.index}" }
                 check(partial.renameTo(target)) { "Unable to commit native HLS part ${part.index}" }
                 val digest = sha256File(target)
-                dao.updatePart(partEntityId(jobId, part.index), NativeHlsPartState.Complete.name, target.length(), target.length(), digest, priorRetries + attempt, null, System.currentTimeMillis())
+                dao.updatePart(
+                    partEntityId(jobId, part.index),
+                    NativeHlsPartState.Complete.name,
+                    target.length(),
+                    part.expectedBytes ?: part.byteRange?.length,
+                    digest,
+                    priorRetries + attempt,
+                    null,
+                    System.currentTimeMillis(),
+                )
                 return
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -526,6 +551,37 @@ class NativeHlsMediaManager(
             }
         }
         throw IllegalStateException("HLS part ${part.index} failed after bounded retries: ${lastError?.message}", lastError)
+    }
+
+    private suspend fun probeResourceLength(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?): Long? {
+        var current = url
+        repeat(6) { redirectCount ->
+            val validatedTarget = validateRequest(current, headers, handoff, "bytes=0-0")
+            val builder = Request.Builder().url(current)
+            filteredHeaders(current, headers, handoff).forEach { (name, value) -> builder.header(name, value) }
+            builder.header("Range", "bytes=0-0")
+            val running = executeCancellable(clientForValidatedTarget(validatedTarget), builder.build())
+            val response = running.response
+            try {
+                if (response.code in 300..399) {
+                    if (redirectCount >= 5) return null
+                    val location = response.header("Location") ?: return null
+                    val next = URI(current).resolve(location).toString()
+                    if (current.startsWith("https://", true) && next.startsWith("http://", true)) return null
+                    current = next
+                    return@repeat
+                }
+                if (response.code == 206) {
+                    val contentRange = response.header("Content-Range")
+                    return contentRange?.substringAfterLast('/')?.toLongOrNull()?.takeIf { it > 0L }
+                }
+                if (response.isSuccessful) return response.body?.contentLength()?.takeIf { it > 0L }
+                return null
+            } finally {
+                response.close()
+            }
+        }
+        return null
     }
 
     private suspend fun fetchText(url: String, headers: Map<String, String>, handoff: MediaRequestHandoff?): String =
@@ -668,7 +724,11 @@ class NativeHlsMediaManager(
             )
         }
         val progress = engine.progress(parts, stage, row.progressPercent)
-        val total = parts.mapNotNull { it.expectedBytes }.sum().takeIf { it > 0L }
+        val countableParts = parts.filterNot { it.gap || it.state == NativeHlsPartState.Skipped }
+        val total = countableParts
+            .takeIf { it.isNotEmpty() && it.all { part -> part.expectedBytes != null } }
+            ?.sumOf { requireNotNull(it.expectedBytes) }
+            ?.takeIf { it > 0L }
         dao.upsertJob(row.copy(
             stage = stage.name,
             completedPartCount = progress.completedParts,

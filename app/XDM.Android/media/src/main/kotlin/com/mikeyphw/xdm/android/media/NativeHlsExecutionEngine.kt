@@ -428,7 +428,11 @@ class NativeHlsExecutionEngine {
     fun progress(parts: List<NativeHlsPart>, stage: NativeHlsExecutionStage, previousPercent: Int = 0, finalizationPercent: Int = 0): NativeHlsProgressSnapshot {
         val totalParts = parts.size.coerceAtLeast(1)
         val completeParts = parts.count { it.complete }
-        val expectedBytes = parts.mapNotNull { it.expectedBytes }.sum().takeIf { it > 0L }
+        val countableParts = parts.filterNot { it.gap || it.state == NativeHlsPartState.Skipped }
+        val expectedBytes = countableParts
+            .takeIf { it.isNotEmpty() && it.all { part -> part.expectedBytes != null } }
+            ?.sumOf { requireNotNull(it.expectedBytes) }
+            ?.takeIf { it > 0L }
         val downloadedBytes = parts.sumOf { it.bytesReceived.coerceAtLeast(0L) }
         val downloadPercent = expectedBytes?.let { total -> ((downloadedBytes.toDouble() / total).coerceIn(0.0, 1.0) * 85.0).roundToInt() }
             ?: ((completeParts.toDouble() / totalParts) * 85.0).roundToInt()

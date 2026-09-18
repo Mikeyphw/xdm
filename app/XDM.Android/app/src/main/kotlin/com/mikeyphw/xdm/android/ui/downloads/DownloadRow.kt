@@ -94,6 +94,7 @@ internal fun DownloadRow(
         download.state == DownloadState.Downloading && download.speedBytesPerSecond > 0L -> download.speedBytesPerSecond.formatSpeed()
         download.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower) && download.speedBytesPerSecond > 0L -> "${download.speedBytesPerSecond.formatSpeed()} last"
         download.state == DownloadState.Completed -> truth.trailingText
+        download.state == DownloadState.RecoveryRequired -> ""
         else -> truth.trailingText
     }
     val rowStatus = DownloadsWorkspacePlanner.rowStatus(download, truth)

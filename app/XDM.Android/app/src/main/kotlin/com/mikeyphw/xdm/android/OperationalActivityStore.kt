@@ -69,6 +69,16 @@ class OperationalActivityStore(context: Context) {
         publish()
     }
 
+    /** Permanently removes one presentation-ledger event only. Download/recovery state remains in
+     * its authoritative stores and may generate a new event if its state changes later. */
+    @Synchronized
+    fun remove(eventId: String) {
+        writeEvents(readEvents().filterNot { it.id == eventId })
+        val dismissed = readDismissed().toMutableSet().apply { remove(eventId) }
+        writeDismissed(dismissed)
+        publish()
+    }
+
     @Synchronized
     fun clearHistory(preserveUnresolved: Boolean = true) {
         val kept = if (preserveUnresolved) readEvents().filter(OperationalActivityEvent::unresolved) else emptyList()

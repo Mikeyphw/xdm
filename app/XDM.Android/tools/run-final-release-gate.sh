@@ -52,6 +52,7 @@ validators=(
   tools/validate-rm02-persistence-downloads-ux.py
   tools/validate-rm03-embedded-runtimes-hls-networking.py
   tools/validate-rm04-diagnostics-release-final-seal.py
+  tools/validate-post-roadmap-runtime-hotfix.py
   tools/validate-xar10-browser-capture-evidence.py
   tools/validate-xar11-manifest-resolution.py
   tools/validate-xar12-media-execution-seal.py

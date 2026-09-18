@@ -1295,11 +1295,17 @@ class MainViewModel(
     }
 
     fun dismissActivityEvent(eventId: String) {
-        operationalActivityStore.dismiss(eventId)
+        operationalActivityStore.remove(eventId)
     }
 
     fun clearActivityHistory() {
         operationalActivityStore.clearHistory(preserveUnresolved = true)
+        queueIntelligenceCoordinator.clearDecisionHistory()
+    }
+
+    /** Clears the user-visible Activity ledger only; downloads/recovery records remain authoritative. */
+    fun clearAllActivityHistory() {
+        operationalActivityStore.clearHistory(preserveUnresolved = false)
         queueIntelligenceCoordinator.clearDecisionHistory()
     }
 

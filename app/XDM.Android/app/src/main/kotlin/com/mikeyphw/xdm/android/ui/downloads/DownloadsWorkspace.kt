@@ -194,6 +194,8 @@ internal object DownloadsWorkspacePlanner {
                 "Transfer complete — couldn't finish saving the file"
             download.state == DownloadState.Failed && !download.errorMessage.isNullOrBlank() ->
                 "Failed — ${firstUsefulLine(download.errorMessage.orEmpty())}"
+            download.state == DownloadState.RecoveryRequired && download.errorMessage.orEmpty().startsWith("HLS part") ->
+                "Needs action — one or more HLS parts could not be downloaded safely"
             download.state == DownloadState.RecoveryRequired && !download.errorMessage.isNullOrBlank() ->
                 "Needs action — ${firstUsefulLine(download.errorMessage.orEmpty())}"
             else -> truth.status

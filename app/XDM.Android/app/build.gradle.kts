@@ -491,6 +491,14 @@ val verifyRm04DiagnosticsReleaseFinalSeal = tasks.register<Exec>("verifyRm04Diag
     trackStaticValidation("rm04-diagnostics-release-final-seal")
 }
 
+val verifyPostRoadmapRuntimeHotfix = tasks.register<Exec>("verifyPostRoadmapRuntimeHotfix") {
+    group = "verification"
+    description = "Verify device-observed HLS total semantics, visible transfer notifications, Activity removal, and aria2 startup diagnostics."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/validate-post-roadmap-runtime-hotfix.py")
+    trackStaticValidation("post-roadmap-runtime-hotfix")
+}
+
 
 val verifyXar10BrowserCaptureEvidence = tasks.register<Exec>("verifyXar10BrowserCaptureEvidence") {
     group = "verification"

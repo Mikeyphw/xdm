@@ -41,7 +41,7 @@ class Ux03DownloadsQueueProductUiContractTest {
         assertTrue(workspace.contains("Waiting — \$policy"))
         assertFalse(screen.contains("text = queueIntelligence.message"))
         assertTrue(row.contains("val rowStatus = DownloadsWorkspacePlanner.rowStatus(download, truth)"))
-        assertTrue(row.contains("val destination = destinationUiLabel(download.destinationUri)"))
+        assertTrue(row.contains("val destination = destinationCardLabel(download)"))
     }
 
     @Test
@@ -54,7 +54,7 @@ class Ux03DownloadsQueueProductUiContractTest {
         assertTrue(planner.contains("DownloadActionIcon.Resume"))
         assertTrue(row.contains("DownloadActionIcon.Resume -> Icons.Rounded.Download"))
         assertTrue(row.contains("XdmProgressLine("))
-        assertTrue(row.contains("destinationUiLabel(download.destinationUri)"))
+        assertTrue(row.contains("destinationCardLabel(download)"))
     }
 
     private fun androidRoot(): File {

@@ -107,7 +107,7 @@ class RemediationPhase04_05ContractTest {
         assertTrue(runtime.contains("private fun launch(downloadId: String)"))
         assertTrue(runtime.contains("private fun Download.nextUpdatedAt"))
         assertTrue(runtime.contains("maxOf(nowEpochMs, updatedAtEpochMs + 1L)"))
-        assertTrue(launchPolicy.contains("sdkInt >= 34 && userVisible -> TransferLaunchMode.UserInitiatedJob"))
+        assertTrue(launchPolicy.contains("userVisible -> TransferLaunchMode.ForegroundService"))
         assertTrue(launchPolicy.contains("else -> TransferLaunchMode.WorkManager"))
         assertTrue(starter.contains("QueueIntelligenceWorker.enqueueClaimed"))
         assertTrue(worker.contains("claimedWorkName(downloadId, queueClaimToken)"))

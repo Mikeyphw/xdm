@@ -39,6 +39,7 @@ fun ActivityWorkspaceScreen(
     onOpenManage: () -> Unit,
     onAction: (OperationalActivityEvent) -> Unit,
     onDismiss: (String) -> Unit,
+    onClearHistory: () -> Unit,
 ) {
     val normalizedPanel = selectedPanel.normalized(false).takeIf { it.isPrimary } ?: ActivityPanel.Attention
     val metrics = remember(events) { ActivityWorkspacePlanner.metrics(events) }
@@ -65,7 +66,10 @@ fun ActivityWorkspaceScreen(
                     modifier = Modifier.weight(1f),
                     maxLines = 2,
                 )
-                TextButton(onClick = onOpenManage) { Text("Queue & recovery") }
+                Row {
+                    TextButton(onClick = onClearHistory, enabled = events.isNotEmpty()) { Text("Clear activity") }
+                    TextButton(onClick = onOpenManage) { Text("Queue & recovery") }
+                }
             }
         }
         item {
@@ -150,10 +154,11 @@ private fun ActivityEventRow(
         XdmSupportingText(event.detail, maxLines = 3)
         XdmMetadataText(ActivityWorkspacePlanner.consequence(event), maxLines = 2)
         HorizontalDivider()
-        event.actionLabel?.let { actionLabel ->
-            Button(onClick = { onAction(event) }) { Text(actionLabel) }
-        } ?: run {
-            TextButton(onClick = { group.events.forEach { onDismiss(it.id) } }) { Text("Dismiss") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            event.actionLabel?.let { actionLabel ->
+                Button(onClick = { onAction(event) }) { Text(actionLabel) }
+            }
+            TextButton(onClick = { group.events.forEach { onDismiss(it.id) } }) { Text("Remove") }
         }
     }
 }

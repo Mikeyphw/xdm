@@ -2,6 +2,7 @@ package com.mikeyphw.xdm.android.scheduler
 
 import android.content.Context
 import android.security.NetworkSecurityPolicy
+import android.net.ConnectivityManager
 import com.mikeyphw.xdm.android.model.ExternalNetworkTarget
 import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
 import com.mikeyphw.xdm.android.transfer.DownloadRequest
@@ -26,7 +27,18 @@ fun interface TransferHostnameResolver {
     fun resolve(hostname: String): List<InetAddress>
 
     companion object {
-        val System = TransferHostnameResolver { hostname -> InetAddress.getAllByName(hostname).toList() }
+        val System = TransferHostnameResolver { host -> InetAddress.getAllByName(host).toList() }
+
+        /** Android-aware DNS follows the currently active Network (including per-network/private
+         * DNS routing) before falling back to the process resolver. This avoids false HLS DNS
+         * failures when InetAddress is temporarily detached from the validated Android network. */
+        fun android(context: Context): TransferHostnameResolver = TransferHostnameResolver { hostname ->
+            val connectivity = context.getSystemService(ConnectivityManager::class.java)
+            val active = connectivity?.activeNetwork
+            val primary = runCatching { active?.getAllByName(hostname)?.toList().orEmpty() }.getOrDefault(emptyList())
+            val fallback = if (primary.isEmpty()) runCatching { InetAddress.getAllByName(hostname).toList() }.getOrDefault(emptyList()) else emptyList()
+            (primary + fallback).distinctBy { it.hostAddress }
+        }
     }
 }
 
@@ -61,11 +73,14 @@ data class ValidatedTransferNetworkTarget(
  * of resolving the hostname again after validation.
  */
 class AndroidTransferRequestSecurityGuard(
-    @Suppress("UNUSED_PARAMETER") context: Context? = null,
-    private val hostnameResolver: TransferHostnameResolver = TransferHostnameResolver.System,
+    context: Context? = null,
+    hostnameResolver: TransferHostnameResolver? = null,
     private val dnsAttempts: Int = DEFAULT_DNS_ATTEMPTS,
     private val dnsRetryDelayMillis: Long = DEFAULT_DNS_RETRY_DELAY_MILLIS,
 ) : TransferRequestSecurityGuard {
+    private val hostnameResolver: TransferHostnameResolver = hostnameResolver
+        ?: context?.applicationContext?.let(TransferHostnameResolver::android)
+        ?: TransferHostnameResolver.System
 
     init {
         require(dnsAttempts >= 1) { "DNS validation must make at least one attempt" }

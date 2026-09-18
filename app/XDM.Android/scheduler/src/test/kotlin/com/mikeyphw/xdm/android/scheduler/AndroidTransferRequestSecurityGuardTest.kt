@@ -111,6 +111,18 @@ class AndroidTransferRequestSecurityGuardTest {
         assertEquals(TransferSecurityFailureKind.DnsResolutionFailed, failure.kind)
     }
 
+    @Test
+    fun validatedCdnTargetRetainsAllPublicAddressesForPinnedTransport() = runTest {
+        val guard = AndroidTransferRequestSecurityGuard(
+            null,
+            TransferHostnameResolver { listOf(InetAddress.getByName("8.8.8.8"), InetAddress.getByName("1.1.1.1")) },
+            dnsAttempts = 1,
+            dnsRetryDelayMillis = 0,
+        )
+        val target = guard.validateAndResolveTarget(request("https://cdn.example/segment.ts"))
+        assertEquals(listOf("8.8.8.8", "1.1.1.1"), target.addresses.map { it.hostAddress })
+    }
+
     private fun request(url: String) = DownloadRequest(
         id = "security-test",
         sourceUrl = url,

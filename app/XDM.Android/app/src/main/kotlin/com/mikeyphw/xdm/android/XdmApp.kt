@@ -378,6 +378,7 @@ private fun ActivityHub(state: MainUiState, viewModel: MainViewModel) {
         onOpenManage = { viewModel.selectActivityPanel(ActivityPanel.Decisions) },
         onAction = onActivityAction,
         onDismiss = viewModel::dismissActivityEvent,
+        onClearHistory = viewModel::clearAllActivityHistory,
     )
 
     XdmAdaptiveSheet(

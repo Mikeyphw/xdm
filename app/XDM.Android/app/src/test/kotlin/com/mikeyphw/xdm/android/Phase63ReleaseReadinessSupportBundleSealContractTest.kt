@@ -21,7 +21,7 @@ class Phase63ReleaseReadinessSupportBundleSealContractTest {
         assertTrue(seal.contains("Real-device smoke status"))
         assertTrue(seal.contains("Privacy redaction boundary"))
         assertTrue(test.contains("supportBundleSealIsReadyWhenAllReleaseSectionsAreRedactedAndPresent"))
-        assertTrue(test.contains("supportBundleSealBlocksWhenWarningsAreBareOrSessionValuesWouldPersist"))
+        assertTrue(test.contains("supportBundleSealSeparatesMissingAttestationFromRuntimePrivacyFailure"))
     }
 
     @Test

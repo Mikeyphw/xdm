@@ -671,7 +671,15 @@ class Aria2ProcessManager(
             Aria2StartupFailureKind.ConfigurationInvalid -> "aria2 rejected or could not parse its generated launch configuration."
             Aria2StartupFailureKind.PortUnavailable -> "aria2 could not bind the allocated loopback RPC port."
             Aria2StartupFailureKind.BinaryLoadFailure -> "Android could not load or execute the packaged aria2 binary or one of its native dependencies."
-            Aria2StartupFailureKind.ProcessExited -> "aria2 exited before authenticated RPC became ready${exitCode?.let { " (code $it)" }.orEmpty()}."
+            Aria2StartupFailureKind.ProcessExited -> buildString {
+                append("aria2 exited before authenticated RPC became ready")
+                exitCode?.let { append(" (code $it)") }
+                append(".")
+                logTail?.lineSequence()?.map(String::trim)?.firstOrNull(String::isNotBlank)?.let { first ->
+                    append(" Runtime log: ")
+                    append(first.take(240))
+                }
+            }
             Aria2StartupFailureKind.Timeout -> "aria2 stayed alive but authenticated RPC did not become ready before the startup timeout."
             Aria2StartupFailureKind.LaunchFailure -> safeMessage(error ?: IllegalStateException("Launch failure"))
             Aria2StartupFailureKind.ConfigurationCleanup -> "Temporary launch configuration cleanup failed."
