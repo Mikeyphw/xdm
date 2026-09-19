@@ -113,7 +113,7 @@ val verifyFfmpegRuntime = tasks.register<Exec>("verifyFfmpegRuntime") {
         *if (requireFfmpegRuntime.get()) arrayOf("--require-payload", "--require-16kb-alignment") else emptyArray(),
     )
     doLast {
-        val marker = successMarker.get().asFile
+        val marker = outputs.files.singleFile
         marker.parentFile.mkdirs()
         marker.writeText("ok\n")
     }
