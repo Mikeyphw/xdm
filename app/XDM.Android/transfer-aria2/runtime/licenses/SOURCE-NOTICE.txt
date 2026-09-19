@@ -1,0 +1,12 @@
+XDM Android bundled aria2 runtime source notice
+
+Component: aria2c 1.37.0 (arm64-v8a)
+Upstream runtime project: https://github.com/devgianlu/aria2-android
+Upstream aria2 project: https://github.com/aria2/aria2
+Release tag: v1.37.0
+Runtime asset: aria2c-arm64-v8a
+License: GPL-2.0-or-later
+
+The corresponding upstream source is available from the projects above and their tagged
+release history. XDM records the exact downloaded runtime SHA-256 in aria2-runtime.lock.json
+and the release gate requires a trusted XDM_ARIA2_ARCHIVE_SHA256 for distributable builds.
