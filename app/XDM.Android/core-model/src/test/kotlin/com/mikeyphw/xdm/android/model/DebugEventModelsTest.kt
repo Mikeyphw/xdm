@@ -132,4 +132,66 @@ class DebugEventModelsTest {
         assertTrue(json.contains("token=<redacted>"))
         assertFalse(json.contains("secret-token"))
     }
+    @Test
+    fun recentLogReaderIncludesRetainedRotatedSessions() {
+        val root = createTempDirectory("xdm-debug-viewer-rotation").toFile()
+        try {
+            var now = 10L
+            val recorder = RollingJsonlDebugEventRecorder(
+                rootDirectory = root,
+                sessionId = "viewer-rotation",
+                maxSessionBytes = 260L,
+                retainedSessions = 5,
+                clock = { now++ },
+            )
+            repeat(8) { index ->
+                recorder.record(
+                    area = DebugArea.Backend,
+                    severity = DebugSeverity.Info,
+                    action = "rotated-$index",
+                    result = "ok",
+                    safeDetails = mapOf("payload" to "x".repeat(80)),
+                    timestampMillis = index.toLong(),
+                )
+            }
+
+            val recent = recorder.readRecentJsonLines(maxEntries = 50, maxChars = 64 * 1024)
+            assertTrue(recent.any { it.contains("rotated-7") })
+            assertTrue(recent.any { it.contains("rotated-0") })
+            assertTrue(recent.first().contains("rotated-7"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun recentLogReaderReturnsNewestRedactedEntriesAndClearRemovesThem() {
+        val root = createTempDirectory("xdm-debug-viewer").toFile()
+        try {
+            val recorder = RollingJsonlDebugEventRecorder(rootDirectory = root, sessionId = "viewer")
+            repeat(3) { index ->
+                recorder.record(
+                    area = DebugArea.Backend,
+                    severity = if (index == 2) DebugSeverity.Error else DebugSeverity.Info,
+                    action = "viewer-$index",
+                    result = "result-$index",
+                    safeDetails = mapOf("token" to "secret-$index", "attempt" to index.toString()),
+                    timestampMillis = index.toLong(),
+                )
+            }
+
+            val recent = recorder.readRecentJsonLines(maxEntries = 2)
+            assertTrue(recent.size == 2)
+            assertTrue(recent.first().contains("viewer-2"))
+            assertTrue(recent.last().contains("viewer-1"))
+            assertTrue(recent.all { it.contains("<redacted>") })
+            assertFalse(recent.any { it.contains("secret-") })
+
+            recorder.clear()
+            assertTrue(recorder.readRecentJsonLines().isEmpty())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
 }

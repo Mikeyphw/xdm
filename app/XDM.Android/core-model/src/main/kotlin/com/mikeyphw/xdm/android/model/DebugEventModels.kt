@@ -284,6 +284,43 @@ class RollingJsonlDebugEventRecorder(
         DiagnosticExportIntegrity.tailWholeJsonlRecords(currentFile.readText(Charsets.UTF_8), maxChars)
     }
 
+    /** Returns the newest complete, already-redacted JSONL records for the in-app log viewer. */
+    fun readRecentJsonLines(maxEntries: Int = 500, maxChars: Int = 256 * 1024): List<String> = synchronized(lock) {
+        if (maxEntries <= 0 || maxChars <= 0) return@synchronized emptyList()
+        val files = buildList {
+            sessionsDirectory
+                .listFiles { candidate -> candidate.isFile && candidate.name.endsWith(".jsonl") }
+                .orEmpty()
+                .sortedByDescending(File::lastModified)
+                .forEach(::add)
+            if (currentFile.isFile) add(currentFile)
+        }
+        if (files.isEmpty()) return@synchronized emptyList()
+
+        // Include current plus retained rotated sessions, while bounding the aggregate text exposed
+        // to the UI. Each record was redacted before it was persisted.
+        val perFileChars = (maxChars / files.size).coerceAtLeast(1)
+        files.flatMap { file ->
+            DiagnosticExportIntegrity
+                .tailWholeJsonlRecords(file.readText(Charsets.UTF_8), perFileChars)
+                .lineSequence()
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .toList()
+        }
+            .sortedByDescending { line -> debugEventTimestampMillis(line) }
+            .take(maxEntries)
+    }
+
+    private fun debugEventTimestampMillis(line: String): Long {
+        val marker = "\"timestampMillis\":"
+        val start = line.indexOf(marker)
+        if (start < 0) return 0L
+        return line.substring(start + marker.length)
+            .takeWhile { it.isDigit() || it == '-' }
+            .toLongOrNull() ?: 0L
+    }
+
     fun clear() = synchronized(lock) {
         if (rootDirectory.exists()) rootDirectory.deleteRecursively()
         rootDirectory.mkdirs()

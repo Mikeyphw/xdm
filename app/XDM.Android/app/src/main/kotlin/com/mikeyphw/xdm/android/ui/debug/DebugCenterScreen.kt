@@ -10,15 +10,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,11 +55,13 @@ import com.mikeyphw.xdm.android.copyTextToClipboard
 import com.mikeyphw.xdm.android.shareDebugCenterZipExport
 import com.mikeyphw.xdm.android.shareTextReport
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
 private enum class DebugCenterPage(val label: String) {
     Problems("Problems"),
+    Logs("Logs"),
     Tests("Tests"),
     Results("Results"),
     History("History"),
@@ -213,6 +218,10 @@ fun DebugCenterScreen(
                 onClearResolved = { problemReporter?.clearResolved() },
                 onCopy = { problem -> copyTextToClipboard(context, "XDM problem details", problem.toExportText()) },
             )
+            DebugCenterPage.Logs -> debugLogsPage(
+                recorder = appRecorder as? RollingJsonlDebugEventRecorder,
+                context = context,
+            )
             DebugCenterPage.Tests -> debugTestsPage(
                 selectedIds = selectedIds,
                 running = running,
@@ -255,6 +264,237 @@ fun DebugCenterScreen(
 }
 
 
+
+private fun LazyListScope.debugLogsPage(
+    recorder: RollingJsonlDebugEventRecorder?,
+    context: Context,
+) {
+    if (recorder == null) {
+        item {
+            XdmListCard {
+                XdmCardTitle("Logs unavailable")
+                XdmSupportingText("The structured debug recorder is not installed in this process.", maxLines = 3)
+            }
+        }
+        return
+    }
+
+    item {
+        var query by remember { mutableStateOf("") }
+        var severity by remember { mutableStateOf("All") }
+        var refreshKey by remember { mutableStateOf(0) }
+        var liveRefresh by remember { mutableStateOf(true) }
+        var expandedId by remember { mutableStateOf<String?>(null) }
+        var confirmClear by remember { mutableStateOf(false) }
+        LaunchedEffect(liveRefresh) {
+            while (liveRefresh) {
+                delay(2_000)
+                refreshKey++
+            }
+        }
+        val lines = remember(refreshKey) { recorder.readRecentJsonLines() }
+        val visible = remember(lines, query, severity) {
+            lines.filter { line ->
+                (severity == "All" || debugJsonString(line, "severity") == severity) &&
+                    (query.isBlank() || line.contains(query, ignoreCase = true))
+            }
+        }
+        val counts = remember(lines) {
+            listOf("Error", "Warning", "Info", "Trace").associateWith { level ->
+                lines.count { debugJsonString(it, "severity") == level }
+            }
+        }
+
+        if (confirmClear) {
+            AlertDialog(
+                onDismissRequest = { confirmClear = false },
+                title = { Text("Clear structured logs?") },
+                text = { Text("This permanently removes the current and retained rotated debug sessions from this device. This cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        recorder.clear()
+                        expandedId = null
+                        confirmClear = false
+                        refreshKey++
+                        Toast.makeText(context, "Structured logs cleared", Toast.LENGTH_SHORT).show()
+                    }) { Text("Clear logs") }
+                },
+                dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } },
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            XdmListCard(compact = true) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        XdmCardTitle("Structured logs")
+                        XdmSupportingText(
+                            "Private, redacted diagnostic events from the current and retained sessions.",
+                            maxLines = 2,
+                        )
+                    }
+                    XdmStatusBadge(if (liveRefresh) "Live" else "Paused", tone = if (liveRefresh) XdmStatusTone.Success else XdmStatusTone.Neutral)
+                }
+                XdmActionFlowRow {
+                    XdmStatusBadge("${lines.size} loaded", tone = XdmStatusTone.Info)
+                    if ((counts["Error"] ?: 0) > 0) XdmStatusBadge("${counts["Error"]} errors", tone = XdmStatusTone.Error)
+                    if ((counts["Warning"] ?: 0) > 0) XdmStatusBadge("${counts["Warning"]} warnings", tone = XdmStatusTone.Warning)
+                }
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Search logs") },
+                    placeholder = { Text("Area, action, result, details…") },
+                    singleLine = true,
+                )
+                XdmActionFlowRow {
+                    listOf("All", "Error", "Warning", "Info", "Trace").forEach { level ->
+                        val count = if (level == "All") lines.size else counts[level] ?: 0
+                        FilterChip(
+                            selected = severity == level,
+                            onClick = { severity = level },
+                            label = { Text("$level ($count)") },
+                        )
+                    }
+                }
+                XdmActionFlowRow {
+                    OutlinedButton(onClick = { liveRefresh = !liveRefresh }) { Text(if (liveRefresh) "Pause live" else "Resume live") }
+                    OutlinedButton(onClick = { refreshKey++ }) { Text("Refresh") }
+                    if (query.isNotBlank() || severity != "All") {
+                        TextButton(onClick = { query = ""; severity = "All" }) { Text("Reset filters") }
+                    }
+                }
+                XdmActionFlowRow {
+                    OutlinedButton(
+                        onClick = { copyTextToClipboard(context, "XDM structured logs", visible.asReversed().joinToString("\n")) },
+                        enabled = visible.isNotEmpty(),
+                    ) { Text("Copy visible") }
+                    OutlinedButton(
+                        onClick = { shareTextReport(context, "XDM structured logs", lines.asReversed().joinToString("\n")) },
+                        enabled = lines.isNotEmpty(),
+                    ) { Text("Export logs") }
+                    TextButton(onClick = { confirmClear = true }, enabled = lines.isNotEmpty()) { Text("Clear logs") }
+                }
+                XdmMetadataText("Showing ${visible.size} of ${lines.size} · newest first · up to 500 entries / 256 KiB")
+            }
+
+            if (visible.isEmpty()) {
+                XdmListCard {
+                    XdmCardTitle(if (lines.isEmpty()) "No logs yet" else "No matching logs")
+                    XdmSupportingText(
+                        if (lines.isEmpty()) "Use XDM normally and events will appear here automatically. Trace entries require Verbose debug logging."
+                        else "No entries match the current search and severity filter.",
+                        maxLines = 3,
+                    )
+                    if (lines.isNotEmpty()) TextButton(onClick = { query = ""; severity = "All" }) { Text("Show all logs") }
+                }
+            } else {
+                visible.forEach { line ->
+                    val id = debugJsonString(line, "id").ifBlank { line.hashCode().toString() }
+                    val isExpanded = expandedId == id
+                    val level = debugJsonString(line, "severity")
+                    val tone = when (level) {
+                        "Error" -> XdmStatusTone.Error
+                        "Warning" -> XdmStatusTone.Warning
+                        "Info" -> XdmStatusTone.Info
+                        else -> XdmStatusTone.Neutral
+                    }
+                    val details = debugJsonObjectSummary(line, "safeDetails")
+                    XdmListCard(compact = true) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                XdmActionFlowRow {
+                                    XdmStatusBadge(level.ifBlank { "Unknown" }, tone = tone)
+                                    XdmMetadataText(debugJsonString(line, "area"))
+                                }
+                                XdmCardTitle(debugJsonString(line, "action").ifBlank { "Diagnostic event" })
+                                XdmSupportingText(debugJsonString(line, "result").ifBlank { "No result" }, maxLines = 2)
+                                if (details.isNotBlank()) XdmSupportingText(details, maxLines = if (isExpanded) 6 else 2)
+                                XdmMetadataText(formatDebugTimestamp(debugJsonLong(line, "timestampMillis")))
+                            }
+                            TextButton(onClick = { expandedId = if (isExpanded) null else id }) { Text(if (isExpanded) "Hide" else "Details") }
+                        }
+                        if (isExpanded) {
+                            XdmMetadataText("Raw redacted JSON")
+                            XdmTechnicalText(line, maxLines = 24)
+                            TextButton(onClick = { copyTextToClipboard(context, "XDM log entry", line) }) { Text("Copy JSON") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun debugJsonObjectSummary(json: String, key: String): String {
+    val marker = "\"$key\":{"
+    val start = json.indexOf(marker)
+    if (start < 0) return ""
+    val bodyStart = start + marker.length
+    var index = bodyStart
+    var inString = false
+    var escaped = false
+    while (index < json.length) {
+        val ch = json[index]
+        if (escaped) escaped = false
+        else if (ch == '\\' && inString) escaped = true
+        else if (ch == '"') inString = !inString
+        else if (ch == '}' && !inString) break
+        index++
+    }
+    if (index <= bodyStart) return ""
+    return json.substring(bodyStart, index)
+        .replace("\",\"", " · ")
+        .replace(Regex("\\\"([^\\\"]+)\\\":\\\"([^\\\"]*)\\\"")) { match -> "${match.groupValues[1]}: ${match.groupValues[2]}" }
+        .replace("\\\\n", " ")
+        .replace("\\\\t", " ")
+        .trim()
+}
+
+private fun debugJsonString(json: String, key: String): String {
+    val marker = "\"$key\":\""
+    val start = json.indexOf(marker)
+    if (start < 0) return ""
+    var index = start + marker.length
+    val out = StringBuilder()
+    var escaped = false
+    while (index < json.length) {
+        val ch = json[index++]
+        if (escaped) {
+            out.append(when (ch) { 'n' -> '\n'; 'r' -> '\r'; 't' -> '\t'; else -> ch })
+            escaped = false
+        } else if (ch == '\\') {
+            escaped = true
+        } else if (ch == '"') {
+            break
+        } else {
+            out.append(ch)
+        }
+    }
+    return out.toString()
+}
+
+private fun debugJsonLong(json: String, key: String): Long {
+    val marker = "\"$key\":"
+    val start = json.indexOf(marker)
+    if (start < 0) return 0L
+    return json.substring(start + marker.length).takeWhile { it.isDigit() || it == '-' }.toLongOrNull() ?: 0L
+}
+
+private fun formatDebugTimestamp(epochMillis: Long): String = if (epochMillis <= 0L) {
+    "Unknown time"
+} else {
+    java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date(epochMillis))
+}
 
 private fun LazyListScope.debugProblemsPage(
     problems: List<ProblemIncident>,
