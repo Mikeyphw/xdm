@@ -240,16 +240,20 @@ def select_toolchain_identity(ndk: Path, api: int) -> dict:
     preferred = sorted(options, key=lambda p: (not p.name.startswith("linux-"), p.name))
     target = f"aarch64-linux-android{api}"
     for toolchain in preferred:
-        cc = toolchain / "bin" / f"{target}-clang"
-        if cc.is_file() and command_runs(cc):
-            tools = {
-                "clang": cc,
-                "clang++": toolchain / "bin" / f"{target}-clang++",
-                "llvm-ar": toolchain / "bin/llvm-ar",
-                "llvm-ranlib": toolchain / "bin/llvm-ranlib",
-                "llvm-strip": toolchain / "bin/llvm-strip",
-                "llvm-nm": toolchain / "bin/llvm-nm",
-            }
+        tools = {
+            "clang": toolchain / "bin" / f"{target}-clang",
+            "clang++": toolchain / "bin" / f"{target}-clang++",
+            "llvm-ar": toolchain / "bin/llvm-ar",
+            "llvm-ranlib": toolchain / "bin/llvm-ranlib",
+            "llvm-strip": toolchain / "bin/llvm-strip",
+            "llvm-nm": toolchain / "bin/llvm-nm",
+        }
+        # Some NDK host prebuilts can expose a runnable clang driver while a sibling
+        # tool (notably clang++) is not executable on the current host. Selecting that
+        # backend makes provenance fingerprinting fail before the existing Termux LLVM
+        # fallback gets a chance to run. Accept an NDK backend only when the complete
+        # toolset required by the native build is present and executable.
+        if all(path.is_file() and command_runs(path) for path in tools.values()):
             return {
                 "backend": f"ndk:{toolchain.name}",
                 "sysrootOwner": toolchain.name,

@@ -13,15 +13,17 @@ val installOfficialAria2Runtime = tasks.register<Exec>("installOfficialAria2Runt
     description = "Installs the pinned official ARM64 aria2 runtime payload incrementally."
     workingDir(rootProject.projectDir)
     val trustedDigestProvider = trustedAria2ArchiveSha256
-    inputs.property("trustedAria2ArchiveSha256", trustedDigestProvider.orElse(""))
+    inputs.property("trustedAria2ArchiveSha256Override", trustedDigestProvider.orElse(""))
     doFirst {
-        val trustedDigest = trustedDigestProvider.orNull
-            ?: throw GradleException("XDM_ARIA2_ARCHIVE_SHA256 or -Pxdm.aria2.archiveSha256 is required to install distributable aria2 bytes")
-        require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
-        commandLine(
-            "python3", "tools/install-aria2-runtime.py", "--download-official",
-            "--expected-archive-sha256", trustedDigest, "--require-trusted-digest",
+        val arguments = mutableListOf(
+            "python3", "tools/install-aria2-runtime.py",
+            "--download-official", "--require-trusted-digest",
         )
+        trustedDigestProvider.orNull?.let { trustedDigest ->
+            require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
+            arguments += listOf("--expected-archive-sha256", trustedDigest)
+        }
+        commandLine(*arguments.toTypedArray())
     }
     inputs.files(
         layout.projectDirectory.file("runtime/aria2-runtime.json"),
@@ -63,9 +65,9 @@ android {
         warningsAsErrors = true
         disable += "GradleDependency"
         if (!requireAlignedAria2Runtime.get()) {
-            // Optional dev/debug builds may carry the currently pinned upstream aria2 payload,
-            // which is not guaranteed to be 16 KB ELF-page aligned. Strict distribution
-            // builds keep the check enabled via -Pxdm.requireAria2Runtime=true.
+            // Optional direct Gradle dev/debug builds may omit the native payload entirely.
+            // Strict distribution graphs keep the alignment check enabled via
+            // -Pxdm.requireAria2Runtime=true.
             disable += "Aligned16KB"
         }
     }
@@ -104,6 +106,7 @@ dependencies {
 val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
     group = "verification"
     if (requireAlignedAria2Runtime.get()) dependsOn(installOfficialAria2Runtime)
+    mustRunAfter(installOfficialAria2Runtime)
     description = "Verifies the attested ARM64 aria2 runtime when present or required."
     workingDir(rootProject.projectDir)
     val requireRuntimeProvider = requireAlignedAria2Runtime
@@ -116,18 +119,20 @@ val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
         rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
     inputs.property("requireAlignedAria2Runtime", requireRuntimeProvider)
-    inputs.property("trustedAria2ArchiveSha256", trustedDigestProvider.orElse(""))
+    inputs.property("trustedAria2ArchiveSha256Override", trustedDigestProvider.orElse(""))
     val successMarker = layout.buildDirectory.file("validation/verifyAria2Runtime.success")
     outputs.file(successMarker)
     doFirst {
         val arguments = mutableListOf("python3", "tools/verify-aria2-runtime.py")
         if (requireRuntimeProvider.get()) {
-            val trustedDigest = trustedDigestProvider.orNull
-                ?: throw GradleException("Strict aria2 verification requires XDM_ARIA2_ARCHIVE_SHA256 or -Pxdm.aria2.archiveSha256")
             arguments += listOf(
                 "--require-payload", "--require-16kb-alignment",
-                "--require-trusted-archive-digest", "--expected-archive-sha256", trustedDigest,
+                "--require-trusted-archive-digest",
             )
+            trustedDigestProvider.orNull?.let { trustedDigest ->
+                require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
+                arguments += listOf("--expected-archive-sha256", trustedDigest)
+            }
         }
         commandLine(*arguments.toTypedArray())
     }
@@ -141,6 +146,7 @@ val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
 val verifyAria2ReleaseRuntime = tasks.register<Exec>("verifyAria2ReleaseRuntime") {
     group = "verification"
     if (requireAlignedAria2Runtime.get()) dependsOn(installOfficialAria2Runtime)
+    mustRunAfter(installOfficialAria2Runtime)
     description = "Requires an already-installed aria2 payload bound to the trusted release digest; never downloads during direct release packaging."
     workingDir(rootProject.projectDir)
     val trustedDigestProvider = trustedAria2ArchiveSha256
@@ -153,16 +159,18 @@ val verifyAria2ReleaseRuntime = tasks.register<Exec>("verifyAria2ReleaseRuntime"
         rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
         rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
-    inputs.property("trustedAria2ArchiveSha256", trustedDigestProvider.orElse(""))
+    inputs.property("trustedAria2ArchiveSha256Override", trustedDigestProvider.orElse(""))
     doFirst {
-        val trustedDigest = trustedDigestProvider.orNull
-            ?: throw GradleException("Direct release packaging requires XDM_ARIA2_ARCHIVE_SHA256 or -Pxdm.aria2.archiveSha256; install the pinned runtime explicitly before packaging")
-        require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
-        commandLine(
+        val arguments = mutableListOf(
             "python3", "tools/verify-aria2-runtime.py",
             "--require-payload", "--require-16kb-alignment",
-            "--require-trusted-archive-digest", "--expected-archive-sha256", trustedDigest,
+            "--require-trusted-archive-digest",
         )
+        trustedDigestProvider.orNull?.let { trustedDigest ->
+            require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
+            arguments += listOf("--expected-archive-sha256", trustedDigest)
+        }
+        commandLine(*arguments.toTypedArray())
     }
 }
 
