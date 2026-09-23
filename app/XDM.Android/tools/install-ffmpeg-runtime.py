@@ -397,6 +397,111 @@ def prepare_openssl_environment(
     openssl_env.pop("CROSS_COMPILE", None)
     return openssl_env
 
+
+def compiler_link_probe(compiler: Path, source_suffix: str, build_root: Path) -> tuple[bool, str]:
+    """Compile+link a trivial Android executable without trying to run it."""
+    probe_root = build_root / "compiler-probe"
+    probe_root.mkdir(parents=True, exist_ok=True)
+    source = probe_root / f"probe{source_suffix}"
+    output = probe_root / f"probe{source_suffix}.elf"
+    source.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+    output.unlink(missing_ok=True)
+    result = subprocess.run(
+        [str(compiler), str(source), "-o", str(output)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    detail = result.stdout.strip()
+    ok = result.returncode == 0 and output.is_file() and output.stat().st_size > 0
+    output.unlink(missing_ok=True)
+    return ok, detail
+
+
+def prepare_ffmpeg_compilers(
+    *,
+    toolchain: Path,
+    bin_dir: Path,
+    build_root: Path,
+    api: int,
+    backend: str,
+) -> tuple[Path, Path, dict]:
+    """Choose a compiler pair that can actually link Android executables.
+
+    XDM may need Termux-native LLVM utilities because a sibling NDK tool is not
+    runnable on the Android host. That does not mean the runnable NDK clang driver
+    should be discarded for FFmpeg. Prefer it when it can compile+link, and synthesize
+    C++ mode from the same known-good driver instead of depending on a broken clang++
+    entry point.
+    """
+    target = f"aarch64-linux-android{api}"
+    primary_cc = bin_dir / f"{target}-clang"
+    primary_cxx = bin_dir / f"{target}-clang++"
+
+    # For a normal NDK backend, verify the selected pair rather than trusting --version.
+    if backend != "termux-native-llvm":
+        c_ok, c_detail = compiler_link_probe(primary_cc, ".c", build_root)
+        cxx_ok, cxx_detail = compiler_link_probe(primary_cxx, ".cpp", build_root)
+        if not c_ok or not cxx_ok:
+            raise SystemExit(
+                "Selected Android compiler cannot link a trivial executable.\n"
+                f"C compiler: {primary_cc}\n{c_detail}\n"
+                f"C++ compiler: {primary_cxx}\n{cxx_detail}"
+            )
+        return primary_cc, primary_cxx, {
+            "backend": backend,
+            "cc": tool_fingerprint(primary_cc),
+            "cxx": tool_fingerprint(primary_cxx),
+        }
+
+    # Termux fallback: first try the runnable NDK C driver for both C and C++.
+    ndk_cc = toolchain / "bin" / f"{target}-clang"
+    if ndk_cc.is_file() and command_runs(ndk_cc):
+        hybrid_bin = build_root / "ffmpeg-ndk-driver-bin"
+        hybrid_bin.mkdir(parents=True, exist_ok=True)
+        hybrid_cc = hybrid_bin / f"{target}-clang"
+        hybrid_cxx = hybrid_bin / f"{target}-clang++"
+        write_exec_wrapper(hybrid_cc, ndk_cc, [])
+        write_exec_wrapper(hybrid_cxx, ndk_cc, ["--driver-mode=g++"])
+
+        c_ok, c_detail = compiler_link_probe(hybrid_cc, ".c", build_root)
+        cxx_ok, cxx_detail = compiler_link_probe(hybrid_cxx, ".cpp", build_root)
+        if c_ok and cxx_ok:
+            print("FFmpeg compiler backend: ndk-clang-driver + Termux LLVM utilities", flush=True)
+            return hybrid_cc, hybrid_cxx, {
+                "backend": "ndk-clang-driver+termux-utils",
+                "cc": tool_fingerprint(ndk_cc),
+                "cxxDriverMode": "g++",
+            }
+        print(
+            "NDK clang driver is runnable but could not link FFmpeg probe; "
+            "falling back to Termux compiler wrappers.",
+            flush=True,
+        )
+        if c_detail:
+            print("NDK C probe: " + c_detail.splitlines()[-1], flush=True)
+        if cxx_detail:
+            print("NDK C++ probe: " + cxx_detail.splitlines()[-1], flush=True)
+
+    # Last resort: use the Termux compiler wrappers only if they really link.
+    c_ok, c_detail = compiler_link_probe(primary_cc, ".c", build_root)
+    cxx_ok, cxx_detail = compiler_link_probe(primary_cxx, ".cpp", build_root)
+    if not c_ok or not cxx_ok:
+        raise SystemExit(
+            "No Android compiler backend could link a trivial executable.\n"
+            f"Termux C compiler: {primary_cc}\n{c_detail}\n"
+            f"Termux C++ compiler: {primary_cxx}\n{cxx_detail}"
+        )
+
+    print("FFmpeg compiler backend: termux-native-llvm", flush=True)
+    return primary_cc, primary_cxx, {
+        "backend": "termux-native-llvm",
+        "cc": tool_fingerprint(Path(shutil.which("clang") or primary_cc)),
+        "cxx": tool_fingerprint(Path(shutil.which("clang++") or primary_cxx)),
+    }
+
+
 def run(
     command: list[str],
     cwd: Path,
@@ -580,15 +685,21 @@ def openssl_install_complete(openssl_prefix: Path) -> bool:
     return all(path.is_file() and path.stat().st_size > 0 for path in required)
 
 
-def ffmpeg_configuration_payload(configure: list[str], manifest: dict, toolchain_identity: dict) -> dict:
+def ffmpeg_configuration_payload(
+    configure: list[str],
+    manifest: dict,
+    toolchain_identity: dict,
+    compiler_identity: dict,
+) -> dict:
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "component": "ffmpeg-configure",
         "ffmpegVersion": manifest["ffmpegVersion"],
         "ffmpegSourceSha256": manifest["ffmpegSourceSha256"],
         "androidApi": int(manifest["androidApi"]),
         "configure": configure,
         "toolchainIdentity": toolchain_identity,
+        "compilerIdentity": compiler_identity,
     }
 
 
@@ -750,6 +861,7 @@ def build_ffmpeg(
     heartbeat_seconds: int,
     verbose_make: bool,
     toolchain_identity: dict,
+    compiler_identity: dict,
 ) -> tuple[Path, Path]:
     ffmpeg_bin = ff_src / "ffmpeg"
     ffprobe_bin = ff_src / "ffprobe"
@@ -782,7 +894,7 @@ def build_ffmpeg(
         f"--extra-ldflags=-L{android_lib_dir} -L{openssl_prefix / 'lib'} {common_ld}",
         "--extra-libs=-ldl -lm -lz",
     ]
-    configuration = ffmpeg_configuration_payload(configure, manifest, toolchain_identity)
+    configuration = ffmpeg_configuration_payload(configure, manifest, toolchain_identity, compiler_identity)
     configured_marker = ff_src / ".xdm-ffmpeg-configured.json"
     built_marker = ff_src / ".xdm-ffmpeg-built.json"
     if ffmpeg_bin.is_file() and ffprobe_bin.is_file():
@@ -798,7 +910,16 @@ def build_ffmpeg(
         if (ff_src / "Makefile").is_file():
             subprocess.run(["make", "clean"], cwd=ff_src, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         print("FFmpeg: configuring pinned Android profile.", flush=True)
-        run(configure, ff_src, env)
+        try:
+            run(configure, ff_src, env)
+        except subprocess.CalledProcessError:
+            config_log = ff_src / "ffbuild/config.log"
+            if config_log.is_file():
+                tail = config_log.read_text(encoding="utf-8", errors="replace").splitlines()[-120:]
+                print("\n--- FFmpeg ffbuild/config.log tail ---", flush=True)
+                print("\n".join(tail), flush=True)
+                print("--- end FFmpeg config.log tail ---\n", flush=True)
+            raise
         atomic_json(configured_marker, configuration)
     else:
         print("FFmpeg: configuration marker matches; resuming existing object tree.", flush=True)
@@ -870,14 +991,17 @@ def main() -> None:
             shutil.rmtree(build_root, ignore_errors=True)
 
         toolchain, bin_dir, toolchain_backend = resolve_toolchain(ndk, api, build_root, toolchain_identity)
-        cc = bin_dir / f"aarch64-linux-android{api}-clang"
-        cxx = bin_dir / f"aarch64-linux-android{api}-clang++"
-        if not cc.is_file() or not cxx.is_file():
-            raise SystemExit(f"Android compiler for API {api} is missing: {cc}")
         print(f"Android NDK: {ndk}")
         print(f"FFmpeg host toolchain backend: {toolchain_backend}")
         print(f"Native build cache: {build_root}")
         ensure_host_build_tools()
+        cc, cxx, ffmpeg_compiler_identity = prepare_ffmpeg_compilers(
+            toolchain=toolchain,
+            bin_dir=bin_dir,
+            build_root=build_root,
+            api=api,
+            backend=toolchain_backend,
+        )
 
         ff_archive = download(manifest["ffmpegSourceUrl"], CACHE_ROOT / f"ffmpeg-{manifest['ffmpegVersion']}.tar.xz", manifest["ffmpegSourceSha256"])
         ssl_archive = download(manifest["opensslSourceUrl"], CACHE_ROOT / f"openssl-{manifest['opensslVersion']}.tar.gz", manifest["opensslSourceSha256"])
@@ -933,6 +1057,7 @@ def main() -> None:
             heartbeat_seconds=args.heartbeat_seconds,
             verbose_make=args.verbose_make,
             toolchain_identity=toolchain_identity,
+            compiler_identity=ffmpeg_compiler_identity,
         )
 
         targets = {
