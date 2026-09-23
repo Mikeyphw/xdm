@@ -293,7 +293,16 @@ def resolve_toolchain(ndk: Path, api: int, build_root: Path, identity: dict) -> 
         resolved = shutil.which(name)
         if not resolved:
             raise SystemExit(f"ARM64 Termux fallback requires {name} in PATH")
-        path = Path(resolved).resolve()
+        # Preserve the invocation pathname instead of resolving symlinks here.
+        # Termux LLVM exposes several driver/multicall entry points as symlinks
+        # (notably clang++ -> clang and llvm-ranlib -> llvm-ar).  The program
+        # basename selects C++/ranlib behaviour.  Resolving the symlink before
+        # writing XDM's wrapper silently changes that behaviour.
+        #
+        # tool_fingerprint() resolves the target internally, so provenance still
+        # attests the real executable bytes while execution retains the semantic
+        # entry-point name.
+        path = Path(resolved).absolute()
         if tool_fingerprint(path) != identity["tools"][name]:
             raise SystemExit(f"Termux tool changed after provenance was measured: {name}")
         termux_tools[name] = path
