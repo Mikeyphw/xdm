@@ -312,6 +312,82 @@ def resolve_toolchain(ndk: Path, api: int, build_root: Path, identity: dict) -> 
         write_exec_wrapper(wrapper_bin / name, termux_tools[name], [])
     return sysroot_owner, wrapper_bin, backend
 
+
+def prepare_openssl_environment(
+    *,
+    env: dict[str, str],
+    build_root: Path,
+    toolchain: Path,
+    bin_dir: Path,
+    api: int,
+    backend: str,
+) -> dict[str, str]:
+    """Adapt XDM's Termux LLVM fallback to OpenSSL's Android toolchain discovery.
+
+    OpenSSL's android-arm64 configuration only accepts a normal NDK clang when the
+    plain `clang` executable resolves inside an NDK `prebuilt/...` directory. XDM's
+    Termux fallback intentionally keeps its compiler wrappers in the native build
+    cache instead of mutating the installed NDK, so OpenSSL otherwise falls through
+    to its legacy `aarch64-linux-android-gcc` probe.
+
+    Present the already-attested wrappers as an isolated standalone Android
+    toolchain for OpenSSL only. This keeps the installed SDK/NDK immutable while
+    preserving the same NDK sysroot and API-targeted Termux clang used by FFmpeg.
+    """
+    if backend != "termux-native-llvm":
+        return env
+
+    sysroot = toolchain / "sysroot"
+    if not sysroot.is_dir():
+        raise SystemExit(f"NDK sysroot missing for OpenSSL adapter: {sysroot}")
+
+    standalone = build_root / "openssl-termux-standalone"
+    standalone_bin = standalone / "bin"
+    standalone_bin.mkdir(parents=True, exist_ok=True)
+    (standalone / "AndroidVersion.txt").write_text(f"{api}\n", encoding="utf-8")
+
+    standalone_sysroot = standalone / "sysroot"
+    if standalone_sysroot.is_symlink():
+        if standalone_sysroot.resolve() != sysroot.resolve():
+            standalone_sysroot.unlink()
+    elif standalone_sysroot.exists():
+        if standalone_sysroot.is_dir():
+            shutil.rmtree(standalone_sysroot)
+        else:
+            standalone_sysroot.unlink()
+    if not standalone_sysroot.exists():
+        standalone_sysroot.symlink_to(sysroot, target_is_directory=True)
+
+    target = f"aarch64-linux-android{api}"
+    cross = "aarch64-linux-android"
+    tools = {
+        f"{cross}-clang": bin_dir / f"{target}-clang",
+        f"{cross}-clang++": bin_dir / f"{target}-clang++",
+        f"{cross}-ar": bin_dir / "llvm-ar",
+        f"{cross}-ranlib": bin_dir / "llvm-ranlib",
+        f"{cross}-strip": bin_dir / "llvm-strip",
+        f"{cross}-nm": bin_dir / "llvm-nm",
+    }
+    for name, executable in tools.items():
+        if not executable.is_file():
+            raise SystemExit(f"OpenSSL Termux adapter source tool is missing: {executable}")
+        write_exec_wrapper(standalone_bin / name, executable, [])
+
+    openssl_env = env.copy()
+    openssl_env.update({
+        "ANDROID_NDK_ROOT": str(standalone),
+        "PATH": f"{standalone_bin}:{env.get('PATH', '')}",
+        # OpenSSL's standalone-toolchain branch prefixes these names with
+        # aarch64-linux-android-. Keep them as basenames so its generated
+        # Makefile resolves the wrappers above instead of prefixing absolute paths.
+        "CC": "clang",
+        "CXX": "clang++",
+        "AR": "ar",
+        "RANLIB": "ranlib",
+    })
+    openssl_env.pop("CROSS_COMPILE", None)
+    return openssl_env
+
 def run(
     command: list[str],
     cwd: Path,
@@ -454,7 +530,7 @@ def openssl_configuration_payload(manifest: dict, openssl_prefix: Path, toolchai
         "-D_FORTIFY_SOURCE=2",
     ]
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "component": "openssl-configure",
         "opensslVersion": manifest["opensslVersion"],
         "opensslSourceSha256": manifest["opensslSourceSha256"],
@@ -462,6 +538,11 @@ def openssl_configuration_payload(manifest: dict, openssl_prefix: Path, toolchai
         "target": "android-arm64",
         "options": options,
         "toolchainIdentity": toolchain_identity,
+        "toolchainAdapter": (
+            "termux-standalone-v1"
+            if toolchain_identity.get("backend") == "termux-native-llvm"
+            else "ndk-native"
+        ),
     }
 
 
@@ -760,10 +841,15 @@ def main() -> None:
 
     CACHE_ROOT.mkdir(parents=True, exist_ok=True)
     cache_identity = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "manifest": build_cache_manifest_payload(manifest),
         "ndk": measured_ndk,
         "toolchain": toolchain_identity,
+        "opensslToolchainAdapter": (
+            "termux-standalone-v1"
+            if toolchain_identity.get("backend") == "termux-native-llvm"
+            else "ndk-native"
+        ),
         "hostMachine": platform.machine().lower(),
     }
     build_key = hashlib.sha256(json.dumps(cache_identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
@@ -807,11 +893,19 @@ def main() -> None:
             "STRIP": str(bin_dir / "llvm-strip"),
         })
 
+        openssl_env = prepare_openssl_environment(
+            env=env,
+            build_root=build_root,
+            toolchain=toolchain,
+            bin_dir=bin_dir,
+            api=api,
+            backend=toolchain_backend,
+        )
         build_openssl(
             manifest=manifest,
             ssl_src=ssl_src,
             openssl_prefix=openssl_prefix,
-            env=env,
+            env=openssl_env,
             jobs=args.jobs,
             heartbeat_seconds=args.heartbeat_seconds,
             verbose_make=args.verbose_make,
