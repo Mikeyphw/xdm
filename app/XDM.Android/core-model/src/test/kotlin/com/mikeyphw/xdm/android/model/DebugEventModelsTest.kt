@@ -141,7 +141,10 @@ class DebugEventModelsTest {
                 rootDirectory = root,
                 sessionId = "viewer-rotation",
                 maxSessionBytes = 260L,
-                retainedSessions = 5,
+                // This test verifies that the reader spans rotated sessions, not pruning.
+                // A debug event is now larger than 260 bytes, so eight writes can create
+                // seven rotations; retain all of them so rotated-0 remains intentionally visible.
+                retainedSessions = 8,
                 clock = { now++ },
             )
             repeat(8) { index ->

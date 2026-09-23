@@ -62,6 +62,8 @@ restore = ["help"]
 
 build = [
   "clean",
+  ":media-ffmpeg:installPinnedFfmpegRuntime",
+  ":transfer-aria2:installOfficialAria2Runtime",
   "assembleDebug",
 ]
 
