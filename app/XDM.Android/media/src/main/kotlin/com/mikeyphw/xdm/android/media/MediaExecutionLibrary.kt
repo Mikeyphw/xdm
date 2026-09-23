@@ -326,12 +326,22 @@ class MediaExecutionLibraryPlanner(
         val selectedTrackIds = plan.trackSelection.selectedIds()
         val selectedInputs = selectedTrackIds.mapNotNull { id ->
             variants.firstOrNull { it.id == id }?.let { variant ->
+                val inheritedHeaders = MediaExecutionSecurityPolicy.scopedHeadersFor(
+                    variant.url,
+                    plan.primaryUrl,
+                    plan.sessionHandoff.requestHeaders(),
+                )
+                // Variant handoffs are keyed to the exact target request. Apply them only after
+                // inherited capture/master context has been origin-scoped, so cross-origin child
+                // playlists cannot inherit the parent's credential bag while target-specific
+                // evidence remains available to the app-owned FFmpeg process.
+                val exactVariantHeaders = variantSessionHeaders[variant.id].orEmpty().associateHeadersCaseInsensitive()
                 MediaSelectedTrackInput(
                     variantId = variant.id,
                     kind = variant.kind,
                     url = variant.url,
                     mimeType = variant.mimeType,
-                    headers = MediaExecutionSecurityPolicy.scopedHeadersFor(variant.url, plan.primaryUrl, plan.sessionHandoff.requestHeaders()),
+                    headers = mergeHeadersCaseInsensitive(inheritedHeaders, exactVariantHeaders),
                     expiresAtEpochMs = variant.expiresAtEpochMs,
                 )
             }
@@ -885,6 +895,19 @@ class MediaExecutionLibraryPlanner(
             }
         }
         return args
+    }
+
+    private fun List<MediaSessionHeader>.associateHeadersCaseInsensitive(): Map<String, String> {
+        val result = linkedMapOf<String, Pair<String, String>>()
+        forEach { header -> result[header.name.lowercase(Locale.US)] = header.name to header.value }
+        return result.values.associate { it.first to it.second }
+    }
+
+    private fun mergeHeadersCaseInsensitive(base: Map<String, String>, override: Map<String, String>): Map<String, String> {
+        val result = linkedMapOf<String, Pair<String, String>>()
+        base.forEach { (name, value) -> result[name.lowercase(Locale.US)] = name to value }
+        override.forEach { (name, value) -> result[name.lowercase(Locale.US)] = name to value }
+        return result.values.associate { it.first to it.second }
     }
 
     private fun secretLeakReport(surfaces: List<String>): MediaSecretLeakReport {

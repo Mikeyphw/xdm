@@ -135,6 +135,7 @@ object FfmpegCommandCompiler {
     }
 
     private fun MutableList<String>.addInput(input: FfmpegInput) {
+        input.formatHint?.let { addAll(listOf("-f", it.argument)) }
         addHeaders(input.headers)
         addTlsVerification(input.source, input.tlsCaFile)
         addAll(listOf("-i", validateInput(input.source)))

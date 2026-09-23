@@ -128,7 +128,12 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val recoveryStore = RoomRecoveryWorkflowStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
         val embeddedFfmpegRuntime = EmbeddedFfmpegRuntime(this)
-        val embeddedFfmpegMediaManager = EmbeddedFfmpegMediaManager(repository, destinationWriter, embeddedFfmpegRuntime)
+        val embeddedFfmpegMediaManager = EmbeddedFfmpegMediaManager(
+            repository = repository,
+            destinationWriter = destinationWriter,
+            runtime = embeddedFfmpegRuntime,
+            debugRecorder = debugEventRecorder,
+        )
         MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { MediaRequestHandoffStore.sweepExpired() }
         val nativeHlsMediaManager = NativeHlsMediaManager(this, database, repository, destinationWriter, embeddedFfmpegRuntime)

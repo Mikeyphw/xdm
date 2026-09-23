@@ -83,6 +83,31 @@ class FfmpegCommandCompilerTest {
     }
 
 
+    @Test fun adaptiveHlsInputCanForceDemuxerForNonstandardPlaylistExtension() {
+        val ca = File.createTempFile("xdm-ca-", ".pem").apply { writeText("test-ca") }
+        try {
+            val command = FfmpegCommandCompiler.compile(
+                FfmpegOperation.FinalizeAdaptive(
+                    input = FfmpegInput(
+                        source = "https://media.example/index-v1-a1.txt",
+                        kind = FfmpegInputKind.Video,
+                        formatHint = FfmpegInputFormat.Hls,
+                        tlsCaFile = ca,
+                    ),
+                    outputFile = File("/tmp/final.mkv"),
+                    expectedDurationMs = 10_000,
+                ),
+            )
+            val inputIndex = command.arguments.indexOf("-i")
+            val formatIndex = command.arguments.indexOf("-f")
+            assertTrue(formatIndex >= 0 && formatIndex < inputIndex)
+            assertEquals("hls", command.arguments[formatIndex + 1])
+            assertEquals("https://media.example/index-v1-a1.txt", command.arguments[inputIndex + 1])
+        } finally {
+            ca.delete()
+        }
+    }
+
     @Test fun remoteAudioExtractionMapsAudioOnlyWithProgress() {
         val command = FfmpegCommandCompiler.compile(
             FfmpegOperation.ExtractRemoteAudio(
@@ -122,6 +147,25 @@ class FfmpegCommandCompilerTest {
         assertFalse(result.redactedSummary.contains("supersecret"))
         assertTrue(result.redactedSummary.contains("<redacted"))
     }
+    @Test fun diagnosticTailKeepsMultipleFailureLinesAndRedactsSignedUrls() {
+        val result = FfmpegExecutionResult(
+            exitCode = 1,
+            stdout = "",
+            stderr = """
+                [https @ 0x1] HTTP error 403 Forbidden
+                https://cdn.example.test/child.m3u8?token=supersecret
+                Error opening input files: Invalid data found when processing input
+            """.trimIndent(),
+            durationMs = 1,
+            failureKind = FfmpegFailureKind.Authentication,
+            message = "403 Forbidden",
+        )
+
+        assertTrue(result.redactedDiagnosticTail.contains("403 Forbidden"))
+        assertTrue(result.redactedDiagnosticTail.contains("Invalid data found"))
+        assertFalse(result.redactedDiagnosticTail.contains("supersecret"))
+    }
+
     @Test fun remoteAudioExtractionSelectsAudioOnlyAndStreamCopies() {
         val command = FfmpegCommandCompiler.compile(
             FfmpegOperation.ExtractRemoteAudio(

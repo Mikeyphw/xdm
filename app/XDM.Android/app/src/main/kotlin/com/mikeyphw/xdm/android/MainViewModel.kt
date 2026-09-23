@@ -3902,6 +3902,25 @@ class MainViewModel(
                 proposedHeaders = candidate.proposedHeaders,
                 finalHeaders = candidate.finalHeaders,
             )
+            debugEventRecorder.record(
+                area = com.mikeyphw.xdm.android.model.DebugArea.BrowserBridge,
+                severity = com.mikeyphw.xdm.android.model.DebugSeverity.Trace,
+                action = "browser-media-candidate-context",
+                result = "received",
+                safeDetails = mapOf(
+                    "url" to candidate.url,
+                    "mimeType" to candidate.mimeType.orEmpty(),
+                    "requestEvidence" to when {
+                        candidate.finalHeaders.isNotEmpty() -> "final-sent-headers"
+                        candidate.proposedHeaders.isNotEmpty() -> "proposed-headers-only"
+                        else -> "no-request-headers"
+                    },
+                    "requestContextNames" to candidate.finalHeaders.ifEmpty { candidate.proposedHeaders }.keys.sortedBy { it.lowercase() }.joinToString(","),
+                    "manifest" to candidate.manifest.toString(),
+                    "variantHintCount" to candidate.variantHints.size.toString(),
+                    "trackHintCount" to candidate.trackHints.size.toString(),
+                ),
+            )
             val plan = mediaSniffingEngine.sniff(
                 MediaSniffingInput(
                     url = facts.url,
@@ -4203,16 +4222,30 @@ class MainViewModel(
         val proposedHeaders = facts.proposedHeaders.ifEmpty { facts.headers }
         val finalHeaders = facts.finalHeaders.takeIf { it.isNotEmpty() }
         val exactHeaders = finalHeaders ?: proposedHeaders
-        val sensitiveDirectHandoff = exactHeaders.isNotEmpty() || ExternalUrlPolicy.hasCredentialBearingQuery(facts.url)
+        val credentialHeaderNames = exactHeaders.keys.filter(PrivacyDiagnosticsRedactor::isSensitiveHeaderName)
+        val credentialQuery = ExternalUrlPolicy.hasReplayCredentialBearingQuery(facts.url)
+        val sensitiveDirectHandoff = credentialHeaderNames.isNotEmpty() || credentialQuery
         if (sensitiveDirectHandoff) {
-            // This legacy single-item compatibility API has no bounded v3 session batch. Never let
-            // credentials or signed URLs escape through that old path. Current Firefox traffic uses the
-            // direct/keyless v3 session importer, which keeps exact request context process-private.
+            // A single custom-scheme payload is not the authority for replayable browser secrets.
+            // Harmless browser context (Referer/User-Agent/Accept/etc.) is allowed here; actual
+            // Cookie/Authorization/API credentials and replayable signed-query material require the
+            // bounded v3 capture-session importer so exact request state stays process-private.
+            debugEventRecorder.record(
+                area = com.mikeyphw.xdm.android.model.DebugArea.BrowserBridge,
+                severity = com.mikeyphw.xdm.android.model.DebugSeverity.Warning,
+                action = "browser-single-capture-session-required",
+                result = "blocked-sensitive-context",
+                safeDetails = mapOf(
+                    "url" to facts.url,
+                    "credentialQuery" to credentialQuery.toString(),
+                    "requestContextNames" to credentialHeaderNames.sortedBy { it.lowercase() }.joinToString(","),
+                ),
+            )
             publishMediaIntakeFeedback(
                 MediaIntakeFeedbackUi(
                     MediaIntakeFeedbackKind.Failed,
-                    "Encrypted browser capture required",
-                    "This browser request contains sensitive or expiring request context. Capture it with the current encrypted browser extension handoff.",
+                    "Browser session capture required",
+                    "This request carries replayable browser credentials. Re-send the detected media with the current Firefox extension so XDM can import it through the bounded v3 capture session.",
                 ),
             )
             return

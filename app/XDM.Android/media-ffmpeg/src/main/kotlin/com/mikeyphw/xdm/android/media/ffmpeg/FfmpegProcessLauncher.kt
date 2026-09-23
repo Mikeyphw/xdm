@@ -90,7 +90,7 @@ class FfmpegProcessLauncher(
                     stderr = stderr,
                     durationMs = System.currentTimeMillis() - started,
                     failureKind = if (exitCode == 0) FfmpegFailureKind.None else classify(stderr),
-                    message = if (exitCode == 0) "" else redactFfmpegDiagnostic(stderr.lineSequence().lastOrNull { it.isNotBlank() }.orEmpty()).take(240),
+                    message = if (exitCode == 0) "" else summarizeFailure(stderr),
                     lastProgress = lastProgress.get(),
                 )
             }
@@ -111,13 +111,24 @@ class FfmpegProcessLauncher(
     private fun classify(stderr: String): FfmpegFailureKind {
         val text = stderr.lowercase()
         return when {
-            "401 unauthorized" in text || "403 forbidden" in text -> FfmpegFailureKind.Authentication
-            "network is unreachable" in text || "connection timed out" in text || "connection refused" in text || "server returned 5" in text -> FfmpegFailureKind.Network
+            Regex("(?:http\\s+(?:error\\s+)?)?(?:401|403)\\b|server returned (?:401|403)").containsMatchIn(text) -> FfmpegFailureKind.Authentication
+            "network is unreachable" in text || "connection timed out" in text || "connection refused" in text ||
+                Regex("server returned 5\\d\\d").containsMatchIn(text) -> FfmpegFailureKind.Network
             "permission denied" in text -> FfmpegFailureKind.PermissionDenied
             "invalid argument" in text -> FfmpegFailureKind.InvalidArguments
             "unknown format" in text || "unsupported" in text || "decoder not found" in text -> FfmpegFailureKind.UnsupportedMedia
             "no such file or directory" in text || "error opening output" in text || "could not write header" in text -> FfmpegFailureKind.OutputFailure
             else -> FfmpegFailureKind.ProcessFailed
         }
+    }
+
+    private fun summarizeFailure(stderr: String): String {
+        val lines = stderr.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
+        if (lines.isEmpty()) return "FFmpeg exited without a diagnostic message"
+        val signal = Regex(
+            "(?i)(error|failed|forbidden|unauthorized|server returned|http|invalid data|permission denied|not found|timed out|connection|tls|certificate)",
+        )
+        val selected = lines.filter { signal.containsMatchIn(it) }.takeLast(5).ifEmpty { lines.takeLast(5) }
+        return redactFfmpegDiagnostic(selected.joinToString(" | ")).take(700)
     }
 }

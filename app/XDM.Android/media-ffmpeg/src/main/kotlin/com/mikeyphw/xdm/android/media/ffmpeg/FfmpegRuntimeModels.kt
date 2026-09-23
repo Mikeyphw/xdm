@@ -83,6 +83,14 @@ data class FfmpegExecutionResult(
     val lastProgress: FfmpegProgressSnapshot? = null,
 ) {
     val success: Boolean get() = exitCode == 0 && failureKind == FfmpegFailureKind.None
+    val redactedDiagnosticTail: String get() = redactFfmpegDiagnostic(
+        stderr.lineSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .toList()
+            .takeLast(10)
+            .joinToString(" | "),
+    ).take(1_000)
     val redactedSummary: String get() = if (success) {
         "FFmpeg operation completed in ${durationMs}ms"
     } else {
@@ -99,9 +107,12 @@ internal fun redactFfmpegDiagnostic(value: String): String = value
 
 enum class FfmpegInputKind { Video, Audio, Subtitle, Generic }
 
+enum class FfmpegInputFormat(val argument: String) { Hls("hls") }
+
 data class FfmpegInput(
     val source: String,
     val kind: FfmpegInputKind = FfmpegInputKind.Generic,
+    val formatHint: FfmpegInputFormat? = null,
     val headers: Map<String, String> = emptyMap(),
     val tlsCaFile: File? = null,
 )

@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -94,6 +95,16 @@ class AutomationModelsTest {
             "https://cdn.example.test/master.m3u8?quality=1080&md5=REDACTED&sess=REDACTED&signature=REDACTED&token=REDACTED",
             ExternalUrlPolicy.persistableUrl(raw),
         )
+    }
+
+    @Test
+    fun replayCredentialQueryDistinguishesCredentialsFromExpiryAndChecksums() {
+        val expiringChecksumOnly = "https://cdn.example.test/master.m3u8?expires=1800000000&md5=deadbeef&code=abc&policy=edge"
+        val replayCredential = "https://cdn.example.test/master.m3u8?expires=1800000000&signature=secret-signature"
+
+        assertTrue(ExternalUrlPolicy.hasCredentialBearingQuery(expiringChecksumOnly))
+        assertFalse(ExternalUrlPolicy.hasReplayCredentialBearingQuery(expiringChecksumOnly))
+        assertTrue(ExternalUrlPolicy.hasReplayCredentialBearingQuery(replayCredential))
     }
 
     @Test

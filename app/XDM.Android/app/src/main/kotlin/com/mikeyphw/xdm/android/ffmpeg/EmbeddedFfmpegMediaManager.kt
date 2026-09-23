@@ -9,6 +9,7 @@ import com.mikeyphw.xdm.android.media.ffmpeg.EmbeddedFfmpegRuntime
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegFailureKind
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegInput
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegInputKind
+import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegInputFormat
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegMediaVerifier
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegOperation
 import com.mikeyphw.xdm.android.media.ffmpeg.FfmpegProgressPhase
@@ -20,6 +21,11 @@ import com.mikeyphw.xdm.android.model.MediaOutputOwnerKind
 import com.mikeyphw.xdm.android.model.MediaOutputRecord
 import com.mikeyphw.xdm.android.model.MediaOutputState
 import com.mikeyphw.xdm.android.model.MediaVariantKind
+import com.mikeyphw.xdm.android.model.DebugArea
+import com.mikeyphw.xdm.android.model.DebugEventRecorder
+import com.mikeyphw.xdm.android.model.DebugSeverity
+import com.mikeyphw.xdm.android.model.ExternalUrlPolicy
+import com.mikeyphw.xdm.android.model.NoOpDebugEventRecorder
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.storage.AndroidDestinationWriter
 import com.mikeyphw.xdm.android.storage.DestinationRequest
@@ -87,6 +93,7 @@ class EmbeddedFfmpegMediaManager(
     private val repository: DownloadRepository,
     private val destinationWriter: AndroidDestinationWriter,
     val runtime: EmbeddedFfmpegRuntime,
+    private val debugRecorder: DebugEventRecorder = NoOpDebugEventRecorder,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
     private val admissionMutex = Mutex()
@@ -173,15 +180,23 @@ class EmbeddedFfmpegMediaManager(
         admissionMode: MediaOutputAdmissionMode,
         kind: ExecutionKind,
     ): EmbeddedFfmpegEnqueueOutcome = admissionMutex.withLock {
-        val existing = repository.mediaOutputsForCapture(capture.id).firstOrNull { it.state != MediaOutputState.Hidden }
-        if (admissionMode == MediaOutputAdmissionMode.Primary && existing != null) {
-            return@withLock EmbeddedFfmpegEnqueueOutcome(false, existing, existing, "This media capture already owns an output generation.")
+        val outputsForCapture = repository.mediaOutputsForCapture(capture.id)
+        val blockingExisting = outputsForCapture.firstOrNull { it.blocksPrimaryAdmission() }
+        if (admissionMode == MediaOutputAdmissionMode.Primary && blockingExisting != null) {
+            recordEvent(
+                severity = DebugSeverity.Info,
+                action = "embedded-ffmpeg-admission",
+                result = "existing-active-generation",
+                seed = blockingExisting,
+                details = mapOf("state" to blockingExisting.state.name, "reason" to "primary-admission-blocked"),
+            )
+            return@withLock EmbeddedFfmpegEnqueueOutcome(false, blockingExisting, blockingExisting, "This media capture already owns an active or completed output generation.")
         }
         val capability = runtime.capabilities()
         require(capability.ready) { capability.summary }
 
         val now = System.currentTimeMillis()
-        val generation = (repository.mediaOutputsForCapture(capture.id).maxOfOrNull { it.attemptGeneration } ?: 0L) + 1L
+        val generation = (outputsForCapture.maxOfOrNull { it.attemptGeneration } ?: 0L) + 1L
         val ownerId = UUID.randomUUID().toString()
         val output = MediaOutputRecord(
             id = "EmbeddedFfmpeg:$ownerId:$generation",
@@ -199,6 +214,18 @@ class EmbeddedFfmpegMediaManager(
             updatedAtEpochMs = now,
         )
         check(repository.saveMediaOutput(output)) { "Embedded FFmpeg output owner changed before queue commit" }
+        recordEvent(
+            severity = DebugSeverity.Info,
+            action = "embedded-ffmpeg-queued",
+            result = "committed",
+            seed = output,
+            details = mapOf(
+                "executionKind" to kind.name,
+                "processingKind" to spec.postProcessing.kind.name,
+                "selectedInputCount" to spec.selectedInputs.size.toString(),
+                "sourceUrl" to safeUrl(spec.sourceUrl),
+            ),
+        )
         updateProgress(ownerId, EmbeddedFfmpegJobStage.Queued, percent = 0, detail = spec.postProcessing.userLabel)
         val job = scope.launch(start = CoroutineStart.LAZY) { execute(output, capture, spec, kind) }
         activeJobs[ownerId] = job
@@ -214,6 +241,13 @@ class EmbeddedFfmpegMediaManager(
         )
     }
 
+
+    private fun MediaOutputRecord.blocksPrimaryAdmission(): Boolean = state in setOf(
+        MediaOutputState.Queued,
+        MediaOutputState.Active,
+        MediaOutputState.Completed,
+    )
+
     private suspend fun execute(
         seed: MediaOutputRecord,
         capture: MediaCaptureRecord,
@@ -221,8 +255,16 @@ class EmbeddedFfmpegMediaManager(
         kind: ExecutionKind,
     ) {
         val request = destinationRequest(seed)
+        recordEvent(
+            severity = DebugSeverity.Trace,
+            action = "embedded-ffmpeg-prepare",
+            result = "started",
+            seed = seed,
+            details = mapOf("destinationKind" to request::class.java.simpleName, "fileName" to seed.fileName),
+        )
         updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Preparing, percent = 0)
         val prepared = runCatching { destinationWriter.prepare(request) }.getOrElse { error ->
+            recordEvent(DebugSeverity.Error, "embedded-ffmpeg-prepare", "failed", seed, mapOf("error" to safeMessage(error)))
             fail(seed, MediaOutputState.Failed, "Destination preparation failed: ${safeMessage(error)}")
             return
         }
@@ -240,13 +282,26 @@ class EmbeddedFfmpegMediaManager(
         var committedPromotion: DestinationPromotionResult? = null
         try {
             prepared.artifacts.stagingFile.parentFile?.mkdirs()
-            MediaExecutionSecurityPolicy.requireEmbeddedExecutable(
-                urls = buildList {
-                    add(spec.sourceUrl)
-                    spec.selectedInputs.forEach { add(it.url) }
-                },
-                headers = spec.requestHeaders + spec.selectedInputs.flatMap { it.headers.entries }.associate { it.key to it.value },
+            val executionUrls = buildList {
+                add(spec.sourceUrl)
+                spec.selectedInputs.forEach { add(it.url) }
+            }
+            val executionHeaders = spec.requestHeaders + spec.selectedInputs.flatMap { it.headers.entries }.associate { it.key to it.value }
+            recordEvent(
+                severity = DebugSeverity.Trace,
+                action = "embedded-ffmpeg-request-context",
+                result = "prepared",
+                seed = seed,
+                details = mapOf(
+                    "inputUrls" to executionUrls.joinToString(" ; ") { safeUrl(it) },
+                    "requestHeaderNames" to executionHeaders.keys.sortedBy { it.lowercase() }.joinToString(","),
+                    "selectedKinds" to spec.selectedInputs.joinToString(",") { it.kind.name },
+                    "inputFormats" to spec.selectedInputs.joinToString(",") { selected ->
+                        ffmpegInputFormat(selected.mimeType, selected.url)?.argument ?: "auto"
+                    },
+                ),
             )
+            MediaExecutionSecurityPolicy.requireEmbeddedExecutable(urls = executionUrls, headers = executionHeaders)
             val operation = when (kind) {
                 ExecutionKind.Live -> FfmpegOperation.RecordStream(
                     inputUrl = spec.sourceUrl,
@@ -257,7 +312,32 @@ class EmbeddedFfmpegMediaManager(
                 )
                 ExecutionKind.Adaptive -> adaptiveOperation(capture, spec, prepared.artifacts.stagingFile)
             }
+            recordEvent(
+                severity = DebugSeverity.Trace,
+                action = "embedded-ffmpeg-execute",
+                result = "started",
+                seed = seed,
+                details = mapOf(
+                    "operation" to operation::class.java.simpleName,
+                    "stagingBytes" to prepared.artifacts.stagingFile.length().toString(),
+                ),
+            )
             val result = runtime.execute(operation) { snapshot -> updateFromRuntime(seed.ownerId, snapshot) }
+            recordEvent(
+                severity = if (result.success) DebugSeverity.Info else DebugSeverity.Error,
+                action = "embedded-ffmpeg-execute",
+                result = if (result.success) "completed" else "failed",
+                seed = seed,
+                details = mapOf(
+                    "exitCode" to result.exitCode.toString(),
+                    "failureKind" to result.failureKind.name,
+                    "durationMs" to result.durationMs.toString(),
+                    "message" to result.message,
+                    "stderrTail" to result.redactedDiagnosticTail,
+                    "stagingBytes" to prepared.artifacts.stagingFile.length().toString(),
+                    "lastProgress" to (result.lastProgress?.userLabel ?: "none"),
+                ),
+            )
             if (!result.success) {
                 val state = if (prepared.artifacts.stagingFile.length() > 0L) MediaOutputState.RecoveryRequired else MediaOutputState.Failed
                 if (state == MediaOutputState.Failed) runCatching { prepared.deleteArtifacts() }
@@ -265,7 +345,9 @@ class EmbeddedFfmpegMediaManager(
                 return
             }
             updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Verifying, percent = 96, detail = "FFprobe is validating the staged media.")
+            recordEvent(DebugSeverity.Trace, "embedded-ffprobe-verify", "started", seed, mapOf("stagingBytes" to prepared.artifacts.stagingFile.length().toString()))
             val probe = runtime.probe(prepared.artifacts.stagingFile.absolutePath).getOrElse { error ->
+                recordEvent(DebugSeverity.Error, "embedded-ffprobe-verify", "failed", seed, mapOf("error" to safeMessage(error)))
                 fail(seed, MediaOutputState.RecoveryRequired, "FFprobe verification failed: ${safeMessage(error)}")
                 return
             }
@@ -275,9 +357,11 @@ class EmbeddedFfmpegMediaManager(
                 expectation = verificationExpectation(capture, spec),
             )
             if (!verification.valid) {
+                recordEvent(DebugSeverity.Error, "embedded-ffprobe-verify", "rejected", seed, mapOf("verification" to verification.message))
                 fail(seed, MediaOutputState.RecoveryRequired, "FFprobe rejected staged media: ${verification.message}")
                 return
             }
+            recordEvent(DebugSeverity.Info, "embedded-ffprobe-verify", "passed", seed, mapOf("verification" to verification.message))
             updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Publishing, percent = 99, detail = "Publishing verified media atomically.")
             val promotion = runCatching { prepared.promote() }.getOrElse { error ->
                 fail(seed, MediaOutputState.RecoveryRequired, "Final publication failed: ${safeMessage(error)}")
@@ -301,6 +385,7 @@ class EmbeddedFfmpegMediaManager(
                 )
                 if (completed != null) {
                     updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.Completed, percent = 100, detail = verification.message)
+                    recordEvent(DebugSeverity.Info, "embedded-ffmpeg-publish", "completed", seed, mapOf("verification" to verification.message))
                     runCatching { prepared.deleteArtifacts() }
                 } else {
                     updateProgress(seed.ownerId, EmbeddedFfmpegJobStage.RecoveryRequired, detail = "Publication committed but output ownership changed before metadata reconciliation; startup recovery will retain the journal.")
@@ -324,6 +409,7 @@ class EmbeddedFfmpegMediaManager(
             }
             throw cancelled
         } catch (error: Throwable) {
+            recordEvent(DebugSeverity.Error, "embedded-ffmpeg-execute", "exception", seed, mapOf("error" to safeMessage(error), "exceptionType" to error::class.java.simpleName))
             val failureKind = if (error is SecurityException) FfmpegFailureKind.PermissionDenied else FfmpegFailureKind.ProcessFailed
             val state = when {
                 committedPromotion != null -> MediaOutputState.RecoveryRequired
@@ -347,6 +433,7 @@ class EmbeddedFfmpegMediaManager(
                     MediaVariantKind.Subtitle -> FfmpegInputKind.Subtitle
                     MediaVariantKind.Thumbnail -> FfmpegInputKind.Generic
                 },
+                formatHint = ffmpegInputFormat(selected.mimeType, selected.url),
                 headers = selected.headers,
             )
         }
@@ -374,6 +461,16 @@ class EmbeddedFfmpegMediaManager(
         }
     }
 
+
+    private fun ffmpegInputFormat(mimeType: String?, url: String): FfmpegInputFormat? {
+        val normalizedMime = mimeType?.substringBefore(';')?.trim()?.lowercase()
+        return when {
+            normalizedMime == "application/vnd.apple.mpegurl" || normalizedMime == "application/x-mpegurl" -> FfmpegInputFormat.Hls
+            url.substringBefore('?').substringBefore('#').lowercase().endsWith(".m3u8") -> FfmpegInputFormat.Hls
+            else -> null
+        }
+    }
+
     private fun verificationExpectation(capture: MediaCaptureRecord, spec: MediaQueuedDownloadSpec): FfmpegVerificationExpectation {
         val selectedKinds = spec.selectedInputs.map { it.kind }.toSet()
         val requireVideo = spec.intent in setOf(MediaDownloadIntent.BestVideo, MediaDownloadIntent.VideoOnly) &&
@@ -391,6 +488,13 @@ class EmbeddedFfmpegMediaManager(
     }
 
     private suspend fun fail(seed: MediaOutputRecord, state: MediaOutputState, message: String) {
+        recordEvent(
+            severity = if (state == MediaOutputState.RecoveryRequired) DebugSeverity.Warning else DebugSeverity.Error,
+            action = "embedded-ffmpeg-terminal",
+            result = state.name,
+            seed = seed,
+            details = mapOf("detail" to message),
+        )
         repository.transitionMediaOutputOwned(
             id = seed.id,
             ownerKind = seed.ownerKind,
@@ -491,6 +595,30 @@ class EmbeddedFfmpegMediaManager(
         val extension = fileName.substringAfterLast('.', "").lowercase().takeIf { it.matches(Regex("[a-z0-9]{1,8}")) }
         return if (extension == null) ".xdm.part.mkv" else ".xdm.part.$extension"
     }
+
+    private fun recordEvent(
+        severity: DebugSeverity,
+        action: String,
+        result: String,
+        seed: MediaOutputRecord,
+        details: Map<String, String> = emptyMap(),
+    ) {
+        debugRecorder.record(
+            area = DebugArea.MediaResolver,
+            severity = severity,
+            action = action,
+            result = result,
+            safeDetails = mapOf(
+                "ownerId" to seed.ownerId,
+                "captureId" to seed.captureId,
+                "attemptGeneration" to seed.attemptGeneration.toString(),
+            ) + details,
+            operationId = "embedded-ffmpeg:${seed.ownerId}",
+            parentOperationId = seed.captureId,
+        )
+    }
+
+    private fun safeUrl(value: String): String = ExternalUrlPolicy.persistableUrl(value) ?: value.substringBefore('?').take(240)
 
     private fun safeMessage(error: Throwable): String = (error.message ?: error::class.java.simpleName)
         .replace(Regex("(?i)(cookie|authorization|token|signature)=?[^\\s&;]*"), "$1=<redacted>")

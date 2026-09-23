@@ -1398,6 +1398,56 @@ class MediaCaptureServiceTest {
     }
 
     @Test
+    fun crossOriginAdaptiveInputUsesExactVariantEvidenceWithoutInheritingMasterCredentials() {
+        val service = MediaCaptureService(clock = { 6_500L })
+        val record = service.recordFor(requireNotNull(service.candidateFor(
+            url = "https://origin.example.test/master.m3u8",
+            pageTitle = "Cross-origin HLS",
+            pageUrl = "https://watch.example.test/episode",
+            mimeTypeHint = "application/vnd.apple.mpegurl",
+        ))).copy(nativeCapability = MediaNativeCapability.FallbackRequired)
+        val variants = service.parseHlsPlaylist(
+            captureId = record.id,
+            playlistUrl = record.sourceUrl,
+            playlistText = """
+                #EXTM3U
+                #EXT-X-STREAM-INF:BANDWIDTH=1800000,RESOLUTION=1280x720
+                https://cdn.example.test/video/720.m3u8
+            """.trimIndent(),
+        )
+        val selected = variants.single()
+        val spec = MediaExecutionLibraryPlanner().queueSpec(
+            capture = record,
+            variants = variants,
+            selection = MediaTrackSelection(videoVariantId = selected.id),
+            destinationUri = "content://downloads",
+            sessionHeaders = listOf(
+                MediaSessionHeader("Referer", "https://watch.example.test/episode"),
+                MediaSessionHeader("Origin", "https://watch.example.test"),
+                MediaSessionHeader("User-Agent", "browser-agent"),
+                MediaSessionHeader("Cookie", "MASTER=secret"),
+                MediaSessionHeader("Authorization", "Bearer master-secret"),
+            ),
+            variantSessionHeaders = mapOf(
+                selected.id to listOf(
+                    MediaSessionHeader("Referer", "https://watch.example.test/episode"),
+                    MediaSessionHeader("Origin", "https://watch.example.test"),
+                    MediaSessionHeader("Cookie", "VARIANT=exact-secret"),
+                    MediaSessionHeader("X-Variant", "exact-evidence"),
+                ),
+            ),
+        )
+
+        val headers = spec.selectedInputs.single().headers
+        assertEquals("https://watch.example.test/episode", headers["Referer"])
+        assertEquals("https://watch.example.test", headers["Origin"])
+        assertEquals("browser-agent", headers["User-Agent"])
+        assertEquals("VARIANT=exact-secret", headers["Cookie"])
+        assertEquals(null, headers["Authorization"])
+        assertEquals("exact-evidence", headers["X-Variant"])
+    }
+
+    @Test
     fun oneCaptureCanExposeMultipleCompletedAppOutputsEvenWhenOutputSnapshotsAreStale() {
         val record = MediaCaptureService(clock = { 7_000L })
             .detect("https://cdn.example.test/movie.mp4", pageTitle = "Movie history")

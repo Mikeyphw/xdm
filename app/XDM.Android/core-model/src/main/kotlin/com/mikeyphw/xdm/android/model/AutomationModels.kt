@@ -165,6 +165,27 @@ object ExternalUrlPolicy {
         }
     }
 
+    /**
+     * Stronger subset used when deciding whether a custom-scheme handoff itself would carry
+     * replayable credentials. Expiry/checksum hints such as expires, hash, md5, code, and policy
+     * remain redacted and refresh-aware through [hasCredentialBearingQuery], but do not by
+     * themselves justify rejecting a browser capture as a "secret".
+     */
+    fun hasReplayCredentialBearingQuery(raw: String?): Boolean {
+        val replayNames = setOf(
+            "access_token", "auth", "auth_token", "authkey", "auth_key", "cookie", "credential",
+            "hdnea", "hdnts", "hmac", "jwt", "key", "password", "sess", "session", "session_id",
+            "sessionid", "session_key", "sig", "signature", "secret", "ticket", "token",
+            "x_amz_credential", "x_amz_security_token", "x_amz_signature",
+            "x_goog_credential", "x_goog_security_token", "x_goog_signature",
+        )
+        val uri = normalizedUrl(raw)?.let { runCatching { URI(it) }.getOrNull() } ?: return false
+        return uri.rawQuery?.split('&').orEmpty().any { part ->
+            val name = normalizeQueryName(part.substringBefore('=', missingDelimiterValue = part))
+            name in replayNames || sensitiveQuerySuffixes.any { suffix -> name.endsWith(suffix) }
+        }
+    }
+
     fun isCleartext(raw: String?): Boolean = normalizedUrl(raw)
         ?.substringBefore(':')
         ?.lowercase(Locale.US)
