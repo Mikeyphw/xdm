@@ -49,14 +49,21 @@ public sealed class Rem18ReleaseMatrixContractTests
     }
 
     [Fact]
-    public void DevtoolDesktopTargetUsesRem18PackageSealAndNoScalarPythonTarget()
+    public void DevtoolDesktopTargetUsesExoVisibleRem18PackageWorkflowAndNoScalarPythonTarget()
     {
         string root = FindRepositoryRoot(AppContext.BaseDirectory);
         string config = File.ReadAllText(Path.Combine(root, ".devtool.toml"));
 
         Assert.Contains("[targets.xdm_modern]", config, StringComparison.Ordinal);
         Assert.Contains("type = \"dotnet\"", config, StringComparison.Ordinal);
-        Assert.Contains("rem18-final-release-seal.sh --devtool-package-step", config, StringComparison.Ordinal);
+        Assert.Contains("[targets.xdm_modern.workflows]", config, StringComparison.Ordinal);
+        Assert.Contains("\"job:xdm-rem18-package-matrix\"", config, StringComparison.Ordinal);
+        Assert.Contains("\"job:xdm-rem18-linux-x64-smoke\"", config, StringComparison.Ordinal);
+        Assert.Contains("\"job:xdm-rem18-linux-arm64-smoke\"", config, StringComparison.Ordinal);
+        Assert.Contains("\"job:xdm-rem18-finalize\"", config, StringComparison.Ordinal);
+        Assert.Contains("--devtool-package-matrix-only", config, StringComparison.Ordinal);
+        Assert.Contains("--devtool-finalize-only", config, StringComparison.Ordinal);
+        Assert.DoesNotContain("package_command =", config, StringComparison.Ordinal);
         Assert.DoesNotContain("python = \"\"", config, StringComparison.Ordinal);
         Assert.DoesNotContain("run_module = \"\"", config, StringComparison.Ordinal);
     }

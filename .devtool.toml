@@ -17,7 +17,84 @@ restore_command = "dotnet restore app/XDM/XDM.Modern.sln"
 build_command = "dotnet build app/XDM/XDM.Modern.sln --configuration Release --no-restore"
 test_command = "dotnet test app/XDM/XDM.Modern.sln --configuration Release --no-build"
 run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
-package_command = "bash app/XDM/eng/rem18-final-release-seal.sh --devtool-package-step"
+
+
+# REM18 package work is decomposed into EXO-visible jobs. The final-seal script
+# retains its standalone all-in-one behavior, while Devtool package execution
+# invokes one component per workflow node.
+[jobs.xdm-rem18-prepare-evidence]
+runner = "command"
+root = "."
+command = ["mkdir", "-p", "artifacts/rem18-final-seal"]
+outputs = ["artifacts/rem18-final-seal/**"]
+
+[jobs.xdm-rem18-firefox-audit]
+runner = "python"
+root = "."
+shell_command = "python3 app/XDM/eng/validate-xfe01-single-firefox-extension.py 2>&1 | tee artifacts/rem18-final-seal/single-firefox-extension-audit.log"
+outputs = ["artifacts/rem18-final-seal/single-firefox-extension-audit.log"]
+
+[jobs.xdm-rem18-ledger-audit]
+runner = "python"
+root = "."
+command = ["python3", "app/XDM/eng/rem18-ledger-audit.py", "--write-evidence", "artifacts/rem18-final-seal/ledger-audit.json"]
+outputs = ["artifacts/rem18-final-seal/ledger-audit.json"]
+
+[jobs.xdm-rem18-release-matrix-audit]
+runner = "python"
+root = "."
+command = ["python3", "app/XDM/eng/rem18-release-matrix-audit.py", "--write-evidence", "artifacts/rem18-final-seal/release-matrix-audit.json"]
+outputs = ["artifacts/rem18-final-seal/release-matrix-audit.json"]
+
+[jobs.xdm-rem18-package-matrix]
+runner = "command"
+root = "."
+command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-package-matrix-only"]
+outputs = [
+  "artifacts/rem18-final-seal/linux-package-matrix.log",
+  "artifacts/rem18-final-seal/non-linux-package-note.log",
+  "artifacts/rem18-final-seal/dotnet-validation-deferred.json",
+]
+
+[jobs.xdm-rem18-linux-x64-smoke]
+runner = "command"
+root = "."
+command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-linux-x64-smoke-only"]
+outputs = ["artifacts/rem18-final-seal/linux-x64-smoke.log"]
+
+[jobs.xdm-rem18-linux-arm64-smoke]
+runner = "command"
+root = "."
+command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-linux-arm64-smoke-only"]
+outputs = ["artifacts/rem18-final-seal/linux-arm64-structural-smoke.log"]
+
+[jobs.xdm-rem18-powershell-static]
+runner = "command"
+root = "."
+command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-powershell-static-only"]
+outputs = ["artifacts/rem18-final-seal/rem18-powershell-static.log"]
+
+[jobs.xdm-rem18-finalize]
+runner = "command"
+root = "."
+command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-finalize-only"]
+outputs = [
+  "artifacts/rem18-final-seal/final-seal-summary.json",
+  "artifacts/rem18-final-seal/rem18-final-seal-evidence.tar.gz",
+]
+
+[targets.xdm_modern.workflows]
+package = [
+  "job:xdm-rem18-prepare-evidence",
+  "job:xdm-rem18-firefox-audit",
+  "job:xdm-rem18-ledger-audit",
+  "job:xdm-rem18-release-matrix-audit",
+  "job:xdm-rem18-package-matrix",
+  "job:xdm-rem18-linux-x64-smoke",
+  "job:xdm-rem18-linux-arm64-smoke",
+  "job:xdm-rem18-powershell-static",
+  "job:xdm-rem18-finalize",
+]
 
 # REM18 creates final-seal evidence during the package command itself.
 # Do not require this artifact after restore/build/test, or Devtool reports
@@ -43,7 +120,7 @@ prefer_native_termux = true
 version = "9.7.1"
 provider = "auto"
 max_workers = 1
-structured_events = false
+structured_events = true
 no_daemon = true
 daemon_idle_timeout_ms = 900000
 parallel = false
