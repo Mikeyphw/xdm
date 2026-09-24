@@ -448,3 +448,7 @@ app/XDM.Android/media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so
 app/XDM.Android/media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffprobe.so
 app/XDM.Android/media-ffmpeg/runtime/ffmpeg-runtime.lock.json
 app/XDM.Android/media-ffmpeg/runtime/licenses/
+
+# Local backup files
+*.bak
+*.before-*
