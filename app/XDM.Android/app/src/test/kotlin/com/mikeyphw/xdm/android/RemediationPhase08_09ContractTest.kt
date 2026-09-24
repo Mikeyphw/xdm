@@ -97,8 +97,8 @@ class RemediationPhase08_09ContractTest {
 
         val legacyCapture = viewModel.substringAfter("fun captureMediaRequest(facts: MediaRequestFacts)")
             .substringBefore("fun captureMediaBatchInput")
-        assertTrue(legacyCapture.contains("Encrypted browser capture required"))
-        assertTrue(legacyCapture.contains("ExternalUrlPolicy.hasCredentialBearingQuery"))
+        assertTrue(legacyCapture.contains("Browser session capture required"))
+        assertTrue(legacyCapture.contains("ExternalUrlPolicy.hasReplayCredentialBearingQuery"))
         assertTrue(legacyCapture.indexOf("repository.saveMediaCaptureWithVariants") < legacyCapture.indexOf("rememberPreparedRevision"))
         assertFalse(external.contains("Firefox sent"))
         assertTrue(external.contains("An encrypted browser media-capture handoff is ready for review"))
