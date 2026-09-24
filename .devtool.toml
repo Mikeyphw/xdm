@@ -113,7 +113,7 @@ chroot_name = "androidos"
 [targets.xdm_android.android]
 variant = "debug"
 aapt2_provider = "termux"
-instrumentation = "never"
+instrumentation = "when-device-present"
 prefer_native_termux = true
 
 [targets.xdm_android.gradle]
