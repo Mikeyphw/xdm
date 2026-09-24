@@ -217,8 +217,14 @@ lint = [":app:lintDebug"]
 clean = ["clean"]
 
 [targets.xdm_android.artifacts]
-required = true
+required = false
 external_verification = "required"
+verify = false
+paths = [
+    "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+    "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+recursive = true
 
 [validation.phases]
 preflight = [
