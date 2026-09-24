@@ -307,3 +307,12 @@ memory_guard_mb = 384
 no_daemon = true
 low_priority = true
 
+
+[workspace]
+default_target = "xdm_android"
+
+[workspace.groups]
+desktop = ["xdm_modern"]
+android = ["xdm_android"]
+release = ["xdm_modern"]
+all = ["@desktop", "@android"]
