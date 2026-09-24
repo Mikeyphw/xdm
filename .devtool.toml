@@ -129,15 +129,15 @@ inputs = [
 
 [targets.xdm_modern.workflows]
 package = [
-  "job:xdm-rem18-prepare-evidence",
-  "job:xdm-rem18-firefox-audit",
-  "job:xdm-rem18-ledger-audit",
-  "job:xdm-rem18-release-matrix-audit",
-  "job:xdm-rem18-package-matrix",
-  "job:xdm-rem18-linux-x64-smoke",
-  "job:xdm-rem18-linux-arm64-smoke",
-  "job:xdm-rem18-powershell-static",
-  "job:xdm-rem18-finalize",
+    {id = "prepare", ref = "job:xdm-rem18-prepare-evidence", depends_on = []},
+    {id = "firefox", ref = "job:xdm-rem18-firefox-audit", depends_on = ["prepare"]},
+    {id = "ledger", ref = "job:xdm-rem18-ledger-audit", depends_on = ["prepare"]},
+    {id = "release_matrix", ref = "job:xdm-rem18-release-matrix-audit", depends_on = ["prepare"]},
+    {id = "powershell_static", ref = "job:xdm-rem18-powershell-static", depends_on = ["prepare"]},
+    {id = "package_matrix", ref = "job:xdm-rem18-package-matrix", depends_on = ["firefox", "ledger", "release_matrix"]},
+    {id = "linux_x64_smoke", ref = "job:xdm-rem18-linux-x64-smoke", depends_on = ["package_matrix"]},
+    {id = "linux_arm64_smoke", ref = "job:xdm-rem18-linux-arm64-smoke", depends_on = ["package_matrix"]},
+    {id = "finalize", ref = "job:xdm-rem18-finalize", depends_on = ["linux_x64_smoke", "linux_arm64_smoke", "powershell_static"]},
 ]
 
 # REM18 creates final-seal evidence during the package command itself.
