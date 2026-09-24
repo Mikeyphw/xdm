@@ -22,29 +22,53 @@ run_command = "dotnet run --project app/XDM/src/XDM.App/XDM.App.csproj"
 # REM18 package work is decomposed into EXO-visible jobs. The final-seal script
 # retains its standalone all-in-one behavior, while Devtool package execution
 # invokes one component per workflow node.
+inputs = [
+    ".devtool.toml",
+    "app/XDM/**",
+    "docs/**",
+]
+outputs = [
+    "artifacts/rem18-final-seal/**",
+]
 [jobs.xdm-rem18-prepare-evidence]
 runner = "command"
 root = "."
 command = ["mkdir", "-p", "artifacts/rem18-final-seal"]
 outputs = ["artifacts/rem18-final-seal/**"]
+inputs = [
+    "app/XDM/eng/**",
+    ".devtool.toml",
+]
 
 [jobs.xdm-rem18-firefox-audit]
 runner = "python"
 root = "."
 shell_command = "python3 app/XDM/eng/validate-xfe01-single-firefox-extension.py 2>&1 | tee artifacts/rem18-final-seal/single-firefox-extension-audit.log"
 outputs = ["artifacts/rem18-final-seal/single-firefox-extension-audit.log"]
+inputs = [
+    "app/XDM/eng/validate-xfe01-single-firefox-extension.py",
+    "app/XDM/**",
+]
 
 [jobs.xdm-rem18-ledger-audit]
 runner = "python"
 root = "."
 command = ["python3", "app/XDM/eng/rem18-ledger-audit.py", "--write-evidence", "artifacts/rem18-final-seal/ledger-audit.json"]
 outputs = ["artifacts/rem18-final-seal/ledger-audit.json"]
+inputs = [
+    "app/XDM/eng/rem18-ledger-audit.py",
+    "app/XDM/**",
+]
 
 [jobs.xdm-rem18-release-matrix-audit]
 runner = "python"
 root = "."
 command = ["python3", "app/XDM/eng/rem18-release-matrix-audit.py", "--write-evidence", "artifacts/rem18-final-seal/release-matrix-audit.json"]
 outputs = ["artifacts/rem18-final-seal/release-matrix-audit.json"]
+inputs = [
+    "app/XDM/eng/rem18-release-matrix-audit.py",
+    "app/XDM/**",
+]
 
 [jobs.xdm-rem18-package-matrix]
 runner = "command"
@@ -55,24 +79,40 @@ outputs = [
   "artifacts/rem18-final-seal/non-linux-package-note.log",
   "artifacts/rem18-final-seal/dotnet-validation-deferred.json",
 ]
+inputs = [
+    "app/XDM/eng/rem18-final-release-seal.sh",
+    "app/XDM/**",
+]
 
 [jobs.xdm-rem18-linux-x64-smoke]
 runner = "command"
 root = "."
 command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-linux-x64-smoke-only"]
 outputs = ["artifacts/rem18-final-seal/linux-x64-smoke.log"]
+inputs = [
+    "app/XDM/eng/rem18-final-release-seal.sh",
+    "artifacts/rem18-final-seal/**",
+]
 
 [jobs.xdm-rem18-linux-arm64-smoke]
 runner = "command"
 root = "."
 command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-linux-arm64-smoke-only"]
 outputs = ["artifacts/rem18-final-seal/linux-arm64-structural-smoke.log"]
+inputs = [
+    "app/XDM/eng/rem18-final-release-seal.sh",
+    "artifacts/rem18-final-seal/**",
+]
 
 [jobs.xdm-rem18-powershell-static]
 runner = "command"
 root = "."
 command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-powershell-static-only"]
 outputs = ["artifacts/rem18-final-seal/rem18-powershell-static.log"]
+inputs = [
+    "app/XDM/eng/rem18-final-release-seal.sh",
+    "app/XDM/**",
+]
 
 [jobs.xdm-rem18-finalize]
 runner = "command"
@@ -81,6 +121,10 @@ command = ["bash", "app/XDM/eng/rem18-final-release-seal.sh", "--devtool-finaliz
 outputs = [
   "artifacts/rem18-final-seal/final-seal-summary.json",
   "artifacts/rem18-final-seal/rem18-final-seal-evidence.tar.gz",
+]
+inputs = [
+    "app/XDM/eng/rem18-final-release-seal.sh",
+    "artifacts/rem18-final-seal/**",
 ]
 
 [targets.xdm_modern.workflows]
@@ -109,6 +153,14 @@ type = "android"
 root = "app/XDM.Android"
 execution_environment = "native-termux"
 chroot_name = "androidos"
+inputs = [
+    ".devtool.toml",
+    "app/XDM.Android/**",
+]
+outputs = [
+    "app/XDM.Android/**/build/**",
+    "app/XDM.Android/artifacts/**",
+]
 
 [targets.xdm_android.android]
 variant = "debug"
