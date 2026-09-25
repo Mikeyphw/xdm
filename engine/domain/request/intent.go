@@ -110,6 +110,7 @@ const (
 	CredentialCookie             CredentialKind = "cookie"
 	CredentialProxyAuthorization CredentialKind = "proxy_authorization"
 	CredentialAPIKey             CredentialKind = "api_key"
+	CredentialFTPPassword        CredentialKind = "ftp_password"
 )
 
 type CredentialScope struct {
@@ -120,6 +121,7 @@ type CredentialScope struct {
 type CredentialReference struct {
 	Kind       CredentialKind  `json:"kind"`
 	HeaderName string          `json:"header_name,omitempty"`
+	Principal  string          `json:"principal,omitempty"`
 	Ref        SecretReference `json:"ref"`
 	Scope      CredentialScope `json:"scope"`
 }
@@ -271,7 +273,7 @@ func NewNetworkIntent(in NetworkIntent) (NetworkIntent, error) {
 	for i := range in.Credentials {
 		c := &in.Credentials[i]
 		switch c.Kind {
-		case CredentialAuthorization, CredentialCookie, CredentialProxyAuthorization, CredentialAPIKey:
+		case CredentialAuthorization, CredentialCookie, CredentialProxyAuthorization, CredentialAPIKey, CredentialFTPPassword:
 		default:
 			return NetworkIntent{}, fmt.Errorf("%w: credential kind", ErrInvalidIntent)
 		}
@@ -281,6 +283,12 @@ func NewNetworkIntent(in NetworkIntent) (NetworkIntent, error) {
 		if c.Kind == CredentialAPIKey {
 			if !sensitiveHeader(c.HeaderName) || strings.ContainsAny(c.HeaderName, "\r\n:") {
 				return NetworkIntent{}, fmt.Errorf("%w: credential header", ErrInvalidIntent)
+			}
+		}
+		if c.Kind == CredentialFTPPassword {
+			c.Principal = strings.TrimSpace(c.Principal)
+			if c.Principal == "" || strings.ContainsAny(c.Principal, "\r\n") {
+				return NetworkIntent{}, fmt.Errorf("%w: ftp principal", ErrInvalidIntent)
 			}
 		}
 		if c.Kind == CredentialProxyAuthorization {

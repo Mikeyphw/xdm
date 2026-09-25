@@ -1,25 +1,78 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-ftp-001",
+  "category": "ftp",
   "capability_ids": [
     "XGO-CAP-FTP-001"
   ],
-  "category": "ftp",
+  "donor_ids": [
+    "desktop_ftp"
+  ],
   "derivation": {
     "behavior": "FTP/FTPS downloads use canonical attempt/checkpoint/verification lifecycle.",
     "canonical_behavior": "Go FTP adapter reuses limiter, retry taxonomy, staging, verification and publication infrastructure.",
     "strategy": "desktop_led"
   },
-  "donor_ids": [
-    "desktop_ftp"
-  ],
-  "expected": {
-    "invariants": [
-      "Go FTP adapter reuses limiter, retry taxonomy, staging, verification and publication infrastructure."
+  "input": {
+    "cases": [
+      {
+        "name": "anonymous_ftp",
+        "scheme": "ftp",
+        "credential_mode": "anonymous",
+        "expected": "transfer_complete"
+      },
+      {
+        "name": "authenticated_ftp",
+        "scheme": "ftp",
+        "credential_mode": "ftp_password_reference",
+        "expected": "transfer_complete"
+      },
+      {
+        "name": "ftps",
+        "scheme": "ftps",
+        "control_tls": "implicit",
+        "data_protection": "private",
+        "expected": "transfer_complete"
+      },
+      {
+        "name": "resume",
+        "scheme": "ftp",
+        "restart_offset": 4,
+        "expected_command": "REST",
+        "expected": "resume_from_offset"
+      },
+      {
+        "name": "wrong_size",
+        "server_size": 5,
+        "expected_size": 8,
+        "expected_failure": "representation_changed"
+      },
+      {
+        "name": "disconnect",
+        "fault": "data_channel_disconnect",
+        "expected_failure": "network_unavailable"
+      },
+      {
+        "name": "retry",
+        "failure": "network_unavailable",
+        "replayable": true,
+        "expected_decision": "retry_at"
+      },
+      {
+        "name": "checksum_after_ftp",
+        "checksum": "sha256",
+        "expected": "verified"
+      }
     ]
   },
-  "fixture_id": "xgo-cap-ftp-001",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "FTP/FTPS downloads use canonical attempt/checkpoint/verification lifecycle."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "FTP and FTPS consume canonical NetworkIntent rather than a protocol-specific request model.",
+      "FTP passwords are resolved from opaque credential references at execution time; anonymous login remains explicit and deterministic.",
+      "Resume uses REST only for bodyless GET semantics and writes response bytes through canonical durable checkpoint commits.",
+      "Connection and byte accounting use the shared transfer resource limiter contract.",
+      "Disconnects and unsupported server features are represented through typed engine failures rather than string matching.",
+      "Transport completion remains nonterminal until canonical checksum verification and publication preparation succeed."
+    ]
+  }
 }

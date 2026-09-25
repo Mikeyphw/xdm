@@ -494,7 +494,7 @@
         "XGO-CAP-FTP-001"
       ],
       "category": "ftp",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_ftp"
       ],

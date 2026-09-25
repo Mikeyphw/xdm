@@ -1421,8 +1421,12 @@ inputs = [
   "engine/security/urlpolicy/**",
   "engine/store/checkpoint/**",
   "engine/store/sqlite/**",
+  "engine/transfer/checksum/**",
+  "engine/transfer/finalize/**",
   "engine/transfer/http/**",
+  "engine/transfer/lifecycle/**",
   "engine/transfer/retry/**",
+  "engine/transfer/staging/**",
   "engine/cmd/xgo-backends-audit/**",
   "tools/xgo/audit_backends_contract.py",
   "tools/xgo/audit_foundation.py",
@@ -1431,6 +1435,7 @@ inputs = [
   "engine/docs/donor-map.yaml",
   "engine/testdata/fixture-registry.json",
   "engine/testdata/request/xgo-cap-request-002.json",
+  "engine/testdata/ftp/xgo-cap-ftp-001.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1442,9 +1447,15 @@ outputs = [
 packages = [
   "./engine/backends/...",
   "./engine/domain/request",
+  "./engine/security/credentials",
   "./engine/security/redirect",
+  "./engine/store/checkpoint",
+  "./engine/transfer/checksum",
+  "./engine/transfer/finalize",
   "./engine/transfer/http",
+  "./engine/transfer/lifecycle",
   "./engine/transfer/retry",
+  "./engine/transfer/staging",
 ]
 build_targets = ["./engine/cmd/xgo-backends-audit"]
 vet = true
@@ -1461,6 +1472,7 @@ inputs = [
   "engine/docs/donor-map.yaml",
   "engine/testdata/fixture-registry.json",
   "engine/testdata/request/xgo-cap-request-002.json",
+  "engine/testdata/ftp/xgo-cap-ftp-001.json",
   "tools/xgo/audit_backends_contract.py",
   "tools/xgo/audit_foundation.py",
   "tools/xgo/audit_fixtures.py",
@@ -1493,11 +1505,38 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/backends/post-replay-lab.json"]
 
+[targets.xgo_backends.jobs.ftp_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-backends-audit",
+  "--mode", "ftp",
+  "--output", ".devtool/reports/xgo/backends/ftp-lab.json",
+]
+inputs = [
+  "engine/backends/ftp/**",
+  "engine/domain/failure/**",
+  "engine/domain/identity/**",
+  "engine/domain/request/**",
+  "engine/domain/resource/**",
+  "engine/security/credentials/**",
+  "engine/store/checkpoint/**",
+  "engine/store/sqlite/**",
+  "engine/transfer/checksum/**",
+  "engine/transfer/finalize/**",
+  "engine/transfer/lifecycle/**",
+  "engine/transfer/retry/**",
+  "engine/transfer/staging/**",
+  "engine/cmd/xgo-backends-audit/**",
+  "engine/testdata/ftp/xgo-cap-ftp-001.json",
+]
+outputs = [".devtool/reports/xgo/backends/ftp-lab.json"]
+
 [targets.xgo_backends.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
   { id = "backend_contract_audit", ref = "job:backend_contract_audit", depends_on = ["go"] },
   { id = "post_replay_lab", ref = "job:post_replay_lab", depends_on = ["backend_contract_audit"] },
+  { id = "ftp_lab", ref = "job:ftp_lab", depends_on = ["post_replay_lab"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

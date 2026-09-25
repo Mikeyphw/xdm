@@ -351,28 +351,33 @@ func main() {
 	mode := flag.String("mode", "post-replay", "audit mode")
 	output := flag.String("output", "", "report path")
 	flag.Parse()
-	if *mode != "post-replay" {
+	var r report
+	switch *mode {
+	case "post-replay":
+		cases := []caseResult{
+			runCase("body_source_kinds", bodyKindsCase),
+			runCase("post_download", postDownloadCase),
+			runCase("retry_replayable_body", retryReplayableCase),
+			runCase("one_shot_retry_refused", oneShotRetryCase),
+			runCase("redirect_replay_semantics", redirectCase),
+			runCase("credentialed_post", credentialedCase),
+			runCase("post_range_resume_rejected", rangeGuardCase),
+			runCase("safe_diagnostic_redaction", redactionCase),
+		}
+		r = report{SchemaVersion: 1, Mode: *mode, Status: "pass", Total: len(cases), Cases: cases}
+		for _, c := range cases {
+			if c.Passed {
+				r.Passed++
+			}
+		}
+		if r.Passed != r.Total {
+			r.Status = "fail"
+		}
+	case "ftp":
+		r = runFTPLab()
+	default:
 		fmt.Fprintln(os.Stderr, "unsupported mode:", *mode)
 		os.Exit(2)
-	}
-	cases := []caseResult{
-		runCase("body_source_kinds", bodyKindsCase),
-		runCase("post_download", postDownloadCase),
-		runCase("retry_replayable_body", retryReplayableCase),
-		runCase("one_shot_retry_refused", oneShotRetryCase),
-		runCase("redirect_replay_semantics", redirectCase),
-		runCase("credentialed_post", credentialedCase),
-		runCase("post_range_resume_rejected", rangeGuardCase),
-		runCase("safe_diagnostic_redaction", redactionCase),
-	}
-	r := report{SchemaVersion: 1, Mode: *mode, Status: "pass", Total: len(cases), Cases: cases}
-	for _, c := range cases {
-		if c.Passed {
-			r.Passed++
-		}
-	}
-	if r.Passed != r.Total {
-		r.Status = "fail"
 	}
 	raw, _ := json.MarshalIndent(r, "", "  ")
 	raw = append(raw, '\n')

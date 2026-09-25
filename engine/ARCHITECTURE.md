@@ -298,3 +298,38 @@ Safe backend diagnostics contain the query-stripped URL, method, admitted header
 metadata, redacted credential markers, body kind/replayability/content type and
 optional length. Body references, body bytes, query secrets, credential
 references and resolved credential material are excluded by default.
+
+## FTP/FTPS backend adapter (XGO-37)
+
+FTP/FTPS execution consumes the same canonical `domain/request.NetworkIntent`
+used by HTTP. The transport admits bodyless `GET` semantics only; it does not
+introduce an FTP-specific request aggregate. Authenticated FTP adds a canonical
+`ftp_password` credential reference with a non-secret principal. Password bytes
+remain runtime-only secret material. Anonymous login is explicit and
+deterministic when no matching FTP credential reference exists.
+
+`backends/ftp` provides a production passive-mode client and a protocol-neutral
+adapter. Plain FTP uses the canonical normalized `ftp` origin. `ftps` denotes
+implicit TLS (default port 990); after login the control channel negotiates
+`PBSZ 0` / `PROT P`, and the passive data channel is TLS-protected before
+payload bytes are exposed to the transfer loop. EPSV is preferred and PASV is a
+fallback; any advertised PASV host is ignored in favor of the already-approved
+control host so a server cannot redirect the data channel to a different host.
+Unsupported SIZE/REST/passive/TLS capabilities are represented by typed adapter
+errors and mapped into the engine failure taxonomy.
+
+FTP transfer bytes use the existing durable checkpoint contract: the adapter
+acquires the same central connection/byte limiter interface, writes only through
+`checkpoint.Committer`, and moves the shared attempt lifecycle to
+`transport_complete` only after the server size and committed byte count agree.
+Resume uses `REST` from the canonical committed offset. Disconnects become the
+existing retryable network failure category; representation-size disagreement
+becomes `representation_changed`.
+
+The SQLite attempt lifecycle is now physically owned by
+`transfer/lifecycle` rather than `transfer/http`. HTTP keeps a compatibility
+alias, while FTP consumes the same protocol-neutral implementation. Transport
+completion remains nonterminal: whole-file checksum verification,
+ArtifactGeneration creation, and publication preparation still run through the
+existing `transfer/checksum` and `transfer/finalize` path. No FTP-specific
+verification or publication state exists.

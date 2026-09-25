@@ -517,7 +517,7 @@
         "desktop_ftp"
       ],
       "id": "XGO-CAP-FTP-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-37",
       "test_id": "fixture:xgo-cap-ftp-001"
     },

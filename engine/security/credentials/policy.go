@@ -20,7 +20,7 @@ func origin(raw string) (string, *url.URL, error) {
 	scheme := strings.ToLower(u.Scheme)
 	host := strings.ToLower(u.Hostname())
 	port := u.Port()
-	if (scheme == "https" && port == "443") || (scheme == "http" && port == "80") {
+	if (scheme == "https" && port == "443") || (scheme == "http" && port == "80") || (scheme == "ftp" && port == "21") || (scheme == "ftps" && port == "990") {
 		port = ""
 	}
 	authority := host
