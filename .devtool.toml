@@ -1807,6 +1807,9 @@ inputs = [
   "engine/testdata/fixture-registry.json",
   "engine/testdata/capture/xgo-cap-capture-001.json",
   "engine/testdata/capture/xgo-cap-capture-002.json",
+  "engine/testdata/media/xgo-cap-media-001.json",
+  "engine/testdata/media/xgo-cap-media-002.json",
+  "engine/testdata/media/xgo-cap-media-004.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1849,11 +1852,43 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/capture-generation-matrix.json"]
 
+
+[targets.xgo_media.jobs.media_identity_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "media_identity",
+  "--output", ".devtool/reports/xgo/media/media-identity-matrix.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/media/xgo-cap-media-001.json",
+  "engine/testdata/media/xgo-cap-media-004.json",
+]
+outputs = [".devtool/reports/xgo/media/media-identity-matrix.json"]
+
+[targets.xgo_media.jobs.media_graph_diff]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "media_graph",
+  "--output", ".devtool/reports/xgo/media/media-graph-diff.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/media/xgo-cap-media-002.json",
+]
+outputs = [".devtool/reports/xgo/media/media-graph-diff.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
   { id = "capture_corpus", ref = "job:capture_corpus", depends_on = ["go"] },
   { id = "capture_generation_matrix", ref = "job:capture_generation_matrix", depends_on = ["capture_corpus"] },
+  { id = "media_identity_matrix", ref = "job:media_identity_matrix", depends_on = ["capture_generation_matrix"] },
+  { id = "media_graph_diff", ref = "job:media_graph_diff", depends_on = ["media_identity_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

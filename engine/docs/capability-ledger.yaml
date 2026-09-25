@@ -745,7 +745,7 @@
       ],
       "id": "XGO-CAP-CAPTURE-001",
       "status": "IMPLEMENTED",
-      "target_overlay": "XGO-49+50",
+      "target_overlay": "XGO-49",
       "test_id": "fixture:xgo-cap-capture-001"
     },
     {
@@ -759,7 +759,7 @@
       ],
       "id": "XGO-CAP-CAPTURE-002",
       "status": "IMPLEMENTED",
-      "target_overlay": "XGO-49+50",
+      "target_overlay": "XGO-50",
       "test_id": "fixture:xgo-cap-capture-002"
     },
     {
@@ -772,7 +772,7 @@
         "android_media_security"
       ],
       "id": "XGO-CAP-MEDIA-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-51",
       "test_id": "fixture:xgo-cap-media-001"
     },
@@ -786,7 +786,7 @@
         "android_logical_media_graph_test"
       ],
       "id": "XGO-CAP-MEDIA-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-52",
       "test_id": "fixture:xgo-cap-media-002"
     },
@@ -815,7 +815,7 @@
         "desktop_browser_security_test"
       ],
       "id": "XGO-CAP-MEDIA-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-51",
       "test_id": "fixture:xgo-cap-media-004"
     },

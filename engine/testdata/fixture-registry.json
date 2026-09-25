@@ -681,7 +681,7 @@
         "XGO-CAP-MEDIA-001"
       ],
       "category": "media",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_logical_media_graph",
         "android_media_security"
@@ -694,7 +694,7 @@
         "XGO-CAP-MEDIA-002"
       ],
       "category": "media",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_logical_media_graph",
         "android_logical_media_graph_test"

@@ -14,13 +14,21 @@
   ],
   "expected": {
     "invariants": [
-      "Go canonicalizes resource identity without blindly discarding identity-relevant query parameters."
-    ]
+      "Signed URL token rotation does not change resource identity when policy marks tokens as transport-only.",
+      "Unknown query parameters remain identity-relevant by default.",
+      "Transport URL remains available for replay evidence and is distinct from canonical resource identity."
+    ],
+    "same_identity": true,
+    "unknown_query_identity_relevant": true
   },
   "fixture_id": "xgo-cap-media-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Transport URL, signed URL identity, logical resource identity and credential scope are distinct."
+    "rotated_signed_urls": [
+      "https://cdn.example/master.m3u8?sig=<signature-ref-one>&quality=hd&track=main",
+      "https://cdn.example/master.m3u8?track=main&quality=hd&sig=<signature-ref-two>"
+    ],
+    "identity_relevant_url": "https://cdn.example/master.m3u8?quality=sd&sig=<signature-ref-two>",
+    "signed_url_policy": "transport_only"
   },
   "schema_version": 1
 }

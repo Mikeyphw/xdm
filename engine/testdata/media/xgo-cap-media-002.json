@@ -13,14 +13,30 @@
     "android_logical_media_graph_test"
   ],
   "expected": {
+    "graph_shape": {
+      "items": 1,
+      "sources": 1,
+      "tracks": 2,
+      "renditions": 2,
+      "fragment_sets": 2
+    },
     "invariants": [
-      "Go graph models media item/source/variant/track/rendition/manifest/fragment-set/protection with provenance."
+      "Repeated observations of the same manifest through rotated signed URLs converge into one logical item/source.",
+      "Audio/video rendition groups are represented as graph entities with provenance.",
+      "Protection classification uses deterministic precedence and graph growth is bounded."
     ]
   },
   "fixture_id": "xgo-cap-media-002",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Repeated captures converge into bounded logical media graph."
+    "captures": [
+      "https://cdn.example/master.m3u8?sig=<signature-ref-one>&quality=hd",
+      "https://cdn.example/master.m3u8?quality=hd&sig=<signature-ref-two>"
+    ],
+    "renditions": [
+      "video",
+      "audio"
+    ],
+    "max_items": 2
   },
   "schema_version": 1
 }

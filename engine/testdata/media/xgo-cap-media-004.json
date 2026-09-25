@@ -15,15 +15,18 @@
   "expected": {
     "forward_credentials": false,
     "invariants": [
-      "Media child requests obey origin-scoped credential policy."
+      "Same-origin children inside the credential path may inherit the credential reference.",
+      "Cross-origin key and segment requests do not inherit credentials unless a typed policy explicitly allows that origin and resource kind.",
+      "Credential decisions carry a reason and never expose the secret value."
     ]
   },
   "fixture_id": "xgo-cap-media-004",
   "input": {
-    "child_origin": "https://cdn.other.example",
-    "child_policy": "not-approved",
     "manifest_origin": "https://media.example",
-    "parent_credentials": "<secret-ref>"
+    "parent_credentials": "<secret-ref>",
+    "same_origin_segment": "https://media.example/path/seg-1.ts",
+    "child_origin": "https://cdn.other.example",
+    "child_policy": "not-approved"
   },
   "schema_version": 1
 }
