@@ -1659,47 +1659,74 @@ validate = [
   { id = "backend_migration_faults", ref = "job:backend_migration_faults", depends_on = ["aria2_ownership_faults"] },
 ]
 
-# Bootstrap target for future roadmap ownership. The command runner is intentional
-# until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
+# XGO-44+45 activate scheduler ownership on the native Go runner.
 [targets.xgo_scheduler]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
+  "go.work",
+  "engine/scheduler/**",
+  "engine/store/sqlite/**",
+  "engine/domain/identity/**",
+  "engine/cmd/xgo-scheduler-audit/**",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/queue/xgo-cap-queue-001.json",
+  "engine/testdata/queue/xgo-cap-queue-002.json",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/scheduler/**",
 ]
 
-[targets.xgo_scheduler.jobs.bootstrap_contract]
+[targets.xgo_scheduler.go]
+packages = [
+  "./engine/scheduler",
+  "./engine/store/sqlite",
+]
+build_targets = ["./engine/cmd/xgo-scheduler-audit"]
+vet = true
+
+[targets.xgo_scheduler.jobs.queue_model_matrix]
 runner = "command"
 command = [
-  "python3",
-  "tools/xgo/audit_topology.py",
-  "target-ready",
-  "--config",
-  ".devtool.toml",
-  "--target",
-  "xgo_scheduler",
-  "--output",
-  ".devtool/reports/xgo/scheduler/bootstrap.json",
+  "go", "run", "./engine/cmd/xgo-scheduler-audit",
+  "--mode", "queue_model",
+  "--output", ".devtool/reports/xgo/scheduler/queue-model-matrix.json",
 ]
 inputs = [
-  ".devtool.toml",
-  "tools/xgo/audit_topology.py",
+  "engine/scheduler/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-scheduler-audit/**",
+  "engine/testdata/queue/xgo-cap-queue-001.json",
 ]
-outputs = [
-  ".devtool/reports/xgo/scheduler/bootstrap.json",
+outputs = [".devtool/reports/xgo/scheduler/queue-model-matrix.json"]
+
+[targets.xgo_scheduler.jobs.dependency_graph_stress]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-scheduler-audit",
+  "--mode", "dependency_graph",
+  "--output", ".devtool/reports/xgo/scheduler/dependency-graph-stress.json",
 ]
+inputs = [
+  "engine/scheduler/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-scheduler-audit/**",
+  "engine/testdata/queue/xgo-cap-queue-002.json",
+]
+outputs = [".devtool/reports/xgo/scheduler/dependency-graph-stress.json"]
 
 [targets.xgo_scheduler.workflows]
 validate = [
-  { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "go", ref = "runner:go#validate", depends_on = [] },
+  { id = "queue_model_matrix", ref = "job:queue_model_matrix", depends_on = ["go"] },
+  { id = "dependency_graph_stress", ref = "job:dependency_graph_stress", depends_on = ["queue_model_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

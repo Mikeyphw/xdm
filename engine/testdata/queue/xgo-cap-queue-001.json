@@ -5,7 +5,7 @@
   "category": "queue",
   "derivation": {
     "behavior": "Queues persist priority, enablement, concurrency and membership ordering.",
-    "canonical_behavior": "Go queue state is authoritative and revisioned.",
+    "canonical_behavior": "Go queue state is authoritative, revisioned, and transactionally owns membership ordering.",
     "strategy": "android_led"
   },
   "donor_ids": [
@@ -13,14 +13,49 @@
     "android_queue_coordinator"
   ],
   "expected": {
+    "delete_with_members_policy": "reject_or_unassign_explicitly",
+    "fields": [
+      "enabled",
+      "priority",
+      "concurrency",
+      "bandwidth_profile",
+      "conditions",
+      "schedule_ref",
+      "retry_policy"
+    ],
     "invariants": [
-      "Go queue state is authoritative and revisioned."
+      "Go queue state is authoritative and revisioned.",
+      "Each download has at most one active queue assignment.",
+      "Membership order changes are transactional.",
+      "Stale queue revisions are rejected."
+    ],
+    "membership_order": [
+      "dl_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "dl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     ]
   },
   "fixture_id": "xgo-cap-queue-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Queues persist priority, enablement, concurrency and membership ordering."
+    "downloads": [
+      "dl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "dl_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    ],
+    "queue": {
+      "bandwidth_profile": "day",
+      "concurrency": 2,
+      "conditions": [
+        "online",
+        "wifi"
+      ],
+      "enabled": true,
+      "priority": 10,
+      "retry_policy": "standard",
+      "schedule_ref": "schedule_daily"
+    },
+    "reorder": [
+      "dl_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "dl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]
   },
   "schema_version": 1
 }

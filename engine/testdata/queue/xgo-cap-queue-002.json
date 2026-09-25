@@ -12,27 +12,45 @@
     "desktop_queue_graph"
   ],
   "expected": {
-    "decision": "reject_mutation",
-    "invariants": [
-      "Queue dependency graph must remain acyclic."
+    "cycle": {
+      "decision": "reject_mutation",
+      "reason": "dependency_cycle"
+    },
+    "dependency_types": [
+      "completion_required",
+      "success_required"
     ],
-    "reason": "dependency_cycle"
+    "invariants": [
+      "Queue dependency graph must remain acyclic.",
+      "Eligibility returns the exact blocked dependency reason.",
+      "Dependency retry outcome can unblock dependents without rewriting historical edges."
+    ],
+    "success_required_failure": {
+      "eligible": false,
+      "reason": "dependency_failed"
+    },
+    "success_required_retry_success": {
+      "eligible": true
+    }
   },
   "fixture_id": "xgo-cap-queue-002",
   "input": {
     "dependencies": [
-      [
-        "A",
-        "B"
-      ],
-      [
-        "B",
-        "C"
-      ],
-      [
-        "C",
-        "A"
-      ]
+      {
+        "from": "dl_dddddddddddddddddddddddddddddddd",
+        "requires": "success_required",
+        "to": "dl_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      {
+        "from": "dl_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "requires": "completion_required",
+        "to": "dl_ffffffffffffffffffffffffffffffff"
+      },
+      {
+        "from": "dl_ffffffffffffffffffffffffffffffff",
+        "requires": "completion_required",
+        "to": "dl_dddddddddddddddddddddddddddddddd"
+      }
     ]
   },
   "schema_version": 1

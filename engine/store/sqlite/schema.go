@@ -182,6 +182,18 @@ CREATE TABLE IF NOT EXISTS queue_membership (
     FOREIGN KEY(queue_id) REFERENCES queues(queue_id) ON DELETE CASCADE,
     FOREIGN KEY(download_id) REFERENCES downloads(download_id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS download_dependencies (
+    download_id TEXT NOT NULL,
+    dependency_download_id TEXT NOT NULL,
+    requirement TEXT NOT NULL CHECK(requirement IN ('completion_required','success_required')),
+    revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0),
+    created_at_unix_ms INTEGER NOT NULL,
+    updated_at_unix_ms INTEGER NOT NULL,
+    PRIMARY KEY(download_id, dependency_download_id),
+    CHECK(download_id <> dependency_download_id),
+    FOREIGN KEY(download_id) REFERENCES downloads(download_id) ON DELETE CASCADE,
+    FOREIGN KEY(dependency_download_id) REFERENCES downloads(download_id) ON DELETE RESTRICT
+);
 CREATE TABLE IF NOT EXISTS schedule_definitions (
     schedule_id TEXT PRIMARY KEY,
     definition_json TEXT NOT NULL,
@@ -249,6 +261,8 @@ CREATE INDEX IF NOT EXISTS idx_artifacts_download ON artifacts(download_id, arti
 CREATE INDEX IF NOT EXISTS idx_publication_state ON publication_transactions(state);
 CREATE INDEX IF NOT EXISTS idx_checkpoint_attempt ON checkpoint_blocks(download_id, attempt_generation, block_index);
 CREATE INDEX IF NOT EXISTS idx_queue_position ON queue_membership(queue_id, position);
+CREATE INDEX IF NOT EXISTS idx_dependency_download ON download_dependencies(download_id, dependency_download_id);
+CREATE INDEX IF NOT EXISTS idx_dependency_reverse ON download_dependencies(dependency_download_id);
 CREATE INDEX IF NOT EXISTS idx_media_source_media ON media_sources(media_id);
 CREATE INDEX IF NOT EXISTS idx_diagnostic_download ON diagnostic_events(download_id, created_at_unix_ms);
 `
