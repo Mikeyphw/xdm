@@ -658,7 +658,7 @@
         "android_queue_coordinator"
       ],
       "id": "XGO-CAP-SCHED-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-46",
       "test_id": "fixture:xgo-cap-sched-001"
     },
@@ -672,7 +672,7 @@
         "desktop_download_schedule"
       ],
       "id": "XGO-CAP-SCHED-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-46",
       "test_id": "fixture:xgo-cap-sched-002"
     },

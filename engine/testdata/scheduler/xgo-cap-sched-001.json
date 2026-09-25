@@ -13,13 +13,44 @@
     "android_queue_coordinator"
   ],
   "expected": {
+    "hold_reasons": [
+      "offline",
+      "metered",
+      "wifi_unavailable",
+      "not_charging",
+      "battery_low",
+      "storage_low",
+      "power_source_disallowed"
+    ],
     "invariants": [
-      "Platform supplies condition snapshot; Go evaluates eligibility and hold reasons."
-    ]
+      "Runtime conditions are supplied by the host as a snapshot, not sampled independently by scheduler code.",
+      "Go evaluates every runtime hold reason deterministically from that snapshot.",
+      "Condition changes while queued can unblock work without rewriting queue membership or dependencies."
+    ],
+    "ready_snapshot": {
+      "battery_percent": 90,
+      "charging": true,
+      "metered": false,
+      "online": true,
+      "power_source": "ac",
+      "storage_free_bytes": 2147483648,
+      "wifi": true
+    }
   },
   "fixture_id": "xgo-cap-sched-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
+    "policy": {
+      "allowed_power_sources": [
+        "ac",
+        "usb"
+      ],
+      "min_battery_percent": 50,
+      "min_storage_free_bytes": 1073741824,
+      "require_charging": true,
+      "require_online": true,
+      "require_wifi": true,
+      "require_unmetered": true
+    },
     "scenario": "Runtime conditions include online/metered/Wi-Fi/charging/battery/storage."
   },
   "schema_version": 1

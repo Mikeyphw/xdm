@@ -22,7 +22,7 @@ type report struct {
 }
 
 func main() {
-	mode := flag.String("mode", "", "queue_model or dependency_graph")
+	mode := flag.String("mode", "", "queue_model, dependency_graph, or conditions_time")
 	output := flag.String("output", "", "output JSON path")
 	flag.Parse()
 	if *mode == "" || *output == "" {
@@ -35,6 +35,8 @@ func main() {
 		r, err = runQueueModel()
 	case "dependency_graph":
 		r, err = runDependencyGraph()
+	case "conditions_time":
+		r, err = runConditionsTime()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -151,6 +153,92 @@ func runDependencyGraph() (report, error) {
 		return report{}, fmt.Errorf("dependency retry success did not unblock: %+v", ready)
 	}
 	return report{Mode: "dependency_graph", Status: "PASS", Checks: []string{"chain dependency", "cycle insertion rejection", "success-required failure propagation", "dependency retry success unblocks"}}, nil
+}
+
+func runConditionsTime() (report, error) {
+	store, _, ctx, cleanup, err := openStore()
+	if err != nil {
+		return report{}, err
+	}
+	defer cleanup()
+	rev, _ := identity.NewRevision(1)
+	rec, err := store.SaveSchedule(ctx, scheduler.ScheduleRecord{
+		ID:       "schedule_audit_time",
+		Enabled:  true,
+		Revision: rev,
+		Definition: scheduler.ScheduleDefinition{
+			Timezone:                 "America/New_York",
+			Recurrence:               scheduler.RecurrenceDaily,
+			Windows:                  []scheduler.ScheduleWindow{{StartMinute: 60, EndMinute: 4 * 60}, {StartMinute: 22 * 60, EndMinute: 2 * 60}},
+			MissedRunPolicy:          scheduler.MissedRunStartWhenAvailable,
+			MissedRunGraceMinutes:    120,
+			HostSuppliesRuntimeState: true,
+			PreserveAcrossRestarts:   true,
+			ConditionPolicy: scheduler.ConditionPolicy{
+				RequireOnline:       true,
+				RequireUnmetered:    true,
+				RequireWiFi:         true,
+				RequireCharging:     true,
+				MinBatteryPercent:   50,
+				MinStorageFreeBytes: 1 << 30,
+				AllowedPowerSources: []scheduler.PowerSource{scheduler.PowerAC, scheduler.PowerUSB},
+			},
+		},
+	})
+	if err != nil {
+		return report{}, err
+	}
+	badSnapshot := scheduler.RuntimeSnapshot{Online: false, Metered: true, WiFi: false, Charging: false, BatteryPercent: 10, StorageFreeBytes: 1, PowerSource: scheduler.PowerBattery}
+	blocked, err := scheduler.EvaluateSchedule(rec.Definition, scheduler.ScheduleInput{Now: time.Date(2026, 3, 8, 3, 30, 0, 0, mustNY()), Runtime: badSnapshot, HaveRuntime: true})
+	if err != nil {
+		return report{}, err
+	}
+	if blocked.Eligible || len(blocked.Holds) != 7 {
+		return report{}, fmt.Errorf("expected seven runtime holds, got %+v", blocked)
+	}
+	goodSnapshot := scheduler.RuntimeSnapshot{Online: true, Metered: false, WiFi: true, Charging: true, BatteryPercent: 90, StorageFreeBytes: 2 << 30, PowerSource: scheduler.PowerAC}
+	eligible, err := scheduler.EvaluateSchedule(rec.Definition, scheduler.ScheduleInput{Now: time.Date(2026, 3, 8, 3, 30, 0, 0, mustNY()), Runtime: goodSnapshot, HaveRuntime: true})
+	if err != nil {
+		return report{}, err
+	}
+	if !eligible.Eligible || !eligible.WindowMatched {
+		return report{}, fmt.Errorf("DST-forward schedule should be eligible, got %+v", eligible)
+	}
+	fallFirst := time.Date(2026, 11, 1, 1, 30, 0, 0, mustNY())
+	fallSecond := fallFirst.Add(time.Hour)
+	for _, now := range []time.Time{fallFirst, fallSecond} {
+		eval, err := scheduler.EvaluateSchedule(rec.Definition, scheduler.ScheduleInput{Now: now, Runtime: goodSnapshot, HaveRuntime: true})
+		if err != nil {
+			return report{}, err
+		}
+		if !eval.Eligible || !eval.WindowMatched {
+			return report{}, fmt.Errorf("DST-back schedule should be eligible at %s: %+v", now, eval)
+		}
+	}
+	overnight, err := scheduler.EvaluateSchedule(rec.Definition, scheduler.ScheduleInput{Now: time.Date(2026, 1, 2, 23, 30, 0, 0, mustNY()), Runtime: goodSnapshot, HaveRuntime: true, ForceRestart: true})
+	if err != nil {
+		return report{}, err
+	}
+	if !overnight.Eligible || !overnight.WindowMatched {
+		return report{}, fmt.Errorf("overnight restart window should be eligible: %+v", overnight)
+	}
+	missedDef := scheduler.ScheduleDefinition{Timezone: "UTC", Recurrence: scheduler.RecurrenceDaily, Windows: []scheduler.ScheduleWindow{{StartMinute: 9 * 60, EndMinute: 10 * 60}}, MissedRunPolicy: scheduler.MissedRunStartWhenAvailable, MissedRunGraceMinutes: 90}
+	missed, err := scheduler.EvaluateSchedule(missedDef, scheduler.ScheduleInput{Now: time.Date(2026, 5, 1, 10, 30, 0, 0, time.UTC), LastChecked: time.Date(2026, 5, 1, 8, 0, 0, 0, time.UTC)})
+	if err != nil {
+		return report{}, err
+	}
+	if !missed.Eligible || !missed.MissedRun {
+		return report{}, fmt.Errorf("missed schedule should be eligible within grace: %+v", missed)
+	}
+	return report{Mode: "conditions_time", Status: "PASS", Checks: []string{"every runtime hold reason", "overnight window", "DST forward/back", "missed schedule", "condition change runtime input", "restart schedule persistence"}}, nil
+}
+
+func mustNY() *time.Location {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		panic(err)
+	}
+	return loc
 }
 
 func openStore() (*scheduler.Store, *sqlite.DB, context.Context, func(), error) {

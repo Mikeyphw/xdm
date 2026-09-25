@@ -14,12 +14,33 @@
   ],
   "expected": {
     "invariants": [
-      "Go evaluates recurring windows and missed-run policy with injected clock/timezone."
-    ]
+      "Timezone resolution is injected for deterministic tests.",
+      "Overnight windows are evaluated against local civil time.",
+      "DST forward/back transitions use the local clock after timezone conversion.",
+      "A missed window can be started only according to the persisted missed-run policy and grace window.",
+      "Restart preserves persisted schedule semantics."
+    ],
+    "missed_run_policy": "start_when_available",
+    "timezone": "America/New_York"
   },
   "fixture_id": "xgo-cap-sched-002",
   "input": {
-    "representation": "language-neutral behavioral invariant",
+    "schedule": {
+      "missed_run_grace_minutes": 120,
+      "missed_run_policy": "start_when_available",
+      "recurrence": "daily",
+      "timezone": "America/New_York",
+      "windows": [
+        {
+          "end_minute": 240,
+          "start_minute": 60
+        },
+        {
+          "end_minute": 120,
+          "start_minute": 1320
+        }
+      ]
+    },
     "scenario": "Schedules are timezone-aware and define missed-run behavior."
   },
   "schema_version": 1
