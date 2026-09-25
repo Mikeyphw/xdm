@@ -1897,6 +1897,35 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/media-selection-matrix.json"]
 
+[targets.xgo_media.jobs.capture_convergence_suite]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "capture_convergence",
+  "--output", ".devtool/reports/xgo/media/capture-convergence-suite.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/capture/xgo-cap-capture-001.json",
+  "engine/testdata/media/xgo-cap-media-002.json",
+]
+outputs = [".devtool/reports/xgo/media/capture-convergence-suite.json"]
+
+[targets.xgo_media.jobs.credential_scope_security]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "credential_scope_security",
+  "--output", ".devtool/reports/xgo/media/credential-scope-security.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/media/xgo-cap-media-004.json",
+]
+outputs = [".devtool/reports/xgo/media/credential-scope-security.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1905,6 +1934,8 @@ validate = [
   { id = "media_identity_matrix", ref = "job:media_identity_matrix", depends_on = ["capture_generation_matrix"] },
   { id = "media_graph_diff", ref = "job:media_graph_diff", depends_on = ["media_identity_matrix"] },
   { id = "media_selection_matrix", ref = "job:media_selection_matrix", depends_on = ["media_graph_diff"] },
+  { id = "capture_convergence_suite", ref = "job:capture_convergence_suite", depends_on = ["media_selection_matrix"] },
+  { id = "credential_scope_security", ref = "job:credential_scope_security", depends_on = ["capture_convergence_suite"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
@@ -2246,8 +2277,12 @@ outputs = [
 [targets.xgo_gate_media_identity.workflows]
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
-  { id = "security", ref = "target:xgo_security#validate", depends_on = ["foundation"] },
-  { id = "media", ref = "target:xgo_media#validate", depends_on = ["security"] }
+  { id = "store", ref = "target:xgo_store#validate", depends_on = ["foundation"] },
+  { id = "security", ref = "target:xgo_security#validate", depends_on = ["store"] },
+  { id = "transfer", ref = "target:xgo_transfer#validate", depends_on = ["security"] },
+  { id = "backends", ref = "target:xgo_backends#validate", depends_on = ["transfer"] },
+  { id = "scheduler", ref = "target:xgo_scheduler#validate", depends_on = ["backends"] },
+  { id = "media", ref = "target:xgo_media#validate", depends_on = ["scheduler"] }
 ]
 
 [targets.xgo_gate_media_exec]

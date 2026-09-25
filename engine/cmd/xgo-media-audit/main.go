@@ -34,6 +34,10 @@ func main() {
 		r, err = mediaGraph()
 	case "media_selection":
 		r, err = mediaSelection()
+	case "capture_convergence":
+		r, err = captureConvergence()
+	case "credential_scope_security":
+		r, err = credentialScopeSecurity()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -221,6 +225,112 @@ func mediaSelection() (report, error) {
 		return report{}, fmt.Errorf("required subtitle did not fallback to available track: %+v", required.SelectedSubtitle)
 	}
 	return report{Mode: "media_selection", Pass: true, Checks: []string{"deterministic selection fixtures", "unavailable preferred language", "equivalent resolution codec preference", "separate audio/video", "subtitles optional/required"}}, nil
+}
+
+func captureConvergence() (report, error) {
+	androidGraph, err := ingestConvergenceStream("android", []string{
+		"https://cdn.example/master.m3u8?sig=android-a&quality=hd&track=main",
+		"https://cdn.example/audio-en.m4a?token=android-a&lang=en",
+		"https://cdn.example/video-1080.mp4?expires=111&quality=hd",
+	})
+	if err != nil {
+		return report{}, err
+	}
+	desktopGraph, err := ingestConvergenceStream("desktop", []string{
+		"https://cdn.example/master.m3u8?track=main&quality=hd&sig=desktop-b",
+		"https://cdn.example/audio-en.m4a?lang=en&token=desktop-b",
+		"https://cdn.example/video-1080.mp4?quality=hd&expires=222",
+	})
+	if err != nil {
+		return report{}, err
+	}
+	androidSnapshot := androidGraph.Snapshot()
+	desktopSnapshot := desktopGraph.Snapshot()
+	if !sameStrings(androidSnapshot.ItemIDs, desktopSnapshot.ItemIDs) || !sameStrings(androidSnapshot.SourceIDs, desktopSnapshot.SourceIDs) || !sameStrings(androidSnapshot.TrackIDs, desktopSnapshot.TrackIDs) || !sameStrings(androidSnapshot.RenditionIDs, desktopSnapshot.RenditionIDs) || !sameStrings(androidSnapshot.ManifestIDs, desktopSnapshot.ManifestIDs) || !sameStrings(androidSnapshot.FragmentSetIDs, desktopSnapshot.FragmentSetIDs) {
+		return report{}, fmt.Errorf("android and desktop equivalent capture streams diverged: android=%+v desktop=%+v", androidSnapshot, desktopSnapshot)
+	}
+	if len(androidSnapshot.ItemIDs) != 1 || len(androidSnapshot.SourceIDs) != 3 || len(androidSnapshot.TrackIDs) != 2 || len(androidSnapshot.RenditionIDs) != 2 || len(androidSnapshot.ManifestIDs) != 1 || len(androidSnapshot.FragmentSetIDs) != 3 {
+		return report{}, fmt.Errorf("unexpected convergence graph shape: %+v", androidSnapshot)
+	}
+	return report{Mode: "capture_convergence", Pass: true, Checks: []string{"android desktop equivalent streams converge", "signed manifest tokens ignored for logical identity", "signed child tokens ignored for logical identity", "audio video track groups converge", "fragment sets converge deterministically"}}, nil
+}
+
+func credentialScopeSecurity() (report, error) {
+	parent, err := media.NewMediaResource(media.MediaResourceInput{TransportURL: "https://cdn.example/protected/master.m3u8?sig=one", CredentialScope: media.CredentialScope{Origin: "https://cdn.example", PathPrefix: "/protected/", Ref: "cred-ref"}})
+	if err != nil {
+		return report{}, err
+	}
+	samePath, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: "https://cdn.example/protected/seg-001.ts", ChildKind: media.ResourceKindSegment})
+	if err != nil || !samePath.Forward || samePath.CredentialRef != "cred-ref" {
+		return report{}, fmt.Errorf("same-origin protected child did not inherit credential: decision=%+v err=%v", samePath, err)
+	}
+	outsidePath, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: "https://cdn.example/public/seg-001.ts", ChildKind: media.ResourceKindSegment})
+	if err != nil || outsidePath.Forward || outsidePath.Reason != "path_denied" {
+		return report{}, fmt.Errorf("same-origin child outside path was not denied: decision=%+v err=%v", outsidePath, err)
+	}
+	crossSegment, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: "https://segments.example/protected/seg-001.ts", ChildKind: media.ResourceKindSegment})
+	if err != nil || crossSegment.Forward || crossSegment.Reason != "origin_denied" {
+		return report{}, fmt.Errorf("cross-origin segment was not denied by default: decision=%+v err=%v", crossSegment, err)
+	}
+	crossKeyDenied, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: "https://keys.example/protected/key.bin", ChildKind: media.ResourceKindKey})
+	if err != nil || crossKeyDenied.Forward || crossKeyDenied.Reason != "origin_denied" {
+		return report{}, fmt.Errorf("cross-origin key was not denied by default: decision=%+v err=%v", crossKeyDenied, err)
+	}
+	crossKeyAllowed, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: "https://keys.example/protected/key.bin", ChildKind: media.ResourceKindKey, AllowCrossOriginKeys: true, AllowedOrigins: []string{"https://keys.example"}})
+	if err != nil || !crossKeyAllowed.Forward || crossKeyAllowed.CredentialRef != "cred-ref" {
+		return report{}, fmt.Errorf("explicit cross-origin key allow did not forward credential ref: decision=%+v err=%v", crossKeyAllowed, err)
+	}
+	wrongAllowedOrigin, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: "https://evil.example/protected/key.bin", ChildKind: media.ResourceKindKey, AllowCrossOriginKeys: true, AllowedOrigins: []string{"https://keys.example"}})
+	if err != nil || wrongAllowedOrigin.Forward || wrongAllowedOrigin.Reason != "origin_denied" {
+		return report{}, fmt.Errorf("unlisted cross-origin key was not denied: decision=%+v err=%v", wrongAllowedOrigin, err)
+	}
+	return report{Mode: "credential_scope_security", Pass: true, Checks: []string{"same-origin path inherits credential reference", "same-origin outside path denied", "cross-origin segment denied by default", "cross-origin key denied by default", "explicit cross-origin key allow forwards ref", "unlisted allowed-origin denied"}}, nil
+}
+
+func ingestConvergenceStream(label string, urls []string) (*media.MediaGraph, error) {
+	graph := media.NewMediaGraph(media.MediaGraphLimits{})
+	if len(urls) != 3 {
+		return nil, fmt.Errorf("%s convergence fixture expected 3 URLs", label)
+	}
+	env, err := media.NewCaptureEnvelope(media.CaptureEnvelope{Version: media.CaptureEnvelopeVersion, Request: media.RequestEvidence{URL: urls[0], Method: "GET"}, Page: media.PageContext{PageURL: "https://page.example/watch", FrameOrigin: "https://page.example", SessionID: "sess-" + label, DocumentGeneration: 7}, Response: media.ResponseMetadata{StatusCode: 200, ContentType: "application/vnd.apple.mpegurl", ObservedAt: time.Unix(70, 0)}, MediaHints: []media.MediaHint{{Kind: "manifest", Value: "hls"}}, CredentialScope: media.CredentialScope{Origin: "https://cdn.example", PathPrefix: "/", Ref: "cred-ref"}})
+	if err != nil {
+		return nil, err
+	}
+	manifest, err := media.NewMediaResource(media.MediaResourceInput{TransportURL: urls[0], CredentialScope: media.CredentialScope{Origin: "https://cdn.example", PathPrefix: "/", Ref: "cred-ref"}})
+	if err != nil {
+		return nil, err
+	}
+	audio, err := media.NewMediaResource(media.MediaResourceInput{TransportURL: urls[1], CredentialScope: manifest.CredentialScope})
+	if err != nil {
+		return nil, err
+	}
+	video, err := media.NewMediaResource(media.MediaResourceInput{TransportURL: urls[2], CredentialScope: manifest.CredentialScope})
+	if err != nil {
+		return nil, err
+	}
+	observations := []media.MediaObservation{
+		{Envelope: env, Resource: manifest, Title: "Shared Movie", Container: "hls", Codec: "avc1", Bitrate: 6000, Width: 1920, Height: 1080, TrackKind: media.TrackVideo, RenditionGroup: "video", ManifestURL: urls[0], FragmentSetKey: "video-main", Protection: media.ProtectionKeyed},
+		{Envelope: env, Resource: audio, Title: "Shared Movie", Container: "m4a", Codec: "mp4a", Language: "en", TrackKind: media.TrackAudio, RenditionGroup: "audio", ManifestURL: urls[0], FragmentSetKey: "audio-en", Protection: media.ProtectionKeyed},
+		{Envelope: env, Resource: video, Title: "Shared Movie", Container: "mp4", Codec: "avc1", Bitrate: 6000, Width: 1920, Height: 1080, TrackKind: media.TrackVideo, RenditionGroup: "video", ManifestURL: urls[0], FragmentSetKey: "video-file", Protection: media.ProtectionKeyed},
+	}
+	for _, obs := range observations {
+		if _, err := graph.Ingest(obs); err != nil {
+			return nil, fmt.Errorf("%s convergence ingest failed: %w", label, err)
+		}
+	}
+	return graph, nil
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func selectionAuditGraph() (*media.MediaGraph, string) {
