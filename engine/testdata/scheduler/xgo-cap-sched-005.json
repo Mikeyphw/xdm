@@ -1,26 +1,49 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-sched-005",
+  "category": "scheduler",
   "capability_ids": [
     "XGO-CAP-SCHED-005"
   ],
-  "category": "scheduler",
-  "derivation": {
-    "behavior": "Bandwidth profiles compose global, schedule, queue and per-download scopes.",
-    "canonical_behavior": "Go owns deterministic limit precedence and live profile switching.",
-    "strategy": "merged"
-  },
   "donor_ids": [
     "desktop_bandwidth_profile",
     "android_queue_intelligence"
   ],
-  "expected": {
-    "invariants": [
-      "Go owns deterministic limit precedence and live profile switching."
-    ]
+  "derivation": {
+    "strategy": "merged",
+    "behavior": "Bandwidth profiles compose global, schedule, queue and per-download scopes.",
+    "canonical_behavior": "Go owns deterministic limit precedence and live profile switching."
   },
-  "fixture_id": "xgo-cap-sched-005",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Bandwidth profiles compose global, schedule, queue and per-download scopes."
+    "limits": {
+      "global": {
+        "bytes_per_second": 100,
+        "profile": "global"
+      },
+      "schedule": {
+        "bytes_per_second": 200,
+        "profile": "night"
+      },
+      "queue": {
+        "bytes_per_second": 300,
+        "profile": "queue"
+      },
+      "download": {
+        "bytes_per_second": 400,
+        "profile": "download"
+      }
+    }
   },
-  "schema_version": 1
+  "expected": {
+    "selected_scope": "download",
+    "selected_limit_bytes_per_second": 400,
+    "checks": [
+      "Precedence is deterministic from global to schedule to queue to download, with the narrowest present scope winning.",
+      "Live profile values are data carried in the scheduler decision, not platform-side policy."
+    ],
+    "invariants": [
+      "Precedence is deterministic from global to schedule to queue to download, with the narrowest present scope winning.",
+      "Live profile values are data carried in the scheduler decision, not platform-side policy."
+    ]
+  }
 }

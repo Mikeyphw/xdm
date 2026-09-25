@@ -1,25 +1,44 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-sched-006",
+  "category": "scheduler",
   "capability_ids": [
     "XGO-CAP-SCHED-006"
   ],
-  "category": "scheduler",
-  "derivation": {
-    "behavior": "Completion actions are decided once by engine and executed idempotently by host.",
-    "canonical_behavior": "Go emits idempotent platform request only when canonical terminal conditions are met.",
-    "strategy": "desktop_led"
-  },
   "donor_ids": [
     "desktop_download_schedule"
   ],
-  "expected": {
-    "invariants": [
-      "Go emits idempotent platform request only when canonical terminal conditions are met."
-    ]
+  "derivation": {
+    "strategy": "desktop_led",
+    "behavior": "Completion actions are decided once by engine and executed idempotently by host.",
+    "canonical_behavior": "Go emits idempotent platform request only when canonical terminal conditions are met."
   },
-  "fixture_id": "xgo-cap-sched-006",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Completion actions are decided once by engine and executed idempotently by host."
+    "terminal_event": {
+      "download_id": "dl_99999999999999999999999999999999",
+      "artifact_generation": 3,
+      "outcome": "succeeded"
+    },
+    "action": {
+      "kind": "notify",
+      "when": [
+        "succeeded"
+      ]
+    },
+    "host_decline": true
   },
-  "schema_version": 1
+  "expected": {
+    "checks": [
+      "Idempotency key is derived from canonical download/artifact/outcome/action identity.",
+      "Duplicate records return the existing action without mutating revision.",
+      "Host accepted/declined replies are stored durably.",
+      "Destructive actions require explicit host approval before platform execution is requested."
+    ],
+    "invariants": [
+      "Idempotency key is derived from canonical download/artifact/outcome/action identity.",
+      "Duplicate records return the existing action without mutating revision.",
+      "Host accepted/declined replies are stored durably.",
+      "Destructive actions require explicit host approval before platform execution is requested."
+    ]
+  }
 }

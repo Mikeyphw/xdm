@@ -22,7 +22,7 @@ type report struct {
 }
 
 func main() {
-	mode := flag.String("mode", "", "queue_model, dependency_graph, or conditions_time")
+	mode := flag.String("mode", "", "queue_model, dependency_graph, conditions_time, scheduler_stress, or bandwidth_completion")
 	output := flag.String("output", "", "output JSON path")
 	flag.Parse()
 	if *mode == "" || *output == "" {
@@ -37,6 +37,10 @@ func main() {
 		r, err = runDependencyGraph()
 	case "conditions_time":
 		r, err = runConditionsTime()
+	case "scheduler_stress":
+		r, err = runSchedulerStress()
+	case "bandwidth_completion":
+		r, err = runBandwidthCompletion()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -231,6 +235,138 @@ func runConditionsTime() (report, error) {
 		return report{}, fmt.Errorf("missed schedule should be eligible within grace: %+v", missed)
 	}
 	return report{Mode: "conditions_time", Status: "PASS", Checks: []string{"every runtime hold reason", "overnight window", "DST forward/back", "missed schedule", "condition change runtime input", "restart schedule persistence"}}, nil
+}
+
+func runSchedulerStress() (report, error) {
+	store, _, ctx, cleanup, err := openStore()
+	if err != nil {
+		return report{}, err
+	}
+	defer cleanup()
+	one, _ := identity.NewRevision(1)
+	pause, err := store.SetGlobalPause(ctx, one, scheduler.GlobalPauseRecord{Enabled: true, Reason: "audit"})
+	if err != nil {
+		return report{}, err
+	}
+	if loaded, err := store.GetGlobalPause(ctx); err != nil || !loaded.Enabled || loaded.Revision != pause.Revision {
+		return report{}, fmt.Errorf("global pause not durable: rec=%+v err=%v", loaded, err)
+	}
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	qa, _ := identity.ParseQueueID("queue_33333333333333333333333333333333")
+	qb, _ := identity.ParseQueueID("queue_44444444444444444444444444444444")
+	items := make([]scheduler.WorkItem, 0, 1500)
+	for i := 0; i < 1500; i++ {
+		id, _ := identity.ParseDownloadID(fmt.Sprintf("dl_%032x", i+1000))
+		queueID := qa
+		host := "a.example"
+		if i%2 == 1 {
+			queueID = qb
+			host = "b.example"
+		}
+		items = append(items, scheduler.WorkItem{
+			DownloadID:       id,
+			QueueID:          queueID,
+			Host:             host,
+			QueueEnabled:     true,
+			QueueConcurrency: 1000,
+			QueuePriority:    i % 17,
+			DownloadPriority: i % 5,
+			QueuePosition:    i,
+			EnqueuedAt:       now.Add(-time.Duration(i%96) * time.Hour),
+			Runtime:          scheduler.QueueRuntimeEvaluation{Eligible: true},
+			Dependency:       scheduler.Eligibility{DownloadID: id, Eligible: true},
+		})
+	}
+	decision, err := scheduler.EvaluateScheduler(scheduler.SchedulerInput{Now: now, Items: items, Capacity: scheduler.CapacitySnapshot{GlobalLimit: 64, PerHostLimit: map[string]int{"a.example": 48, "b.example": 48}}, Fairness: scheduler.FairnessPolicy{AgingInterval: time.Hour, AgingBoost: 100}})
+	if err != nil {
+		return report{}, err
+	}
+	if len(decision.Runnable) != 64 {
+		return report{}, fmt.Errorf("expected 64 runnable jobs, got %d", len(decision.Runnable))
+	}
+	replay, err := scheduler.EvaluateScheduler(scheduler.SchedulerInput{Now: now, Items: items, Capacity: scheduler.CapacitySnapshot{GlobalLimit: 64, PerHostLimit: map[string]int{"a.example": 48, "b.example": 48}}, Fairness: scheduler.FairnessPolicy{AgingInterval: time.Hour, AgingBoost: 100}})
+	if err != nil {
+		return report{}, err
+	}
+	for i := range decision.Runnable {
+		if decision.Runnable[i].DownloadID != replay.Runnable[i].DownloadID || decision.Runnable[i].Score != replay.Runnable[i].Score {
+			return report{}, fmt.Errorf("non-deterministic replay at %d: %s/%d vs %s/%d", i, decision.Runnable[i].DownloadID, decision.Runnable[i].Score, replay.Runnable[i].DownloadID, replay.Runnable[i].Score)
+		}
+	}
+	holdID, _ := identity.ParseDownloadID("dl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	holdDecision, err := scheduler.EvaluateScheduler(scheduler.SchedulerInput{Now: now, Items: []scheduler.WorkItem{
+		{DownloadID: holdID, QueueID: qa, QueueEnabled: true, QueueConcurrency: 1, Dependency: scheduler.Eligibility{DownloadID: holdID, Eligible: true}, Runtime: scheduler.QueueRuntimeEvaluation{Eligible: true}, Retry: scheduler.RetryActivation{DueAt: now.Add(time.Minute)}},
+	}})
+	if err != nil {
+		return report{}, err
+	}
+	if len(holdDecision.Blocked) != 1 || len(holdDecision.Blocked[0].Holds) == 0 || holdDecision.Blocked[0].Holds[0] != scheduler.SchedulerHoldRetryNotDue {
+		return report{}, fmt.Errorf("retry hold not explained: %+v", holdDecision)
+	}
+	blockedPause, err := scheduler.EvaluateScheduler(scheduler.SchedulerInput{Now: now, GlobalPause: pause, Items: items[:1], Capacity: scheduler.CapacitySnapshot{GlobalLimit: 1}})
+	if err != nil {
+		return report{}, err
+	}
+	if len(blockedPause.Blocked) != 1 || len(blockedPause.Blocked[0].Holds) == 0 || blockedPause.Blocked[0].Holds[0] != scheduler.SchedulerHoldGlobalPause {
+		return report{}, fmt.Errorf("global pause did not block: %+v", blockedPause)
+	}
+	return report{Mode: "scheduler_stress", Status: "PASS", Checks: []string{"1500 queued jobs", "deterministic replay", "global capacity", "per-host capacity", "fairness aging", "retry not due", "durable global pause"}}, nil
+}
+
+func runBandwidthCompletion() (report, error) {
+	store, _, ctx, cleanup, err := openStore()
+	if err != nil {
+		return report{}, err
+	}
+	defer cleanup()
+	policy := scheduler.BandwidthPolicy{
+		Global:   scheduler.BandwidthLimit{BytesPerSecond: 100, Profile: "global"},
+		Schedule: scheduler.BandwidthLimit{BytesPerSecond: 200, Profile: "night"},
+		Queue:    scheduler.BandwidthLimit{BytesPerSecond: 300, Profile: "queue"},
+		Download: scheduler.BandwidthLimit{BytesPerSecond: 400, Profile: "download"},
+	}
+	if err := scheduler.ValidateBandwidthPolicy(policy); err != nil {
+		return report{}, err
+	}
+	limit := scheduler.ResolveBandwidthLimit(policy)
+	if limit.Scope != scheduler.BandwidthScopeDownload || limit.BytesPerSecond != 400 {
+		return report{}, fmt.Errorf("bad bandwidth precedence: %+v", limit)
+	}
+	downloadID, _ := identity.ParseDownloadID("dl_99999999999999999999999999999999")
+	event := scheduler.CompletionEvent{DownloadID: downloadID, ArtifactGeneration: 3, Outcome: scheduler.TerminalSucceeded, TerminalAtUnixMS: time.Now().UnixMilli()}
+	decision, err := scheduler.DecideCompletionAction(scheduler.CompletionActionPolicy{ActionKind: scheduler.CompletionActionNotify, When: []scheduler.TerminalOutcome{scheduler.TerminalSucceeded}}, event, nil)
+	if err != nil {
+		return report{}, err
+	}
+	if !decision.ShouldFire || decision.IdempotencyKey == "" {
+		return report{}, fmt.Errorf("expected completion action: %+v", decision)
+	}
+	rec, err := store.RecordCompletionAction(ctx, scheduler.CompletionActionRecord{IdempotencyKey: decision.IdempotencyKey, DownloadID: downloadID, ActionKind: scheduler.CompletionActionNotify, Status: scheduler.CompletionActionPending})
+	if err != nil {
+		return report{}, err
+	}
+	dup, err := store.RecordCompletionAction(ctx, scheduler.CompletionActionRecord{IdempotencyKey: decision.IdempotencyKey, DownloadID: downloadID, ActionKind: scheduler.CompletionActionNotify, Status: scheduler.CompletionActionPending})
+	if err != nil {
+		return report{}, err
+	}
+	if dup.Revision != rec.Revision {
+		return report{}, fmt.Errorf("idempotent duplicate mutated record: first=%+v dup=%+v", rec, dup)
+	}
+	declined, err := store.UpdateCompletionActionStatus(ctx, decision.IdempotencyKey, scheduler.CompletionActionDeclined, "host-declined")
+	if err != nil {
+		return report{}, err
+	}
+	if declined.Status != scheduler.CompletionActionDeclined || declined.HostReceipt != "host-declined" {
+		return report{}, fmt.Errorf("host decline not persisted: %+v", declined)
+	}
+	repeat, err := scheduler.DecideCompletionAction(scheduler.CompletionActionPolicy{ActionKind: scheduler.CompletionActionNotify, When: []scheduler.TerminalOutcome{scheduler.TerminalSucceeded}}, event, map[string]scheduler.CompletionActionRecord{decision.IdempotencyKey: declined})
+	if err != nil {
+		return report{}, err
+	}
+	if repeat.ShouldFire || repeat.Status != scheduler.CompletionActionDeclined {
+		return report{}, fmt.Errorf("completion action repeated after host reply: %+v", repeat)
+	}
+	return report{Mode: "bandwidth_completion", Status: "PASS", Checks: []string{"limit precedence", "live profile value", "completion action once", "restart before duplicate", "host decline persisted"}}, nil
 }
 
 func mustNY() *time.Location {

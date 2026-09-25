@@ -1,27 +1,52 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-sched-003",
+  "category": "scheduler",
   "capability_ids": [
     "XGO-CAP-SCHED-003"
   ],
-  "category": "scheduler",
-  "derivation": {
-    "behavior": "Queue arbitration is deterministic and starvation-resistant.",
-    "canonical_behavior": "Go combines priority, fairness, dependencies, capacity, retry deadlines and runtime holds.",
-    "strategy": "merged"
-  },
   "donor_ids": [
     "android_queue_coordinator",
     "android_queue_intelligence",
     "desktop_queue_graph"
   ],
-  "expected": {
-    "invariants": [
-      "Go combines priority, fairness, dependencies, capacity, retry deadlines and runtime holds."
+  "derivation": {
+    "strategy": "merged",
+    "behavior": "Queue arbitration is deterministic and starvation-resistant.",
+    "canonical_behavior": "Go combines priority, fairness, dependencies, capacity, retry deadlines and runtime holds."
+  },
+  "input": {
+    "scenario": "scheduler stress arbitration with fake clock",
+    "queued_jobs": 1500,
+    "global_capacity": 64,
+    "host_capacity": {
+      "a.example": 48,
+      "b.example": 48
+    },
+    "fairness": {
+      "aging_interval": "1h",
+      "aging_boost": 100
+    },
+    "blocked_inputs": [
+      "dependency_blocked",
+      "retry_not_due",
+      "runtime_condition",
+      "host_capacity",
+      "global_capacity"
     ]
   },
-  "fixture_id": "xgo-cap-sched-003",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Queue arbitration is deterministic and starvation-resistant."
-  },
-  "schema_version": 1
+  "expected": {
+    "checks": [
+      "Runnable set is stable across deterministic replay with the same clock and input ordering.",
+      "Priority and queue position are deterministic tie breakers.",
+      "Fairness aging contributes a bounded score boost so older lower priority work can advance without randomization.",
+      "Dependency, retry deadline, runtime condition, global capacity, host capacity, and queue concurrency holds are explained per candidate."
+    ],
+    "invariants": [
+      "Runnable set is stable across deterministic replay with the same clock and input ordering.",
+      "Priority and queue position are deterministic tie breakers.",
+      "Fairness aging contributes a bounded score boost so older lower priority work can advance without randomization.",
+      "Dependency, retry deadline, runtime condition, global capacity, host capacity, and queue concurrency holds are explained per candidate."
+    ]
+  }
 }

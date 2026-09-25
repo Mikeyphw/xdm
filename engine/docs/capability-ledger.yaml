@@ -687,7 +687,7 @@
         "desktop_queue_graph"
       ],
       "id": "XGO-CAP-SCHED-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-47",
       "test_id": "fixture:xgo-cap-sched-003"
     },
@@ -701,7 +701,7 @@
         "android_queue_intelligence"
       ],
       "id": "XGO-CAP-SCHED-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-47",
       "test_id": "fixture:xgo-cap-sched-004"
     },
@@ -715,7 +715,7 @@
         "android_queue_intelligence"
       ],
       "id": "XGO-CAP-SCHED-005",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-48",
       "test_id": "fixture:xgo-cap-sched-005"
     },
@@ -728,7 +728,7 @@
         "desktop_download_schedule"
       ],
       "id": "XGO-CAP-SCHED-006",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-48",
       "test_id": "fixture:xgo-cap-sched-006"
     },

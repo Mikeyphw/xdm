@@ -1,32 +1,41 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-sched-004",
+  "category": "scheduler",
   "capability_ids": [
     "XGO-CAP-SCHED-004"
   ],
-  "category": "scheduler",
-  "derivation": {
-    "behavior": "Global Pause All is durable across restart.",
-    "canonical_behavior": "Go prevents automatic starts while durable global hold is active.",
-    "strategy": "android_led"
-  },
   "donor_ids": [
     "android_queue_coordinator",
     "android_queue_intelligence"
   ],
+  "derivation": {
+    "strategy": "android_led",
+    "behavior": "Global Pause All is durable across restart.",
+    "canonical_behavior": "Go prevents automatic starts while durable global hold is active."
+  },
+  "input": {
+    "global_pause": {
+      "enabled": true,
+      "reason": "maintenance"
+    },
+    "restart": true,
+    "eligible_downloads": [
+      "dl_77777777777777777777777777777777"
+    ]
+  },
   "expected": {
     "hold_reason": "global_pause",
+    "started": [],
+    "checks": [
+      "Pause state is stored in canonical engine metadata with revision fencing.",
+      "A stale pause update is rejected.",
+      "Scheduler restores the pause before evaluating runnable work after restart."
+    ],
     "invariants": [
-      "Pause All is durable and restored before scheduling work."
-    ],
-    "started": []
-  },
-  "fixture_id": "xgo-cap-sched-004",
-  "input": {
-    "eligible_downloads": [
-      "dl-1",
-      "dl-2"
-    ],
-    "global_pause": true,
-    "restart": true
-  },
-  "schema_version": 1
+      "Pause state is stored in canonical engine metadata with revision fencing.",
+      "A stale pause update is rejected.",
+      "Scheduler restores the pause before evaluating runnable work after restart."
+    ]
+  }
 }

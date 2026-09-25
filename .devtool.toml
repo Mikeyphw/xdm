@@ -1679,6 +1679,10 @@ inputs = [
   "engine/testdata/queue/xgo-cap-queue-002.json",
   "engine/testdata/scheduler/xgo-cap-sched-001.json",
   "engine/testdata/scheduler/xgo-cap-sched-002.json",
+  "engine/testdata/scheduler/xgo-cap-sched-003.json",
+  "engine/testdata/scheduler/xgo-cap-sched-004.json",
+  "engine/testdata/scheduler/xgo-cap-sched-005.json",
+  "engine/testdata/scheduler/xgo-cap-sched-006.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1737,8 +1741,45 @@ inputs = [
   "engine/cmd/xgo-scheduler-audit/**",
   "engine/testdata/scheduler/xgo-cap-sched-001.json",
   "engine/testdata/scheduler/xgo-cap-sched-002.json",
+  "engine/testdata/scheduler/xgo-cap-sched-003.json",
+  "engine/testdata/scheduler/xgo-cap-sched-004.json",
+  "engine/testdata/scheduler/xgo-cap-sched-005.json",
+  "engine/testdata/scheduler/xgo-cap-sched-006.json",
 ]
 outputs = [".devtool/reports/xgo/scheduler/conditions-time-matrix.json"]
+
+
+[targets.xgo_scheduler.jobs.scheduler_stress]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-scheduler-audit",
+  "--mode", "scheduler_stress",
+  "--output", ".devtool/reports/xgo/scheduler/scheduler-stress.json",
+]
+inputs = [
+  "engine/scheduler/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-scheduler-audit/**",
+  "engine/testdata/scheduler/xgo-cap-sched-003.json",
+  "engine/testdata/scheduler/xgo-cap-sched-004.json",
+]
+outputs = [".devtool/reports/xgo/scheduler/scheduler-stress.json"]
+
+[targets.xgo_scheduler.jobs.bandwidth_completion_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-scheduler-audit",
+  "--mode", "bandwidth_completion",
+  "--output", ".devtool/reports/xgo/scheduler/bandwidth-completion-matrix.json",
+]
+inputs = [
+  "engine/scheduler/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-scheduler-audit/**",
+  "engine/testdata/scheduler/xgo-cap-sched-005.json",
+  "engine/testdata/scheduler/xgo-cap-sched-006.json",
+]
+outputs = [".devtool/reports/xgo/scheduler/bandwidth-completion-matrix.json"]
 
 [targets.xgo_scheduler.workflows]
 validate = [
@@ -1746,6 +1787,8 @@ validate = [
   { id = "queue_model_matrix", ref = "job:queue_model_matrix", depends_on = ["go"] },
   { id = "dependency_graph_stress", ref = "job:dependency_graph_stress", depends_on = ["queue_model_matrix"] },
   { id = "conditions_time_matrix", ref = "job:conditions_time_matrix", depends_on = ["dependency_graph_stress"] },
+  { id = "scheduler_stress", ref = "job:scheduler_stress", depends_on = ["conditions_time_matrix"] },
+  { id = "bandwidth_completion_matrix", ref = "job:bandwidth_completion_matrix", depends_on = ["scheduler_stress"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

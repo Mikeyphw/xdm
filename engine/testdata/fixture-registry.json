@@ -1068,7 +1068,7 @@
         "XGO-CAP-SCHED-003"
       ],
       "category": "scheduler",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_queue_coordinator",
         "android_queue_intelligence",
@@ -1095,7 +1095,7 @@
         "XGO-CAP-SCHED-005"
       ],
       "category": "scheduler",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_bandwidth_profile",
         "android_queue_intelligence"
@@ -1108,7 +1108,7 @@
         "XGO-CAP-SCHED-006"
       ],
       "category": "scheduler",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_download_schedule"
       ],
