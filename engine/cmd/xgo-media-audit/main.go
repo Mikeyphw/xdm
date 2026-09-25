@@ -53,6 +53,10 @@ func main() {
 		r, err = dashCorpus()
 	case "dash_execution":
 		r, err = dashExecutionLab()
+	case "ffmpeg_plan_goldens":
+		r, err = ffmpegPlanGoldens()
+	case "ffmpeg_execution":
+		r, err = ffmpegExecutionLab()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -882,4 +886,166 @@ func dir(path string) string {
 		}
 	}
 	return "."
+}
+
+func ffmpegPlanGoldens() (report, error) {
+	plans := []struct {
+		name  string
+		input media.FFmpegPlanInput
+	}{
+		{"remux", auditFFmpegBase(media.FFmpegModeRemux)},
+		{"av_mux", auditFFmpegMux()},
+		{"transcode", func() media.FFmpegPlanInput {
+			in := auditFFmpegBase(media.FFmpegModeTranscode)
+			in.VideoCodec = "libx264"
+			in.AudioCodec = "aac"
+			return in
+		}()},
+		{"subtitles", auditFFmpegSubtitle()},
+	}
+	for _, candidate := range plans {
+		plan, err := media.NewFFmpegPlan(candidate.input)
+		if err != nil {
+			return report{}, fmt.Errorf("%s plan failed: %w", candidate.name, err)
+		}
+		if plan.Tool.Binary != "ffmpeg" || len(plan.Tool.Args) == 0 {
+			return report{}, fmt.Errorf("%s missing structured ffmpeg request", candidate.name)
+		}
+		for _, arg := range plan.Tool.Args {
+			if arg == "video; touch /tmp/pwned" || arg == "audio && rm -rf /" {
+				return report{}, fmt.Errorf("%s accidentally inherited hostile fixture", candidate.name)
+			}
+		}
+		data, err := media.SerializeFFmpegPlan(plan)
+		if err != nil {
+			return report{}, fmt.Errorf("%s serialize failed: %w", candidate.name, err)
+		}
+		restarted, err := media.ParseFFmpegPlan(data)
+		if err != nil {
+			return report{}, fmt.Errorf("%s restart parse failed: %w", candidate.name, err)
+		}
+		if restarted.PlanID != plan.PlanID {
+			return report{}, fmt.Errorf("%s plan identity changed across restart", candidate.name)
+		}
+	}
+	hostile := auditFFmpegBase(media.FFmpegModeRemux)
+	hostile.Inputs[0].Path = "video; touch /tmp/pwned"
+	plan, err := media.NewFFmpegPlan(hostile)
+	if err != nil {
+		return report{}, fmt.Errorf("hostile literal argv rejected: %w", err)
+	}
+	literal := false
+	for _, arg := range plan.Tool.Args {
+		if arg == hostile.Inputs[0].Path {
+			literal = true
+		}
+	}
+	if !literal {
+		return report{}, fmt.Errorf("hostile fixture was not preserved as one argv element")
+	}
+	invalid := auditFFmpegBase(media.FFmpegModeTranscode)
+	if _, err := media.NewFFmpegPlan(invalid); !errors.Is(err, media.ErrInvalidFFmpegPlan) {
+		return report{}, fmt.Errorf("invalid transcode combination not rejected: %v", err)
+	}
+	return report{Mode: "ffmpeg_plan_goldens", Pass: true, Checks: []string{"remux plan", "A/V mux plan", "transcode plan", "subtitle plan", "invalid combinations", "hostile filename argv literal", "plan serialization/restart"}}, nil
+}
+
+func ffmpegExecutionLab() (report, error) {
+	plan, err := media.NewFFmpegPlan(auditFFmpegBase(media.FFmpegModeRemux))
+	if err != nil {
+		return report{}, err
+	}
+	plan, err = media.StartMediaTool(plan, "tool-job-1", time.Unix(10, 0))
+	if err != nil {
+		return report{}, err
+	}
+	plan, err = media.ApplyMediaToolEvent(plan, media.MediaToolEvent{Kind: media.MediaToolEventProgress, ToolJobID: "tool-job-1", ProgressPermil: 500, Diagnostics: "frame=12"})
+	if err != nil {
+		return report{}, err
+	}
+	plan, err = media.ApplyMediaToolEvent(plan, media.MediaToolEvent{Kind: media.MediaToolEventSuccess, ToolJobID: "tool-job-1"})
+	if err != nil {
+		return report{}, err
+	}
+	_, result, err := media.VerifyMediaToolResult(plan, auditGoodProbe())
+	if err != nil || !result.Pass {
+		return report{}, fmt.Errorf("success verification failed: %+v %w", result, err)
+	}
+	published, handoff, err := media.CreatePublicationHandoff(plan, auditGoodProbe())
+	if err != nil {
+		return report{}, fmt.Errorf("publication handoff failed: %w", err)
+	}
+	if handoff.Artifact.Size() != auditGoodProbe().Size || handoff.CommitRequest.StagingIdentity == "" {
+		return report{}, fmt.Errorf("publication handoff incomplete")
+	}
+	recovered, err := media.RecoverMediaToolJob(published, media.MediaToolRunning)
+	if err != nil {
+		return report{}, err
+	}
+	if recovered.State.Status != media.MediaToolPublicationRequested {
+		return report{}, fmt.Errorf("publication crash recovery regressed state: %s", recovered.State.Status)
+	}
+	if _, _, err := media.VerifyMediaToolResult(plan, media.FFProbeReport{Container: "mp4", Size: 10, Streams: []media.FFProbeStream{{Kind: media.StreamVideo}}}); !errors.Is(err, media.ErrMediaVerificationFailed) {
+		return report{}, fmt.Errorf("missing stream not rejected: %v", err)
+	}
+	for _, event := range []media.MediaToolEvent{{Kind: media.MediaToolEventCancel}, {Kind: media.MediaToolEventNonzero, ExitCode: 2}, {Kind: media.MediaToolEventTimeout}, {Kind: media.MediaToolEventCrash}} {
+		job, err := media.NewFFmpegPlan(auditFFmpegBase(media.FFmpegModeRemux))
+		if err != nil {
+			return report{}, err
+		}
+		job, err = media.StartMediaTool(job, "tool-job-failure", time.Unix(1, 0))
+		if err != nil {
+			return report{}, err
+		}
+		next, err := media.ApplyMediaToolEvent(job, event)
+		if event.Kind == media.MediaToolEventCancel {
+			if err != nil || next.State.Status != media.MediaToolCanceled {
+				return report{}, fmt.Errorf("cancel event failed: %+v %v", next.State, err)
+			}
+			continue
+		}
+		if !errors.Is(err, media.ErrMediaToolFailed) {
+			return report{}, fmt.Errorf("expected failure for %s, got %v", event.Kind, err)
+		}
+	}
+	return report{Mode: "ffmpeg_execution", Pass: true, Checks: []string{"success", "progress", "cancel", "nonzero exit", "timeout", "crash", "malformed/missing probe", "verified artifact", "publication crash recovery"}}, nil
+}
+
+func auditFFmpegBase(mode media.FFmpegPlanMode) media.FFmpegPlanInput {
+	return media.FFmpegPlanInput{
+		Mode:                    mode,
+		Inputs:                  []media.MediaInputArtifact{{Role: media.MediaInputMuxed, ArtifactRef: "track-av", Path: "/tmp/input.ts", Container: "mpegts", Duration: time.Minute, Streams: []media.MediaStream{{Kind: media.StreamVideo, Index: 0, Codec: "h264"}, {Kind: media.StreamAudio, Index: 1, Codec: "aac", Language: "en"}}}},
+		Output:                  media.OutputExpectation{Path: "/tmp/output.mp4", Container: "mp4", ExpectedDuration: time.Minute, RequiredStreams: []media.StreamKind{media.StreamVideo, media.StreamAudio}},
+		DownloadID:              "dl_00000000000000000000000000000001",
+		ArtifactGeneration:      1,
+		SourceAttemptGeneration: 1,
+		PublicationID:           "pub_00000000000000000000000000000002",
+		PublicationStagingID:    "stage:/tmp/output.mp4",
+	}
+}
+
+func auditFFmpegMux() media.FFmpegPlanInput {
+	return media.FFmpegPlanInput{
+		Mode: media.FFmpegModeMux,
+		Inputs: []media.MediaInputArtifact{
+			{Role: media.MediaInputVideo, ArtifactRef: "track-video", Path: "/tmp/video.mp4", Streams: []media.MediaStream{{Kind: media.StreamVideo, Index: 0, Codec: "h264"}}},
+			{Role: media.MediaInputAudio, ArtifactRef: "track-audio", Path: "/tmp/audio.m4a", Streams: []media.MediaStream{{Kind: media.StreamAudio, Index: 0, Codec: "aac", Language: "en"}}},
+		},
+		Output:                  media.OutputExpectation{Path: "/tmp/muxed.mp4", Container: "mp4", ExpectedDuration: time.Minute, RequiredStreams: []media.StreamKind{media.StreamVideo, media.StreamAudio}},
+		DownloadID:              "dl_00000000000000000000000000000001",
+		ArtifactGeneration:      1,
+		SourceAttemptGeneration: 1,
+		PublicationID:           "pub_00000000000000000000000000000002",
+	}
+}
+
+func auditFFmpegSubtitle() media.FFmpegPlanInput {
+	in := auditFFmpegMux()
+	in.Inputs = append(in.Inputs, media.MediaInputArtifact{Role: media.MediaInputSubtitle, ArtifactRef: "track-subtitle", Path: "/tmp/subs.vtt", Streams: []media.MediaStream{{Kind: media.StreamSubtitle, Index: 0, Codec: "webvtt", Language: "en"}}})
+	in.Output.RequiredStreams = []media.StreamKind{media.StreamVideo, media.StreamAudio, media.StreamSubtitle}
+	return in
+}
+
+func auditGoodProbe() media.FFProbeReport {
+	return media.FFProbeReport{Container: "mp4", Duration: time.Minute, Size: 42, Streams: []media.FFProbeStream{{Kind: media.StreamVideo, Codec: "h264"}, {Kind: media.StreamAudio, Codec: "aac", Language: "en"}}}
 }

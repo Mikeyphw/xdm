@@ -1791,7 +1791,7 @@ validate = [
   { id = "bandwidth_completion_matrix", ref = "job:bandwidth_completion_matrix", depends_on = ["scheduler_stress"] },
 ]
 
-# XGO-49..57 activate media capture, identity, graph, selection, HLS timeline, and HLS execution ownership on the native Go runner.
+# XGO-49..61 activate media capture, identity, graph, selection, HLS/DASH execution, and FFmpeg post-processing ownership on the native Go runner.
 [targets.xgo_media]
 runner = "go"
 platform = "shared"
@@ -1817,6 +1817,14 @@ inputs = [
   "engine/testdata/hls/xgo-cap-hls-004.json",
   "engine/testdata/hls/xgo-cap-hls-006.json",
   "engine/testdata/hls/xgo-cap-hls-007.json",
+  "engine/testdata/dash/xgo-cap-dash-001.json",
+  "engine/testdata/dash/xgo-cap-dash-002.json",
+  "engine/testdata/dash/xgo-cap-dash-003.json",
+  "engine/testdata/dash/xgo-cap-dash-004.json",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-001.json",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-002.json",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-003.json",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-004.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -2023,6 +2031,36 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/dash-execution-lab.json"]
 
+[targets.xgo_media.jobs.ffmpeg_plan_goldens]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "ffmpeg_plan_goldens",
+  "--output", ".devtool/reports/xgo/media/ffmpeg-plan-goldens.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-001.json",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-002.json",
+]
+outputs = [".devtool/reports/xgo/media/ffmpeg-plan-goldens.json"]
+
+[targets.xgo_media.jobs.ffmpeg_execution_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "ffmpeg_execution",
+  "--output", ".devtool/reports/xgo/media/ffmpeg-execution-lab.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-003.json",
+  "engine/testdata/ffmpeg/xgo-cap-ffmpeg-004.json",
+]
+outputs = [".devtool/reports/xgo/media/ffmpeg-execution-lab.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -2039,6 +2077,8 @@ validate = [
   { id = "hls_execution_lab", ref = "job:hls_execution_lab", depends_on = ["hls_timeline_lab"] },
   { id = "dash_corpus", ref = "job:dash_corpus", depends_on = ["hls_execution_lab"] },
   { id = "dash_execution_lab", ref = "job:dash_execution_lab", depends_on = ["dash_corpus"] },
+  { id = "ffmpeg_plan_goldens", ref = "job:ffmpeg_plan_goldens", depends_on = ["dash_execution_lab"] },
+  { id = "ffmpeg_execution_lab", ref = "job:ffmpeg_execution_lab", depends_on = ["ffmpeg_plan_goldens"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

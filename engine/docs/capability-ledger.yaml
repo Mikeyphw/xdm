@@ -987,7 +987,7 @@
         "desktop_ffmpeg_service"
       ],
       "id": "XGO-CAP-FFMPEG-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-60",
       "test_id": "fixture:xgo-cap-ffmpeg-001"
     },
@@ -1001,7 +1001,7 @@
         "android_ffmpeg_test"
       ],
       "id": "XGO-CAP-FFMPEG-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-60",
       "test_id": "fixture:xgo-cap-ffmpeg-002"
     },
@@ -1015,7 +1015,7 @@
         "desktop_ffmpeg_service"
       ],
       "id": "XGO-CAP-FFMPEG-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-61",
       "test_id": "fixture:xgo-cap-ffmpeg-003"
     },
@@ -1029,7 +1029,7 @@
         "desktop_ffmpeg_service"
       ],
       "id": "XGO-CAP-FFMPEG-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-61",
       "test_id": "fixture:xgo-cap-ffmpeg-004"
     },
