@@ -1,7 +1,325 @@
 {
   "description": "Language-neutral behavior fixtures derived from the XGO capability ledger and pinned Android/Desktop donor evidence.",
-  "fixture_count": 85,
+  "fixture_count": 89,
   "fixtures": [
+    {
+      "capability_ids": [
+        "XGO-CAP-ANDROID-001"
+      ],
+      "category": "android",
+      "detailed": false,
+      "donor_ids": [
+        "android_download_models"
+      ],
+      "fixture_id": "xgo-cap-android-001",
+      "path": "engine/testdata/android/xgo-cap-android-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ANDROID-002"
+      ],
+      "category": "android",
+      "detailed": false,
+      "donor_ids": [
+        "android_startup_recovery",
+        "android_queue_coordinator"
+      ],
+      "fixture_id": "xgo-cap-android-002",
+      "path": "engine/testdata/android/xgo-cap-android-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ANDROID-003"
+      ],
+      "category": "android",
+      "detailed": true,
+      "donor_ids": [
+        "android_destination_writer",
+        "android_publication_safety"
+      ],
+      "fixture_id": "xgo-cap-android-003",
+      "path": "engine/testdata/android/xgo-cap-android-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ANDROID-004"
+      ],
+      "category": "android",
+      "detailed": false,
+      "donor_ids": [
+        "android_queue_coordinator",
+        "android_startup_recovery"
+      ],
+      "fixture_id": "xgo-cap-android-004",
+      "path": "engine/testdata/android/xgo-cap-android-004.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ANDROID-005"
+      ],
+      "category": "android",
+      "detailed": false,
+      "donor_ids": [
+        "android_entities",
+        "android_database",
+        "android_download_dao"
+      ],
+      "fixture_id": "xgo-cap-android-005",
+      "path": "engine/testdata/android/xgo-cap-android-005.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ARIA2-001"
+      ],
+      "category": "aria2",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_aria2_rpc",
+        "android_aria2_rpc"
+      ],
+      "fixture_id": "xgo-cap-aria2-001",
+      "path": "engine/testdata/aria2/xgo-cap-aria2-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ARIA2-002"
+      ],
+      "category": "aria2",
+      "detailed": false,
+      "donor_ids": [
+        "android_aria2_backend",
+        "android_aria2_contract_test"
+      ],
+      "fixture_id": "xgo-cap-aria2-002",
+      "path": "engine/testdata/aria2/xgo-cap-aria2-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ARIA2-003"
+      ],
+      "category": "aria2",
+      "detailed": false,
+      "donor_ids": [
+        "android_aria2_backend",
+        "android_aria2_contract_test",
+        "desktop_aria2_rpc"
+      ],
+      "fixture_id": "xgo-cap-aria2-003",
+      "path": "engine/testdata/aria2/xgo-cap-aria2-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-BACKEND-001"
+      ],
+      "category": "backend",
+      "detailed": false,
+      "donor_ids": [
+        "android_backend_contract",
+        "android_aria2_backend",
+        "desktop_backend_advisor"
+      ],
+      "fixture_id": "xgo-cap-backend-001",
+      "path": "engine/testdata/backend/xgo-cap-backend-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-BACKEND-002"
+      ],
+      "category": "backend",
+      "detailed": false,
+      "donor_ids": [
+        "android_backend_contract",
+        "desktop_backend_advisor"
+      ],
+      "fixture_id": "xgo-cap-backend-002",
+      "path": "engine/testdata/backend/xgo-cap-backend-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-BACKEND-003"
+      ],
+      "category": "backend",
+      "detailed": true,
+      "donor_ids": [
+        "android_backend_migration_contract",
+        "android_backend_migration_coordinator",
+        "android_backend_migration_test"
+      ],
+      "fixture_id": "xgo-cap-backend-003",
+      "path": "engine/testdata/backend/xgo-cap-backend-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-BANDWIDTH-001"
+      ],
+      "category": "bandwidth",
+      "detailed": false,
+      "donor_ids": [
+        "android_native_http",
+        "desktop_bandwidth_profile"
+      ],
+      "fixture_id": "xgo-cap-bandwidth-001",
+      "path": "engine/testdata/bandwidth/xgo-cap-bandwidth-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-CAPTURE-001"
+      ],
+      "category": "capture",
+      "detailed": false,
+      "donor_ids": [
+        "android_browser_capture_models",
+        "android_capture_registry",
+        "desktop_browser_protocol",
+        "desktop_firefox_handoff"
+      ],
+      "fixture_id": "xgo-cap-capture-001",
+      "path": "engine/testdata/capture/xgo-cap-capture-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-CAPTURE-002"
+      ],
+      "category": "capture",
+      "detailed": true,
+      "donor_ids": [
+        "android_browser_capture_models",
+        "android_capture_registry"
+      ],
+      "fixture_id": "xgo-cap-capture-002",
+      "path": "engine/testdata/capture/xgo-cap-capture-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-CHECKPOINT-001"
+      ],
+      "category": "checkpoint",
+      "detailed": true,
+      "donor_ids": [
+        "android_checkpoint_integrity",
+        "android_checkpoint_store"
+      ],
+      "fixture_id": "xgo-cap-checkpoint-001",
+      "path": "engine/testdata/checkpoint/xgo-cap-checkpoint-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-CHECKSUM-001"
+      ],
+      "category": "checksum",
+      "detailed": false,
+      "donor_ids": [
+        "android_checksum_contract",
+        "desktop_checksum_service"
+      ],
+      "fixture_id": "xgo-cap-checksum-001",
+      "path": "engine/testdata/checksum/xgo-cap-checksum-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DASH-001"
+      ],
+      "category": "dash",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_dash_parser",
+        "desktop_dash_parser_test",
+        "android_manifest_resolution_test"
+      ],
+      "fixture_id": "xgo-cap-dash-001",
+      "path": "engine/testdata/dash/xgo-cap-dash-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DASH-002"
+      ],
+      "category": "dash",
+      "detailed": true,
+      "donor_ids": [
+        "desktop_dash_parser",
+        "desktop_dash_parser_test"
+      ],
+      "fixture_id": "xgo-cap-dash-002",
+      "path": "engine/testdata/dash/xgo-cap-dash-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DASH-003"
+      ],
+      "category": "dash",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_dash_downloader",
+        "desktop_dash_downloader_test",
+        "android_manifest_resolution_test"
+      ],
+      "fixture_id": "xgo-cap-dash-003",
+      "path": "engine/testdata/dash/xgo-cap-dash-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DASH-004"
+      ],
+      "category": "dash",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_dash_downloader",
+        "android_media_dispatcher"
+      ],
+      "fixture_id": "xgo-cap-dash-004",
+      "path": "engine/testdata/dash/xgo-cap-dash-004.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DESKTOP-001"
+      ],
+      "category": "desktop",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_download_manager"
+      ],
+      "fixture_id": "xgo-cap-desktop-001",
+      "path": "engine/testdata/desktop/xgo-cap-desktop-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DESKTOP-002"
+      ],
+      "category": "desktop",
+      "detailed": true,
+      "donor_ids": [
+        "desktop_download_manager"
+      ],
+      "fixture_id": "xgo-cap-desktop-002",
+      "path": "engine/testdata/desktop/xgo-cap-desktop-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DESKTOP-003"
+      ],
+      "category": "desktop",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_proxy_settings",
+        "desktop_download_schedule"
+      ],
+      "fixture_id": "xgo-cap-desktop-003",
+      "path": "engine/testdata/desktop/xgo-cap-desktop-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-DESKTOP-004"
+      ],
+      "category": "desktop",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_download_manager",
+        "desktop_hls_downloader",
+        "desktop_dash_downloader"
+      ],
+      "fixture_id": "xgo-cap-desktop-004",
+      "path": "engine/testdata/desktop/xgo-cap-desktop-004.json"
+    },
     {
       "capability_ids": [
         "XGO-CAP-DOMAIN-001"
@@ -58,384 +376,55 @@
     },
     {
       "capability_ids": [
-        "XGO-CAP-STORE-001"
+        "XGO-CAP-FFMPEG-001"
       ],
-      "category": "persistence",
+      "category": "ffmpeg",
       "detailed": false,
       "donor_ids": [
-        "android_entities",
-        "android_database",
-        "android_download_dao"
+        "android_ffmpeg_compiler",
+        "desktop_ffmpeg_service"
       ],
-      "fixture_id": "xgo-cap-store-001",
-      "path": "engine/testdata/persistence/xgo-cap-store-001.json"
+      "fixture_id": "xgo-cap-ffmpeg-001",
+      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-001.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-STORE-002"
+        "XGO-CAP-FFMPEG-002"
       ],
-      "category": "persistence",
-      "detailed": false,
-      "donor_ids": [
-        "android_download_dao",
-        "android_backend_ownership_dao"
-      ],
-      "fixture_id": "xgo-cap-store-002",
-      "path": "engine/testdata/persistence/xgo-cap-store-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-OWNERSHIP-001"
-      ],
-      "category": "ownership",
+      "category": "ffmpeg",
       "detailed": true,
       "donor_ids": [
-        "android_backend_contract",
-        "android_backend_coordinator_test",
-        "android_execution_semantics_test"
+        "android_ffmpeg_compiler",
+        "android_ffmpeg_test"
       ],
-      "fixture_id": "xgo-cap-ownership-001",
-      "path": "engine/testdata/ownership/xgo-cap-ownership-001.json"
+      "fixture_id": "xgo-cap-ffmpeg-002",
+      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-002.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-OWNERSHIP-002"
+        "XGO-CAP-FFMPEG-003"
       ],
-      "category": "ownership",
-      "detailed": true,
-      "donor_ids": [
-        "android_backend_contract",
-        "android_backend_ownership_dao",
-        "android_backend_coordinator_test"
-      ],
-      "fixture_id": "xgo-cap-ownership-002",
-      "path": "engine/testdata/ownership/xgo-cap-ownership-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-OWNERSHIP-003"
-      ],
-      "category": "ownership",
+      "category": "ffmpeg",
       "detailed": false,
       "donor_ids": [
-        "android_aria2_backend",
-        "android_aria2_contract_test"
+        "android_media_dispatcher",
+        "desktop_ffmpeg_service"
       ],
-      "fixture_id": "xgo-cap-ownership-003",
-      "path": "engine/testdata/ownership/xgo-cap-ownership-003.json"
+      "fixture_id": "xgo-cap-ffmpeg-003",
+      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-003.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-CHECKPOINT-001"
+        "XGO-CAP-FFMPEG-004"
       ],
-      "category": "checkpoint",
-      "detailed": true,
-      "donor_ids": [
-        "android_checkpoint_integrity",
-        "android_checkpoint_store"
-      ],
-      "fixture_id": "xgo-cap-checkpoint-001",
-      "path": "engine/testdata/checkpoint/xgo-cap-checkpoint-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-VERIFY-001"
-      ],
-      "category": "verification",
+      "category": "ffmpeg",
       "detailed": false,
       "donor_ids": [
-        "android_completion_verification",
-        "android_checksum_contract",
-        "desktop_checksum_service"
+        "android_ffmpeg_verifier",
+        "desktop_ffmpeg_service"
       ],
-      "fixture_id": "xgo-cap-verify-001",
-      "path": "engine/testdata/verification/xgo-cap-verify-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-PUBLICATION-001"
-      ],
-      "category": "publication",
-      "detailed": true,
-      "donor_ids": [
-        "android_atomic_finalization",
-        "android_finalization_store",
-        "android_publication_safety",
-        "android_destination_writer",
-        "android_publication_contract_test"
-      ],
-      "fixture_id": "xgo-cap-publication-001",
-      "path": "engine/testdata/publication/xgo-cap-publication-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-RECOVERY-001"
-      ],
-      "category": "recovery",
-      "detailed": false,
-      "donor_ids": [
-        "android_recovery_contracts",
-        "android_startup_recovery",
-        "android_startup_recovery_test",
-        "desktop_recovery_coordinator"
-      ],
-      "fixture_id": "xgo-cap-recovery-001",
-      "path": "engine/testdata/recovery/xgo-cap-recovery-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-RECOVERY-002"
-      ],
-      "category": "recovery",
-      "detailed": true,
-      "donor_ids": [
-        "android_backend_migration_coordinator",
-        "android_backend_migration_test",
-        "android_execution_semantics_test"
-      ],
-      "fixture_id": "xgo-cap-recovery-002",
-      "path": "engine/testdata/recovery/xgo-cap-recovery-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-REQUEST-001"
-      ],
-      "category": "request",
-      "detailed": false,
-      "donor_ids": [
-        "android_download_intake",
-        "android_native_http",
-        "desktop_download_request"
-      ],
-      "fixture_id": "xgo-cap-request-001",
-      "path": "engine/testdata/request/xgo-cap-request-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SECURITY-001"
-      ],
-      "category": "security",
-      "detailed": true,
-      "donor_ids": [
-        "android_request_security_guard",
-        "android_security_guard_test"
-      ],
-      "fixture_id": "xgo-cap-security-001",
-      "path": "engine/testdata/security/xgo-cap-security-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SECURITY-002"
-      ],
-      "category": "security",
-      "detailed": true,
-      "donor_ids": [
-        "android_request_security_guard",
-        "android_security_guard_test",
-        "desktop_browser_security_test"
-      ],
-      "fixture_id": "xgo-cap-security-002",
-      "path": "engine/testdata/security/xgo-cap-security-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SECURITY-003"
-      ],
-      "category": "security",
-      "detailed": true,
-      "donor_ids": [
-        "android_request_security_guard",
-        "android_security_guard_test"
-      ],
-      "fixture_id": "xgo-cap-security-003",
-      "path": "engine/testdata/security/xgo-cap-security-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SECURITY-004"
-      ],
-      "category": "security",
-      "detailed": true,
-      "donor_ids": [
-        "android_request_security_guard",
-        "android_native_http"
-      ],
-      "fixture_id": "xgo-cap-security-004",
-      "path": "engine/testdata/security/xgo-cap-security-004.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SECURITY-005"
-      ],
-      "category": "security",
-      "detailed": false,
-      "donor_ids": [
-        "android_request_security_guard",
-        "android_security_guard_test"
-      ],
-      "fixture_id": "xgo-cap-security-005",
-      "path": "engine/testdata/security/xgo-cap-security-005.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SECURITY-006"
-      ],
-      "category": "security",
-      "detailed": false,
-      "donor_ids": [
-        "android_request_security_guard"
-      ],
-      "fixture_id": "xgo-cap-security-006",
-      "path": "engine/testdata/security/xgo-cap-security-006.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-PROXY-001"
-      ],
-      "category": "proxy",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_proxy_settings",
-        "desktop_download_request"
-      ],
-      "fixture_id": "xgo-cap-proxy-001",
-      "path": "engine/testdata/proxy/xgo-cap-proxy-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-HTTP-001"
-      ],
-      "category": "http",
-      "detailed": false,
-      "donor_ids": [
-        "android_native_http",
-        "android_native_protocol_test",
-        "desktop_download_manager"
-      ],
-      "fixture_id": "xgo-cap-http-001",
-      "path": "engine/testdata/http/xgo-cap-http-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-HTTP-002"
-      ],
-      "category": "http",
-      "detailed": false,
-      "donor_ids": [
-        "android_native_http",
-        "android_checkpoint_integrity",
-        "desktop_resume_checkpoint"
-      ],
-      "fixture_id": "xgo-cap-http-002",
-      "path": "engine/testdata/http/xgo-cap-http-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-HTTP-003"
-      ],
-      "category": "http",
-      "detailed": false,
-      "donor_ids": [
-        "android_native_http",
-        "android_native_http_test",
-        "desktop_download_manager"
-      ],
-      "fixture_id": "xgo-cap-http-003",
-      "path": "engine/testdata/http/xgo-cap-http-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-HTTP-004"
-      ],
-      "category": "http",
-      "detailed": false,
-      "donor_ids": [
-        "android_native_http",
-        "android_native_http_test",
-        "desktop_segmented_executor"
-      ],
-      "fixture_id": "xgo-cap-http-004",
-      "path": "engine/testdata/http/xgo-cap-http-004.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-HTTP-005"
-      ],
-      "category": "http",
-      "detailed": true,
-      "donor_ids": [
-        "android_native_http",
-        "android_native_protocol_test"
-      ],
-      "fixture_id": "xgo-cap-http-005",
-      "path": "engine/testdata/http/xgo-cap-http-005.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-HTTP-006"
-      ],
-      "category": "http",
-      "detailed": true,
-      "donor_ids": [
-        "android_native_http",
-        "desktop_resume_checkpoint"
-      ],
-      "fixture_id": "xgo-cap-http-006",
-      "path": "engine/testdata/http/xgo-cap-http-006.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-RETRY-001"
-      ],
-      "category": "retry",
-      "detailed": true,
-      "donor_ids": [
-        "android_queue_retry_ledger",
-        "desktop_retry_policy",
-        "android_native_http"
-      ],
-      "fixture_id": "xgo-cap-retry-001",
-      "path": "engine/testdata/retry/xgo-cap-retry-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-BANDWIDTH-001"
-      ],
-      "category": "bandwidth",
-      "detailed": false,
-      "donor_ids": [
-        "android_native_http",
-        "desktop_bandwidth_profile"
-      ],
-      "fixture_id": "xgo-cap-bandwidth-001",
-      "path": "engine/testdata/bandwidth/xgo-cap-bandwidth-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-CHECKSUM-001"
-      ],
-      "category": "checksum",
-      "detailed": false,
-      "donor_ids": [
-        "android_checksum_contract",
-        "desktop_checksum_service"
-      ],
-      "fixture_id": "xgo-cap-checksum-001",
-      "path": "engine/testdata/checksum/xgo-cap-checksum-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-REPAIR-001"
-      ],
-      "category": "repair",
-      "detailed": false,
-      "donor_ids": [
-        "android_selective_repair",
-        "desktop_partial_repair",
-        "android_checkpoint_integrity"
-      ],
-      "fixture_id": "xgo-cap-repair-001",
-      "path": "engine/testdata/repair/xgo-cap-repair-001.json"
+      "fixture_id": "xgo-cap-ffmpeg-004",
+      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-004.json"
     },
     {
       "capability_ids": [
@@ -452,16 +441,43 @@
     },
     {
       "capability_ids": [
-        "XGO-CAP-REQUEST-002"
+        "XGO-CAP-FOUNDATION-001"
       ],
-      "category": "request",
+      "category": "foundation",
       "detailed": false,
-      "donor_ids": [
-        "desktop_download_request",
-        "desktop_download_manager"
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-foundation-001",
+      "path": "engine/testdata/foundation/xgo-cap-foundation-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-FOUNDATION-002"
       ],
-      "fixture_id": "xgo-cap-request-002",
-      "path": "engine/testdata/request/xgo-cap-request-002.json"
+      "category": "foundation",
+      "detailed": false,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-foundation-002",
+      "path": "engine/testdata/foundation/xgo-cap-foundation-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-FOUNDATION-003"
+      ],
+      "category": "foundation",
+      "detailed": false,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-foundation-003",
+      "path": "engine/testdata/foundation/xgo-cap-foundation-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-FOUNDATION-004"
+      ],
+      "category": "foundation",
+      "detailed": false,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-foundation-004",
+      "path": "engine/testdata/foundation/xgo-cap-foundation-004.json"
     },
     {
       "capability_ids": [
@@ -474,283 +490,6 @@
       ],
       "fixture_id": "xgo-cap-ftp-001",
       "path": "engine/testdata/ftp/xgo-cap-ftp-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-METALINK-001"
-      ],
-      "category": "metalink",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_metalink"
-      ],
-      "fixture_id": "xgo-cap-metalink-001",
-      "path": "engine/testdata/metalink/xgo-cap-metalink-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-BACKEND-001"
-      ],
-      "category": "backend",
-      "detailed": false,
-      "donor_ids": [
-        "android_backend_contract",
-        "android_aria2_backend",
-        "desktop_backend_advisor"
-      ],
-      "fixture_id": "xgo-cap-backend-001",
-      "path": "engine/testdata/backend/xgo-cap-backend-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-BACKEND-002"
-      ],
-      "category": "backend",
-      "detailed": false,
-      "donor_ids": [
-        "android_backend_contract",
-        "desktop_backend_advisor"
-      ],
-      "fixture_id": "xgo-cap-backend-002",
-      "path": "engine/testdata/backend/xgo-cap-backend-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-ARIA2-001"
-      ],
-      "category": "aria2",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_aria2_rpc",
-        "android_aria2_rpc"
-      ],
-      "fixture_id": "xgo-cap-aria2-001",
-      "path": "engine/testdata/aria2/xgo-cap-aria2-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-ARIA2-002"
-      ],
-      "category": "aria2",
-      "detailed": false,
-      "donor_ids": [
-        "android_aria2_backend",
-        "android_aria2_contract_test"
-      ],
-      "fixture_id": "xgo-cap-aria2-002",
-      "path": "engine/testdata/aria2/xgo-cap-aria2-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-ARIA2-003"
-      ],
-      "category": "aria2",
-      "detailed": false,
-      "donor_ids": [
-        "android_aria2_backend",
-        "android_aria2_contract_test",
-        "desktop_aria2_rpc"
-      ],
-      "fixture_id": "xgo-cap-aria2-003",
-      "path": "engine/testdata/aria2/xgo-cap-aria2-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-BACKEND-003"
-      ],
-      "category": "backend",
-      "detailed": true,
-      "donor_ids": [
-        "android_backend_migration_contract",
-        "android_backend_migration_coordinator",
-        "android_backend_migration_test"
-      ],
-      "fixture_id": "xgo-cap-backend-003",
-      "path": "engine/testdata/backend/xgo-cap-backend-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-QUEUE-001"
-      ],
-      "category": "queue",
-      "detailed": false,
-      "donor_ids": [
-        "android_queue_intelligence",
-        "android_queue_coordinator"
-      ],
-      "fixture_id": "xgo-cap-queue-001",
-      "path": "engine/testdata/queue/xgo-cap-queue-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-QUEUE-002"
-      ],
-      "category": "queue",
-      "detailed": true,
-      "donor_ids": [
-        "desktop_queue_graph"
-      ],
-      "fixture_id": "xgo-cap-queue-002",
-      "path": "engine/testdata/queue/xgo-cap-queue-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SCHED-001"
-      ],
-      "category": "scheduler",
-      "detailed": false,
-      "donor_ids": [
-        "android_queue_intelligence",
-        "android_queue_coordinator"
-      ],
-      "fixture_id": "xgo-cap-sched-001",
-      "path": "engine/testdata/scheduler/xgo-cap-sched-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SCHED-002"
-      ],
-      "category": "scheduler",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_schedule_window",
-        "desktop_download_schedule"
-      ],
-      "fixture_id": "xgo-cap-sched-002",
-      "path": "engine/testdata/scheduler/xgo-cap-sched-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SCHED-003"
-      ],
-      "category": "scheduler",
-      "detailed": false,
-      "donor_ids": [
-        "android_queue_coordinator",
-        "android_queue_intelligence",
-        "desktop_queue_graph"
-      ],
-      "fixture_id": "xgo-cap-sched-003",
-      "path": "engine/testdata/scheduler/xgo-cap-sched-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SCHED-004"
-      ],
-      "category": "scheduler",
-      "detailed": true,
-      "donor_ids": [
-        "android_queue_coordinator",
-        "android_queue_intelligence"
-      ],
-      "fixture_id": "xgo-cap-sched-004",
-      "path": "engine/testdata/scheduler/xgo-cap-sched-004.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SCHED-005"
-      ],
-      "category": "scheduler",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_bandwidth_profile",
-        "android_queue_intelligence"
-      ],
-      "fixture_id": "xgo-cap-sched-005",
-      "path": "engine/testdata/scheduler/xgo-cap-sched-005.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-SCHED-006"
-      ],
-      "category": "scheduler",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_download_schedule"
-      ],
-      "fixture_id": "xgo-cap-sched-006",
-      "path": "engine/testdata/scheduler/xgo-cap-sched-006.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-CAPTURE-001"
-      ],
-      "category": "capture",
-      "detailed": false,
-      "donor_ids": [
-        "android_browser_capture_models",
-        "android_capture_registry",
-        "desktop_browser_protocol",
-        "desktop_firefox_handoff"
-      ],
-      "fixture_id": "xgo-cap-capture-001",
-      "path": "engine/testdata/capture/xgo-cap-capture-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-CAPTURE-002"
-      ],
-      "category": "capture",
-      "detailed": true,
-      "donor_ids": [
-        "android_browser_capture_models",
-        "android_capture_registry"
-      ],
-      "fixture_id": "xgo-cap-capture-002",
-      "path": "engine/testdata/capture/xgo-cap-capture-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-MEDIA-001"
-      ],
-      "category": "media",
-      "detailed": false,
-      "donor_ids": [
-        "android_logical_media_graph",
-        "android_media_security"
-      ],
-      "fixture_id": "xgo-cap-media-001",
-      "path": "engine/testdata/media/xgo-cap-media-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-MEDIA-002"
-      ],
-      "category": "media",
-      "detailed": false,
-      "donor_ids": [
-        "android_logical_media_graph",
-        "android_logical_media_graph_test"
-      ],
-      "fixture_id": "xgo-cap-media-002",
-      "path": "engine/testdata/media/xgo-cap-media-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-MEDIA-003"
-      ],
-      "category": "media",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_media_selection",
-        "desktop_media_selection_test",
-        "android_media_dispatcher"
-      ],
-      "fixture_id": "xgo-cap-media-003",
-      "path": "engine/testdata/media/xgo-cap-media-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-MEDIA-004"
-      ],
-      "category": "media",
-      "detailed": true,
-      "donor_ids": [
-        "android_media_security",
-        "desktop_browser_security_test"
-      ],
-      "fixture_id": "xgo-cap-media-004",
-      "path": "engine/testdata/media/xgo-cap-media-004.json"
     },
     {
       "capability_ids": [
@@ -847,109 +586,150 @@
     },
     {
       "capability_ids": [
-        "XGO-CAP-DASH-001"
+        "XGO-CAP-HTTP-001"
       ],
-      "category": "dash",
+      "category": "http",
       "detailed": false,
       "donor_ids": [
-        "desktop_dash_parser",
-        "desktop_dash_parser_test",
-        "android_manifest_resolution_test"
+        "android_native_http",
+        "android_native_protocol_test",
+        "desktop_download_manager"
       ],
-      "fixture_id": "xgo-cap-dash-001",
-      "path": "engine/testdata/dash/xgo-cap-dash-001.json"
+      "fixture_id": "xgo-cap-http-001",
+      "path": "engine/testdata/http/xgo-cap-http-001.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-DASH-002"
+        "XGO-CAP-HTTP-002"
       ],
-      "category": "dash",
+      "category": "http",
+      "detailed": false,
+      "donor_ids": [
+        "android_native_http",
+        "android_checkpoint_integrity",
+        "desktop_resume_checkpoint"
+      ],
+      "fixture_id": "xgo-cap-http-002",
+      "path": "engine/testdata/http/xgo-cap-http-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-HTTP-003"
+      ],
+      "category": "http",
+      "detailed": false,
+      "donor_ids": [
+        "android_native_http",
+        "android_native_http_test",
+        "desktop_download_manager"
+      ],
+      "fixture_id": "xgo-cap-http-003",
+      "path": "engine/testdata/http/xgo-cap-http-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-HTTP-004"
+      ],
+      "category": "http",
+      "detailed": false,
+      "donor_ids": [
+        "android_native_http",
+        "android_native_http_test",
+        "desktop_segmented_executor"
+      ],
+      "fixture_id": "xgo-cap-http-004",
+      "path": "engine/testdata/http/xgo-cap-http-004.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-HTTP-005"
+      ],
+      "category": "http",
       "detailed": true,
       "donor_ids": [
-        "desktop_dash_parser",
-        "desktop_dash_parser_test"
+        "android_native_http",
+        "android_native_protocol_test"
       ],
-      "fixture_id": "xgo-cap-dash-002",
-      "path": "engine/testdata/dash/xgo-cap-dash-002.json"
+      "fixture_id": "xgo-cap-http-005",
+      "path": "engine/testdata/http/xgo-cap-http-005.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-DASH-003"
+        "XGO-CAP-HTTP-006"
       ],
-      "category": "dash",
-      "detailed": false,
+      "category": "http",
+      "detailed": true,
       "donor_ids": [
-        "desktop_dash_downloader",
-        "desktop_dash_downloader_test",
-        "android_manifest_resolution_test"
+        "android_native_http",
+        "desktop_resume_checkpoint"
       ],
-      "fixture_id": "xgo-cap-dash-003",
-      "path": "engine/testdata/dash/xgo-cap-dash-003.json"
+      "fixture_id": "xgo-cap-http-006",
+      "path": "engine/testdata/http/xgo-cap-http-006.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-DASH-004"
+        "XGO-CAP-MEDIA-001"
       ],
-      "category": "dash",
+      "category": "media",
       "detailed": false,
       "donor_ids": [
-        "desktop_dash_downloader",
+        "android_logical_media_graph",
+        "android_media_security"
+      ],
+      "fixture_id": "xgo-cap-media-001",
+      "path": "engine/testdata/media/xgo-cap-media-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-MEDIA-002"
+      ],
+      "category": "media",
+      "detailed": false,
+      "donor_ids": [
+        "android_logical_media_graph",
+        "android_logical_media_graph_test"
+      ],
+      "fixture_id": "xgo-cap-media-002",
+      "path": "engine/testdata/media/xgo-cap-media-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-MEDIA-003"
+      ],
+      "category": "media",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_media_selection",
+        "desktop_media_selection_test",
         "android_media_dispatcher"
       ],
-      "fixture_id": "xgo-cap-dash-004",
-      "path": "engine/testdata/dash/xgo-cap-dash-004.json"
+      "fixture_id": "xgo-cap-media-003",
+      "path": "engine/testdata/media/xgo-cap-media-003.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-FFMPEG-001"
+        "XGO-CAP-MEDIA-004"
       ],
-      "category": "ffmpeg",
-      "detailed": false,
-      "donor_ids": [
-        "android_ffmpeg_compiler",
-        "desktop_ffmpeg_service"
-      ],
-      "fixture_id": "xgo-cap-ffmpeg-001",
-      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-FFMPEG-002"
-      ],
-      "category": "ffmpeg",
+      "category": "media",
       "detailed": true,
       "donor_ids": [
-        "android_ffmpeg_compiler",
-        "android_ffmpeg_test"
+        "android_media_security",
+        "desktop_browser_security_test"
       ],
-      "fixture_id": "xgo-cap-ffmpeg-002",
-      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-002.json"
+      "fixture_id": "xgo-cap-media-004",
+      "path": "engine/testdata/media/xgo-cap-media-004.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-FFMPEG-003"
+        "XGO-CAP-METALINK-001"
       ],
-      "category": "ffmpeg",
+      "category": "metalink",
       "detailed": false,
       "donor_ids": [
-        "android_media_dispatcher",
-        "desktop_ffmpeg_service"
+        "desktop_metalink"
       ],
-      "fixture_id": "xgo-cap-ffmpeg-003",
-      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-FFMPEG-004"
-      ],
-      "category": "ffmpeg",
-      "detailed": false,
-      "donor_ids": [
-        "android_ffmpeg_verifier",
-        "desktop_ffmpeg_service"
-      ],
-      "fixture_id": "xgo-cap-ffmpeg-004",
-      "path": "engine/testdata/ffmpeg/xgo-cap-ffmpeg-004.json"
+      "fixture_id": "xgo-cap-metalink-001",
+      "path": "engine/testdata/metalink/xgo-cap-metalink-001.json"
     },
     {
       "capability_ids": [
@@ -1020,119 +800,379 @@
     },
     {
       "capability_ids": [
-        "XGO-CAP-ANDROID-001"
+        "XGO-CAP-OWNERSHIP-001"
       ],
-      "category": "android",
-      "detailed": false,
-      "donor_ids": [
-        "android_download_models"
-      ],
-      "fixture_id": "xgo-cap-android-001",
-      "path": "engine/testdata/android/xgo-cap-android-001.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-ANDROID-002"
-      ],
-      "category": "android",
-      "detailed": false,
-      "donor_ids": [
-        "android_startup_recovery",
-        "android_queue_coordinator"
-      ],
-      "fixture_id": "xgo-cap-android-002",
-      "path": "engine/testdata/android/xgo-cap-android-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-ANDROID-003"
-      ],
-      "category": "android",
+      "category": "ownership",
       "detailed": true,
       "donor_ids": [
-        "android_destination_writer",
-        "android_publication_safety"
+        "android_backend_contract",
+        "android_backend_coordinator_test",
+        "android_execution_semantics_test"
       ],
-      "fixture_id": "xgo-cap-android-003",
-      "path": "engine/testdata/android/xgo-cap-android-003.json"
+      "fixture_id": "xgo-cap-ownership-001",
+      "path": "engine/testdata/ownership/xgo-cap-ownership-001.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-ANDROID-004"
+        "XGO-CAP-OWNERSHIP-002"
       ],
-      "category": "android",
+      "category": "ownership",
+      "detailed": true,
+      "donor_ids": [
+        "android_backend_contract",
+        "android_backend_ownership_dao",
+        "android_backend_coordinator_test"
+      ],
+      "fixture_id": "xgo-cap-ownership-002",
+      "path": "engine/testdata/ownership/xgo-cap-ownership-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-OWNERSHIP-003"
+      ],
+      "category": "ownership",
+      "detailed": false,
+      "donor_ids": [
+        "android_aria2_backend",
+        "android_aria2_contract_test"
+      ],
+      "fixture_id": "xgo-cap-ownership-003",
+      "path": "engine/testdata/ownership/xgo-cap-ownership-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-PROXY-001"
+      ],
+      "category": "proxy",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_proxy_settings",
+        "desktop_download_request"
+      ],
+      "fixture_id": "xgo-cap-proxy-001",
+      "path": "engine/testdata/proxy/xgo-cap-proxy-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-PUBLICATION-001"
+      ],
+      "category": "publication",
+      "detailed": true,
+      "donor_ids": [
+        "android_atomic_finalization",
+        "android_finalization_store",
+        "android_publication_safety",
+        "android_destination_writer",
+        "android_publication_contract_test"
+      ],
+      "fixture_id": "xgo-cap-publication-001",
+      "path": "engine/testdata/publication/xgo-cap-publication-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-QUEUE-001"
+      ],
+      "category": "queue",
+      "detailed": false,
+      "donor_ids": [
+        "android_queue_intelligence",
+        "android_queue_coordinator"
+      ],
+      "fixture_id": "xgo-cap-queue-001",
+      "path": "engine/testdata/queue/xgo-cap-queue-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-QUEUE-002"
+      ],
+      "category": "queue",
+      "detailed": true,
+      "donor_ids": [
+        "desktop_queue_graph"
+      ],
+      "fixture_id": "xgo-cap-queue-002",
+      "path": "engine/testdata/queue/xgo-cap-queue-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-RECOVERY-001"
+      ],
+      "category": "recovery",
+      "detailed": false,
+      "donor_ids": [
+        "android_recovery_contracts",
+        "android_startup_recovery",
+        "android_startup_recovery_test",
+        "desktop_recovery_coordinator"
+      ],
+      "fixture_id": "xgo-cap-recovery-001",
+      "path": "engine/testdata/recovery/xgo-cap-recovery-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-RECOVERY-002"
+      ],
+      "category": "recovery",
+      "detailed": true,
+      "donor_ids": [
+        "android_backend_migration_coordinator",
+        "android_backend_migration_test",
+        "android_execution_semantics_test"
+      ],
+      "fixture_id": "xgo-cap-recovery-002",
+      "path": "engine/testdata/recovery/xgo-cap-recovery-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-REPAIR-001"
+      ],
+      "category": "repair",
+      "detailed": false,
+      "donor_ids": [
+        "android_selective_repair",
+        "desktop_partial_repair",
+        "android_checkpoint_integrity"
+      ],
+      "fixture_id": "xgo-cap-repair-001",
+      "path": "engine/testdata/repair/xgo-cap-repair-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-REQUEST-001"
+      ],
+      "category": "request",
+      "detailed": false,
+      "donor_ids": [
+        "android_download_intake",
+        "android_native_http",
+        "desktop_download_request"
+      ],
+      "fixture_id": "xgo-cap-request-001",
+      "path": "engine/testdata/request/xgo-cap-request-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-REQUEST-002"
+      ],
+      "category": "request",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_download_request",
+        "desktop_download_manager"
+      ],
+      "fixture_id": "xgo-cap-request-002",
+      "path": "engine/testdata/request/xgo-cap-request-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-RETRY-001"
+      ],
+      "category": "retry",
+      "detailed": true,
+      "donor_ids": [
+        "android_queue_retry_ledger",
+        "desktop_retry_policy",
+        "android_native_http"
+      ],
+      "fixture_id": "xgo-cap-retry-001",
+      "path": "engine/testdata/retry/xgo-cap-retry-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SCHED-001"
+      ],
+      "category": "scheduler",
+      "detailed": false,
+      "donor_ids": [
+        "android_queue_intelligence",
+        "android_queue_coordinator"
+      ],
+      "fixture_id": "xgo-cap-sched-001",
+      "path": "engine/testdata/scheduler/xgo-cap-sched-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SCHED-002"
+      ],
+      "category": "scheduler",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_schedule_window",
+        "desktop_download_schedule"
+      ],
+      "fixture_id": "xgo-cap-sched-002",
+      "path": "engine/testdata/scheduler/xgo-cap-sched-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SCHED-003"
+      ],
+      "category": "scheduler",
       "detailed": false,
       "donor_ids": [
         "android_queue_coordinator",
-        "android_startup_recovery"
+        "android_queue_intelligence",
+        "desktop_queue_graph"
       ],
-      "fixture_id": "xgo-cap-android-004",
-      "path": "engine/testdata/android/xgo-cap-android-004.json"
+      "fixture_id": "xgo-cap-sched-003",
+      "path": "engine/testdata/scheduler/xgo-cap-sched-003.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-ANDROID-005"
+        "XGO-CAP-SCHED-004"
       ],
-      "category": "android",
+      "category": "scheduler",
+      "detailed": true,
+      "donor_ids": [
+        "android_queue_coordinator",
+        "android_queue_intelligence"
+      ],
+      "fixture_id": "xgo-cap-sched-004",
+      "path": "engine/testdata/scheduler/xgo-cap-sched-004.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SCHED-005"
+      ],
+      "category": "scheduler",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_bandwidth_profile",
+        "android_queue_intelligence"
+      ],
+      "fixture_id": "xgo-cap-sched-005",
+      "path": "engine/testdata/scheduler/xgo-cap-sched-005.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SCHED-006"
+      ],
+      "category": "scheduler",
+      "detailed": false,
+      "donor_ids": [
+        "desktop_download_schedule"
+      ],
+      "fixture_id": "xgo-cap-sched-006",
+      "path": "engine/testdata/scheduler/xgo-cap-sched-006.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SECURITY-001"
+      ],
+      "category": "security",
+      "detailed": true,
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "fixture_id": "xgo-cap-security-001",
+      "path": "engine/testdata/security/xgo-cap-security-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SECURITY-002"
+      ],
+      "category": "security",
+      "detailed": true,
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test",
+        "desktop_browser_security_test"
+      ],
+      "fixture_id": "xgo-cap-security-002",
+      "path": "engine/testdata/security/xgo-cap-security-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SECURITY-003"
+      ],
+      "category": "security",
+      "detailed": true,
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "fixture_id": "xgo-cap-security-003",
+      "path": "engine/testdata/security/xgo-cap-security-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SECURITY-004"
+      ],
+      "category": "security",
+      "detailed": true,
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_native_http"
+      ],
+      "fixture_id": "xgo-cap-security-004",
+      "path": "engine/testdata/security/xgo-cap-security-004.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SECURITY-005"
+      ],
+      "category": "security",
+      "detailed": false,
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "fixture_id": "xgo-cap-security-005",
+      "path": "engine/testdata/security/xgo-cap-security-005.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-SECURITY-006"
+      ],
+      "category": "security",
+      "detailed": false,
+      "donor_ids": [
+        "android_request_security_guard"
+      ],
+      "fixture_id": "xgo-cap-security-006",
+      "path": "engine/testdata/security/xgo-cap-security-006.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-STORE-001"
+      ],
+      "category": "persistence",
       "detailed": false,
       "donor_ids": [
         "android_entities",
         "android_database",
         "android_download_dao"
       ],
-      "fixture_id": "xgo-cap-android-005",
-      "path": "engine/testdata/android/xgo-cap-android-005.json"
+      "fixture_id": "xgo-cap-store-001",
+      "path": "engine/testdata/persistence/xgo-cap-store-001.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-DESKTOP-001"
+        "XGO-CAP-STORE-002"
       ],
-      "category": "desktop",
+      "category": "persistence",
       "detailed": false,
       "donor_ids": [
-        "desktop_download_manager"
+        "android_download_dao",
+        "android_backend_ownership_dao"
       ],
-      "fixture_id": "xgo-cap-desktop-001",
-      "path": "engine/testdata/desktop/xgo-cap-desktop-001.json"
+      "fixture_id": "xgo-cap-store-002",
+      "path": "engine/testdata/persistence/xgo-cap-store-002.json"
     },
     {
       "capability_ids": [
-        "XGO-CAP-DESKTOP-002"
+        "XGO-CAP-VERIFY-001"
       ],
-      "category": "desktop",
-      "detailed": true,
-      "donor_ids": [
-        "desktop_download_manager"
-      ],
-      "fixture_id": "xgo-cap-desktop-002",
-      "path": "engine/testdata/desktop/xgo-cap-desktop-002.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-DESKTOP-003"
-      ],
-      "category": "desktop",
+      "category": "verification",
       "detailed": false,
       "donor_ids": [
-        "desktop_proxy_settings",
-        "desktop_download_schedule"
+        "android_completion_verification",
+        "android_checksum_contract",
+        "desktop_checksum_service"
       ],
-      "fixture_id": "xgo-cap-desktop-003",
-      "path": "engine/testdata/desktop/xgo-cap-desktop-003.json"
-    },
-    {
-      "capability_ids": [
-        "XGO-CAP-DESKTOP-004"
-      ],
-      "category": "desktop",
-      "detailed": false,
-      "donor_ids": [
-        "desktop_download_manager",
-        "desktop_hls_downloader",
-        "desktop_dash_downloader"
-      ],
-      "fixture_id": "xgo-cap-desktop-004",
-      "path": "engine/testdata/desktop/xgo-cap-desktop-004.json"
+      "fixture_id": "xgo-cap-verify-001",
+      "path": "engine/testdata/verification/xgo-cap-verify-001.json"
     }
   ],
   "schema_version": 1

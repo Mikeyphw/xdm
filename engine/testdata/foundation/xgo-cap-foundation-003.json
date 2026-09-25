@@ -1,0 +1,18 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FOUNDATION-003"
+  ],
+  "category": "foundation",
+  "donor_ids": [],
+  "expected": {
+    "decision": "accept",
+    "invariants": [
+      "Counters reject zero/negative values and detect MaxInt64 overflow rather than wrapping."
+    ]
+  },
+  "fixture_id": "xgo-cap-foundation-003",
+  "input": {
+    "overlay": "XGO-05"
+  },
+  "schema_version": 1
+}

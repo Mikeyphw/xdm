@@ -1,0 +1,18 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FOUNDATION-002"
+  ],
+  "category": "foundation",
+  "donor_ids": [],
+  "expected": {
+    "decision": "accept",
+    "invariants": [
+      "Download, request, backend-task, queue, media, capture, publication and operation IDs use distinct types with strict prefixed lowercase-hex parsing."
+    ]
+  },
+  "fixture_id": "xgo-cap-foundation-002",
+  "input": {
+    "overlay": "XGO-05"
+  },
+  "schema_version": 1
+}

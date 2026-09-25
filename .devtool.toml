@@ -380,22 +380,30 @@ all = ["@desktop", "@android"]
 xgo = ["xgo_foundation", "xgo_store", "xgo_security", "xgo_transfer", "xgo_backends", "xgo_scheduler", "xgo_media", "xgo_ops", "xgo_android", "xgo_desktop", "xgo_seal"]
 xgo_gates = ["xgo_gate_spec", "xgo_gate_foundation", "xgo_gate_durable", "xgo_gate_security", "xgo_gate_transfer", "xgo_gate_backends", "xgo_gate_scheduler", "xgo_gate_media_identity", "xgo_gate_media_exec", "xgo_gate_ops", "xgo_gate_android", "xgo_gate_cross_host", "xgo_gate_final"]
 
-# XGO unified-Go-engine migration bootstrap. XGO-00/01 intentionally uses a
-# command target: the Go module itself is introduced later by XGO-04.
+# XGO-04 promotes the foundation target to Devtool's native Go runner. The
+# repository root owns go.work while the engine module remains under engine/;
+# target-local specification jobs therefore retain repository-relative paths.
 [targets.xgo_foundation]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/docs/**",
+  "go.work",
+  "engine/**",
   "tools/xgo/**",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/foundation/**",
 ]
+
+[targets.xgo_foundation.go]
+packages = ["./..."]
+build_targets = ["./engine/cmd/xgo-smoke"]
+vet = true
 
 [targets.xgo_foundation.jobs.foundation_tests]
 runner = "command"
@@ -512,9 +520,28 @@ outputs = [
   ".devtool/reports/xgo/foundation/devtool-topology.json",
 ]
 
+[targets.xgo_foundation.jobs.gofmt_check]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/check_go_format.py",
+  "engine",
+  "--output",
+  ".devtool/reports/xgo/foundation/gofmt-audit.json",
+]
+inputs = [
+  "engine/**",
+  "tools/xgo/check_go_format.py",
+]
+outputs = [
+  ".devtool/reports/xgo/foundation/gofmt-audit.json",
+]
+
 [targets.xgo_foundation.workflows]
 validate = [
-  { id = "foundation_tests", ref = "job:foundation_tests", depends_on = [] },
+  { id = "go_validate", ref = "runner:go#validate", depends_on = [] },
+  { id = "gofmt_check", ref = "job:gofmt_check", depends_on = ["go_validate"] },
+  { id = "foundation_tests", ref = "job:foundation_tests", depends_on = ["gofmt_check"] },
   { id = "donor_audit", ref = "job:donor_audit", depends_on = ["foundation_tests"] },
   { id = "capability_ledger_audit", ref = "job:capability_ledger_audit", depends_on = ["donor_audit"] },
   { id = "fixture_lint", ref = "job:fixture_lint", depends_on = ["capability_ledger_audit"] },

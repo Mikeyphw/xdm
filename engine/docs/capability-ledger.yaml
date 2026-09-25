@@ -1230,6 +1230,50 @@
       "target_overlay": "XGO-80",
       "test_id": "fixture:xgo-cap-desktop-004",
       "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-FOUNDATION-001",
+      "area": "foundation",
+      "behavior": "Engine time and identifier entropy are injectable and deterministic under tests.",
+      "donors": [],
+      "canonical_behavior": "Go uses explicit wall/monotonic clock sources and identifier token generators; tests never depend on global wall time or randomness.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-04",
+      "test_id": "fixture:xgo-cap-foundation-001",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-FOUNDATION-002",
+      "area": "foundation",
+      "behavior": "Stable entity identifiers are distinct canonical types rather than interchangeable strings.",
+      "donors": [],
+      "canonical_behavior": "Download, request, backend-task, queue, media, capture, publication and operation IDs use distinct types with strict prefixed lowercase-hex parsing.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-05",
+      "test_id": "fixture:xgo-cap-foundation-002",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-FOUNDATION-003",
+      "area": "foundation",
+      "behavior": "Attempt generation, artifact generation and row revision are independent positive monotonic counters.",
+      "donors": [],
+      "canonical_behavior": "Counters reject zero/negative values and detect MaxInt64 overflow rather than wrapping.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-05",
+      "test_id": "fixture:xgo-cap-foundation-003",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-FOUNDATION-004",
+      "area": "foundation",
+      "behavior": "Canonical resource identity does not expose raw sensitive locator material.",
+      "donors": [],
+      "canonical_behavior": "Resource identity is an opaque deterministic digest while sensitive text redacts by default under formatting and JSON serialization.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-05",
+      "test_id": "fixture:xgo-cap-foundation-004",
+      "status": "IMPLEMENTED"
     }
   ]
 }
