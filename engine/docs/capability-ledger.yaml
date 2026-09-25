@@ -140,7 +140,7 @@
         "android_aria2_contract_test"
       ],
       "id": "XGO-CAP-OWNERSHIP-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-42",
       "test_id": "fixture:xgo-cap-ownership-003"
     },

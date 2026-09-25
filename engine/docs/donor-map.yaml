@@ -227,7 +227,8 @@
       "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/CompletionVerificationCoordinator.kt",
       "categories": [
         "verification",
-        "finalization"
+        "finalization",
+        "diagnostics"
       ],
       "sha256": "f18f971a06071e24c589bdd38cd515efad971064b95fe2b4594f45011dd09187",
       "size": 8218
@@ -821,7 +822,8 @@
       "categories": [
         "browser",
         "security",
-        "test"
+        "test",
+        "diagnostics"
       ],
       "sha256": "754e95acb790d73371e4abbc459fcdf3caeecde2e0236be0a7ef08c4156f4f03",
       "size": 6037

@@ -46,12 +46,15 @@ The capability ledger records the donor strategy separately for every capability
 
 ## Validation rule
 
-The first XGO target is intentionally **not** a Go target yet. `engine/go.mod` belongs to XGO-04.
+XGO-00/01 originally bootstrapped `xgo_foundation` as a minimal command target. That historical bootstrap is no longer the current execution shape: XGO-04 promoted `xgo_foundation` to the native Go runner, and later waves extended the same target-owned validation DAG instead of replacing it with a custom XGO validation framework.
 
-XGO-00/01 bootstrap `xgo_foundation` as a command target with three target-local validation nodes:
+The donor-freeze evidence remains authoritative through the current `xgo_foundation#validate` workflow. The Wave 0 specification nodes are still present and ordered inside that Devtool-native DAG:
 
 1. `foundation_tests`
 2. `donor_audit`
 3. `capability_ledger_audit`
+4. `fixture_lint`
+5. `fixture_secret_scan`
+6. `devtool_topology_audit`
 
-They execute through the target's explicit `workflows.validate` DAG, and EXO is the authoritative execution evidence.
+`xgo_gate_spec#validate` composes `target:xgo_foundation#validate`, so Wave 0 can still be revalidated as one EXO-visible graph after later roadmap waves. EXO remains the authoritative execution evidence; domain reports under `.devtool/reports/xgo/foundation/` are supporting artifacts only.
