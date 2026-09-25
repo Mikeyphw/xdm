@@ -1791,7 +1791,7 @@ validate = [
   { id = "bandwidth_completion_matrix", ref = "job:bandwidth_completion_matrix", depends_on = ["scheduler_stress"] },
 ]
 
-# XGO-49..53 activate media capture, identity, graph, and selection ownership on the native Go runner.
+# XGO-49..57 activate media capture, identity, graph, selection, HLS timeline, and HLS execution ownership on the native Go runner.
 [targets.xgo_media]
 runner = "go"
 platform = "shared"
@@ -1814,6 +1814,9 @@ inputs = [
   "engine/testdata/hls/xgo-cap-hls-001.json",
   "engine/testdata/hls/xgo-cap-hls-002.json",
   "engine/testdata/hls/xgo-cap-hls-003.json",
+  "engine/testdata/hls/xgo-cap-hls-004.json",
+  "engine/testdata/hls/xgo-cap-hls-006.json",
+  "engine/testdata/hls/xgo-cap-hls-007.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1972,6 +1975,23 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/hls-timeline-lab.json"]
 
+
+[targets.xgo_media.jobs.hls_execution_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "hls_execution",
+  "--output", ".devtool/reports/xgo/media/hls-execution-lab.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/hls/xgo-cap-hls-004.json",
+  "engine/testdata/hls/xgo-cap-hls-006.json",
+  "engine/testdata/hls/xgo-cap-hls-007.json",
+]
+outputs = [".devtool/reports/xgo/media/hls-execution-lab.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1985,6 +2005,7 @@ validate = [
   { id = "fragment_faults", ref = "job:fragment_faults", depends_on = ["credential_scope_security"] },
   { id = "hls_corpus", ref = "job:hls_corpus", depends_on = ["fragment_faults"] },
   { id = "hls_timeline_lab", ref = "job:hls_timeline_lab", depends_on = ["hls_corpus"] },
+  { id = "hls_execution_lab", ref = "job:hls_execution_lab", depends_on = ["hls_timeline_lab"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

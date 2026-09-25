@@ -901,7 +901,7 @@
         "android_hls_test"
       ],
       "id": "XGO-CAP-HLS-006",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-57",
       "test_id": "fixture:xgo-cap-hls-006"
     },
@@ -915,7 +915,7 @@
         "android_native_hls"
       ],
       "id": "XGO-CAP-HLS-007",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-57",
       "test_id": "fixture:xgo-cap-hls-007"
     },

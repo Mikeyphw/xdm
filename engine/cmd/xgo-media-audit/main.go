@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -44,6 +47,8 @@ func main() {
 		r, err = hlsCorpus()
 	case "hls_timeline":
 		r, err = hlsTimelineLab()
+	case "hls_execution":
+		r, err = hlsExecutionLab()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -485,6 +490,181 @@ seg.ts
 		return report{}, fmt.Errorf("same sequence changed URI/range did not alter identity")
 	}
 	return report{Mode: "hls_timeline", Pass: true, Checks: []string{"sliding window 100..103 to 102..105", "discontinuity reset", "same sequence changed URI/range", "duplicate refresh suppression", "restart after window advanced", "VOD/event/live classification", "ENDLIST transition"}}, nil
+}
+
+func hlsExecutionLab() (report, error) {
+	key := []byte("0123456789abcdef")
+	seg1 := encryptAuditHLS([]byte("first-clear-fragment"), key, 1)
+	seg2 := encryptAuditHLS([]byte("second-clear-fragment"), key, 2)
+	fetcher := &auditHLSFetcher{objects: map[string][]byte{
+		"https://cdn.example/vod/init.mp4":   []byte("init-0123456789"),
+		"https://cdn.example/vod/key.bin":    key,
+		"https://cdn.example/vod/all-seg.ts": append(append([]byte("0123456789"), seg1...), seg2...),
+		"https://cdn.example/live/seg100.ts": []byte("live100"),
+		"https://cdn.example/live/seg101.ts": []byte("live101"),
+		"https://cdn.example/live/seg102.ts": []byte("live102"),
+		"https://cdn.example/live/seg103.ts": []byte("live103"),
+		"https://cdn.example/live/seg104.ts": []byte("live104"),
+	}, counts: map[string]int{}}
+	ledger, _ := media.NewFragmentLedger()
+	exec, err := media.NewHLSExecutor(fetcher, ledger)
+	if err != nil {
+		return report{}, err
+	}
+	vod := `#EXTM3U
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-MAP:URI="init.mp4",BYTERANGE="4@5"
+#EXT-X-KEY:METHOD=AES-128,URI="key.bin"
+#EXT-X-BYTERANGE:` + fmt.Sprintf("%d@10", len(seg1)) + `
+#EXTINF:4,
+all-seg.ts
+#EXT-X-BYTERANGE:` + fmt.Sprintf("%d@%d", len(seg2), 10+len(seg1)) + `
+#EXTINF:4,
+all-seg.ts
+#EXT-X-ENDLIST
+`
+	vodResult, err := exec.Execute(contextTODO(), media.HLSExecutionPlan{BaseURL: "https://cdn.example/vod/list.m3u8", Playlists: []string{vod}, AttemptGeneration: 1})
+	if err != nil {
+		return report{}, err
+	}
+	if vodResult.Status != media.HLSExecutionCompleted || vodResult.Completed != 2 || vodResult.InitMapsFetched != 2 || len(ledger.Snapshot()) != 2 {
+		return report{}, fmt.Errorf("VOD/AES/init/byterange execution failed: %+v ledger=%+v", vodResult, ledger.Snapshot())
+	}
+	restart, err := exec.Execute(contextTODO(), media.HLSExecutionPlan{BaseURL: "https://cdn.example/vod/list.m3u8", Playlists: []string{vod}, AttemptGeneration: 2})
+	if err != nil {
+		return report{}, err
+	}
+	if restart.Completed != 0 || restart.Skipped != 2 || fetcher.counts["segment https://cdn.example/vod/all-seg.ts"] != 2 {
+		return report{}, fmt.Errorf("restart redownloaded completed fragments: result=%+v counts=%+v", restart, fetcher.counts)
+	}
+	live1 := `#EXTM3U
+#EXT-X-TARGETDURATION:4
+#EXT-X-MEDIA-SEQUENCE:100
+#EXTINF:4,
+seg100.ts
+#EXTINF:4,
+seg101.ts
+#EXTINF:4,
+seg102.ts
+`
+	live2 := `#EXTM3U
+#EXT-X-TARGETDURATION:4
+#EXT-X-MEDIA-SEQUENCE:102
+#EXTINF:4,
+seg102.ts
+#EXTINF:4,
+seg103.ts
+#EXTINF:4,
+seg104.ts
+`
+	liveLedger, _ := media.NewFragmentLedger()
+	liveExec, _ := media.NewHLSExecutor(fetcher, liveLedger)
+	liveResult, err := liveExec.Execute(contextTODO(), media.HLSExecutionPlan{BaseURL: "https://cdn.example/live/list.m3u8", Playlists: []string{live1, live2}, AttemptGeneration: 1, StopAfterNewFragments: 4})
+	if err == nil || !errors.Is(err, media.ErrHLSExecutionStopped) {
+		return report{}, fmt.Errorf("bounded live stop did not return typed stop: result=%+v err=%v", liveResult, err)
+	}
+	if liveResult.Status != media.HLSExecutionStopped || liveResult.Completed != 4 || liveResult.Skipped < 1 || fetcher.counts["segment https://cdn.example/live/seg102.ts"] != 1 {
+		return report{}, fmt.Errorf("live sliding window duplicate suppression failed: result=%+v counts=%+v", liveResult, fetcher.counts)
+	}
+	disc := `#EXTM3U
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXTINF:4,
+seg100.ts
+#EXT-X-DISCONTINUITY
+#EXTINF:4,
+seg100.ts
+#EXT-X-ENDLIST
+`
+	discLedger, _ := media.NewFragmentLedger()
+	discExec, _ := media.NewHLSExecutor(fetcher, discLedger)
+	discResult, err := discExec.Execute(contextTODO(), media.HLSExecutionPlan{BaseURL: "https://cdn.example/live/list.m3u8", Playlists: []string{disc}, AttemptGeneration: 1})
+	if err != nil || discResult.Completed != 2 || len(discLedger.Snapshot()) != 2 {
+		return report{}, fmt.Errorf("discontinuity execution identity failed: result=%+v err=%v ledger=%+v", discResult, err, discLedger.Snapshot())
+	}
+	gap := `#EXTM3U
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-GAP
+#EXTINF:4,
+seg100.ts
+#EXT-X-ENDLIST
+`
+	gapLedger, _ := media.NewFragmentLedger()
+	gapExec, _ := media.NewHLSExecutor(fetcher, gapLedger)
+	gapResult, err := gapExec.Execute(contextTODO(), media.HLSExecutionPlan{BaseURL: "https://cdn.example/live/list.m3u8", Playlists: []string{gap}, AttemptGeneration: 2})
+	if err != nil || gapResult.Gaps != 1 || gapResult.Outcomes[0].Status != media.HLSFragmentGap {
+		return report{}, fmt.Errorf("gap was not typed outcome: result=%+v err=%v", gapResult, err)
+	}
+	keyFailure := `#EXTM3U
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-KEY:METHOD=AES-128,URI="missing-key.bin"
+#EXTINF:4,
+seg100.ts
+#EXT-X-ENDLIST
+`
+	keyLedger, _ := media.NewFragmentLedger()
+	keyExec, _ := media.NewHLSExecutor(fetcher, keyLedger)
+	keyFailureResult, err := keyExec.Execute(contextTODO(), media.HLSExecutionPlan{BaseURL: "https://cdn.example/live/list.m3u8", Playlists: []string{keyFailure}, AttemptGeneration: 3})
+	if err != nil || keyFailureResult.KeyFailures != 1 || keyFailureResult.Outcomes[0].Status != media.HLSFragmentKeyFailed {
+		return report{}, fmt.Errorf("key fetch failure was not typed outcome: result=%+v err=%v", keyFailureResult, err)
+	}
+	unsupported := `#EXTM3U
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://fairplay"
+#EXTINF:4,
+seg100.ts
+#EXT-X-ENDLIST
+`
+	unsupportedResult, err := liveExec.Execute(contextTODO(), media.HLSExecutionPlan{BaseURL: "https://cdn.example/live/list.m3u8", Playlists: []string{unsupported}, AttemptGeneration: 2})
+	if err != nil || unsupportedResult.Unsupported != 1 || unsupportedResult.Outcomes[0].Status != media.HLSFragmentUnsupported {
+		return report{}, fmt.Errorf("unsupported protection was not typed outcome: result=%+v err=%v", unsupportedResult, err)
+	}
+	return report{Mode: "hls_execution", Pass: true, Checks: []string{"VOD", "AES-128", "byterange", "init map", "discontinuity", "live sliding window", "ENDLIST arrival", "bounded user stop", "restart mid-live duplicate suppression", "key fetch failure typed", "gap typed outcome", "unsupported protection typed outcome"}}, nil
+}
+
+type auditHLSFetcher struct {
+	objects map[string][]byte
+	counts  map[string]int
+}
+
+func (f *auditHLSFetcher) FetchHLS(_ context.Context, req media.HLSFetchRequest) (media.HLSFetchResponse, error) {
+	f.counts[string(req.Kind)+" "+req.URI]++
+	body, ok := f.objects[req.URI]
+	if !ok {
+		return media.HLSFetchResponse{}, fmt.Errorf("missing %s", req.URI)
+	}
+	if req.Range != nil {
+		start := req.Range.Offset
+		end := req.Range.Offset + req.Range.Length
+		if start < 0 || end > int64(len(body)) || start > end {
+			return media.HLSFetchResponse{}, fmt.Errorf("bad range")
+		}
+		body = body[start:end]
+	}
+	return media.HLSFetchResponse{Bytes: append([]byte(nil), body...)}, nil
+}
+
+func contextTODO() context.Context { return context.Background() }
+
+func encryptAuditHLS(plain, key []byte, mediaSequence int64) []byte {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	pad := aes.BlockSize - (len(plain) % aes.BlockSize)
+	padded := append([]byte(nil), plain...)
+	for i := 0; i < pad; i++ {
+		padded = append(padded, byte(pad))
+	}
+	iv := make([]byte, aes.BlockSize)
+	for i := 15; i >= 0 && mediaSequence > 0; i-- {
+		iv[i] = byte(mediaSequence)
+		mediaSequence >>= 8
+	}
+	out := make([]byte, len(padded))
+	cipher.NewCBCEncrypter(block, iv).CryptBlocks(out, padded)
+	return out
 }
 
 func ingestConvergenceStream(label string, urls []string) (*media.MediaGraph, error) {
