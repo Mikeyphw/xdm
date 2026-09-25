@@ -49,6 +49,10 @@ func main() {
 		r, err = hlsTimelineLab()
 	case "hls_execution":
 		r, err = hlsExecutionLab()
+	case "dash_corpus":
+		r, err = dashCorpus()
+	case "dash_execution":
+		r, err = dashExecutionLab()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -621,6 +625,124 @@ seg100.ts
 		return report{}, fmt.Errorf("unsupported protection was not typed outcome: result=%+v err=%v", unsupportedResult, err)
 	}
 	return report{Mode: "hls_execution", Pass: true, Checks: []string{"VOD", "AES-128", "byterange", "init map", "discontinuity", "live sliding window", "ENDLIST arrival", "bounded user stop", "restart mid-live duplicate suppression", "key fetch failure typed", "gap typed outcome", "unsupported protection typed outcome"}}, nil
+}
+
+func dashCorpus() (report, error) {
+	mpd := `<?xml version="1.0"?>
+<MPD type="dynamic" minimumUpdatePeriod="PT2S" mediaPresentationDuration="PT12S">
+  <BaseURL>dash/</BaseURL>
+  <Period id="p0" duration="PT12S"><BaseURL>period/</BaseURL>
+    <AdaptationSet id="v" contentType="video" mimeType="video/mp4">
+      <Role value="main"/>
+      <SegmentTemplate timescale="1" startNumber="5" initialization="init-$RepresentationID$.mp4" media="$RepresentationID$-$Number$-$Time$.m4s"><SegmentTimeline><S t="0" d="2" r="1"/><S d="2" r="-1"/><S t="10" d="2"/></SegmentTimeline></SegmentTemplate>
+      <Representation id="1080p" bandwidth="4000000" codecs="avc1.4d401f" width="1920" height="1080"><BaseURL>video/</BaseURL></Representation>
+    </AdaptationSet>
+    <AdaptationSet id="a" contentType="audio" lang="en" mimeType="audio/mp4">
+      <SegmentList timescale="1" duration="4"><Initialization sourceURL="audio/init.mp4"/><SegmentURL media="audio/a1.m4s" mediaRange="0-9"/><SegmentURL media="audio/a2.m4s"/></SegmentList>
+      <Representation id="a-en" bandwidth="96000" codecs="mp4a.40.2"/>
+    </AdaptationSet>
+  </Period>
+  <Period id="drm"><AdaptationSet id="v2" contentType="video"><ContentProtection schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"/><SegmentList><SegmentURL media="drm/v.m4s"/></SegmentList><Representation id="drm-v"/></AdaptationSet></Period>
+</MPD>`
+	manifest, err := media.ParseDASHManifest("https://cdn.example/root/manifest.mpd", mpd)
+	if err != nil {
+		return report{}, err
+	}
+	if manifest.Type != media.DASHDynamic || manifest.MinUpdatePeriod <= 0 || len(manifest.Periods) != 2 {
+		return report{}, fmt.Errorf("DASH manifest metadata lost: %+v", manifest)
+	}
+	frags, err := media.ExpandDASHFragments(manifest)
+	if err != nil {
+		return report{}, err
+	}
+	if len(frags) != 9 {
+		return report{}, fmt.Errorf("DASH timeline/list expansion mismatch: %d %+v", len(frags), frags)
+	}
+	if frags[0].URL != "https://cdn.example/root/dash/period/video/1080p-5-0.m4s" || frags[0].InitializationURL == "" {
+		return report{}, fmt.Errorf("nested BaseURL/template resolution failed: %+v", frags[0])
+	}
+	if frags[4].Time != 8 || frags[5].Time != 10 {
+		return report{}, fmt.Errorf("r=-1 timeline expansion failed: %+v", frags[:6])
+	}
+	if frags[6].Role != "audio" || frags[6].Range == nil || frags[8].Protection != media.DASHProtectionWidevine {
+		return report{}, fmt.Errorf("roles/ranges/protection taxonomy failed: %+v", frags)
+	}
+	if _, err := media.ParseDASHManifest("https://cdn.example/bad.mpd", `<MPD><Period>`); err == nil {
+		return report{}, fmt.Errorf("malformed XML accepted")
+	}
+	return report{Mode: "dash_corpus", Pass: true, Checks: []string{"donor MPD shape", "nested BaseURL", "multiple periods", "SegmentTemplate", "SegmentTimeline r=-1", "SegmentList", "initialization segments", "duration templates", "role/language metadata", "unsupported protection", "malformed XML rejected"}}, nil
+}
+
+func dashExecutionLab() (report, error) {
+	p1 := `<MPD type="dynamic" minimumUpdatePeriod="PT2S">
+  <Period id="p0">
+    <AdaptationSet id="v" contentType="video"><SegmentTemplate timescale="1" startNumber="1" media="v-$Number$.m4s"><SegmentTimeline><S t="0" d="2" r="1"/></SegmentTimeline></SegmentTemplate><Representation id="v1" bandwidth="1000"/></AdaptationSet>
+    <AdaptationSet id="a" contentType="audio"><SegmentTemplate timescale="1" startNumber="1" media="a-$Number$.m4s"><SegmentTimeline><S t="0" d="2" r="1"/></SegmentTimeline></SegmentTemplate><Representation id="a1" bandwidth="96"/></AdaptationSet>
+  </Period>
+</MPD>`
+	p2 := `<MPD type="dynamic" minimumUpdatePeriod="PT2S">
+  <Period id="p0">
+    <AdaptationSet id="v" contentType="video"><SegmentTemplate timescale="1" startNumber="1" media="v-$Number$.m4s"><SegmentTimeline><S t="0" d="2" r="2"/></SegmentTimeline></SegmentTemplate><Representation id="v1" bandwidth="1000"/></AdaptationSet>
+    <AdaptationSet id="a" contentType="audio"><SegmentTemplate timescale="1" startNumber="1" media="a-$Number$.m4s"><SegmentTimeline><S t="0" d="2" r="2"/></SegmentTimeline></SegmentTemplate><Representation id="a1" bandwidth="96"/></AdaptationSet>
+  </Period>
+  <Period id="p1"><AdaptationSet id="sub" contentType="text"><SegmentList><SegmentURL media="sub-1.vtt"/></SegmentList><Representation id="s1"/></AdaptationSet></Period>
+</MPD>`
+	objects := map[string][]byte{}
+	for _, n := range []string{"v-1.m4s", "v-2.m4s", "v-3.m4s", "a-1.m4s", "a-2.m4s", "a-3.m4s", "sub-1.vtt"} {
+		objects["https://cdn.example/dash/"+n] = []byte(n)
+	}
+	fetcher := &auditDASHFetcher{objects: objects, counts: map[string]int{}}
+	ledger, _ := media.NewFragmentLedger()
+	exec, err := media.NewDASHExecutor(fetcher, ledger)
+	if err != nil {
+		return report{}, err
+	}
+	result, err := exec.Execute(contextTODO(), media.DASHExecutionPlan{BaseURL: "https://cdn.example/dash/manifest.mpd", Manifests: []string{p1, p2}, AttemptGeneration: 1})
+	if err != nil {
+		return report{}, err
+	}
+	if result.Completed != 7 || result.Skipped != 4 || len(result.TrackArtifacts) != 3 {
+		return report{}, fmt.Errorf("dynamic multi-track execution failed: %+v", result)
+	}
+	restart, err := exec.Execute(contextTODO(), media.DASHExecutionPlan{BaseURL: "https://cdn.example/dash/manifest.mpd", Manifests: []string{p2}, AttemptGeneration: 2})
+	if err != nil || restart.Completed != 0 || restart.Skipped != 7 {
+		return report{}, fmt.Errorf("restart duplicate suppression failed: result=%+v err=%v", restart, err)
+	}
+	fetcher.fail = map[string]error{"https://cdn.example/dash/v-3.m4s": fmt.Errorf("missing")}
+	fresh, _ := media.NewDASHExecutor(fetcher, nil)
+	failed, err := fresh.Execute(contextTODO(), media.DASHExecutionPlan{BaseURL: "https://cdn.example/dash/manifest.mpd", Manifests: []string{p2}, AttemptGeneration: 1, RepresentationIDs: []string{"v1"}})
+	if err != nil || failed.FetchFailures != 1 {
+		return report{}, fmt.Errorf("missing fragment was not typed: result=%+v err=%v", failed, err)
+	}
+	return report{Mode: "dash_execution", Pass: true, Checks: []string{"static MPD", "dynamic update", "timeline extension", "new Period", "audio/video/subtitle roles", "restart duplicate suppression", "missing fragment typed outcome", "manifest mutation", "shared fragment ledger", "track artifacts for post-processing"}}, nil
+}
+
+type auditDASHFetcher struct {
+	objects map[string][]byte
+	counts  map[string]int
+	fail    map[string]error
+}
+
+func (f *auditDASHFetcher) FetchDASH(_ context.Context, req media.DASHFetchRequest) (media.DASHFetchResponse, error) {
+	f.counts[string(req.Kind)+" "+req.URI]++
+	if f.fail != nil {
+		if err := f.fail[req.URI]; err != nil {
+			return media.DASHFetchResponse{}, err
+		}
+	}
+	body, ok := f.objects[req.URI]
+	if !ok {
+		return media.DASHFetchResponse{}, fmt.Errorf("missing %s", req.URI)
+	}
+	if req.Range != nil {
+		start := req.Range.Offset
+		end := req.Range.Offset + req.Range.Length
+		if start < 0 || end > int64(len(body)) || start > end {
+			return media.DASHFetchResponse{}, fmt.Errorf("bad range")
+		}
+		body = body[start:end]
+	}
+	return media.DASHFetchResponse{Bytes: append([]byte(nil), body...)}, nil
 }
 
 type auditHLSFetcher struct {

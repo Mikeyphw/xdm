@@ -930,7 +930,7 @@
         "android_manifest_resolution_test"
       ],
       "id": "XGO-CAP-DASH-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-58",
       "test_id": "fixture:xgo-cap-dash-001"
     },
@@ -944,7 +944,7 @@
         "desktop_dash_parser_test"
       ],
       "id": "XGO-CAP-DASH-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-58",
       "test_id": "fixture:xgo-cap-dash-002"
     },
@@ -959,7 +959,7 @@
         "android_manifest_resolution_test"
       ],
       "id": "XGO-CAP-DASH-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-59",
       "test_id": "fixture:xgo-cap-dash-003"
     },
@@ -973,7 +973,7 @@
         "android_media_dispatcher"
       ],
       "id": "XGO-CAP-DASH-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-59",
       "test_id": "fixture:xgo-cap-dash-004"
     },

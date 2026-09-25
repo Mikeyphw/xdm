@@ -1992,6 +1992,37 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/hls-execution-lab.json"]
 
+
+[targets.xgo_media.jobs.dash_corpus]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "dash_corpus",
+  "--output", ".devtool/reports/xgo/media/dash-corpus.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/dash/xgo-cap-dash-001.json",
+  "engine/testdata/dash/xgo-cap-dash-002.json",
+]
+outputs = [".devtool/reports/xgo/media/dash-corpus.json"]
+
+[targets.xgo_media.jobs.dash_execution_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "dash_execution",
+  "--output", ".devtool/reports/xgo/media/dash-execution-lab.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/dash/xgo-cap-dash-003.json",
+  "engine/testdata/dash/xgo-cap-dash-004.json",
+]
+outputs = [".devtool/reports/xgo/media/dash-execution-lab.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -2006,6 +2037,8 @@ validate = [
   { id = "hls_corpus", ref = "job:hls_corpus", depends_on = ["fragment_faults"] },
   { id = "hls_timeline_lab", ref = "job:hls_timeline_lab", depends_on = ["hls_corpus"] },
   { id = "hls_execution_lab", ref = "job:hls_execution_lab", depends_on = ["hls_timeline_lab"] },
+  { id = "dash_corpus", ref = "job:dash_corpus", depends_on = ["hls_execution_lab"] },
+  { id = "dash_execution_lab", ref = "job:dash_execution_lab", depends_on = ["dash_corpus"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
