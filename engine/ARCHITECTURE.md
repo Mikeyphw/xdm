@@ -399,3 +399,30 @@ write is state-fenced to the `reserved` attempt and cannot change the durable
 existing backend and marks every alternative as requiring explicit migration.
 Backend migration therefore remains a separate lifecycle operation rather than
 an implicit side effect of routing.
+
+## Generic aria2 JSON-RPC client (XGO-41)
+
+`backends/aria2` owns aria2 JSON-RPC protocol mechanics only. It does not start,
+restart, discover or otherwise own an aria2 process. Runtime identity and durable
+task ownership remain separate lifecycle concerns for XGO-42.
+
+Each call emits JSON-RPC 2.0 with a monotonically increasing string request ID
+and requires the response ID to correlate exactly before either result or error
+is accepted. A bounded per-call context timeout is mandatory. HTTP failures,
+timeouts, malformed envelopes/results, correlation mismatches and remote RPC
+errors are typed separately. Raw malformed/HTTP response bodies are never copied
+into returned diagnostics, and a configured RPC secret is redacted from remote
+error messages. The exact RPC endpoint refuses redirects so `token:<secret>`
+parameters cannot be forwarded to another origin.
+
+The client exposes add-URI, status, active/waiting/stopped lists, pause/force
+pause, unpause, remove/force-remove, per-task option changes, global option
+read/change, session save, graceful/forced shutdown, version and health probes.
+Status parsing normalizes numeric string fields into non-negative integers and
+retains canonical task/file/URI evidence needed by later reconciliation.
+
+Aria2 options use a restricted textual representation: scalar strings or string
+arrays such as repeated headers. This prevents Android/Desktop JSON-type drift
+and makes the wire contract deterministic. Process launch is deliberately absent
+from the package; the target-local `aria2_rpc_lab` may launch an installed
+`aria2c` only as optional validation evidence, never as engine ownership.

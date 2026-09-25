@@ -1440,6 +1440,7 @@ inputs = [
   "engine/testdata/metalink/xgo-cap-metalink-001.json",
   "engine/testdata/backend/xgo-cap-backend-001.json",
   "engine/testdata/backend/xgo-cap-backend-002.json",
+  "engine/testdata/aria2/xgo-cap-aria2-001.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1591,6 +1592,20 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/backends/selection-matrix.json"]
 
+[targets.xgo_backends.jobs.aria2_rpc_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-backends-audit",
+  "--mode", "aria2-rpc",
+  "--output", ".devtool/reports/xgo/backends/aria2-rpc-lab.json",
+]
+inputs = [
+  "engine/backends/aria2/**",
+  "engine/cmd/xgo-backends-audit/**",
+  "engine/testdata/aria2/xgo-cap-aria2-001.json",
+]
+outputs = [".devtool/reports/xgo/backends/aria2-rpc-lab.json"]
+
 [targets.xgo_backends.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1600,6 +1615,7 @@ validate = [
   { id = "metalink_corpus", ref = "job:metalink_corpus", depends_on = ["ftp_lab"] },
   { id = "compatibility_matrix", ref = "job:compatibility_matrix", depends_on = ["metalink_corpus"] },
   { id = "selection_matrix", ref = "job:selection_matrix", depends_on = ["compatibility_matrix"] },
+  { id = "aria2_rpc_lab", ref = "job:aria2_rpc_lab", depends_on = ["selection_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

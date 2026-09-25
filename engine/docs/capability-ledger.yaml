@@ -573,7 +573,7 @@
         "android_aria2_rpc"
       ],
       "id": "XGO-CAP-ARIA2-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-41",
       "test_id": "fixture:xgo-cap-aria2-001"
     },

@@ -1,26 +1,71 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-aria2-001",
+  "category": "aria2",
   "capability_ids": [
     "XGO-CAP-ARIA2-001"
   ],
-  "category": "aria2",
+  "donor_ids": [
+    "desktop_aria2_rpc",
+    "android_aria2_rpc"
+  ],
   "derivation": {
     "behavior": "Generic aria2 RPC supports add/status/pause/resume/remove/options/session/health.",
     "canonical_behavior": "Go aria2 client owns protocol mechanics with typed timeouts and malformed reply handling.",
     "strategy": "desktop_led"
   },
-  "donor_ids": [
-    "desktop_aria2_rpc",
-    "android_aria2_rpc"
-  ],
-  "expected": {
-    "invariants": [
-      "Go aria2 client owns protocol mechanics with typed timeouts and malformed reply handling."
+  "input": {
+    "cases": [
+      {
+        "name": "mock_json_rpc_server",
+        "expected": "token_prefixed_request_and_version_reply"
+      },
+      {
+        "name": "request_id_correlation",
+        "expected": "mismatched_response_id_rejected"
+      },
+      {
+        "name": "malformed_response",
+        "expected": "typed_protocol_failure_without_raw_body"
+      },
+      {
+        "name": "timeout",
+        "expected": "typed_bounded_timeout"
+      },
+      {
+        "name": "unknown_gid",
+        "expected": "typed_remote_rpc_error"
+      },
+      {
+        "name": "option_encoding",
+        "expected": "string_and_string_list_aria2_option_values"
+      },
+      {
+        "name": "task_lists",
+        "expected": "status_active_waiting_stopped_parse"
+      },
+      {
+        "name": "control_and_global_options",
+        "expected": "pause_unpause_remove_change_and_global_options"
+      },
+      {
+        "name": "health_and_shutdown",
+        "expected": "version_health_and_force_shutdown"
+      },
+      {
+        "name": "real_aria2_smoke_if_available",
+        "expected": "health_probe_against_installed_aria2c"
+      }
     ]
   },
-  "fixture_id": "xgo-cap-aria2-001",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Generic aria2 RPC supports add/status/pause/resume/remove/options/session/health."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "The Go RPC client owns JSON-RPC envelope mechanics and exact request/response correlation.",
+      "Authentication token material is prepended only at runtime and is redacted from returned server error messages.",
+      "Every RPC call has a bounded timeout and malformed/oversized replies fail without echoing raw response bodies.",
+      "Add/status/active/waiting/stopped/pause/unpause/remove/change options/global options/save session/shutdown/health are available through one client.",
+      "aria2 option values are encoded as strings or string arrays rather than host-dependent JSON scalar types.",
+      "RPC redirects are refused and process launch/restart ownership is outside the RPC package."
+    ]
+  }
 }

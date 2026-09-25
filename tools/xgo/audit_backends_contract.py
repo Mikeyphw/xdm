@@ -61,6 +61,7 @@ def main() -> int:
         ('XGO-CAP-METALINK-001', 'XGO-38', {'valid_metalink', 'malformed_xml', 'unsupported_hash', 'duplicate_urls', 'conflicting_size_hash', 'generated_intent_fixture'}),
         ('XGO-CAP-BACKEND-001', 'XGO-39', {'canonical_request_kinds', 'method_body', 'destination', 'credential_mode', 'proxy', 'media_shape', 'resume', 'mirror_semantics', 'preflight_exactness'}),
         ('XGO-CAP-BACKEND-002', 'XGO-40', {'deterministic_same_input', 'preference_compatible_only', 'unavailable_backend_fallback', 'degraded_backend', 'direct_http_default', 'mirrors_and_ftp', 'media_external_shape', 'migration_cost', 'started_attempt_fence', 'attempt_scoped_persistence'}),
+        ('XGO-CAP-ARIA2-001', 'XGO-41', {'mock_json_rpc_server', 'request_id_correlation', 'malformed_response', 'timeout', 'unknown_gid', 'option_encoding', 'task_lists', 'control_and_global_options', 'health_and_shutdown', 'real_aria2_smoke_if_available'}),
     ]
     fixture_evidence = {}
     closed = []
@@ -75,7 +76,7 @@ def main() -> int:
         raise SystemExit('xgo_backends must remain on the native Go runner')
     nodes = target.get('workflows', {}).get('validate', [])
     ids = [n.get('id') for n in nodes]
-    expected_ids = ['go', 'backend_contract_audit', 'post_replay_lab', 'ftp_lab', 'metalink_corpus', 'compatibility_matrix', 'selection_matrix']
+    expected_ids = ['go', 'backend_contract_audit', 'post_replay_lab', 'ftp_lab', 'metalink_corpus', 'compatibility_matrix', 'selection_matrix', 'aria2_rpc_lab']
     if ids != expected_ids:
         raise SystemExit(f'xgo_backends validate DAG mismatch: {ids}')
     expected_deps = {
@@ -86,6 +87,7 @@ def main() -> int:
         'metalink_corpus': ['ftp_lab'],
         'compatibility_matrix': ['metalink_corpus'],
         'selection_matrix': ['compatibility_matrix'],
+        'aria2_rpc_lab': ['selection_matrix'],
     }
     for node in nodes:
         if node.get('depends_on', []) != expected_deps[node['id']]:
@@ -96,6 +98,7 @@ def main() -> int:
         'metalink_corpus': 'metalink',
         'compatibility_matrix': 'compatibility',
         'selection_matrix': 'selection',
+        'aria2_rpc_lab': 'aria2-rpc',
     }
     for job_id, mode in expected_modes.items():
         if not command_has_mode(target.get('jobs', {}).get(job_id, {}), mode):

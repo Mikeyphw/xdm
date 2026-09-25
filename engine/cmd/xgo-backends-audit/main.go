@@ -381,6 +381,8 @@ func main() {
 		r = runCompatibilityMatrix()
 	case "selection":
 		r = runSelectionMatrix()
+	case "aria2-rpc":
+		r = runAria2RPCLab()
 	default:
 		fmt.Fprintln(os.Stderr, "unsupported mode:", *mode)
 		os.Exit(2)

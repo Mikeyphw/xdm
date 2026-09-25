@@ -82,7 +82,7 @@
         "XGO-CAP-ARIA2-001"
       ],
       "category": "aria2",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_aria2_rpc",
         "android_aria2_rpc"
