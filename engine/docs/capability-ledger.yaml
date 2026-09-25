@@ -27,7 +27,7 @@
       "donor_strategy": "merged",
       "target_overlay": "XGO-06",
       "test_id": "fixture:xgo-cap-domain-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-DOMAIN-002",
@@ -41,7 +41,7 @@
       "donor_strategy": "merged",
       "target_overlay": "XGO-06",
       "test_id": "fixture:xgo-cap-domain-002",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-DOMAIN-003",
@@ -56,7 +56,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-06",
       "test_id": "fixture:xgo-cap-domain-003",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-DOMAIN-004",
@@ -70,7 +70,7 @@
       "donor_strategy": "merged",
       "target_overlay": "XGO-07",
       "test_id": "fixture:xgo-cap-domain-004",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-STORE-001",

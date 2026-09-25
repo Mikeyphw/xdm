@@ -537,11 +537,56 @@ outputs = [
   ".devtool/reports/xgo/foundation/gofmt-audit.json",
 ]
 
+
+[targets.xgo_foundation.jobs.state_machine_contracts]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-domain-audit",
+  "--mode",
+  "state-machines",
+  "--output",
+  ".devtool/reports/xgo/foundation/state-machine-contracts.json",
+]
+inputs = [
+  "go.work",
+  "engine/go.mod",
+  "engine/domain/**",
+  "engine/cmd/xgo-domain-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/foundation/state-machine-contracts.json",
+]
+
+[targets.xgo_foundation.jobs.failure_mapping_audit]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-domain-audit",
+  "--mode",
+  "failure-mapping",
+  "--output",
+  ".devtool/reports/xgo/foundation/failure-mapping-audit.json",
+]
+inputs = [
+  "go.work",
+  "engine/go.mod",
+  "engine/domain/failure/**",
+  "engine/cmd/xgo-domain-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/foundation/failure-mapping-audit.json",
+]
+
 [targets.xgo_foundation.workflows]
 validate = [
   { id = "go_validate", ref = "runner:go#validate", depends_on = [] },
   { id = "gofmt_check", ref = "job:gofmt_check", depends_on = ["go_validate"] },
-  { id = "foundation_tests", ref = "job:foundation_tests", depends_on = ["gofmt_check"] },
+  { id = "state_machine_contracts", ref = "job:state_machine_contracts", depends_on = ["gofmt_check"] },
+  { id = "failure_mapping_audit", ref = "job:failure_mapping_audit", depends_on = ["state_machine_contracts"] },
+  { id = "foundation_tests", ref = "job:foundation_tests", depends_on = ["failure_mapping_audit"] },
   { id = "donor_audit", ref = "job:donor_audit", depends_on = ["foundation_tests"] },
   { id = "capability_ledger_audit", ref = "job:capability_ledger_audit", depends_on = ["donor_audit"] },
   { id = "fixture_lint", ref = "job:fixture_lint", depends_on = ["capability_ledger_audit"] },
