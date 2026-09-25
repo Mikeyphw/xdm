@@ -734,7 +734,7 @@
         "XGO-CAP-METALINK-001"
       ],
       "category": "metalink",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_metalink"
       ],

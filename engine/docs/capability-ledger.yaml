@@ -530,7 +530,7 @@
         "desktop_metalink"
       ],
       "id": "XGO-CAP-METALINK-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-38",
       "test_id": "fixture:xgo-cap-metalink-001"
     },

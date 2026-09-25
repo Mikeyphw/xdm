@@ -1,25 +1,66 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-metalink-001",
+  "category": "metalink",
   "capability_ids": [
     "XGO-CAP-METALINK-001"
   ],
-  "category": "metalink",
+  "donor_ids": [
+    "desktop_metalink"
+  ],
   "derivation": {
     "behavior": "Metalink contributes mirrors, hashes and size to canonical request metadata.",
     "canonical_behavior": "Go parses Metalink into standard request/verification inputs instead of a parallel engine.",
     "strategy": "desktop_led"
   },
-  "donor_ids": [
-    "desktop_metalink"
-  ],
-  "expected": {
-    "invariants": [
-      "Go parses Metalink into standard request/verification inputs instead of a parallel engine."
+  "input": {
+    "cases": [
+      {
+        "name": "valid_metalink",
+        "expected": "canonical_intent_expansion"
+      },
+      {
+        "name": "malformed_xml",
+        "fault": "malformed_xml",
+        "expected_failure": "malformed_metalink"
+      },
+      {
+        "name": "unsupported_hash",
+        "hash": "sha3-256",
+        "expected_failure": "unsupported_hash"
+      },
+      {
+        "name": "duplicate_urls",
+        "sources": [
+          "HTTPS://EXAMPLE.TEST:443/x",
+          "https://example.test/x",
+          "https://mirror.test/x"
+        ],
+        "expected": "deduplicated_canonical_sources"
+      },
+      {
+        "name": "conflicting_size_hash",
+        "fault": "conflicting_integrity_metadata",
+        "expected_failure": "metadata_conflict"
+      },
+      {
+        "name": "generated_intent_fixture",
+        "expected_method": "GET",
+        "expected_body": null,
+        "expected_size": 4096,
+        "expected_hash": "sha512",
+        "expected_primary": "ftp://download.example/fixture.iso"
+      }
     ]
   },
-  "fixture_id": "xgo-cap-metalink-001",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Metalink contributes mirrors, hashes and size to canonical request metadata."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "Metalink is metadata expansion only; it does not create a parallel transfer or lifecycle implementation.",
+      "Mirror URLs are ordered deterministically from source priority/preference hints and normalized by canonical NetworkIntent construction.",
+      "Duplicate canonical URLs collapse without changing the highest-priority source choice.",
+      "Only checksum algorithms supported by the canonical checksum verifier are admitted.",
+      "Conflicting size or same-algorithm checksum evidence fails closed before execution.",
+      "Generated transfers are ordinary bodyless GET NetworkIntent values carrying expected size/checksums and canonical mirrors."
+    ]
+  }
 }

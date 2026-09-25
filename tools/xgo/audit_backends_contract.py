@@ -42,21 +42,32 @@ def main()->int:
     if ftp_names != expected_ftp:
         raise SystemExit(f'XGO-37 fixture cases mismatch: {sorted(ftp_names)}')
 
+    metalink_cap=caps.get('XGO-CAP-METALINK-001')
+    if not metalink_cap or metalink_cap.get('status')!='IMPLEMENTED' or metalink_cap.get('target_overlay')!='XGO-38':
+        raise SystemExit('XGO-CAP-METALINK-001 is not closed by XGO-38')
+    metalink_fixture, metalink_names=detailed_case_names(root,fixtures,metalink_cap)
+    expected_metalink={'valid_metalink','malformed_xml','unsupported_hash','duplicate_urls','conflicting_size_hash','generated_intent_fixture'}
+    if metalink_names != expected_metalink:
+        raise SystemExit(f'XGO-38 fixture cases mismatch: {sorted(metalink_names)}')
+
     cfg=tomllib.loads((root/'.devtool.toml').read_text())
     target=cfg.get('targets',{}).get('xgo_backends',{})
     if target.get('runner')!='go':
         raise SystemExit('xgo_backends must remain on the native Go runner')
     nodes=target.get('workflows',{}).get('validate',[])
     ids=[n.get('id') for n in nodes]
-    if ids != ['go','backend_contract_audit','post_replay_lab','ftp_lab']:
+    if ids != ['go','backend_contract_audit','post_replay_lab','ftp_lab','metalink_corpus']:
         raise SystemExit(f'xgo_backends validate DAG mismatch: {ids}')
     ftp_job=target.get('jobs',{}).get('ftp_lab',{})
     if ftp_job.get('runner')!='command' or '--mode' not in ftp_job.get('command',[]) or 'ftp' not in ftp_job.get('command',[]):
         raise SystemExit('ftp_lab job is not wired to xgo-backends-audit --mode ftp')
+    metalink_job=target.get('jobs',{}).get('metalink_corpus',{})
+    if metalink_job.get('runner')!='command' or '--mode' not in metalink_job.get('command',[]) or 'metalink' not in metalink_job.get('command',[]):
+        raise SystemExit('metalink_corpus job is not wired to xgo-backends-audit --mode metalink')
 
     report={
-      'schema_version':1,'status':'pass','closed_capabilities':['XGO-CAP-REQUEST-002','XGO-CAP-FTP-001'],
-      'fixtures':{request_fixture:sorted(request_names),ftp_fixture:sorted(ftp_names)},'workflow_nodes':ids,
+      'schema_version':1,'status':'pass','closed_capabilities':['XGO-CAP-REQUEST-002','XGO-CAP-FTP-001','XGO-CAP-METALINK-001'],
+      'fixtures':{request_fixture:sorted(request_names),ftp_fixture:sorted(ftp_names),metalink_fixture:sorted(metalink_names)},'workflow_nodes':ids,
       'shared_ledger_audit':json.loads(ledger_report.read_text()),
       'shared_fixture_audit':json.loads(fixture_report.read_text())
     }

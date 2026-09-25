@@ -333,3 +333,33 @@ completion remains nonterminal: whole-file checksum verification,
 ArtifactGeneration creation, and publication preparation still run through the
 existing `transfer/checksum` and `transfer/finalize` path. No FTP-specific
 verification or publication state exists.
+
+## Metalink canonical request expansion (XGO-38)
+
+Metalink is an input-metadata format, not a downloader. `transfer/metalink`
+parses a Metalink document and expands each described file into the existing
+canonical `domain/request.NetworkIntent`. No Metalink attempt, checkpoint,
+retry, verification, backend-ownership or publication lifecycle exists in
+parallel with the engine.
+
+Whole-file expected size and checksums are integrity inputs. Hash admission is
+shared with `transfer/checksum`, so Metalink cannot claim support for an
+algorithm the verifier cannot execute. Conflicting expected size or a differing
+digest for the same algorithm fails before execution rather than choosing one
+source silently. Existing request integrity evidence and Metalink evidence are
+merged only when compatible.
+
+Metalink source URLs become one canonical transport URL plus the ordinary
+mirror list. The parser retains source order and priority/location metadata;
+expansion orders lower RFC-style priority first, uses higher legacy preference
+when present, and then delegates URL normalization and duplicate suppression to
+`NetworkIntent`. Generated requests are bodyless `GET` operations. Backend
+compatibility/selection remains a later, separate policy boundary.
+
+File metadata includes the suggested relative name, identity, description,
+version, languages and operating systems. Suggested names are not filesystem
+authority: absolute paths, traversal components, backslashes and Windows-drive
+forms are rejected at parse time. Legal relative subdirectories remain metadata
+for later host publication policy. Multiple files in one document receive
+deterministic distinct child resource identities so one logical resource cannot
+accidentally represent several artifacts.

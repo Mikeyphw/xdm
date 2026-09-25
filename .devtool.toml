@@ -1425,6 +1425,7 @@ inputs = [
   "engine/transfer/finalize/**",
   "engine/transfer/http/**",
   "engine/transfer/lifecycle/**",
+  "engine/transfer/metalink/**",
   "engine/transfer/retry/**",
   "engine/transfer/staging/**",
   "engine/cmd/xgo-backends-audit/**",
@@ -1436,6 +1437,7 @@ inputs = [
   "engine/testdata/fixture-registry.json",
   "engine/testdata/request/xgo-cap-request-002.json",
   "engine/testdata/ftp/xgo-cap-ftp-001.json",
+  "engine/testdata/metalink/xgo-cap-metalink-001.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1454,6 +1456,7 @@ packages = [
   "./engine/transfer/finalize",
   "./engine/transfer/http",
   "./engine/transfer/lifecycle",
+  "./engine/transfer/metalink",
   "./engine/transfer/retry",
   "./engine/transfer/staging",
 ]
@@ -1473,6 +1476,7 @@ inputs = [
   "engine/testdata/fixture-registry.json",
   "engine/testdata/request/xgo-cap-request-002.json",
   "engine/testdata/ftp/xgo-cap-ftp-001.json",
+  "engine/testdata/metalink/xgo-cap-metalink-001.json",
   "tools/xgo/audit_backends_contract.py",
   "tools/xgo/audit_foundation.py",
   "tools/xgo/audit_fixtures.py",
@@ -1531,12 +1535,30 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/backends/ftp-lab.json"]
 
+[targets.xgo_backends.jobs.metalink_corpus]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-backends-audit",
+  "--mode", "metalink",
+  "--output", ".devtool/reports/xgo/backends/metalink-corpus.json",
+]
+inputs = [
+  "engine/domain/request/**",
+  "engine/domain/resource/**",
+  "engine/transfer/checksum/**",
+  "engine/transfer/metalink/**",
+  "engine/cmd/xgo-backends-audit/**",
+  "engine/testdata/metalink/xgo-cap-metalink-001.json",
+]
+outputs = [".devtool/reports/xgo/backends/metalink-corpus.json"]
+
 [targets.xgo_backends.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
   { id = "backend_contract_audit", ref = "job:backend_contract_audit", depends_on = ["go"] },
   { id = "post_replay_lab", ref = "job:post_replay_lab", depends_on = ["backend_contract_audit"] },
   { id = "ftp_lab", ref = "job:ftp_lab", depends_on = ["post_replay_lab"] },
+  { id = "metalink_corpus", ref = "job:metalink_corpus", depends_on = ["ftp_lab"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

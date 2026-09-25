@@ -375,6 +375,8 @@ func main() {
 		}
 	case "ftp":
 		r = runFTPLab()
+	case "metalink":
+		r = runMetalinkCorpus()
 	default:
 		fmt.Fprintln(os.Stderr, "unsupported mode:", *mode)
 		os.Exit(2)
