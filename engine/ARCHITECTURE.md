@@ -70,3 +70,22 @@ segments/checkpoints, verification, queues/schedules, media and diagnostics.
 Mutable authoritative tables carry a positive integer `revision`. Repository
 updates require the exact expected revision and increment it once; a stale write
 returns `ErrStaleWrite` and is never implicitly retried.
+
+## Durable execution authority (XGO-14..16)
+
+Execution authority is represented by a monotonically increasing `AttemptGeneration` stored on the canonical Download row. Reserving a generation and creating the matching attempt row occur under one `BEGIN IMMEDIATE` transaction; a caller using a stale Download revision cannot reserve a second current generation.
+
+Every attempt-owned mutation is fenced in the same transaction by `(download_id, attempt_generation, expected_revision)`. A preflight generation check outside the transaction is not authoritative and must not be used as a substitute for the write fence.
+
+Backend byte authority follows this durable sequence:
+
+1. reserve attempt generation;
+2. create the staging identity;
+3. persist an ownership claim;
+4. create and persist a prepared backend task;
+5. mark ownership ready;
+6. atomically activate both ownership and task.
+
+`AssertAuthoritativeWriter` succeeds only when the supplied generation is still current and both ownership and backend task are active. Superseded generations remain historical but lose write authority immediately.
+
+Checkpoint blocks are integrity evidence, not progress counters. `checkpoint.Committer` enforces `WriteAt -> Sync -> read-back SHA-256 -> DB commit`. Failures before the DB commit leave no resumable checkpoint row even if bytes exist in staging. Exact idempotent re-commit is allowed; overlapping or conflicting committed evidence is rejected. Recovery inspection re-reads committed ranges and detects truncation or hash mismatch.

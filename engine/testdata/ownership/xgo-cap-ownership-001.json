@@ -17,6 +17,12 @@
     "authoritative_state_changed": false,
     "decision": "reject",
     "error": "ErrStaleAttempt",
+    "required_write_fence": [
+      "download_id",
+      "attempt_generation",
+      "expected_revision"
+    ],
+    "atomic_with_mutation": true,
     "invariants": [
       "Only current attempt generation may mutate authoritative execution state."
     ]

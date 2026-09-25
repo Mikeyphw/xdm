@@ -127,7 +127,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-14",
       "test_id": "fixture:xgo-cap-ownership-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-OWNERSHIP-002",
@@ -142,7 +142,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-15",
       "test_id": "fixture:xgo-cap-ownership-002",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-OWNERSHIP-003",
@@ -170,7 +170,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-16",
       "test_id": "fixture:xgo-cap-checkpoint-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-VERIFY-001",

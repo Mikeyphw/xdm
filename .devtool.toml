@@ -685,7 +685,7 @@ outputs = [
 ]
 
 [targets.xgo_store.go]
-packages = ["./engine/store/...", "./engine/internal/archtest"]
+packages = ["./engine/store/...", "./engine/domain/backend", "./engine/internal/archtest"]
 build_targets = ["./engine/cmd/xgo-store-audit"]
 vet = true
 
@@ -774,6 +774,69 @@ outputs = [
   ".devtool/reports/xgo/store/shared-fixture-audit.json",
 ]
 
+[targets.xgo_store.jobs.stale_writer_matrix]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "authority",
+  "--iterations",
+  "64",
+  "--output",
+  ".devtool/reports/xgo/store/stale-writer-matrix.json",
+]
+inputs = [
+  "engine/domain/identity/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/stale-writer-matrix.json",
+]
+
+[targets.xgo_store.jobs.ownership_crash_matrix]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "ownership",
+  "--output",
+  ".devtool/reports/xgo/store/ownership-crash-matrix.json",
+]
+inputs = [
+  "engine/domain/backend/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/ownership-crash-matrix.json",
+]
+
+[targets.xgo_store.jobs.checkpoint_faults]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "checkpoint",
+  "--output",
+  ".devtool/reports/xgo/store/checkpoint-faults.json",
+]
+inputs = [
+  "engine/domain/backend/**",
+  "engine/store/sqlite/**",
+  "engine/store/checkpoint/**",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/checkpoint-faults.json",
+]
+
 [targets.xgo_store.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -781,6 +844,9 @@ validate = [
   { id = "sqlite_platform_smoke", ref = "job:sqlite_platform_smoke", depends_on = ["store_contract_audit"] },
   { id = "schema_audit", ref = "job:schema_audit", depends_on = ["sqlite_platform_smoke"] },
   { id = "cas_stress", ref = "job:cas_stress", depends_on = ["schema_audit"] },
+  { id = "stale_writer_matrix", ref = "job:stale_writer_matrix", depends_on = ["cas_stress"] },
+  { id = "ownership_crash_matrix", ref = "job:ownership_crash_matrix", depends_on = ["stale_writer_matrix"] },
+  { id = "checkpoint_faults", ref = "job:checkpoint_faults", depends_on = ["ownership_crash_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

@@ -13,11 +13,20 @@
     "android_checkpoint_store"
   ],
   "expected": {
-    "discard_uncommitted_tail": true,
+    "commit_order": [
+      "write",
+      "sync",
+      "readback_hash",
+      "database_commit"
+    ],
+    "pre_persist_faults_create_rows": false,
+    "post_persist_fault_is_recoverable": true,
+    "overlap_rejected": true,
+    "stale_attempt_rejected": true,
+    "hash_algorithm": "sha256",
     "invariants": [
       "Checkpoint state never claims bytes lacking committed integrity evidence."
-    ],
-    "resumable_bytes": 0
+    ]
   },
   "fixture_id": "xgo-cap-checkpoint-001",
   "input": {

@@ -14,9 +14,24 @@
     "android_backend_coordinator_test"
   ],
   "expected": {
-    "decision": "reject_activation",
+    "decision": "activate_only_after_ready",
+    "sequence": [
+      "reserve_generation",
+      "persist_ownership_claim",
+      "persist_prepared_task",
+      "mark_ready",
+      "activate_task_and_ownership"
+    ],
+    "writer_authority_by_state": {
+      "reserved": false,
+      "claimed": false,
+      "task_bound": false,
+      "ready": false,
+      "active": true
+    },
     "invariants": [
-      "Backend activation requires durable ownership/task binding first."
+      "Backend activation requires durable ownership/task binding first.",
+      "Bytes are authoritative only while the current generation owns an active backend task."
     ]
   },
   "fixture_id": "xgo-cap-ownership-002",
