@@ -941,44 +941,138 @@ validate = [
 # Bootstrap target for future roadmap ownership. The command runner is intentional
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_security]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
+  "go.work",
+  "engine/domain/request/**",
+  "engine/domain/resource/**",
+  "engine/domain/identity/**",
+  "engine/security/**",
+  "engine/internal/archtest/**",
+  "engine/cmd/xgo-security-audit/**",
+  "tools/xgo/audit_security_contract.py",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/request/**",
+  "engine/testdata/security/**",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/security/**",
 ]
 
-[targets.xgo_security.jobs.bootstrap_contract]
+[targets.xgo_security.go]
+packages = [
+  "./engine/domain/request",
+  "./engine/security/...",
+  "./engine/internal/archtest",
+]
+build_targets = ["./engine/cmd/xgo-security-audit"]
+vet = true
+
+[targets.xgo_security.jobs.security_contract_audit]
 runner = "command"
 command = [
-  "python3",
-  "tools/xgo/audit_topology.py",
-  "target-ready",
-  "--config",
-  ".devtool.toml",
-  "--target",
-  "xgo_security",
-  "--output",
-  ".devtool/reports/xgo/security/bootstrap.json",
+  "python3", "tools/xgo/audit_security_contract.py",
+  "--output", ".devtool/reports/xgo/security/security-contract-audit.json",
 ]
 inputs = [
-  ".devtool.toml",
-  "tools/xgo/audit_topology.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/request/xgo-cap-request-001.json",
+  "engine/testdata/security/xgo-cap-security-001.json",
+  "engine/testdata/security/xgo-cap-security-002.json",
+  "engine/testdata/security/xgo-cap-security-003.json",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "tools/xgo/audit_security_contract.py",
 ]
 outputs = [
-  ".devtool/reports/xgo/security/bootstrap.json",
+  ".devtool/reports/xgo/security/security-contract-audit.json",
+  ".devtool/reports/xgo/security/shared-ledger-audit.json",
+  ".devtool/reports/xgo/security/shared-fixture-audit.json",
 ]
+
+[targets.xgo_security.jobs.request_fixture_diff]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-security-audit",
+  "--mode", "request",
+  "--output", ".devtool/reports/xgo/security/request-fixture-diff.json",
+]
+inputs = [
+  "engine/domain/request/**",
+  "engine/domain/resource/**",
+  "engine/security/urlpolicy/**",
+  "engine/cmd/xgo-security-audit/**",
+  "tools/xgo/audit_security_contract.py",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/request/xgo-cap-request-001.json",
+]
+outputs = [".devtool/reports/xgo/security/request-fixture-diff.json"]
+
+[targets.xgo_security.jobs.header_security_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-security-audit",
+  "--mode", "header",
+  "--output", ".devtool/reports/xgo/security/header-security-matrix.json",
+]
+inputs = [
+  "engine/domain/request/**",
+  "engine/security/header/**",
+  "engine/security/credentials/**",
+  "engine/cmd/xgo-security-audit/**",
+  "tools/xgo/audit_security_contract.py",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/security/xgo-cap-security-001.json",
+  "engine/testdata/security/xgo-cap-security-002.json",
+]
+outputs = [".devtool/reports/xgo/security/header-security-matrix.json"]
+
+[targets.xgo_security.jobs.route_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-security-audit",
+  "--mode", "route",
+  "--output", ".devtool/reports/xgo/security/route-matrix.json",
+]
+inputs = [
+  "engine/domain/identity/**",
+  "engine/domain/resource/**",
+  "engine/security/urlpolicy/**",
+  "engine/security/route/**",
+  "engine/cmd/xgo-security-audit/**",
+  "tools/xgo/audit_security_contract.py",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/security/xgo-cap-security-003.json",
+]
+outputs = [".devtool/reports/xgo/security/route-matrix.json"]
 
 [targets.xgo_security.workflows]
 validate = [
-  { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "go", ref = "runner:go#validate", depends_on = [] },
+  { id = "security_contract_audit", ref = "job:security_contract_audit", depends_on = ["go"] },
+  { id = "request_fixture_diff", ref = "job:request_fixture_diff", depends_on = ["security_contract_audit"] },
+  { id = "header_security_matrix", ref = "job:header_security_matrix", depends_on = ["request_fixture_diff"] },
+  { id = "route_matrix", ref = "job:route_matrix", depends_on = ["header_security_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

@@ -248,7 +248,7 @@
       "donor_strategy": "merged",
       "target_overlay": "XGO-20",
       "test_id": "fixture:xgo-cap-request-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-SECURITY-001",
@@ -262,7 +262,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-21",
       "test_id": "fixture:xgo-cap-security-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-SECURITY-002",
@@ -277,7 +277,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-21",
       "test_id": "fixture:xgo-cap-security-002",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-SECURITY-003",
@@ -291,7 +291,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-22",
       "test_id": "fixture:xgo-cap-security-003",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-SECURITY-004",

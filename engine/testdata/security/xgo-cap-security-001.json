@@ -1,29 +1,54 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-security-001",
+  "category": "security",
   "capability_ids": [
     "XGO-CAP-SECURITY-001"
   ],
-  "category": "security",
+  "donor_ids": [
+    "android_request_security_guard",
+    "android_security_guard_test"
+  ],
   "derivation": {
     "behavior": "Header admission blocks CRLF injection and transport-owned header abuse.",
     "canonical_behavior": "Go validates header names/values and reserves transport-owned fields before network execution.",
     "strategy": "android_led"
   },
-  "donor_ids": [
-    "android_request_security_guard",
-    "android_security_guard_test"
-  ],
+  "input": {
+    "cases": [
+      {
+        "name": "crlf",
+        "header": {
+          "X-Test": "ok\\r\\nInjected: yes"
+        }
+      },
+      {
+        "name": "host",
+        "header": {
+          "Host": "evil.example"
+        }
+      },
+      {
+        "name": "content_length",
+        "header": {
+          "Content-Length": "999"
+        }
+      },
+      {
+        "name": "raw_authorization",
+        "header": {
+          "Authorization": "<secret-ref>"
+        }
+      }
+    ]
+  },
   "expected": {
     "decision": "reject",
+    "reason": "header_policy",
     "invariants": [
-      "CR/LF header injection is rejected before transport."
-    ],
-    "reason": "header_injection"
-  },
-  "fixture_id": "xgo-cap-security-001",
-  "input": {
-    "headers": {
-      "X-Test": "ok\\r\\nAuthorization: injected"
-    }
-  },
-  "schema_version": 1
+      "CR/LF header injection is rejected before transport.",
+      "Host, Content-Length and connection-framing headers are transport-owned.",
+      "Authorization, Cookie, Proxy-Authorization and API-key-like values must use credential references rather than persisted raw headers."
+    ]
+  }
 }

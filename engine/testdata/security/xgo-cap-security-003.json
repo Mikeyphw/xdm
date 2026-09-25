@@ -1,31 +1,52 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-security-003",
+  "category": "security",
   "capability_ids": [
     "XGO-CAP-SECURITY-003"
   ],
-  "category": "security",
+  "donor_ids": [
+    "android_request_security_guard",
+    "android_security_guard_test"
+  ],
   "derivation": {
     "behavior": "Private/loopback/link-local/reserved routes require scoped approval.",
     "canonical_behavior": "Go classifies resolved IPv4/IPv6 candidates and binds approval to explicit request/resource scope.",
     "strategy": "android_led"
   },
-  "donor_ids": [
-    "android_request_security_guard",
-    "android_security_guard_test"
-  ],
-  "expected": {
-    "decision": "reject",
-    "invariants": [
-      "Loopback/private routes require explicit scoped approval."
-    ],
-    "reason": "scoped_private_route_approval_required"
-  },
-  "fixture_id": "xgo-cap-security-003",
   "input": {
-    "approval": null,
-    "resolved_addresses": [
-      "127.0.0.1"
+    "representative_addresses": [
+      "8.8.8.8",
+      "10.0.0.1",
+      "127.0.0.1",
+      "169.254.1.1",
+      "100.64.0.1",
+      "224.0.0.1",
+      "0.0.0.0",
+      "2001:4860:4860::8888",
+      "fc00::1",
+      "fe80::1",
+      "::1",
+      "ff02::1",
+      "2001:db8::1",
+      "::ffff:10.1.2.3"
     ],
-    "url": "http://example.invalid/file"
+    "mixed_dns": [
+      "8.8.8.8",
+      "10.0.0.8"
+    ],
+    "url": "https://private.example/file",
+    "approval": "<exact-request-resource-target-class>"
   },
-  "schema_version": 1
+  "expected": {
+    "decision": "scoped",
+    "reason": "scoped_private_route_approval_required",
+    "invariants": [
+      "Public, private, loopback, link-local, reserved, multicast and unspecified routes are classified explicitly for IPv4 and IPv6.",
+      "IPv4-mapped IPv6 is classified using the embedded IPv4 address.",
+      "A mixed public/private DNS result requires approval for every non-public class.",
+      "Approval is bound to request ID, logical resource, exact target scope, origin and address class.",
+      "Primary approval is not reusable for mirrors or redirects."
+    ]
+  }
 }

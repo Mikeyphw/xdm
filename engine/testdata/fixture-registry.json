@@ -971,7 +971,7 @@
         "XGO-CAP-REQUEST-001"
       ],
       "category": "request",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_download_intake",
         "android_native_http",

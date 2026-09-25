@@ -126,3 +126,11 @@ Desktop host storage identities are direct filesystem paths. Late completion
 from a stale backend generation is diagnostic-only and can never regain
 execution authority. Recovery diagnostics are deterministic and idempotent, and
 repeated recovery after terminal cleanup does not mutate authoritative state.
+
+## Canonical request and route security (XGO-20..22)
+
+Network execution begins from a canonical `request.NetworkIntent`, not from host-specific HTTP objects. The intent keeps the active transport URL separate from opaque logical `resource.Identity`, preserves mirrors/validators/checksums/source metadata/backend preference, and stores body/credential material only as opaque references. Runtime body and secret bytes intentionally cannot be JSON serialized.
+
+Persisted non-secret headers pass an engine-owned admission policy. CR/LF injection, transport-owned fields (`Host`, `Content-Length`, connection framing), and raw sensitive credential headers are rejected. Trusted engine requests may preserve safe custom headers; external handoffs use a conservative allowlist. Authorization, cookie and proxy authorization are distinct credential-reference kinds with explicit origin/resource/path scope, and destination forwarding recomputes scope instead of copying credential state through redirects.
+
+Resolved addresses are classified as public, private, loopback, link-local, reserved, multicast or unspecified after IPv4-mapped IPv6 normalization. Any non-public candidate requires a durable scoped approval bound to the exact RequestID, logical resource, target URL scope and address class. Approval is never a global `allow private network` boolean and cannot be reused for a mirror, redirect, another request or another logical resource. XGO-23 will bind this approved candidate set to the actual dial path.

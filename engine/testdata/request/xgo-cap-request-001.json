@@ -1,27 +1,60 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-request-001",
+  "category": "request",
   "capability_ids": [
     "XGO-CAP-REQUEST-001"
   ],
-  "category": "request",
-  "derivation": {
-    "behavior": "Canonical network intent supports GET/POST, headers, body refs, mirrors, validators and expected hashes.",
-    "canonical_behavior": "Go request is a strict superset of donor transport semantics with safe persisted form and runtime secret resolution.",
-    "strategy": "merged"
-  },
   "donor_ids": [
     "android_download_intake",
     "android_native_http",
     "desktop_download_request"
   ],
-  "expected": {
-    "invariants": [
-      "Go request is a strict superset of donor transport semantics with safe persisted form and runtime secret resolution."
+  "derivation": {
+    "behavior": "Canonical network intent supports GET/POST, headers, body refs, mirrors, validators and expected hashes.",
+    "canonical_behavior": "Go request is a strict superset of donor transport semantics with safe persisted form and runtime secret resolution.",
+    "strategy": "merged"
+  },
+  "input": {
+    "cases": [
+      {
+        "name": "get_superset_roundtrip",
+        "url": "https://origin.example/file?sig=<opaque>",
+        "method": "GET",
+        "headers": {
+          "Accept": "application/octet-stream"
+        },
+        "mirrors": [
+          "https://mirror.example/file"
+        ],
+        "expected_length": 42,
+        "etag": "\"v1\"",
+        "checksum": {
+          "algorithm": "sha256",
+          "digest": "<digest>"
+        }
+      },
+      {
+        "name": "post_replayable_reference",
+        "url": "https://api.example/export",
+        "method": "POST",
+        "body_ref": "fixture:body/export",
+        "runtime_body": "<not-persisted>"
+      },
+      {
+        "name": "get_with_body",
+        "url": "https://origin.example/file",
+        "method": "GET",
+        "body_ref": "fixture:body/invalid"
+      }
     ]
   },
-  "fixture_id": "xgo-cap-request-001",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Canonical network intent supports GET/POST, headers, body refs, mirrors, validators and expected hashes."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "Transport URL and logical resource identity remain distinct.",
+      "Safe serialization contains body/credential references but never resolved secret bytes.",
+      "GET/POST, mirrors, validators, expected length, checksum, source metadata, backend preference and approval references survive canonicalization.",
+      "Unsupported method/body combinations fail with typed reasons."
+    ]
+  }
 }

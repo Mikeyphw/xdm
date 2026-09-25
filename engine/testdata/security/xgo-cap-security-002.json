@@ -1,32 +1,42 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-security-002",
+  "category": "security",
   "capability_ids": [
     "XGO-CAP-SECURITY-002"
   ],
-  "category": "security",
-  "derivation": {
-    "behavior": "Sensitive credentials are scoped and stripped on unsafe cross-origin redirects.",
-    "canonical_behavior": "Go recomputes credential forwarding per redirect/origin and never blindly propagates Authorization/Cookie.",
-    "strategy": "android_led"
-  },
   "donor_ids": [
     "android_request_security_guard",
     "android_security_guard_test",
     "desktop_browser_security_test"
   ],
+  "derivation": {
+    "behavior": "Sensitive credentials are scoped and stripped on unsafe cross-origin redirects.",
+    "canonical_behavior": "Go recomputes credential forwarding per redirect/origin and never blindly propagates Authorization/Cookie.",
+    "strategy": "android_led"
+  },
+  "input": {
+    "source_origin": "https://a.example",
+    "same_origin": "https://a.example/media/next",
+    "cross_origin": "https://b.example/media/next",
+    "cookie_scope": {
+      "origin": "https://a.example",
+      "path_prefix": "/media"
+    },
+    "credentials": {
+      "authorization": "<secret-ref>",
+      "cookie": "<secret-ref>",
+      "proxy_authorization": "<secret-ref>"
+    }
+  },
   "expected": {
     "forward_sensitive_credentials": false,
     "invariants": [
-      "Sensitive origin credentials are not forwarded across unsafe cross-origin redirects."
+      "Authorization and API-key references are exact-origin scoped.",
+      "Cookies require matching origin and path scope.",
+      "Cross-origin destinations receive no origin credentials.",
+      "Proxy authorization is separated from origin credentials.",
+      "Diagnostics expose only structural redaction markers."
     ]
-  },
-  "fixture_id": "xgo-cap-security-002",
-  "input": {
-    "headers": {
-      "Authorization": "<secret-ref>",
-      "Cookie": "<secret-ref>"
-    },
-    "redirect_origin": "https://b.example",
-    "source_origin": "https://a.example"
-  },
-  "schema_version": 1
+  }
 }
