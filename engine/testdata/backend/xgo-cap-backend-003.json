@@ -14,19 +14,58 @@
     "android_backend_migration_test"
   ],
   "expected": {
-    "accept_late_source_event": false,
-    "current_generation": 5,
     "invariants": [
-      "Backend migration transfers authority through a new generation and fences the source."
+      "Migration reserves a fresh attempt generation before any target activation, which immediately fences the source from canonical writes.",
+      "The source is quiesced and inspected before target establishment; checkpoint reuse is explicit rather than inferred from a path.",
+      "The target establishes durable non-writing ownership before activation and the source is retired only after target activation is durable.",
+      "Every durable boundary and every external-effect-before-commit boundary is idempotently recoverable.",
+      "Late source progress or completion after generation transfer is diagnostic only."
     ]
   },
   "fixture_id": "xgo-cap-backend-003",
   "input": {
-    "late_source_event": "completed",
-    "source_backend": "native",
-    "source_generation": 4,
-    "target_backend": "aria2",
-    "target_generation": 5
+    "cases": [
+      {
+        "name": "native_to_aria2",
+        "expected": "new_generation_fences_native_then_activates_durable_aria2_owner"
+      },
+      {
+        "name": "aria2_to_native",
+        "expected": "new_generation_fences_aria2_then_activates_durable_native_owner"
+      },
+      {
+        "name": "crash_reserved",
+        "expected": "recovery_resumes_at_source_quiesce"
+      },
+      {
+        "name": "crash_source_quiesced",
+        "expected": "recovery_reinspects_and_establishes_target"
+      },
+      {
+        "name": "crash_target_established",
+        "expected": "recovery_activates_only_durably_established_target"
+      },
+      {
+        "name": "crash_target_active",
+        "expected": "recovery_retires_source_without_double_writer"
+      },
+      {
+        "name": "crash_source_retired",
+        "expected": "completed_migration_is_idempotently_recovered"
+      },
+      {
+        "name": "old_backend_late_progress",
+        "expected": "diagnostic_only_and_source_generation_remains_fenced"
+      },
+      {
+        "name": "old_backend_late_completion",
+        "expected": "diagnostic_only_and_target_authority_unchanged"
+      },
+      {
+        "name": "unsafe_checkpoint_fresh_staging",
+        "expected": "checkpoint_reuse_requires_explicit_compatibility"
+      }
+    ]
   },
   "schema_version": 1
 }

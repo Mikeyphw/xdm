@@ -15,13 +15,36 @@
   ],
   "expected": {
     "invariants": [
-      "Go compares DB ownership with daemon runtime/task state and reconciles without stale authority."
+      "Reconciliation compares the current durable ownership tuple against one daemon snapshot and never trusts GID alone.",
+      "Missing, removed, errored, paused, active, completed, and runtime-replaced tasks have explicit outcomes.",
+      "Offline completion is accepted only for the current generation and exact runtime/GID ownership tuple.",
+      "Runtime rebinding creates a fresh generation and closes the historical owner."
     ]
   },
   "fixture_id": "xgo-cap-aria2-003",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Aria2 reconciliation handles daemon restart, missing task and offline completion."
+    "cases": [
+      {
+        "name": "daemon_restart",
+        "expected": "runtime_change_reconciles_by_fresh_generation_or_recovery"
+      },
+      {
+        "name": "gid_missing",
+        "expected": "ownership_abandoned_and_recovery_required"
+      },
+      {
+        "name": "offline_completion",
+        "expected": "current_owned_task_promotes_to_transport_complete"
+      },
+      {
+        "name": "paused_task",
+        "expected": "paused_or_waiting_task_remains_nonwriting_or_durably_owned"
+      },
+      {
+        "name": "removed_task",
+        "expected": "removed_task_requires_recovery_without_stale_authority"
+      }
+    ]
   },
   "schema_version": 1
 }

@@ -62,6 +62,9 @@ def main() -> int:
         ('XGO-CAP-BACKEND-001', 'XGO-39', {'canonical_request_kinds', 'method_body', 'destination', 'credential_mode', 'proxy', 'media_shape', 'resume', 'mirror_semantics', 'preflight_exactness'}),
         ('XGO-CAP-BACKEND-002', 'XGO-40', {'deterministic_same_input', 'preference_compatible_only', 'unavailable_backend_fallback', 'degraded_backend', 'direct_http_default', 'mirrors_and_ftp', 'media_external_shape', 'migration_cost', 'started_attempt_fence', 'attempt_scoped_persistence'}),
         ('XGO-CAP-ARIA2-001', 'XGO-41', {'mock_json_rpc_server', 'request_id_correlation', 'malformed_response', 'timeout', 'unknown_gid', 'option_encoding', 'task_lists', 'control_and_global_options', 'health_and_shutdown', 'real_aria2_smoke_if_available'}),
+        ('XGO-CAP-ARIA2-002', 'XGO-42', {'crash_before_binding', 'crash_after_binding_before_activation', 'daemon_restart_reusing_namespace', 'stale_gid_update', 'activation_without_ownership'}),
+        ('XGO-CAP-ARIA2-003', 'XGO-43', {'daemon_restart', 'gid_missing', 'offline_completion', 'paused_task', 'removed_task'}),
+        ('XGO-CAP-BACKEND-003', 'XGO-43', {'native_to_aria2', 'aria2_to_native', 'crash_reserved', 'crash_source_quiesced', 'crash_target_established', 'crash_target_active', 'crash_source_retired', 'old_backend_late_progress', 'old_backend_late_completion', 'unsafe_checkpoint_fresh_staging'}),
     ]
     fixture_evidence = {}
     closed = []
@@ -76,7 +79,7 @@ def main() -> int:
         raise SystemExit('xgo_backends must remain on the native Go runner')
     nodes = target.get('workflows', {}).get('validate', [])
     ids = [n.get('id') for n in nodes]
-    expected_ids = ['go', 'backend_contract_audit', 'post_replay_lab', 'ftp_lab', 'metalink_corpus', 'compatibility_matrix', 'selection_matrix', 'aria2_rpc_lab']
+    expected_ids = ['go', 'backend_contract_audit', 'post_replay_lab', 'ftp_lab', 'metalink_corpus', 'compatibility_matrix', 'selection_matrix', 'aria2_rpc_lab', 'aria2_ownership_faults', 'backend_migration_faults']
     if ids != expected_ids:
         raise SystemExit(f'xgo_backends validate DAG mismatch: {ids}')
     expected_deps = {
@@ -88,6 +91,8 @@ def main() -> int:
         'compatibility_matrix': ['metalink_corpus'],
         'selection_matrix': ['compatibility_matrix'],
         'aria2_rpc_lab': ['selection_matrix'],
+        'aria2_ownership_faults': ['aria2_rpc_lab'],
+        'backend_migration_faults': ['aria2_ownership_faults'],
     }
     for node in nodes:
         if node.get('depends_on', []) != expected_deps[node['id']]:
@@ -103,6 +108,16 @@ def main() -> int:
     for job_id, mode in expected_modes.items():
         if not command_has_mode(target.get('jobs', {}).get(job_id, {}), mode):
             raise SystemExit(f'{job_id} is not wired to xgo-backends-audit --mode {mode}')
+
+    fault_jobs = {
+        'aria2_ownership_faults': ('./engine/backends/aria2', 'Test(Ownership|Activation|Stale|Daemon|Reconciliation)'),
+        'backend_migration_faults': ('./engine/backends/migration', 'TestMigration'),
+    }
+    for job_id, (pkg, pattern) in fault_jobs.items():
+        job = target.get('jobs', {}).get(job_id, {})
+        cmd = job.get('command', [])
+        if job.get('runner') != 'command' or cmd[:2] != ['go', 'test'] or pkg not in cmd or pattern not in cmd or '-count=1' not in cmd:
+            raise SystemExit(f'{job_id} is not wired to the deterministic Go fault suite')
 
     report = {
         'schema_version': 1,

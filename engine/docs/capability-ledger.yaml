@@ -587,7 +587,7 @@
         "android_aria2_contract_test"
       ],
       "id": "XGO-CAP-ARIA2-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-42",
       "test_id": "fixture:xgo-cap-aria2-002"
     },
@@ -602,7 +602,7 @@
         "desktop_aria2_rpc"
       ],
       "id": "XGO-CAP-ARIA2-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-43",
       "test_id": "fixture:xgo-cap-aria2-003"
     },
@@ -617,7 +617,7 @@
         "android_backend_migration_test"
       ],
       "id": "XGO-CAP-BACKEND-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-43",
       "test_id": "fixture:xgo-cap-backend-003"
     },

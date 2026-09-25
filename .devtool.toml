@@ -1440,7 +1440,10 @@ inputs = [
   "engine/testdata/metalink/xgo-cap-metalink-001.json",
   "engine/testdata/backend/xgo-cap-backend-001.json",
   "engine/testdata/backend/xgo-cap-backend-002.json",
+  "engine/testdata/backend/xgo-cap-backend-003.json",
   "engine/testdata/aria2/xgo-cap-aria2-001.json",
+  "engine/testdata/aria2/xgo-cap-aria2-002.json",
+  "engine/testdata/aria2/xgo-cap-aria2-003.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1483,6 +1486,10 @@ inputs = [
   "engine/testdata/metalink/xgo-cap-metalink-001.json",
   "engine/testdata/backend/xgo-cap-backend-001.json",
   "engine/testdata/backend/xgo-cap-backend-002.json",
+  "engine/testdata/backend/xgo-cap-backend-003.json",
+  "engine/testdata/aria2/xgo-cap-aria2-001.json",
+  "engine/testdata/aria2/xgo-cap-aria2-002.json",
+  "engine/testdata/aria2/xgo-cap-aria2-003.json",
   "tools/xgo/audit_backends_contract.py",
   "tools/xgo/audit_foundation.py",
   "tools/xgo/audit_fixtures.py",
@@ -1606,6 +1613,38 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/backends/aria2-rpc-lab.json"]
 
+[targets.xgo_backends.jobs.aria2_ownership_faults]
+runner = "command"
+command = [
+  "go", "test", "./engine/backends/aria2",
+  "-run", "Test(Ownership|Activation|Stale|Daemon|Reconciliation)",
+  "-count=1",
+]
+inputs = [
+  "engine/backends/aria2/**",
+  "engine/domain/backend/**",
+  "engine/domain/identity/**",
+  "engine/store/sqlite/**",
+  "engine/testdata/aria2/xgo-cap-aria2-002.json",
+  "engine/testdata/aria2/xgo-cap-aria2-003.json",
+]
+
+[targets.xgo_backends.jobs.backend_migration_faults]
+runner = "command"
+command = [
+  "go", "test", "./engine/backends/migration",
+  "-run", "TestMigration",
+  "-count=1",
+]
+inputs = [
+  "engine/backends/migration/**",
+  "engine/backends/aria2/**",
+  "engine/domain/backend/**",
+  "engine/domain/identity/**",
+  "engine/store/sqlite/**",
+  "engine/testdata/backend/xgo-cap-backend-003.json",
+]
+
 [targets.xgo_backends.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1616,6 +1655,8 @@ validate = [
   { id = "compatibility_matrix", ref = "job:compatibility_matrix", depends_on = ["metalink_corpus"] },
   { id = "selection_matrix", ref = "job:selection_matrix", depends_on = ["compatibility_matrix"] },
   { id = "aria2_rpc_lab", ref = "job:aria2_rpc_lab", depends_on = ["selection_matrix"] },
+  { id = "aria2_ownership_faults", ref = "job:aria2_ownership_faults", depends_on = ["aria2_rpc_lab"] },
+  { id = "backend_migration_faults", ref = "job:backend_migration_faults", depends_on = ["aria2_ownership_faults"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

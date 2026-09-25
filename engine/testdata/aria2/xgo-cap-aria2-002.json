@@ -14,13 +14,36 @@
   ],
   "expected": {
     "invariants": [
-      "Go creates task paused where possible, persists GID/runtime ownership then activates."
+      "A GID is never a sufficient writer identity; download, attempt generation, runtime identity, GID, and staging identity form the durable authority tuple.",
+      "The external aria2 task is created paused where possible and cannot write canonically before Ready ownership becomes Active.",
+      "A daemon restart may reuse a GID only through a fresh attempt generation after staging identity proof; the stale runtime tuple remains fenced.",
+      "Activation without durable ownership is forbidden."
     ]
   },
   "fixture_id": "xgo-cap-aria2-002",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Aria2 GID is bound durably to attempt generation before activation."
+    "cases": [
+      {
+        "name": "crash_before_binding",
+        "expected": "persisted_claim_recovers_and_gid_is_bound_before_daemon_activation"
+      },
+      {
+        "name": "crash_after_binding_before_activation",
+        "expected": "task_remains_paused_until_ready_owner_is_durable"
+      },
+      {
+        "name": "daemon_restart_reusing_namespace",
+        "expected": "same_gid_requires_new_runtime_generation_and_staging_proof"
+      },
+      {
+        "name": "stale_gid_update",
+        "expected": "stale_gid_or_runtime_cannot_write_canonical_progress"
+      },
+      {
+        "name": "activation_without_ownership",
+        "expected": "activation_rejected_without_ready_durable_binding"
+      }
+    ]
   },
   "schema_version": 1
 }
