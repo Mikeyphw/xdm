@@ -133,6 +133,14 @@ func runDependencyGraph() (report, error) {
 	if err != nil {
 		return report{}, err
 	}
+	d, err := seedDownload(ctx, repo, "dl_66666666666666666666666666666666")
+	if err != nil {
+		return report{}, err
+	}
+	e, err := seedDownload(ctx, repo, "dl_77777777777777777777777777777777")
+	if err != nil {
+		return report{}, err
+	}
 	if err := store.AddDependency(ctx, scheduler.DependencyRecord{DownloadID: a, DependencyDownloadID: b, Requirement: scheduler.SuccessRequired}); err != nil {
 		return report{}, err
 	}
@@ -156,7 +164,37 @@ func runDependencyGraph() (report, error) {
 	if !ready.Eligible {
 		return report{}, fmt.Errorf("dependency retry success did not unblock: %+v", ready)
 	}
-	return report{Mode: "dependency_graph", Status: "PASS", Checks: []string{"chain dependency", "cycle insertion rejection", "success-required failure propagation", "dependency retry success unblocks"}}, nil
+
+	// Diamond graph: d depends on b and c, both of which depend on e. This
+	// proves shared ancestors do not look cyclic and that all parents must be
+	// independently satisfied before the child is eligible.
+	if err := store.AddDependency(ctx, scheduler.DependencyRecord{DownloadID: b, DependencyDownloadID: e, Requirement: scheduler.SuccessRequired}); err != nil {
+		return report{}, err
+	}
+	if err := store.AddDependency(ctx, scheduler.DependencyRecord{DownloadID: c, DependencyDownloadID: e, Requirement: scheduler.SuccessRequired}); err != nil {
+		return report{}, err
+	}
+	if err := store.AddDependency(ctx, scheduler.DependencyRecord{DownloadID: d, DependencyDownloadID: b, Requirement: scheduler.SuccessRequired}); err != nil {
+		return report{}, err
+	}
+	if err := store.AddDependency(ctx, scheduler.DependencyRecord{DownloadID: d, DependencyDownloadID: c, Requirement: scheduler.CompletionRequired}); err != nil {
+		return report{}, err
+	}
+	multiBlocked, err := store.Eligibility(ctx, d, map[identity.DownloadID]scheduler.DownloadOutcome{b: scheduler.OutcomeRunning, c: scheduler.OutcomeRunning, e: scheduler.OutcomeSucceeded})
+	if err != nil {
+		return report{}, err
+	}
+	if multiBlocked.Eligible || len(multiBlocked.Blocked) != 2 {
+		return report{}, fmt.Errorf("multiple dependency block reasons missing: %+v", multiBlocked)
+	}
+	diamondReady, err := store.Eligibility(ctx, d, map[identity.DownloadID]scheduler.DownloadOutcome{b: scheduler.OutcomeSucceeded, c: scheduler.OutcomeCanceled, e: scheduler.OutcomeSucceeded})
+	if err != nil {
+		return report{}, err
+	}
+	if !diamondReady.Eligible || len(diamondReady.Blocked) != 0 {
+		return report{}, fmt.Errorf("diamond dependencies did not unblock: %+v", diamondReady)
+	}
+	return report{Mode: "dependency_graph", Status: "PASS", Checks: []string{"chain dependency", "diamond dependency", "multiple dependency reasons", "cycle insertion rejection", "success-required failure propagation", "dependency retry success unblocks"}}, nil
 }
 
 func runConditionsTime() (report, error) {
@@ -254,8 +292,8 @@ func runSchedulerStress() (report, error) {
 	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
 	qa, _ := identity.ParseQueueID("queue_33333333333333333333333333333333")
 	qb, _ := identity.ParseQueueID("queue_44444444444444444444444444444444")
-	items := make([]scheduler.WorkItem, 0, 1500)
-	for i := 0; i < 1500; i++ {
+	items := make([]scheduler.WorkItem, 0, 2500)
+	for i := 0; i < 2500; i++ {
 		id, _ := identity.ParseDownloadID(fmt.Sprintf("dl_%032x", i+1000))
 		queueID := qa
 		host := "a.example"
@@ -310,7 +348,7 @@ func runSchedulerStress() (report, error) {
 	if len(blockedPause.Blocked) != 1 || len(blockedPause.Blocked[0].Holds) == 0 || blockedPause.Blocked[0].Holds[0] != scheduler.SchedulerHoldGlobalPause {
 		return report{}, fmt.Errorf("global pause did not block: %+v", blockedPause)
 	}
-	return report{Mode: "scheduler_stress", Status: "PASS", Checks: []string{"1500 queued jobs", "deterministic replay", "global capacity", "per-host capacity", "fairness aging", "retry not due", "durable global pause"}}, nil
+	return report{Mode: "scheduler_stress", Status: "PASS", Checks: []string{"2500 queued jobs", "deterministic replay", "global capacity", "per-host capacity", "fairness aging", "retry not due", "durable global pause"}}, nil
 }
 
 func runBandwidthCompletion() (report, error) {

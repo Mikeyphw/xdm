@@ -2150,7 +2150,10 @@ outputs = [
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
   { id = "store", ref = "target:xgo_store#validate", depends_on = ["foundation"] },
-  { id = "scheduler", ref = "target:xgo_scheduler#validate", depends_on = ["store"] }
+  { id = "security", ref = "target:xgo_security#validate", depends_on = ["store"] },
+  { id = "transfer", ref = "target:xgo_transfer#validate", depends_on = ["security"] },
+  { id = "backends", ref = "target:xgo_backends#validate", depends_on = ["transfer"] },
+  { id = "scheduler", ref = "target:xgo_scheduler#validate", depends_on = ["backends"] }
 ]
 
 [targets.xgo_gate_media_identity]
