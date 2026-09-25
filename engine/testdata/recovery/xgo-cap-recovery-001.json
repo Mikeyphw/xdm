@@ -15,14 +15,31 @@
     "desktop_recovery_coordinator"
   ],
   "expected": {
+    "actions_generation_and_revision_fenced": true,
+    "double_recovery_idempotent": true,
+    "durable_diagnostic_event": true,
+    "every_incomplete_state_classified": true,
     "invariants": [
-      "Go classifies every incomplete state and performs idempotent generation-fenced recovery."
-    ]
+      "Recovery never promotes unverified bytes to an artifact.",
+      "A platform receipt survives restart and converges to one engine commit."
+    ],
+    "platform_receipt_reconciled_without_blind_republish": true
   },
   "fixture_id": "xgo-cap-recovery-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Startup recovery reconciles ownership, backend, checkpoints, artifacts and publication."
+    "categories": [
+      "active_owned_backend",
+      "backend_missing",
+      "stale_ownership",
+      "current_checkpoint_recoverable",
+      "corrupt_checkpoint",
+      "verified_artifact_unpublished",
+      "platform_committed_engine_uncommitted",
+      "completed",
+      "unrecoverable"
+    ],
+    "interrupt_after": "engine_commit_before_cleanup",
+    "repeat_recovery": true
   },
   "schema_version": 1
 }

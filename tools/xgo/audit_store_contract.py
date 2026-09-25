@@ -49,6 +49,10 @@ def main() -> int:
         "XGO-CAP-OWNERSHIP-001": "XGO-14",
         "XGO-CAP-OWNERSHIP-002": "XGO-15",
         "XGO-CAP-CHECKPOINT-001": "XGO-16",
+        "XGO-CAP-VERIFY-001": "XGO-17",
+        "XGO-CAP-PUBLICATION-001": "XGO-18",
+        "XGO-CAP-RECOVERY-001": "XGO-19",
+        "XGO-CAP-RECOVERY-002": "XGO-19",
     }
     for cap_id, overlay in expected.items():
         cap = caps.get(cap_id)

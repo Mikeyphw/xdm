@@ -337,6 +337,52 @@ func (id *CaptureID) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type VerificationID string
+
+func ParseVerificationID(value string) (VerificationID, error) {
+	parsed, err := parsePrefixed(value, "ver_")
+	return VerificationID(parsed), err
+}
+
+func NewVerificationID(source TokenSource) (VerificationID, error) {
+	value, err := newPrefixed(source, "ver_")
+	return VerificationID(value), err
+}
+
+func (id VerificationID) String() string { return string(id) }
+func (id VerificationID) IsZero() bool   { return id == "" }
+func (id VerificationID) MarshalText() ([]byte, error) {
+	if id.IsZero() {
+		return nil, ErrZeroID
+	}
+	if _, err := ParseVerificationID(string(id)); err != nil {
+		return nil, err
+	}
+	return []byte(id), nil
+}
+func (id *VerificationID) UnmarshalText(data []byte) error {
+	parsed, err := ParseVerificationID(string(data))
+	if err != nil {
+		return err
+	}
+	*id = parsed
+	return nil
+}
+func (id VerificationID) MarshalJSON() ([]byte, error) {
+	if _, err := ParseVerificationID(string(id)); err != nil {
+		return nil, err
+	}
+	return marshalID(string(id))
+}
+func (id *VerificationID) UnmarshalJSON(data []byte) error {
+	value, err := unmarshalID(data, "ver_")
+	if err != nil {
+		return err
+	}
+	*id = VerificationID(value)
+	return nil
+}
+
 type PublicationID string
 
 func ParsePublicationID(value string) (PublicationID, error) {

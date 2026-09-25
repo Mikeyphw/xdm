@@ -89,3 +89,40 @@ Backend byte authority follows this durable sequence:
 `AssertAuthoritativeWriter` succeeds only when the supplied generation is still current and both ownership and backend task are active. Superseded generations remain historical but lose write authority immediately.
 
 Checkpoint blocks are integrity evidence, not progress counters. `checkpoint.Committer` enforces `WriteAt -> Sync -> read-back SHA-256 -> DB commit`. Failures before the DB commit leave no resumable checkpoint row even if bytes exist in staging. Exact idempotent re-commit is allowed; overlapping or conflicting committed evidence is rejected. Recovery inspection re-reads committed ranges and detects truncation or hash mismatch.
+
+## Verification, publication and recovery authority (XGO-17..19)
+
+Transfer completion is not artifact completion. A successful verification is the
+only operation allowed to allocate a new `ArtifactGeneration`, and the passed
+verification record, verified artifact row, Download current-artifact pointer
+and Download revision advance commit in one SQLite transaction. Failed
+verification is append-only diagnostic evidence and never creates or advances an
+artifact. Verification and publication mutations are fenced to the current
+`AttemptGeneration`.
+
+Publication is a durable saga because platform storage commits can occur outside
+SQLite. The authoritative sequence is:
+
+1. `PREPARED`;
+2. `PLATFORM_COMMIT_REQUESTED`;
+3. `PLATFORM_COMMITTED`;
+4. `ENGINE_COMMITTED`;
+5. `CLEANED`.
+
+Every publication owns a durable idempotency key. A key cannot be claimed by a
+second Download. Repeating the exact platform receipt is idempotent; a conflicting
+receipt is rejected. A crash after requesting a platform commit is ambiguous, so
+recovery asks the host to inspect the receipt instead of blindly publishing a
+second copy. The Download reaches `completed` only when a verified current
+artifact with a durable platform receipt is committed by the engine.
+
+Recovery is storage-driven and deterministic. It classifies durable state as
+`active_owned_backend`, `backend_missing`, `stale_ownership`,
+`current_checkpoint_recoverable`, `corrupt_checkpoint`,
+`verified_artifact_unpublished`, `platform_committed_engine_uncommitted`,
+`completed`, or `unrecoverable`. Checkpoint byte inspection crosses a
+`CheckpointResolver` boundary so the engine does not assume Android SAF or
+Desktop host storage identities are direct filesystem paths. Late completion
+from a stale backend generation is diagnostic-only and can never regain
+execution authority. Recovery diagnostics are deterministic and idempotent, and
+repeated recovery after terminal cleanup does not mutate authoritative state.

@@ -14,14 +14,34 @@
     "desktop_checksum_service"
   ],
   "expected": {
+    "failed_verification_preserves_journal": true,
     "invariants": [
-      "Go records verification separately and creates publishable artifact only after required integrity checks pass."
-    ]
+      "ArtifactGeneration advances only for an accepted verified artifact.",
+      "Transport byte count alone cannot make a Download completed."
+    ],
+    "pending_transport_has_artifact": false,
+    "stale_attempt_rejected": true,
+    "successful_verification_creates_next_artifact_generation": true,
+    "transaction_fault_before_commit_leaves_no_partial_artifact": true
   },
   "fixture_id": "xgo-cap-verify-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Transport completion does not equal verified completion."
+    "current_attempt_generation": 4,
+    "download_revision": 7,
+    "fault_points": [
+      "after_verification_record",
+      "after_artifact_record",
+      "before_commit"
+    ],
+    "size_bytes": 1048576,
+    "staging_identity": "opaque-stage-4",
+    "transport_complete": true,
+    "verification": {
+      "actual": "aaaa",
+      "algorithm": "sha256",
+      "expected": "aaaa",
+      "verifier_version": "xgo-v1"
+    }
   },
   "schema_version": 1
 }

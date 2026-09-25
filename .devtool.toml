@@ -837,6 +837,91 @@ outputs = [
   ".devtool/reports/xgo/store/checkpoint-faults.json",
 ]
 
+
+[targets.xgo_store.jobs.verification_faults]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "verification",
+  "--output",
+  ".devtool/reports/xgo/store/verification-faults.json",
+]
+inputs = [
+  "engine/domain/identity/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/verification-faults.json",
+]
+
+[targets.xgo_store.jobs.publication_faults]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "publication",
+  "--output",
+  ".devtool/reports/xgo/store/publication-faults.json",
+]
+inputs = [
+  "engine/domain/publication/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/publication-faults.json",
+]
+
+[targets.xgo_store.jobs.recovery_matrix]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "recovery",
+  "--output",
+  ".devtool/reports/xgo/store/recovery-matrix.json",
+]
+inputs = [
+  "engine/domain/backend/**",
+  "engine/domain/publication/**",
+  "engine/recovery/**",
+  "engine/store/sqlite/**",
+  "engine/store/checkpoint/**",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/recovery-matrix.json",
+]
+
+[targets.xgo_store.jobs.durable_fault_matrix]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "durable-gate",
+  "--output",
+  ".devtool/reports/xgo/store/durable-fault-matrix.json",
+]
+inputs = [
+  "engine/domain/**",
+  "engine/recovery/**",
+  "engine/store/**",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/durable-fault-matrix.json",
+]
+
 [targets.xgo_store.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -847,6 +932,10 @@ validate = [
   { id = "stale_writer_matrix", ref = "job:stale_writer_matrix", depends_on = ["cas_stress"] },
   { id = "ownership_crash_matrix", ref = "job:ownership_crash_matrix", depends_on = ["stale_writer_matrix"] },
   { id = "checkpoint_faults", ref = "job:checkpoint_faults", depends_on = ["ownership_crash_matrix"] },
+  { id = "verification_faults", ref = "job:verification_faults", depends_on = ["checkpoint_faults"] },
+  { id = "publication_faults", ref = "job:publication_faults", depends_on = ["verification_faults"] },
+  { id = "recovery_matrix", ref = "job:recovery_matrix", depends_on = ["publication_faults"] },
+  { id = "durable_fault_matrix", ref = "job:durable_fault_matrix", depends_on = ["recovery_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
@@ -1287,6 +1376,8 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/durable/**",
 ]
+
+
 
 [targets.xgo_gate_durable.workflows]
 validate = [

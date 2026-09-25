@@ -928,7 +928,7 @@
         "XGO-CAP-RECOVERY-001"
       ],
       "category": "recovery",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_recovery_contracts",
         "android_startup_recovery",
@@ -1237,7 +1237,7 @@
         "XGO-CAP-VERIFY-001"
       ],
       "category": "verification",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_completion_verification",
         "android_checksum_contract",
