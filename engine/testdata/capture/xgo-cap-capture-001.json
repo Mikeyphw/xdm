@@ -1,28 +1,57 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-capture-001",
+  "category": "capture",
   "capability_ids": [
     "XGO-CAP-CAPTURE-001"
   ],
-  "category": "capture",
-  "derivation": {
-    "behavior": "Browser transports feed one versioned CaptureEnvelope with exact replay evidence.",
-    "canonical_behavior": "Go receives URL/method/headers/body ref/page/frame/session/response metadata under bounded parsing.",
-    "strategy": "merged"
-  },
   "donor_ids": [
     "android_browser_capture_models",
     "android_capture_registry",
     "desktop_browser_protocol",
     "desktop_firefox_handoff"
   ],
-  "expected": {
-    "invariants": [
-      "Go receives URL/method/headers/body ref/page/frame/session/response metadata under bounded parsing."
-    ]
+  "derivation": {
+    "strategy": "merged",
+    "behavior": "Browser transports feed one versioned CaptureEnvelope with exact replay evidence.",
+    "canonical_behavior": "Go receives URL/method/headers/body ref/page/frame/session/response metadata under bounded parsing. Replay-relevant request evidence is separate from logical media identity."
   },
-  "fixture_id": "xgo-cap-capture-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Browser transports feed one versioned CaptureEnvelope with exact replay evidence."
+    "android_shape": "browser capture registry event with page/session/document context",
+    "desktop_shape": "browser protocol request/response handoff with replayable body reference",
+    "post_capture": {
+      "method": "POST",
+      "body_reference": "body-ref",
+      "raw_body_material": "forbidden"
+    },
+    "safe_headers": [
+      "Accept",
+      "Range"
+    ],
+    "blocked_raw_headers": [
+      "Authorization",
+      "Cookie",
+      "X-Api-Key"
+    ],
+    "bounds": {
+      "max_envelope_bytes": 65536,
+      "max_headers": 64,
+      "max_media_hints": 32
+    }
   },
-  "schema_version": 1
+  "expected": {
+    "checks": [
+      "versioned CaptureEnvelope is required",
+      "request URL/method/safe headers/body reference are preserved",
+      "page URL, frame origin, session and document generation are preserved",
+      "response status/content metadata and media hints are preserved",
+      "raw secret headers and raw body material are rejected",
+      "safe diagnostics expose header names and body-ref presence only",
+      "replay evidence key differs from logical observation key"
+    ],
+    "invariants": [
+      "Exact replay-relevant request evidence is not used as logical media identity.",
+      "Secret or body material cannot appear in serialized diagnostics."
+    ]
+  }
 }

@@ -1,29 +1,44 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-capture-002",
+  "category": "capture",
   "capability_ids": [
     "XGO-CAP-CAPTURE-002"
   ],
-  "category": "capture",
-  "derivation": {
-    "behavior": "Document/session generation fences stale browser observations.",
-    "canonical_behavior": "Late observations from previous generation remain historical but cannot mutate active graph.",
-    "strategy": "android_led"
-  },
   "donor_ids": [
     "android_browser_capture_models",
     "android_capture_registry"
   ],
+  "derivation": {
+    "strategy": "android_led",
+    "behavior": "Document/session generation fences stale browser observations.",
+    "canonical_behavior": "Late observations from previous generation remain historical but cannot mutate active graph."
+  },
+  "input": {
+    "session": "sess-a",
+    "active_document_generation": 8,
+    "events": [
+      {"generation": 8, "frame": "main", "expect": "accepted"},
+      {"generation": 7, "frame": "main", "expect": "historical"},
+      {"generation": 8, "session": "other", "expect": "rejected"},
+      {"navigation": 9, "same_url_new_document": true},
+      {"generation": 8, "frame": "main", "expect": "historical"}
+    ],
+    "retention": 2
+  },
   "expected": {
     "historical_only": true,
-    "invariants": [
-      "Stale browser observations cannot contaminate the current document generation."
+    "mutate_active_graph": false,
+    "checks": [
+      "generation A then B",
+      "late A event is retained only as historical evidence",
+      "multiple frame origins preserve frame context",
+      "reload and same URL new document advance generation",
+      "bounded retention drops oldest stale observations"
     ],
-    "mutate_active_graph": false
-  },
-  "fixture_id": "xgo-cap-capture-002",
-  "input": {
-    "active_document_generation": 8,
-    "observation": "media_candidate",
-    "observation_generation": 7
-  },
-  "schema_version": 1
+    "invariants": [
+      "Stale browser observations cannot contaminate the current document generation.",
+      "A session mismatch cannot mutate active media state."
+    ]
+  }
 }

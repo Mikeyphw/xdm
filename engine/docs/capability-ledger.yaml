@@ -744,8 +744,8 @@
         "desktop_firefox_handoff"
       ],
       "id": "XGO-CAP-CAPTURE-001",
-      "status": "PLANNED",
-      "target_overlay": "XGO-49",
+      "status": "IMPLEMENTED",
+      "target_overlay": "XGO-49+50",
       "test_id": "fixture:xgo-cap-capture-001"
     },
     {
@@ -758,8 +758,8 @@
         "android_capture_registry"
       ],
       "id": "XGO-CAP-CAPTURE-002",
-      "status": "PLANNED",
-      "target_overlay": "XGO-50",
+      "status": "IMPLEMENTED",
+      "target_overlay": "XGO-49+50",
       "test_id": "fixture:xgo-cap-capture-002"
     },
     {

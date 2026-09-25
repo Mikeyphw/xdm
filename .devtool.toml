@@ -1791,47 +1791,69 @@ validate = [
   { id = "bandwidth_completion_matrix", ref = "job:bandwidth_completion_matrix", depends_on = ["scheduler_stress"] },
 ]
 
-# Bootstrap target for future roadmap ownership. The command runner is intentional
-# until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
+# XGO-49+50 activate media capture ownership on the native Go runner.
 [targets.xgo_media]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
+  "go.work",
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/capture/xgo-cap-capture-001.json",
+  "engine/testdata/capture/xgo-cap-capture-002.json",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/media/**",
 ]
 
-[targets.xgo_media.jobs.bootstrap_contract]
+[targets.xgo_media.go]
+packages = [
+  "./engine/media",
+]
+build_targets = ["./engine/cmd/xgo-media-audit"]
+vet = true
+
+[targets.xgo_media.jobs.capture_corpus]
 runner = "command"
 command = [
-  "python3",
-  "tools/xgo/audit_topology.py",
-  "target-ready",
-  "--config",
-  ".devtool.toml",
-  "--target",
-  "xgo_media",
-  "--output",
-  ".devtool/reports/xgo/media/bootstrap.json",
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "capture_corpus",
+  "--output", ".devtool/reports/xgo/media/capture-corpus.json",
 ]
 inputs = [
-  ".devtool.toml",
-  "tools/xgo/audit_topology.py",
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/capture/xgo-cap-capture-001.json",
 ]
-outputs = [
-  ".devtool/reports/xgo/media/bootstrap.json",
+outputs = [".devtool/reports/xgo/media/capture-corpus.json"]
+
+[targets.xgo_media.jobs.capture_generation_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "capture_generation",
+  "--output", ".devtool/reports/xgo/media/capture-generation-matrix.json",
 ]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/capture/xgo-cap-capture-002.json",
+]
+outputs = [".devtool/reports/xgo/media/capture-generation-matrix.json"]
 
 [targets.xgo_media.workflows]
 validate = [
-  { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "go", ref = "runner:go#validate", depends_on = [] },
+  { id = "capture_corpus", ref = "job:capture_corpus", depends_on = ["go"] },
+  { id = "capture_generation_matrix", ref = "job:capture_generation_matrix", depends_on = ["capture_corpus"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

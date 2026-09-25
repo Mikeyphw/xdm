@@ -176,7 +176,7 @@
         "XGO-CAP-CAPTURE-001"
       ],
       "category": "capture",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_browser_capture_models",
         "android_capture_registry",
