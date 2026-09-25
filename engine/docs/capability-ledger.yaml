@@ -361,7 +361,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-26",
       "test_id": "fixture:xgo-cap-http-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-HTTP-002",
@@ -376,7 +376,7 @@
       "donor_strategy": "merged",
       "target_overlay": "XGO-27",
       "test_id": "fixture:xgo-cap-http-002",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-HTTP-003",
@@ -391,7 +391,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-28",
       "test_id": "fixture:xgo-cap-http-003",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-HTTP-004",

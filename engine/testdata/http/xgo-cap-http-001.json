@@ -1,27 +1,9 @@
 {
-  "capability_ids": [
-    "XGO-CAP-HTTP-001"
-  ],
-  "category": "http",
-  "derivation": {
-    "behavior": "Representation probe discovers length, range support, validators, filename/content metadata and effective URL.",
-    "canonical_behavior": "Go probes with HEAD/ranged fallback and validates contradictory/malformed metadata.",
-    "strategy": "android_led"
-  },
-  "donor_ids": [
-    "android_native_http",
-    "android_native_protocol_test",
-    "desktop_download_manager"
-  ],
-  "expected": {
-    "invariants": [
-      "Go probes with HEAD/ranged fallback and validates contradictory/malformed metadata."
-    ]
-  },
+  "schema_version": 1,
   "fixture_id": "xgo-cap-http-001",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Representation probe discovers length, range support, validators, filename/content metadata and effective URL."
-  },
-  "schema_version": 1
+  "capability_ids": ["XGO-CAP-HTTP-001"],
+  "category": "http",
+  "donor_ids": ["android_native_http", "android_native_protocol_test", "desktop_download_manager"],
+  "input": {"head_status": 405, "fallback_range": "bytes=0-0", "headers": {"Content-Range": "bytes 0-0/321", "ETag": "\"probe-v1\"", "Content-Encoding": "identity"}},
+  "expected": {"length": 321, "range_supported": true, "used_range_fallback": true, "invariants": ["transparent content decoding never changes byte offsets", "malformed or contradictory Content-Range is rejected", "unknown length remains unknown rather than guessed"]}
 }

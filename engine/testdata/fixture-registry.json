@@ -599,7 +599,7 @@
         "XGO-CAP-HTTP-001"
       ],
       "category": "http",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_native_http",
         "android_native_protocol_test",
@@ -613,7 +613,7 @@
         "XGO-CAP-HTTP-002"
       ],
       "category": "http",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_native_http",
         "android_checkpoint_integrity",
@@ -627,7 +627,7 @@
         "XGO-CAP-HTTP-003"
       ],
       "category": "http",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_native_http",
         "android_native_http_test",

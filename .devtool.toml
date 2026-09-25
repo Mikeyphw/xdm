@@ -1158,44 +1158,115 @@ validate = [
 # Bootstrap target for future roadmap ownership. The command runner is intentional
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_transfer]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
+  "go.work",
+  "engine/domain/failure/**",
+  "engine/domain/identity/**",
+  "engine/domain/resource/**",
+  "engine/store/checkpoint/**",
+  "engine/store/sqlite/**",
+  "engine/transfer/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "tools/xgo/audit_transfer_contract.py",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/http/**",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/transfer/**",
 ]
 
-[targets.xgo_transfer.jobs.bootstrap_contract]
+[targets.xgo_transfer.go]
+packages = [
+  "./engine/transfer/...",
+]
+build_targets = ["./engine/cmd/xgo-transfer-audit"]
+vet = true
+
+[targets.xgo_transfer.jobs.transfer_contract_audit]
 runner = "command"
 command = [
-  "python3",
-  "tools/xgo/audit_topology.py",
-  "target-ready",
-  "--config",
-  ".devtool.toml",
-  "--target",
-  "xgo_transfer",
-  "--output",
-  ".devtool/reports/xgo/transfer/bootstrap.json",
+  "python3", "tools/xgo/audit_transfer_contract.py",
+  "--output", ".devtool/reports/xgo/transfer/transfer-contract-audit.json",
 ]
 inputs = [
-  ".devtool.toml",
-  "tools/xgo/audit_topology.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/http/xgo-cap-http-001.json",
+  "engine/testdata/http/xgo-cap-http-002.json",
+  "engine/testdata/http/xgo-cap-http-003.json",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "tools/xgo/audit_transfer_contract.py",
 ]
 outputs = [
-  ".devtool/reports/xgo/transfer/bootstrap.json",
+  ".devtool/reports/xgo/transfer/transfer-contract-audit.json",
+  ".devtool/reports/xgo/transfer/shared-ledger-audit.json",
+  ".devtool/reports/xgo/transfer/shared-fixture-audit.json",
 ]
+
+[targets.xgo_transfer.jobs.http_probe_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "probe",
+  "--output", ".devtool/reports/xgo/transfer/http-probe-lab.json",
+]
+inputs = [
+  "engine/transfer/http/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/http/xgo-cap-http-001.json",
+]
+outputs = [".devtool/reports/xgo/transfer/http-probe-lab.json"]
+
+[targets.xgo_transfer.jobs.representation_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "representation",
+  "--output", ".devtool/reports/xgo/transfer/representation-matrix.json",
+]
+inputs = [
+  "engine/transfer/http/**",
+  "engine/domain/resource/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/http/xgo-cap-http-002.json",
+]
+outputs = [".devtool/reports/xgo/transfer/representation-matrix.json"]
+
+[targets.xgo_transfer.jobs.http_range_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "http",
+  "--output", ".devtool/reports/xgo/transfer/http-range-lab.json",
+]
+inputs = [
+  "engine/transfer/http/**",
+  "engine/store/checkpoint/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/http/xgo-cap-http-003.json",
+]
+outputs = [".devtool/reports/xgo/transfer/http-range-lab.json"]
 
 [targets.xgo_transfer.workflows]
 validate = [
-  { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "go", ref = "runner:go#validate", depends_on = [] },
+  { id = "transfer_contract_audit", ref = "job:transfer_contract_audit", depends_on = ["go"] },
+  { id = "http_probe_lab", ref = "job:http_probe_lab", depends_on = ["transfer_contract_audit"] },
+  { id = "representation_matrix", ref = "job:representation_matrix", depends_on = ["http_probe_lab"] },
+  { id = "http_range_lab", ref = "job:http_range_lab", depends_on = ["representation_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

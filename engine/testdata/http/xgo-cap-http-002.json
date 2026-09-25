@@ -1,27 +1,9 @@
 {
-  "capability_ids": [
-    "XGO-CAP-HTTP-002"
-  ],
-  "category": "http",
-  "derivation": {
-    "behavior": "Resume requires compatible representation identity.",
-    "canonical_behavior": "Go compares strong validators first and rejects incompatible representation changes before reusing persisted bytes.",
-    "strategy": "merged"
-  },
-  "donor_ids": [
-    "android_native_http",
-    "android_checkpoint_integrity",
-    "desktop_resume_checkpoint"
-  ],
-  "expected": {
-    "invariants": [
-      "Go compares strong validators first and rejects incompatible representation changes before reusing persisted bytes."
-    ]
-  },
+  "schema_version": 1,
   "fixture_id": "xgo-cap-http-002",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Resume requires compatible representation identity."
-  },
-  "schema_version": 1
+  "capability_ids": ["XGO-CAP-HTTP-002"],
+  "category": "http",
+  "donor_ids": ["android_native_http", "android_checkpoint_integrity", "desktop_resume_checkpoint"],
+  "input": {"previous": {"etag": "\"same\"", "length": 100, "url": "https://a.test/file"}, "current": {"etag": "\"same\"", "length": 100, "url": "https://mirror.test/file"}},
+  "expected": {"default_resume": false, "resume_with_mirror_policy": true, "invariants": ["strong ETag is preferred", "weak ETag never authorizes byte reuse", "Last-Modified plus length requires explicit weaker-policy opt-in", "mirror changes require explicit compatibility policy"]}
 }

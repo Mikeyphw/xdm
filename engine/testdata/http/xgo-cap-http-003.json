@@ -1,27 +1,9 @@
 {
-  "capability_ids": [
-    "XGO-CAP-HTTP-003"
-  ],
-  "category": "http",
-  "derivation": {
-    "behavior": "Single-stream HTTP supports bounded streaming, cancellation, exact byte accounting and durable lifecycle state.",
-    "canonical_behavior": "Go native backend performs direct streaming into staging under attempt ownership.",
-    "strategy": "android_led"
-  },
-  "donor_ids": [
-    "android_native_http",
-    "android_native_http_test",
-    "desktop_download_manager"
-  ],
-  "expected": {
-    "invariants": [
-      "Go native backend performs direct streaming into staging under attempt ownership."
-    ]
-  },
+  "schema_version": 1,
   "fixture_id": "xgo-cap-http-003",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Single-stream HTTP supports bounded streaming, cancellation, exact byte accounting and durable lifecycle state."
-  },
-  "schema_version": 1
+  "capability_ids": ["XGO-CAP-HTTP-003"],
+  "category": "http",
+  "donor_ids": ["android_native_http", "android_native_http_test", "desktop_download_manager"],
+  "input": {"expected_length": 8192, "buffer_bytes": 4096, "checkpoint_bytes": 4096, "resume_offset": 4096},
+  "expected": {"final_committed": 8192, "invariants": ["bytes become resumable only through checkpoint committer", "pause returns only at a durable checkpoint boundary", "early EOF and oversized bodies are typed range contradictions", "cancellation and planted network failures are typed separately", "attempt lifecycle persists running/paused/failed/produced_artifact"]}
 }
