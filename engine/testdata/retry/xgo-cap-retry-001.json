@@ -15,17 +15,30 @@
   ],
   "expected": {
     "decision": "retry_at",
+    "retry_epoch_ms": 1120000,
     "invariants": [
-      "Retry-After is represented as a durable retry deadline."
-    ],
-    "retry_epoch_ms": 1120000
+      "Retry-After is represented as a durable retry deadline.",
+      "Backoff uses injected clock/jitter.",
+      "A non-replayable request cannot be automatically retried.",
+      "Persisted retry decision survives repository reload."
+    ]
   },
   "fixture_id": "xgo-cap-retry-001",
   "input": {
     "attempt": 3,
     "failure": "RateLimited",
     "now_epoch_ms": 1000000,
-    "retry_after_seconds": 120
+    "retry_after_seconds": 120,
+    "cases": [
+      "429_seconds",
+      "429_http_date",
+      "500_503_backoff",
+      "dns_offline_hold",
+      "tls_terminal",
+      "auth_hold",
+      "non_replayable_post_terminal",
+      "restart_deadline"
+    ]
   },
   "schema_version": 1
 }

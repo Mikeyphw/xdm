@@ -641,7 +641,7 @@
         "XGO-CAP-HTTP-004"
       ],
       "category": "http",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_native_http",
         "android_native_http_test",

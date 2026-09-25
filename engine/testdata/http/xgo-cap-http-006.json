@@ -14,17 +14,26 @@
   ],
   "expected": {
     "invariants": [
-      "A full 200 response after conditional range cannot append to incompatible partial bytes."
+      "Only read-back verified checkpoint blocks are reusable.",
+      "A full 200 response after conditional range cannot append to incompatible partial bytes.",
+      "Invalid blocks are durably revoked while later valid sparse blocks remain reusable."
     ],
     "restart_representation": true,
     "reuse_old_partial": false
   },
   "fixture_id": "xgo-cap-http-006",
   "input": {
-    "if_range": "etag-v1",
-    "response_etag": "etag-v2",
-    "response_status": 200,
-    "resume_from": 500
+    "resume_from": "verified_sparse_blocks",
+    "if_range": "strong validator",
+    "cases": [
+      "unchanged_206",
+      "conditional_200",
+      "changed_etag",
+      "truncated_staging",
+      "sparse_valid_invalid",
+      "resume_at_eof",
+      "stale_attempt"
+    ]
   },
   "schema_version": 1
 }

@@ -406,7 +406,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-29",
       "test_id": "fixture:xgo-cap-http-004",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-HTTP-005",
@@ -420,7 +420,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-29",
       "test_id": "fixture:xgo-cap-http-005",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-HTTP-006",
@@ -434,7 +434,7 @@
       "donor_strategy": "merged",
       "target_overlay": "XGO-30",
       "test_id": "fixture:xgo-cap-http-006",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-RETRY-001",
@@ -449,7 +449,7 @@
       "donor_strategy": "merged",
       "target_overlay": "XGO-31",
       "test_id": "fixture:xgo-cap-retry-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-BANDWIDTH-001",

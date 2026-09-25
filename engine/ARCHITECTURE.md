@@ -162,3 +162,34 @@ proxy credential references are a separate class and are never part of origin
 credential forwarding. TLS planning preserves the original hostname, requires
 TLS 1.2 or newer, and makes the root-store strategy explicit (`platform_roots`,
 `bundled_roots`, or `custom_roots`) without weakening engine-level policy.
+
+## Segmented transfer, sparse resume and retry authority (XGO-29..31)
+
+Conventional segmented HTTP uses one preallocated random-access staging artifact.
+The segment planner partitions the known representation into non-overlapping
+checkpoint-aligned ranges and persists that partition under the current
+`AttemptGeneration`. Workers may finish out of order, but worker exit is not
+completion evidence: a segment reaches `completed` only when SQLite verifies
+that committed checkpoint blocks cover the segment interval exactly without
+holes. Range support is checked before segmented evidence is created; a server
+that ignores Range may fall back to the single-stream executor only before any
+segmented checkpoint is authoritative.
+
+Resume is block-evidence driven rather than file-length driven. The planner
+read-backs and hashes every persisted committed checkpoint, durably invalidates
+truncated/corrupt/incompatible rows under the current-generation fence, and
+builds missing byte ranges from the complement of still-valid sparse evidence.
+Later valid blocks remain reusable when an earlier block is corrupt. A changed
+representation invalidates the old committed evidence; a `200` response to an
+If-Range resume request is treated as a clean-restart signal before response
+bytes are written. Invalidated checkpoint identities may be replaced only after
+new bytes pass the normal write/sync/read-back/hash/DB-commit sequence.
+
+Retry policy is canonical engine policy, not an HTTP-loop concern. It consumes
+typed failure category/disposition, attempt count, Retry-After, queue policy,
+network availability, replayability and explicit user override and produces one
+of `retry_now`, `retry_at`, `hold`, or `terminal`. Backoff uses injected clock
+and jitter sources. The chosen decision, including an absolute retry deadline,
+is serialized into the failed attempt's durable failure payload through the
+attempt revision CAS/current-generation fence; restart reloads the recorded
+deadline instead of recomputing it from the new process clock.

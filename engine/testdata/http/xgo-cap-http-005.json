@@ -14,17 +14,25 @@
   ],
   "expected": {
     "decision": "reject_response",
-    "invariants": [
-      "A contradictory Content-Range can never be written as the requested segment."
-    ],
     "reason": "content_range_contradiction",
-    "staging_mutated": false
+    "staging_mutated": false,
+    "invariants": [
+      "A contradictory Content-Range can never be written as the requested segment.",
+      "Short or overlapping segment responses never become checkpoint evidence."
+    ]
   },
   "fixture_id": "xgo-cap-http-005",
   "input": {
-    "content_range": "bytes 99-198/1000",
     "requested_range": "bytes=100-199",
-    "status": 206
+    "status": 206,
+    "content_range": "bytes 99-198/1000",
+    "cases": [
+      "wrong_start",
+      "wrong_end",
+      "short_body",
+      "overlap",
+      "encoded_partial"
+    ]
   },
   "schema_version": 1
 }

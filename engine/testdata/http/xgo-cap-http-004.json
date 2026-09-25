@@ -14,14 +14,25 @@
     "desktop_segmented_executor"
   ],
   "expected": {
+    "decision": "segmented_random_access",
     "invariants": [
-      "Go uses Android-style direct range writes and avoids desktop full-size segment merge for normal HTTP downloads."
-    ]
+      "one preallocated staging artifact",
+      "non-overlapping aligned ranges",
+      "segment completion requires committed checkpoint coverage",
+      "range rejection falls back before segmented evidence"
+    ],
+    "final_staging": "byte_exact"
   },
   "fixture_id": "xgo-cap-http-004",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Segmented HTTP writes ranges into one preallocated random-access staging artifact."
+    "total_bytes": 131072,
+    "block_bytes": 4096,
+    "segment_counts": [
+      2,
+      4,
+      8
+    ],
+    "completion_order": "out_of_order"
   },
   "schema_version": 1
 }

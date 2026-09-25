@@ -554,6 +554,34 @@ func (r *Repository) CommitCheckpointBlock(ctx context.Context, rec CheckpointBl
 			done = true
 			return rec, nil
 		}
+		// Invalidated evidence may be replaced after the bytes are re-fetched and
+		// re-verified. Committed conflicting evidence remains immutable.
+		if row[4].Text != "committed" {
+			rev, _ := identity.NewRevision(row[5].I64)
+			next, _ := rev.Next()
+			end := rec.StartByte + rec.CommittedLength
+			overlap, qerr := tx.Query(ctx, `SELECT block_index FROM checkpoint_blocks WHERE download_id=? AND attempt_generation=? AND state='committed' AND block_index<>? AND start_byte < ? AND (start_byte + committed_length) > ? LIMIT 1`, rec.DownloadID.String(), rec.Generation.Int64(), rec.BlockIndex, end, rec.StartByte)
+			if qerr != nil {
+				return CheckpointBlockRecord{}, qerr
+			}
+			if len(overlap) > 0 {
+				return CheckpointBlockRecord{}, ErrCheckpointOverlap
+			}
+			changes, qerr := tx.Exec(ctx, `UPDATE checkpoint_blocks SET start_byte=?,committed_length=?,hash_algorithm=?,hash_hex=?,state='committed',revision=?,committed_at_unix_ms=? WHERE download_id=? AND attempt_generation=? AND block_index=? AND revision=?`, rec.StartByte, rec.CommittedLength, rec.HashAlgorithm, rec.HashHex, next.Int64(), rec.CommittedAtMS, rec.DownloadID.String(), rec.Generation.Int64(), rec.BlockIndex, rev.Int64())
+			if qerr != nil {
+				return CheckpointBlockRecord{}, qerr
+			}
+			if changes != 1 {
+				return CheckpointBlockRecord{}, ErrStaleWrite
+			}
+			if err = tx.Commit(ctx); err != nil {
+				return CheckpointBlockRecord{}, err
+			}
+			done = true
+			rec.State = "committed"
+			rec.Revision = next
+			return rec, nil
+		}
 		return CheckpointBlockRecord{}, ErrCheckpointConflict
 	}
 	end := rec.StartByte + rec.CommittedLength

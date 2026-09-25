@@ -1178,6 +1178,7 @@ inputs = [
   "engine/docs/capability-ledger.yaml",
   "engine/testdata/fixture-registry.json",
   "engine/testdata/http/**",
+  "engine/testdata/retry/**",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1205,6 +1206,10 @@ inputs = [
   "engine/testdata/http/xgo-cap-http-001.json",
   "engine/testdata/http/xgo-cap-http-002.json",
   "engine/testdata/http/xgo-cap-http-003.json",
+  "engine/testdata/http/xgo-cap-http-004.json",
+  "engine/testdata/http/xgo-cap-http-005.json",
+  "engine/testdata/http/xgo-cap-http-006.json",
+  "engine/testdata/retry/xgo-cap-retry-001.json",
   "tools/xgo/audit_foundation.py",
   "tools/xgo/audit_fixtures.py",
   "tools/xgo/audit_transfer_contract.py",
@@ -1260,6 +1265,55 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/transfer/http-range-lab.json"]
 
+[targets.xgo_transfer.jobs.resume_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "segmented",
+  "--output", ".devtool/reports/xgo/transfer/resume-lab.json",
+]
+inputs = [
+  "engine/transfer/http/**",
+  "engine/store/checkpoint/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/http/xgo-cap-http-004.json",
+  "engine/testdata/http/xgo-cap-http-005.json",
+]
+outputs = [".devtool/reports/xgo/transfer/resume-lab.json"]
+
+[targets.xgo_transfer.jobs.checkpoint_crash_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "resume",
+  "--output", ".devtool/reports/xgo/transfer/checkpoint-crash-matrix.json",
+]
+inputs = [
+  "engine/transfer/http/**",
+  "engine/store/checkpoint/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/http/xgo-cap-http-006.json",
+]
+outputs = [".devtool/reports/xgo/transfer/checkpoint-crash-matrix.json"]
+
+[targets.xgo_transfer.jobs.retry_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "retry",
+  "--output", ".devtool/reports/xgo/transfer/retry-matrix.json",
+]
+inputs = [
+  "engine/transfer/retry/**",
+  "engine/store/sqlite/**",
+  "engine/domain/failure/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/retry/xgo-cap-retry-001.json",
+]
+outputs = [".devtool/reports/xgo/transfer/retry-matrix.json"]
+
 [targets.xgo_transfer.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1267,6 +1321,9 @@ validate = [
   { id = "http_probe_lab", ref = "job:http_probe_lab", depends_on = ["transfer_contract_audit"] },
   { id = "representation_matrix", ref = "job:representation_matrix", depends_on = ["http_probe_lab"] },
   { id = "http_range_lab", ref = "job:http_range_lab", depends_on = ["representation_matrix"] },
+  { id = "resume_lab", ref = "job:resume_lab", depends_on = ["http_range_lab"] },
+  { id = "checkpoint_crash_matrix", ref = "job:checkpoint_crash_matrix", depends_on = ["resume_lab"] },
+  { id = "retry_matrix", ref = "job:retry_matrix", depends_on = ["checkpoint_crash_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
