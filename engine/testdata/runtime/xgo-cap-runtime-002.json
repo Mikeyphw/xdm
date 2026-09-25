@@ -1,0 +1,23 @@
+{
+  "capability_ids": [
+    "XGO-CAP-RUNTIME-002"
+  ],
+  "category": "runtime",
+  "derivation": {
+    "behavior": "Event delivery distinguishes durable, ordered operational and coalescible telemetry classes under bounded memory.",
+    "canonical_behavior": "Durable and operational events apply backpressure rather than being dropped; telemetry may coalesce by key or drop when the bounded queue is full.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [],
+  "expected": {
+    "invariants": [
+      "Durable and operational events apply backpressure rather than being dropped; telemetry may coalesce by key or drop when the bounded queue is full."
+    ]
+  },
+  "fixture_id": "xgo-cap-runtime-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Event delivery distinguishes durable, ordered operational and coalescible telemetry classes under bounded memory."
+  },
+  "schema_version": 1
+}

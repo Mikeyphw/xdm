@@ -35,3 +35,18 @@ smuggle frontend/platform ownership back into the engine.
 The minimum supported Go language/toolchain baseline for this workspace is
 Go 1.23. Newer compatible Go releases are expected to work. Devtool's native
 Go runner owns restore/build/test/vet execution for `xgo_foundation`.
+
+## Runtime and ABI boundary (XGO-08..10)
+
+The Go runtime is headless. Managed hosts submit versioned byte commands and
+consume ordered event frames. They do not receive Go object pointers and Go does
+not synchronously callback into Kotlin/C#.
+
+Platform-only work enters the same event stream as `platform.request` frames.
+Hosts answer with `platform.reply` byte messages carrying request/session
+identity. Platform broker session fencing prevents a reply from an older host
+connection from satisfying a request owned by a newer connection.
+
+The C ABI is intentionally small and handle-based. Output memory is C-owned and
+must be released through `xdm_buffer_free`; tokenized allocation ownership makes
+repeated frees of the same returned buffer harmless.

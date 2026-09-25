@@ -1,7 +1,17 @@
 {
   "description": "Language-neutral behavior fixtures derived from the XGO capability ledger and pinned Android/Desktop donor evidence.",
-  "fixture_count": 89,
+  "fixture_count": 95,
   "fixtures": [
+    {
+      "capability_ids": [
+        "XGO-CAP-ABI-001"
+      ],
+      "category": "runtime",
+      "detailed": true,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-abi-001",
+      "path": "engine/testdata/runtime/xgo-cap-abi-001.json"
+    },
     {
       "capability_ids": [
         "XGO-CAP-ANDROID-001"
@@ -841,6 +851,26 @@
     },
     {
       "capability_ids": [
+        "XGO-CAP-PLATFORM-001"
+      ],
+      "category": "runtime",
+      "detailed": true,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-platform-001",
+      "path": "engine/testdata/runtime/xgo-cap-platform-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-PLATFORM-002"
+      ],
+      "category": "runtime",
+      "detailed": true,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-platform-002",
+      "path": "engine/testdata/runtime/xgo-cap-platform-002.json"
+    },
+    {
+      "capability_ids": [
         "XGO-CAP-PROXY-001"
       ],
       "category": "proxy",
@@ -976,6 +1006,36 @@
       ],
       "fixture_id": "xgo-cap-retry-001",
       "path": "engine/testdata/retry/xgo-cap-retry-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-RUNTIME-001"
+      ],
+      "category": "runtime",
+      "detailed": true,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-runtime-001",
+      "path": "engine/testdata/runtime/xgo-cap-runtime-001.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-RUNTIME-002"
+      ],
+      "category": "runtime",
+      "detailed": true,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-runtime-002",
+      "path": "engine/testdata/runtime/xgo-cap-runtime-002.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-RUNTIME-003"
+      ],
+      "category": "runtime",
+      "detailed": true,
+      "donor_ids": [],
+      "fixture_id": "xgo-cap-runtime-003",
+      "path": "engine/testdata/runtime/xgo-cap-runtime-003.json"
     },
     {
       "capability_ids": [

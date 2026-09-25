@@ -1,0 +1,23 @@
+{
+  "capability_ids": [
+    "XGO-CAP-PLATFORM-002"
+  ],
+  "category": "runtime",
+  "derivation": {
+    "behavior": "Platform disconnect, restart, timeout, duplicate reply and late reply semantics are explicit.",
+    "canonical_behavior": "Disconnect fails outstanding requests, reconnect advances broker session identity, stale replies are rejected, duplicate replies are distinguished and shutdown is terminal.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [],
+  "expected": {
+    "invariants": [
+      "Disconnect fails outstanding requests, reconnect advances broker session identity, stale replies are rejected, duplicate replies are distinguished and shutdown is terminal."
+    ]
+  },
+  "fixture_id": "xgo-cap-platform-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Platform disconnect, restart, timeout, duplicate reply and late reply semantics are explicit."
+  },
+  "schema_version": 1
+}

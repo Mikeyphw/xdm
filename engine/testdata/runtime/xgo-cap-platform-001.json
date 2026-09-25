@@ -1,0 +1,23 @@
+{
+  "capability_ids": [
+    "XGO-CAP-PLATFORM-001"
+  ],
+  "category": "runtime",
+  "derivation": {
+    "behavior": "Nonportable work is requested through a typed asynchronous platform broker rather than direct Android/Desktop imports.",
+    "canonical_behavior": "Go issues typed platform requests with request/session IDs, deadlines and operation/attempt/publication references; hosts reply by ID without synchronous callbacks.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [],
+  "expected": {
+    "invariants": [
+      "Go issues typed platform requests with request/session IDs, deadlines and operation/attempt/publication references; hosts reply by ID without synchronous callbacks."
+    ]
+  },
+  "fixture_id": "xgo-cap-platform-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Nonportable work is requested through a typed asynchronous platform broker rather than direct Android/Desktop imports."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,23 @@
+{
+  "capability_ids": [
+    "XGO-CAP-RUNTIME-001"
+  ],
+  "category": "runtime",
+  "derivation": {
+    "behavior": "Engine commands execute through a headless lifecycle with ordered typed event frames.",
+    "canonical_behavior": "Go owns create/start/submit/next-frame/shutdown semantics and assigns monotonically increasing event sequence numbers independent of any UI host.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [],
+  "expected": {
+    "invariants": [
+      "Go owns create/start/submit/next-frame/shutdown semantics and assigns monotonically increasing event sequence numbers independent of any UI host."
+    ]
+  },
+  "fixture_id": "xgo-cap-runtime-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Engine commands execute through a headless lifecycle with ordered typed event frames."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,23 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ABI-001"
+  ],
+  "category": "runtime",
+  "derivation": {
+    "behavior": "Managed hosts integrate through a versioned byte-message C ABI without retaining Go object pointers.",
+    "canonical_behavior": "C ABI uses opaque numeric engine handles, versioned JSON v1 envelopes, C-owned tokenized buffers, explicit buffer free, protocol-major rejection and polling for event frames.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [],
+  "expected": {
+    "invariants": [
+      "C ABI uses opaque numeric engine handles, versioned JSON v1 envelopes, C-owned tokenized buffers, explicit buffer free, protocol-major rejection and polling for event frames."
+    ]
+  },
+  "fixture_id": "xgo-cap-abi-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Managed hosts integrate through a versioned byte-message C ABI without retaining Go object pointers."
+  },
+  "schema_version": 1
+}

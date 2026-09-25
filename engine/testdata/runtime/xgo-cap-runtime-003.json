@@ -1,0 +1,23 @@
+{
+  "capability_ids": [
+    "XGO-CAP-RUNTIME-003"
+  ],
+  "category": "runtime",
+  "derivation": {
+    "behavior": "Operation cancellation is explicit, idempotent and lifecycle-safe.",
+    "canonical_behavior": "A cancel command addresses an OperationID, may be repeated safely, cancels active work through context propagation and produces typed cancellation/acknowledgement events.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [],
+  "expected": {
+    "invariants": [
+      "A cancel command addresses an OperationID, may be repeated safely, cancels active work through context propagation and produces typed cancellation/acknowledgement events."
+    ]
+  },
+  "fixture_id": "xgo-cap-runtime-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Operation cancellation is explicit, idempotent and lifecycle-safe."
+  },
+  "schema_version": 1
+}

@@ -12,7 +12,7 @@
     "redesign",
     "new_design"
   ],
-  "minimum_capability_count": 80,
+  "minimum_capability_count": 95,
   "capabilities": [
     {
       "id": "XGO-CAP-DOMAIN-001",
@@ -1273,6 +1273,72 @@
       "donor_strategy": "new_design",
       "target_overlay": "XGO-05",
       "test_id": "fixture:xgo-cap-foundation-004",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-RUNTIME-001",
+      "area": "runtime",
+      "behavior": "Engine commands execute through a headless lifecycle with ordered typed event frames.",
+      "donors": [],
+      "canonical_behavior": "Go owns create/start/submit/next-frame/shutdown semantics and assigns monotonically increasing event sequence numbers independent of any UI host.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-08",
+      "test_id": "fixture:xgo-cap-runtime-001",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-RUNTIME-002",
+      "area": "runtime",
+      "behavior": "Event delivery distinguishes durable, ordered operational and coalescible telemetry classes under bounded memory.",
+      "donors": [],
+      "canonical_behavior": "Durable and operational events apply backpressure rather than being dropped; telemetry may coalesce by key or drop when the bounded queue is full.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-08",
+      "test_id": "fixture:xgo-cap-runtime-002",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-RUNTIME-003",
+      "area": "runtime",
+      "behavior": "Operation cancellation is explicit, idempotent and lifecycle-safe.",
+      "donors": [],
+      "canonical_behavior": "A cancel command addresses an OperationID, may be repeated safely, cancels active work through context propagation and produces typed cancellation/acknowledgement events.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-08",
+      "test_id": "fixture:xgo-cap-runtime-003",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-PLATFORM-001",
+      "area": "runtime",
+      "behavior": "Nonportable work is requested through a typed asynchronous platform broker rather than direct Android/Desktop imports.",
+      "donors": [],
+      "canonical_behavior": "Go issues typed platform requests with request/session IDs, deadlines and operation/attempt/publication references; hosts reply by ID without synchronous callbacks.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-09",
+      "test_id": "fixture:xgo-cap-platform-001",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-PLATFORM-002",
+      "area": "runtime",
+      "behavior": "Platform disconnect, restart, timeout, duplicate reply and late reply semantics are explicit.",
+      "donors": [],
+      "canonical_behavior": "Disconnect fails outstanding requests, reconnect advances broker session identity, stale replies are rejected, duplicate replies are distinguished and shutdown is terminal.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-09",
+      "test_id": "fixture:xgo-cap-platform-002",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-ABI-001",
+      "area": "runtime",
+      "behavior": "Managed hosts integrate through a versioned byte-message C ABI without retaining Go object pointers.",
+      "donors": [],
+      "canonical_behavior": "C ABI uses opaque numeric engine handles, versioned JSON v1 envelopes, C-owned tokenized buffers, explicit buffer free, protocol-major rejection and polling for event frames.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-10",
+      "test_id": "fixture:xgo-cap-abi-001",
       "status": "IMPLEMENTED"
     }
   ]
