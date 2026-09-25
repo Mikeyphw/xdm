@@ -377,3 +377,80 @@ desktop = ["xdm_modern"]
 android = ["xdm_android"]
 release = ["xdm_modern"]
 all = ["@desktop", "@android"]
+xgo = ["xgo_foundation"]
+
+# XGO unified-Go-engine migration bootstrap. XGO-00/01 intentionally uses a
+# command target: the Go module itself is introduced later by XGO-04.
+[targets.xgo_foundation]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "engine/docs/**",
+  "tools/xgo/**",
+  "docs/xgo/**",
+]
+outputs = [
+  ".devtool/reports/xgo/foundation/**",
+]
+
+[targets.xgo_foundation.jobs.foundation_tests]
+runner = "command"
+command = ["python3", "-m", "unittest", "discover", "-s", "tools/xgo/tests", "-p", "test_*.py"]
+inputs = [
+  "tools/xgo/**",
+]
+metadata = { read_only = true }
+
+[targets.xgo_foundation.jobs.donor_audit]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_foundation.py",
+  "donor",
+  "--donor-root",
+  "../xdm",
+  "--map",
+  "engine/docs/donor-map.yaml",
+  "--output",
+  ".devtool/reports/xgo/foundation/donor-audit.json",
+]
+inputs = [
+  "tools/xgo/audit_foundation.py",
+  "engine/docs/donor-map.yaml",
+]
+outputs = [
+  ".devtool/reports/xgo/foundation/donor-audit.json",
+]
+
+[targets.xgo_foundation.jobs.capability_ledger_audit]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_foundation.py",
+  "ledger",
+  "--map",
+  "engine/docs/donor-map.yaml",
+  "--ledger",
+  "engine/docs/capability-ledger.yaml",
+  "--output",
+  ".devtool/reports/xgo/foundation/capability-ledger-audit.json",
+]
+inputs = [
+  "tools/xgo/audit_foundation.py",
+  "engine/docs/donor-map.yaml",
+  "engine/docs/capability-ledger.yaml",
+]
+outputs = [
+  ".devtool/reports/xgo/foundation/capability-ledger-audit.json",
+]
+
+[targets.xgo_foundation.workflows]
+validate = [
+  { id = "foundation_tests", ref = "job:foundation_tests", depends_on = [] },
+  { id = "donor_audit", ref = "job:donor_audit", depends_on = ["foundation_tests"] },
+  { id = "capability_ledger_audit", ref = "job:capability_ledger_audit", depends_on = ["donor_audit"] },
+]
+

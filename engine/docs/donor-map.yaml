@@ -1,0 +1,830 @@
+{
+  "schema_version": 1,
+  "donor_root_default": "../xdm",
+  "selection_policy": "Primary implementation and contract-test donors selected to pin migration semantics; this is a behavioral fingerprint, not a full repository archive hash.",
+  "aggregate_sha256": "e1170e288c4ddbcd1c9e13c2a7a05416fbf0b4d08752c6657168c25a7176e6dc",
+  "entries": [
+    {
+      "id": "android_download_models",
+      "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadModels.kt",
+      "categories": [
+        "domain",
+        "download"
+      ],
+      "sha256": "3bddcf4b8799d9b68754cadcc75adafd792a758319fe1e83ce4e072e7cacae68",
+      "size": 21330
+    },
+    {
+      "id": "android_download_intake",
+      "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadIntake.kt",
+      "categories": [
+        "domain",
+        "intake",
+        "security"
+      ],
+      "sha256": "aa89d851b3311d0697d25efd7a8672c28706318419325e57eb82d0653f961334",
+      "size": 13913
+    },
+    {
+      "id": "android_queue_intelligence",
+      "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/QueueIntelligence.kt",
+      "categories": [
+        "scheduler",
+        "queue"
+      ],
+      "sha256": "2c30d95f115ae92c4eda85680aec7ef97b135d77db9140221399f63c93fa954e",
+      "size": 17855
+    },
+    {
+      "id": "android_browser_capture_models",
+      "path": "app/XDM.Android/core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/BrowserCaptureSessionModels.kt",
+      "categories": [
+        "media",
+        "capture"
+      ],
+      "sha256": "4ef12c3ee7eee80a5b392a71991cadf1553abd018f57b8fe113652717a87cfd0",
+      "size": 842
+    },
+    {
+      "id": "android_backend_contract",
+      "path": "app/XDM.Android/transfer-api/src/main/kotlin/com/mikeyphw/xdm/android/transfer/DownloadBackend.kt",
+      "categories": [
+        "backend",
+        "ownership",
+        "attempt"
+      ],
+      "sha256": "664d699d98cdd48e2aa84efc3ff4c8e8f6f5460e7d7ed5e6c0f395197a0b14ef",
+      "size": 54525
+    },
+    {
+      "id": "android_backend_migration_contract",
+      "path": "app/XDM.Android/transfer-api/src/main/kotlin/com/mikeyphw/xdm/android/transfer/BackendMigration.kt",
+      "categories": [
+        "backend",
+        "migration"
+      ],
+      "sha256": "bf9690dc00c55c9d4ea0686138e5f059d054ffbffae4d4a17b9ab1b4860686be",
+      "size": 1864
+    },
+    {
+      "id": "android_recovery_contracts",
+      "path": "app/XDM.Android/transfer-api/src/main/kotlin/com/mikeyphw/xdm/android/transfer/RecoveryContracts.kt",
+      "categories": [
+        "recovery"
+      ],
+      "sha256": "d19a7416cefff31287d6f502ffcb7e992f6853d8717966c16263e4474d883744",
+      "size": 1950
+    },
+    {
+      "id": "android_checksum_contract",
+      "path": "app/XDM.Android/transfer-api/src/main/kotlin/com/mikeyphw/xdm/android/transfer/ChecksumVerification.kt",
+      "categories": [
+        "verification",
+        "checksum"
+      ],
+      "sha256": "86b586bba450eb9e9d3987e8532b71410442ddf42716f2914e038ba4c4d7f5dd",
+      "size": 12227
+    },
+    {
+      "id": "android_backend_coordinator_test",
+      "path": "app/XDM.Android/transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/BackendCoordinatorTest.kt",
+      "categories": [
+        "backend",
+        "ownership",
+        "test"
+      ],
+      "sha256": "626370ac9227e3d0b91f261f645fce3c630dbb78fa52b478eca50c326d9b4e7c",
+      "size": 18881
+    },
+    {
+      "id": "android_execution_semantics_test",
+      "path": "app/XDM.Android/transfer-api/src/test/kotlin/com/mikeyphw/xdm/android/transfer/ExecutionSemanticsRepairTest.kt",
+      "categories": [
+        "backend",
+        "recovery",
+        "test"
+      ],
+      "sha256": "621ea213e5d460a018deca7cadf0a596103641f6827dc9f36d64c3279996e8dc",
+      "size": 4635
+    },
+    {
+      "id": "android_native_http",
+      "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackend.kt",
+      "categories": [
+        "http",
+        "transfer",
+        "security",
+        "resume"
+      ],
+      "sha256": "dd6f678c448b3bba2092c1e8ef64a4d5683093278e8253a0ff9c37d7f10079dc",
+      "size": 84193
+    },
+    {
+      "id": "android_checkpoint_integrity",
+      "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeCheckpointIntegrity.kt",
+      "categories": [
+        "checkpoint",
+        "integrity"
+      ],
+      "sha256": "d62694519a040f00047330fa8d74139cc03917b075d9450d1b186ff7d0aa9c74",
+      "size": 4801
+    },
+    {
+      "id": "android_checkpoint_store",
+      "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeCheckpointStore.kt",
+      "categories": [
+        "checkpoint",
+        "recovery"
+      ],
+      "sha256": "d4c697b4d1683ec8127823bf6dbfad99aa97fe5a85b93a9dc09c7d12e7a00b66",
+      "size": 8625
+    },
+    {
+      "id": "android_selective_repair",
+      "path": "app/XDM.Android/transfer-native/src/main/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeSelectiveRepairService.kt",
+      "categories": [
+        "repair",
+        "checksum"
+      ],
+      "sha256": "ace95042c716b6b3a234481a2ef4ad24c654c6e43317ece8db1245371824f8d5",
+      "size": 12965
+    },
+    {
+      "id": "android_native_http_test",
+      "path": "app/XDM.Android/transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/NativeHttpDownloadBackendTest.kt",
+      "categories": [
+        "http",
+        "transfer",
+        "test"
+      ],
+      "sha256": "b1086745f6045c1f78a4409994c76c00da209f5cb08c6938d071a3f12d5df728",
+      "size": 30754
+    },
+    {
+      "id": "android_native_protocol_test",
+      "path": "app/XDM.Android/transfer-native/src/test/kotlin/com/mikeyphw/xdm/android/transfer/nativeengine/Xar07NativeHttpProtocolContractTest.kt",
+      "categories": [
+        "http",
+        "protocol",
+        "test"
+      ],
+      "sha256": "19ed3d497d59d1d408aa204377538fe1fac844d15cb0dc4f75a550a3a8c0f032",
+      "size": 2944
+    },
+    {
+      "id": "android_request_security_guard",
+      "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/AndroidTransferRequestSecurityGuard.kt",
+      "categories": [
+        "security",
+        "route",
+        "headers"
+      ],
+      "sha256": "704a5957e77cf94f40b24a957565eabbff146cfd4801101c718ffd97546f870e",
+      "size": 12325
+    },
+    {
+      "id": "android_backend_migration_coordinator",
+      "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/BackendMigrationCoordinator.kt",
+      "categories": [
+        "backend",
+        "migration",
+        "recovery"
+      ],
+      "sha256": "6839c616887bdcc5a93da164a81d4a5650b4b915ae81448fe3a59618e2718eaa",
+      "size": 18222
+    },
+    {
+      "id": "android_startup_recovery",
+      "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/StartupRecoveryCoordinator.kt",
+      "categories": [
+        "recovery"
+      ],
+      "sha256": "950ff796d0ef4b1e3c9c2561f87402f03d48245926e88b7f6ec6a1a201adbbdd",
+      "size": 18090
+    },
+    {
+      "id": "android_queue_coordinator",
+      "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
+      "categories": [
+        "scheduler",
+        "queue"
+      ],
+      "sha256": "226aefdb1820b1ffca5564a4cdfc7093e11dc38125c7c8978be7ca664fcbc47a",
+      "size": 25026
+    },
+    {
+      "id": "android_atomic_finalization",
+      "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/AtomicFinalizationCoordinator.kt",
+      "categories": [
+        "finalization",
+        "publication"
+      ],
+      "sha256": "2ace56787735dd2d9be0be38e96e37156ed73e53aa5817fea4d30ef08637edba",
+      "size": 5424
+    },
+    {
+      "id": "android_completion_verification",
+      "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/CompletionVerificationCoordinator.kt",
+      "categories": [
+        "verification",
+        "finalization"
+      ],
+      "sha256": "f18f971a06071e24c589bdd38cd515efad971064b95fe2b4594f45011dd09187",
+      "size": 8218
+    },
+    {
+      "id": "android_queue_retry_ledger",
+      "path": "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueRetryLedger.kt",
+      "categories": [
+        "scheduler",
+        "retry"
+      ],
+      "sha256": "4f0a1286f70462f088d7ab11469a16431777fc3fa9cd1e40e801552fc1cabc03",
+      "size": 3324
+    },
+    {
+      "id": "android_security_guard_test",
+      "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/AndroidTransferRequestSecurityGuardTest.kt",
+      "categories": [
+        "security",
+        "test"
+      ],
+      "sha256": "ea998542b147ca321887e183d608584614e4a293a9ebb739ba9eb78cceeac598",
+      "size": 5459
+    },
+    {
+      "id": "android_backend_migration_test",
+      "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/BackendMigrationCoordinatorTest.kt",
+      "categories": [
+        "backend",
+        "migration",
+        "test"
+      ],
+      "sha256": "054d7820d7f6f2283772d85ecb1885baac63c37b3a527b2737f777402093dd37",
+      "size": 12348
+    },
+    {
+      "id": "android_startup_recovery_test",
+      "path": "app/XDM.Android/scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/StartupRecoveryCoordinatorTest.kt",
+      "categories": [
+        "recovery",
+        "test"
+      ],
+      "sha256": "16b6f321ad0ba8957eb8b33497b2696327e5db407b780e958cab35ae5a1cbb70",
+      "size": 11039
+    },
+    {
+      "id": "android_entities",
+      "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/Entities.kt",
+      "categories": [
+        "persistence",
+        "schema"
+      ],
+      "sha256": "5380731507e768efae5c666c44cd690b92ce01311d24b5c349d61b8798000892",
+      "size": 26756
+    },
+    {
+      "id": "android_database",
+      "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/AppDatabase.kt",
+      "categories": [
+        "persistence",
+        "schema"
+      ],
+      "sha256": "33d3eb9b4681b6b1040de2cc779a01c433afeb5d96d6194263124e70ceeb339b",
+      "size": 2452
+    },
+    {
+      "id": "android_download_dao",
+      "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadDao.kt",
+      "categories": [
+        "persistence",
+        "download"
+      ],
+      "sha256": "a457a3fa6bd6baa76d53e4501ef8d1fbed4fc25dd5ca18e32c7968dad610e759",
+      "size": 8035
+    },
+    {
+      "id": "android_backend_ownership_dao",
+      "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/BackendOwnershipDao.kt",
+      "categories": [
+        "persistence",
+        "ownership"
+      ],
+      "sha256": "9f9ea716af5925f45211fa2b0e7597cb8d64062bdf90a366804d211939668748",
+      "size": 2039
+    },
+    {
+      "id": "android_finalization_store",
+      "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/RoomFinalizationJournalStore.kt",
+      "categories": [
+        "persistence",
+        "publication",
+        "finalization"
+      ],
+      "sha256": "13712d2b4d6d7ee8c7e3bfc3dedb2edd0d7c50d6c468421225e1674e2c52a42e",
+      "size": 2122
+    },
+    {
+      "id": "android_hls_dao",
+      "path": "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/NativeHlsDao.kt",
+      "categories": [
+        "persistence",
+        "hls"
+      ],
+      "sha256": "e1ca2dd406a0847d2276528131e8c90ae3ed7f64c7e5474cfdd07c9a38102e64",
+      "size": 3530
+    },
+    {
+      "id": "android_publication_safety",
+      "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/PublicationSafety.kt",
+      "categories": [
+        "publication",
+        "storage"
+      ],
+      "sha256": "a97798af61f0be906bfd732711f3506dbbd3e040ebb60934ec8d1f7ad70e3e8d",
+      "size": 13223
+    },
+    {
+      "id": "android_destination_writer",
+      "path": "app/XDM.Android/storage/src/main/kotlin/com/mikeyphw/xdm/android/storage/AndroidDestinationWriter.kt",
+      "categories": [
+        "publication",
+        "storage",
+        "android"
+      ],
+      "sha256": "2a4639155bab8d4ce5ae49698448d9bfb5a6e60cb3c2468fdd9f40cd5524e469",
+      "size": 36243
+    },
+    {
+      "id": "android_publication_contract_test",
+      "path": "app/XDM.Android/storage/src/test/kotlin/com/mikeyphw/xdm/android/storage/Xar06PublicationTransactionContractTest.kt",
+      "categories": [
+        "publication",
+        "test"
+      ],
+      "sha256": "dedbda16712f4ea37a93facb9f4fe2195b625c8c17b7b968bd5c4ee525d1ee68",
+      "size": 3980
+    },
+    {
+      "id": "android_aria2_backend",
+      "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/EmbeddedAria2Backend.kt",
+      "categories": [
+        "aria2",
+        "backend",
+        "ownership"
+      ],
+      "sha256": "50a70bfb6c694f66e6c34b2aab1aa51eaa9d31d26c1d04109a55d4af997f6a93",
+      "size": 46576
+    },
+    {
+      "id": "android_aria2_rpc",
+      "path": "app/XDM.Android/transfer-aria2/src/main/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Aria2RpcClient.kt",
+      "categories": [
+        "aria2",
+        "rpc"
+      ],
+      "sha256": "f1177e8b59ff31795961c03ab8e2a91a9cc3a5b717067612f32f95d82a347472",
+      "size": 12037
+    },
+    {
+      "id": "android_aria2_contract_test",
+      "path": "app/XDM.Android/transfer-aria2/src/test/kotlin/com/mikeyphw/xdm/android/transfer/aria2/Xar08Aria2OwnershipContractTest.kt",
+      "categories": [
+        "aria2",
+        "ownership",
+        "test"
+      ],
+      "sha256": "4a3e22dd5a65232cbc7cc93abc103b3fd9c2eb401398f5f118f7f19ff2ac55f2",
+      "size": 2164
+    },
+    {
+      "id": "android_logical_media_graph",
+      "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/LogicalMediaGraph.kt",
+      "categories": [
+        "media",
+        "graph"
+      ],
+      "sha256": "da775053c39aa38bb0e7af8b75589e0cdf6c78c334fd8ac7917acfc9250eb13a",
+      "size": 25925
+    },
+    {
+      "id": "android_capture_registry",
+      "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/BrowserCaptureSessionRegistry.kt",
+      "categories": [
+        "media",
+        "capture"
+      ],
+      "sha256": "94748b1a69bfa780245a4ea09a789acb8f6dc03db563d2e30ab1872c8840c57a",
+      "size": 9683
+    },
+    {
+      "id": "android_media_security",
+      "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionSecurityPolicy.kt",
+      "categories": [
+        "media",
+        "security"
+      ],
+      "sha256": "b6447b563058d1f5a6e602b578c3c4fd718b51b1982f7bbdeeb72eedaf24c0e7",
+      "size": 3792
+    },
+    {
+      "id": "android_media_dispatcher",
+      "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaExecutionDispatcher.kt",
+      "categories": [
+        "media",
+        "execution"
+      ],
+      "sha256": "b47254c01dc3a31193344930e43995d9998f76990144177e87ba159f28e7aba5",
+      "size": 23494
+    },
+    {
+      "id": "android_native_hls",
+      "path": "app/XDM.Android/media/src/main/kotlin/com/mikeyphw/xdm/android/media/NativeHlsExecutionEngine.kt",
+      "categories": [
+        "hls",
+        "media",
+        "recovery"
+      ],
+      "sha256": "bbe8fb8ae5004fa2d07cf63935afc6af3017d26c9e794aa53d1be6c973438e10",
+      "size": 31274
+    },
+    {
+      "id": "android_logical_media_graph_test",
+      "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/LogicalMediaGraphEngineTest.kt",
+      "categories": [
+        "media",
+        "graph",
+        "test"
+      ],
+      "sha256": "0efedebe18682db143999cd8f0a1417263e0f14329e0d945d080640d01fd02af",
+      "size": 7654
+    },
+    {
+      "id": "android_hls_test",
+      "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/NativeHlsExecutionEngineTest.kt",
+      "categories": [
+        "hls",
+        "test"
+      ],
+      "sha256": "94dde6b3fc1a6300e37ae59c79381796c3eb12d0637d578a9131b866897c7403",
+      "size": 11220
+    },
+    {
+      "id": "android_manifest_resolution_test",
+      "path": "app/XDM.Android/media/src/test/kotlin/com/mikeyphw/xdm/android/media/Xar11ManifestResolutionContractTest.kt",
+      "categories": [
+        "hls",
+        "dash",
+        "manifest",
+        "test"
+      ],
+      "sha256": "2cd5636e9c26b8f23ed0a239a1b96ade12a2a0712b3239aeda35059a7ffb3d2e",
+      "size": 7673
+    },
+    {
+      "id": "android_ffmpeg_compiler",
+      "path": "app/XDM.Android/media-ffmpeg/src/main/kotlin/com/mikeyphw/xdm/android/media/ffmpeg/FfmpegCommandCompiler.kt",
+      "categories": [
+        "ffmpeg",
+        "media"
+      ],
+      "sha256": "1a58403901d614f2ce1482dc2e7528a0e26838a3a736ab9ed4331f214110ba7e",
+      "size": 9894
+    },
+    {
+      "id": "android_ffmpeg_verifier",
+      "path": "app/XDM.Android/media-ffmpeg/src/main/kotlin/com/mikeyphw/xdm/android/media/ffmpeg/FfmpegMediaVerifier.kt",
+      "categories": [
+        "ffmpeg",
+        "verification"
+      ],
+      "sha256": "116b7c0f30bb730c007db572e39205fa26a76b6938cb779ca911fba466a5297b",
+      "size": 2148
+    },
+    {
+      "id": "android_ffmpeg_test",
+      "path": "app/XDM.Android/media-ffmpeg/src/test/kotlin/com/mikeyphw/xdm/android/media/ffmpeg/FfmpegCommandCompilerTest.kt",
+      "categories": [
+        "ffmpeg",
+        "test"
+      ],
+      "sha256": "8a6a081ce804b144b50a3dc51aab5dabc30fcb800708a5858aeed02624c164d4",
+      "size": 10826
+    },
+    {
+      "id": "desktop_download_request",
+      "path": "app/XDM/src/XDM.DownloadEngine/DownloadRequest.cs",
+      "categories": [
+        "domain",
+        "request",
+        "http"
+      ],
+      "sha256": "33d561192e1889cedf2036d61818bb0d2b8c584300b957f918082d84bdeeabb0",
+      "size": 2113
+    },
+    {
+      "id": "desktop_download_manager",
+      "path": "app/XDM/src/XDM.DownloadEngine/DownloadManager.cs",
+      "categories": [
+        "http",
+        "transfer",
+        "recovery"
+      ],
+      "sha256": "29a3dab49bf247a783255d7a7f24dc599d89977a035504c063aaed92fdfccee0",
+      "size": 276876
+    },
+    {
+      "id": "desktop_segmented_executor",
+      "path": "app/XDM/src/XDM.DownloadEngine/SegmentedDownloadExecutor.cs",
+      "categories": [
+        "http",
+        "segment"
+      ],
+      "sha256": "78e3368bfad17ec108b3a44ea6a13258bc01412f399d13e67296319e083d6004",
+      "size": 24712
+    },
+    {
+      "id": "desktop_resume_checkpoint",
+      "path": "app/XDM/src/XDM.DownloadEngine/ResumeCheckpoint.cs",
+      "categories": [
+        "checkpoint",
+        "resume"
+      ],
+      "sha256": "10e673e6d55e806a94981e722563167eb3ed0d2268951e2cbadce109262ba36c",
+      "size": 611
+    },
+    {
+      "id": "desktop_retry_policy",
+      "path": "app/XDM/src/XDM.DownloadEngine/DownloadRetryPolicy.cs",
+      "categories": [
+        "retry",
+        "transfer"
+      ],
+      "sha256": "841c150657ddd3aea0ed14d7dd3323cc17e18c326394d133e2fd0b5c8bcfa09c",
+      "size": 1815
+    },
+    {
+      "id": "desktop_recovery_coordinator",
+      "path": "app/XDM/src/XDM.DownloadEngine/DownloadRecoveryCoordinator.cs",
+      "categories": [
+        "recovery"
+      ],
+      "sha256": "fb2936b664ae25f85169dcf4024cfa4d3b20590c12b0eb3962db4b00ed976980",
+      "size": 36316
+    },
+    {
+      "id": "desktop_checksum_service",
+      "path": "app/XDM/src/XDM.DownloadEngine/DownloadChecksumService.cs",
+      "categories": [
+        "checksum",
+        "verification"
+      ],
+      "sha256": "4ae73f69e816d529df231870688cf07b302d18e04ca5de0c84eccd2be4a9e18b",
+      "size": 4827
+    },
+    {
+      "id": "desktop_partial_repair",
+      "path": "app/XDM/src/XDM.DownloadEngine/PartialFileRepairService.cs",
+      "categories": [
+        "repair"
+      ],
+      "sha256": "79037e3e5a7aaf20b76bed6e113782c9632c169112bb2d5debce3e2ba162a372",
+      "size": 16305
+    },
+    {
+      "id": "desktop_ftp",
+      "path": "app/XDM/src/XDM.DownloadEngine/FtpDownloadClient.cs",
+      "categories": [
+        "ftp",
+        "transfer"
+      ],
+      "sha256": "39619a325ee45c9212647358afa4ff3ac7413d53aad841acdcc6d6f7d8a0531a",
+      "size": 26598
+    },
+    {
+      "id": "desktop_metalink",
+      "path": "app/XDM/src/XDM.DownloadEngine/MetalinkDocumentParser.cs",
+      "categories": [
+        "metalink",
+        "transfer"
+      ],
+      "sha256": "034a4fba8478e740e7e8a763c8062a25ef89363b4df59b8df8294b9dc2102cf1",
+      "size": 4218
+    },
+    {
+      "id": "desktop_aria2_rpc",
+      "path": "app/XDM/src/XDM.DownloadEngine/Aria2/Aria2RpcClient.cs",
+      "categories": [
+        "aria2",
+        "rpc"
+      ],
+      "sha256": "6471930c01fa4ea25ae123bdef3c5a5e9aa18dcb94033e7552e7bc84e1f083da",
+      "size": 15364
+    },
+    {
+      "id": "desktop_backend_advisor",
+      "path": "app/XDM/src/XDM.DownloadEngine/Backends/DownloadBackendAdvisor.cs",
+      "categories": [
+        "backend",
+        "selection"
+      ],
+      "sha256": "d488bb0d66b7beae982b1e5852040c3038cdddcce26e509c57cce951f1609dfd",
+      "size": 4008
+    },
+    {
+      "id": "desktop_queue_graph",
+      "path": "app/XDM/src/XDM.Core/Queues/DownloadQueueDependencyGraph.cs",
+      "categories": [
+        "queue",
+        "scheduler"
+      ],
+      "sha256": "1169ccdb651a33e89c60870e390b857cb1e5ce000f9a4abc78084eac6080ca35",
+      "size": 2894
+    },
+    {
+      "id": "desktop_schedule_window",
+      "path": "app/XDM/src/XDM.Core/Scheduling/ScheduleWindowCalculator.cs",
+      "categories": [
+        "scheduler",
+        "schedule"
+      ],
+      "sha256": "8354f2a41ad19176f63c02d55b83f491fd112a69fb298a0632900b0ebd8bd2cb",
+      "size": 3131
+    },
+    {
+      "id": "desktop_download_schedule",
+      "path": "app/XDM/src/XDM.Core/Scheduling/DownloadSchedule.cs",
+      "categories": [
+        "scheduler",
+        "schedule"
+      ],
+      "sha256": "e535ceaab23e8ed0fcedb54a930637280c94100caa026da3d57667c7c75c9ac5",
+      "size": 1389
+    },
+    {
+      "id": "desktop_bandwidth_profile",
+      "path": "app/XDM/src/XDM.Core/Settings/BandwidthProfile.cs",
+      "categories": [
+        "scheduler",
+        "bandwidth"
+      ],
+      "sha256": "2132d431e3ea81b301de21bab2c00b2ad7a1a131c40035347d56a50bcf6ed39b",
+      "size": 695
+    },
+    {
+      "id": "desktop_proxy_settings",
+      "path": "app/XDM/src/XDM.Core/Settings/ProxySettings.cs",
+      "categories": [
+        "security",
+        "proxy"
+      ],
+      "sha256": "61cde16c9f6e6133a563c178e87b2345b4eda74d8bafac6bcf114733e1faf34c",
+      "size": 2246
+    },
+    {
+      "id": "desktop_hls_parser",
+      "path": "app/XDM/src/XDM.Media/HlsManifestParser.cs",
+      "categories": [
+        "hls",
+        "parser"
+      ],
+      "sha256": "a21a68813d3cf281d4234f6ccc05cfec133b41ce5e64227eec93b84ac11e11a4",
+      "size": 14815
+    },
+    {
+      "id": "desktop_hls_downloader",
+      "path": "app/XDM/src/XDM.Media/HlsDownloader.cs",
+      "categories": [
+        "hls",
+        "execution",
+        "live"
+      ],
+      "sha256": "ffb69e3cdcf667d7eefef2f86b69cb0d472e950eb34ded9ce54cf38c0fa3e170",
+      "size": 16273
+    },
+    {
+      "id": "desktop_dash_parser",
+      "path": "app/XDM/src/XDM.Media/DashManifestParser.cs",
+      "categories": [
+        "dash",
+        "parser"
+      ],
+      "sha256": "c42e29ec3fbc7657aff87127896b9e90dc1306f55fde475701158406cd700efc",
+      "size": 24856
+    },
+    {
+      "id": "desktop_dash_downloader",
+      "path": "app/XDM/src/XDM.Media/DashDownloader.cs",
+      "categories": [
+        "dash",
+        "execution",
+        "live"
+      ],
+      "sha256": "42e15ef262f2d6b7b3af0b42b27d2304c83dd3f1c1b70efa6c95731d042ca0f6",
+      "size": 8194
+    },
+    {
+      "id": "desktop_fragment_checkpoint",
+      "path": "app/XDM/src/XDM.Media/FragmentCheckpointStore.cs",
+      "categories": [
+        "media",
+        "checkpoint"
+      ],
+      "sha256": "6d7a03acfb7a499737e25e6d3c2ab49f283ef67a22f20f91b4baa6991fc52533",
+      "size": 2345
+    },
+    {
+      "id": "desktop_media_selection",
+      "path": "app/XDM/src/XDM.Media/MediaSelectionPolicy.cs",
+      "categories": [
+        "media",
+        "selection"
+      ],
+      "sha256": "738dc9423d765d237a53b051074ffc6998ea81b5b038e0cc72f5840c28565849",
+      "size": 4908
+    },
+    {
+      "id": "desktop_ffmpeg_service",
+      "path": "app/XDM/src/XDM.Media/FfmpegService.cs",
+      "categories": [
+        "ffmpeg",
+        "media"
+      ],
+      "sha256": "da1ab0b4ba1cab370114875a1fc4bdc5fd1ca8e6f78a2999b1035983ee7ab77f",
+      "size": 7920
+    },
+    {
+      "id": "desktop_browser_protocol",
+      "path": "app/XDM/src/XDM.BrowserIntegration/BrowserCaptureProtocol.cs",
+      "categories": [
+        "browser",
+        "capture"
+      ],
+      "sha256": "1f6c2cd3900e8475606ef45cd20b1e8ae635d49aa71e1b25ca268f06bac85237",
+      "size": 1600
+    },
+    {
+      "id": "desktop_firefox_handoff",
+      "path": "app/XDM/src/XDM.BrowserIntegration/FirefoxExtensionHandoffParser.cs",
+      "categories": [
+        "browser",
+        "capture",
+        "firefox"
+      ],
+      "sha256": "8be5beda66d676063ba765eaebc7d6b6250613d341675402622ba1fcd96d4bf1",
+      "size": 18078
+    },
+    {
+      "id": "desktop_hls_parser_test",
+      "path": "app/XDM/src/XDM.BrowserMedia.Tests/HlsManifestParserTests.cs",
+      "categories": [
+        "hls",
+        "test"
+      ],
+      "sha256": "a806b9e6a0005c972db86dfce20662c917045c625e52932da7ebd23c98233fab",
+      "size": 15623
+    },
+    {
+      "id": "desktop_dash_parser_test",
+      "path": "app/XDM/src/XDM.BrowserMedia.Tests/DashManifestParserTests.cs",
+      "categories": [
+        "dash",
+        "test"
+      ],
+      "sha256": "7366c8372a89f0c2de7a03e146f1d88766ac05dbca47d89670f44816049c8a23",
+      "size": 4595
+    },
+    {
+      "id": "desktop_dash_downloader_test",
+      "path": "app/XDM/src/XDM.BrowserMedia.Tests/DashDownloaderTests.cs",
+      "categories": [
+        "dash",
+        "test"
+      ],
+      "sha256": "ebd27c6e85abb2da6072667323daf05cfb93d4fe89c4deac457d0db304db53d5",
+      "size": 3691
+    },
+    {
+      "id": "desktop_media_selection_test",
+      "path": "app/XDM/src/XDM.BrowserMedia.Tests/MediaSelectionPolicyTests.cs",
+      "categories": [
+        "media",
+        "selection",
+        "test"
+      ],
+      "sha256": "c61105e40da4a607ed33c0f274e37d71106b7ff5a80b8e01d374939630a9ba57",
+      "size": 3294
+    },
+    {
+      "id": "desktop_browser_security_test",
+      "path": "app/XDM/src/XDM.BrowserMedia.Tests/BrowserExtensionSecurityTests.cs",
+      "categories": [
+        "browser",
+        "security",
+        "test"
+      ],
+      "sha256": "754e95acb790d73371e4abbc459fcdf3caeecde2e0236be0a7ef08c4156f4f03",
+      "size": 6037
+    }
+  ]
+}

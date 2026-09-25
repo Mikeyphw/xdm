@@ -1,0 +1,1235 @@
+{
+  "schema_version": 1,
+  "status_values": [
+    "PLANNED",
+    "IMPLEMENTED",
+    "INTENTIONALLY_REMOVED"
+  ],
+  "donor_strategy_values": [
+    "android_led",
+    "desktop_led",
+    "merged",
+    "redesign",
+    "new_design"
+  ],
+  "minimum_capability_count": 80,
+  "capabilities": [
+    {
+      "id": "XGO-CAP-DOMAIN-001",
+      "area": "domain",
+      "behavior": "Separate download lifetime identity from execution attempt identity.",
+      "donors": [
+        "android_download_models",
+        "android_backend_contract",
+        "desktop_download_request"
+      ],
+      "canonical_behavior": "Go models Download and Attempt as separate aggregates linked by typed identifiers and current-attempt pointer.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-06",
+      "test_id": "fixture:xgo-cap-domain-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DOMAIN-002",
+      "area": "domain",
+      "behavior": "Separate immutable/revisioned request intent from download presentation state.",
+      "donors": [
+        "android_download_intake",
+        "desktop_download_request"
+      ],
+      "canonical_behavior": "Go Request captures transport intent without UI presentation concerns; secrets are represented indirectly.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-06",
+      "test_id": "fixture:xgo-cap-domain-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DOMAIN-003",
+      "area": "domain",
+      "behavior": "Separate produced artifact identity from transfer completion.",
+      "donors": [
+        "android_completion_verification",
+        "android_atomic_finalization",
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "ArtifactGeneration exists only after verification succeeds and remains distinct from Download/Attempt state.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-06",
+      "test_id": "fixture:xgo-cap-domain-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DOMAIN-004",
+      "area": "domain",
+      "behavior": "Typed failure categories replace frontend/backend message matching.",
+      "donors": [
+        "android_execution_semantics_test",
+        "desktop_retry_policy"
+      ],
+      "canonical_behavior": "Go emits typed failure metadata with retryability, user-actionability, diagnostic cause, and safe presentation.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-07",
+      "test_id": "fixture:xgo-cap-domain-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-STORE-001",
+      "area": "persistence",
+      "behavior": "Authoritative engine state is transactional and normalized.",
+      "donors": [
+        "android_entities",
+        "android_database",
+        "android_download_dao"
+      ],
+      "canonical_behavior": "Go-owned SQLite schema stores downloads, requests, attempts, artifacts, ownership, checkpoints, queues, media and diagnostics.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-12",
+      "test_id": "fixture:xgo-cap-store-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-STORE-002",
+      "area": "persistence",
+      "behavior": "Mutable rows use explicit revision-based compare-and-set.",
+      "donors": [
+        "android_download_dao",
+        "android_backend_ownership_dao"
+      ],
+      "canonical_behavior": "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleRevision.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-13",
+      "test_id": "fixture:xgo-cap-store-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OWNERSHIP-001",
+      "area": "ownership",
+      "behavior": "Only current attempt generation may mutate authoritative execution state.",
+      "donors": [
+        "android_backend_contract",
+        "android_backend_coordinator_test",
+        "android_execution_semantics_test"
+      ],
+      "canonical_behavior": "All attempt-owned writes require DownloadID, AttemptGeneration and expected Revision; older generations are fenced.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-14",
+      "test_id": "fixture:xgo-cap-ownership-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OWNERSHIP-002",
+      "area": "ownership",
+      "behavior": "Backend ownership is durable before bytes become authoritative.",
+      "donors": [
+        "android_backend_contract",
+        "android_backend_ownership_dao",
+        "android_backend_coordinator_test"
+      ],
+      "canonical_behavior": "Reserve generation, prepare staging, persist ownership/task binding, then activate backend.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-15",
+      "test_id": "fixture:xgo-cap-ownership-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OWNERSHIP-003",
+      "area": "ownership",
+      "behavior": "Backend runtime/session identity prevents stale daemon/task impersonation.",
+      "donors": [
+        "android_aria2_backend",
+        "android_aria2_contract_test"
+      ],
+      "canonical_behavior": "Backend task identity includes runtime/session provenance and generation, checked during every reconciliation.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-42",
+      "test_id": "fixture:xgo-cap-ownership-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-CHECKPOINT-001",
+      "area": "checkpoint",
+      "behavior": "Resume checkpoints represent durable integrity-backed bytes.",
+      "donors": [
+        "android_checkpoint_integrity",
+        "android_checkpoint_store"
+      ],
+      "canonical_behavior": "Go commits checkpoint blocks only after durable write and integrity evidence; partial/uncommitted blocks are disposable.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-16",
+      "test_id": "fixture:xgo-cap-checkpoint-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-VERIFY-001",
+      "area": "verification",
+      "behavior": "Transport completion does not equal verified completion.",
+      "donors": [
+        "android_completion_verification",
+        "android_checksum_contract",
+        "desktop_checksum_service"
+      ],
+      "canonical_behavior": "Go records verification separately and creates publishable artifact only after required integrity checks pass.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-17",
+      "test_id": "fixture:xgo-cap-verify-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-PUBLICATION-001",
+      "area": "publication",
+      "behavior": "Publication to non-transactional destinations is a durable saga.",
+      "donors": [
+        "android_atomic_finalization",
+        "android_finalization_store",
+        "android_publication_safety",
+        "android_destination_writer",
+        "android_publication_contract_test"
+      ],
+      "canonical_behavior": "Go records publication intent/state and reconciles idempotent host commit receipts across crashes.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-18",
+      "test_id": "fixture:xgo-cap-publication-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-RECOVERY-001",
+      "area": "recovery",
+      "behavior": "Startup recovery reconciles ownership, backend, checkpoints, artifacts and publication.",
+      "donors": [
+        "android_recovery_contracts",
+        "android_startup_recovery",
+        "android_startup_recovery_test",
+        "desktop_recovery_coordinator"
+      ],
+      "canonical_behavior": "Go classifies every incomplete state and performs idempotent generation-fenced recovery.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-19",
+      "test_id": "fixture:xgo-cap-recovery-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-RECOVERY-002",
+      "area": "recovery",
+      "behavior": "Recovery cannot allow stale backend completion to overwrite newer attempt state.",
+      "donors": [
+        "android_backend_migration_coordinator",
+        "android_backend_migration_test",
+        "android_execution_semantics_test"
+      ],
+      "canonical_behavior": "Late stale backend events are diagnostic-only once a newer generation is current.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-19",
+      "test_id": "fixture:xgo-cap-recovery-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-REQUEST-001",
+      "area": "request",
+      "behavior": "Canonical network intent supports GET/POST, headers, body refs, mirrors, validators and expected hashes.",
+      "donors": [
+        "android_download_intake",
+        "android_native_http",
+        "desktop_download_request"
+      ],
+      "canonical_behavior": "Go request is a strict superset of donor transport semantics with safe persisted form and runtime secret resolution.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-20",
+      "test_id": "fixture:xgo-cap-request-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SECURITY-001",
+      "area": "security",
+      "behavior": "Header admission blocks CRLF injection and transport-owned header abuse.",
+      "donors": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "canonical_behavior": "Go validates header names/values and reserves transport-owned fields before network execution.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-21",
+      "test_id": "fixture:xgo-cap-security-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SECURITY-002",
+      "area": "security",
+      "behavior": "Sensitive credentials are scoped and stripped on unsafe cross-origin redirects.",
+      "donors": [
+        "android_request_security_guard",
+        "android_security_guard_test",
+        "desktop_browser_security_test"
+      ],
+      "canonical_behavior": "Go recomputes credential forwarding per redirect/origin and never blindly propagates Authorization/Cookie.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-21",
+      "test_id": "fixture:xgo-cap-security-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SECURITY-003",
+      "area": "security",
+      "behavior": "Private/loopback/link-local/reserved routes require scoped approval.",
+      "donors": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "canonical_behavior": "Go classifies resolved IPv4/IPv6 candidates and binds approval to explicit request/resource scope.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-22",
+      "test_id": "fixture:xgo-cap-security-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SECURITY-004",
+      "area": "security",
+      "behavior": "DNS validation is bound to actual dial candidates.",
+      "donors": [
+        "android_request_security_guard",
+        "android_native_http"
+      ],
+      "canonical_behavior": "Go dialer only connects to policy-approved resolved addresses while preserving original host for TLS/SNI/Host.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-23",
+      "test_id": "fixture:xgo-cap-security-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SECURITY-005",
+      "area": "security",
+      "behavior": "Every redirect repeats URL, route, cleartext and credential policy.",
+      "donors": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "canonical_behavior": "Redirect handling is a security state machine with loop/count and scheme downgrade checks.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-24",
+      "test_id": "fixture:xgo-cap-security-005",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SECURITY-006",
+      "area": "security",
+      "behavior": "Platform cleartext policy is preserved when networking moves to Go.",
+      "donors": [
+        "android_request_security_guard"
+      ],
+      "canonical_behavior": "Go requests platform cleartext allowance when required and fails safely if policy cannot be established.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-25",
+      "test_id": "fixture:xgo-cap-security-006",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-PROXY-001",
+      "area": "proxy",
+      "behavior": "Canonical proxy model covers direct, HTTP, SOCKS, system and PAC-resolved routing.",
+      "donors": [
+        "desktop_proxy_settings",
+        "desktop_download_request"
+      ],
+      "canonical_behavior": "Go owns proxy intent; platform may resolve PAC/system settings and returns explicit route decision.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-25",
+      "test_id": "fixture:xgo-cap-proxy-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HTTP-001",
+      "area": "http",
+      "behavior": "Representation probe discovers length, range support, validators, filename/content metadata and effective URL.",
+      "donors": [
+        "android_native_http",
+        "android_native_protocol_test",
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "Go probes with HEAD/ranged fallback and validates contradictory/malformed metadata.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-26",
+      "test_id": "fixture:xgo-cap-http-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HTTP-002",
+      "area": "http",
+      "behavior": "Resume requires compatible representation identity.",
+      "donors": [
+        "android_native_http",
+        "android_checkpoint_integrity",
+        "desktop_resume_checkpoint"
+      ],
+      "canonical_behavior": "Go compares strong validators first and rejects incompatible representation changes before reusing persisted bytes.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-27",
+      "test_id": "fixture:xgo-cap-http-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HTTP-003",
+      "area": "http",
+      "behavior": "Single-stream HTTP supports bounded streaming, cancellation, exact byte accounting and durable lifecycle state.",
+      "donors": [
+        "android_native_http",
+        "android_native_http_test",
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "Go native backend performs direct streaming into staging under attempt ownership.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-28",
+      "test_id": "fixture:xgo-cap-http-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HTTP-004",
+      "area": "http",
+      "behavior": "Segmented HTTP writes ranges into one preallocated random-access staging artifact.",
+      "donors": [
+        "android_native_http",
+        "android_native_http_test",
+        "desktop_segmented_executor"
+      ],
+      "canonical_behavior": "Go uses Android-style direct range writes and avoids desktop full-size segment merge for normal HTTP downloads.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-29",
+      "test_id": "fixture:xgo-cap-http-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HTTP-005",
+      "area": "http",
+      "behavior": "Content-Range is validated exactly and server range lies cannot corrupt staging.",
+      "donors": [
+        "android_native_http",
+        "android_native_protocol_test"
+      ],
+      "canonical_behavior": "Go rejects mismatched/overlapping/short range responses and safely falls back only when policy allows.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-29",
+      "test_id": "fixture:xgo-cap-http-005",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HTTP-006",
+      "area": "http",
+      "behavior": "If-Range/validator-aware resume handles 206/200 semantics safely.",
+      "donors": [
+        "android_native_http",
+        "desktop_resume_checkpoint"
+      ],
+      "canonical_behavior": "Go resumes only verified ranges and invalidates them when server proves representation changed.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-30",
+      "test_id": "fixture:xgo-cap-http-006",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-RETRY-001",
+      "area": "retry",
+      "behavior": "Retry policy is typed and persistent, including Retry-After.",
+      "donors": [
+        "android_queue_retry_ledger",
+        "desktop_retry_policy",
+        "android_native_http"
+      ],
+      "canonical_behavior": "Go computes retry-now/retry-at/hold/terminal from typed failure, replayability, policy and runtime conditions.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-31",
+      "test_id": "fixture:xgo-cap-retry-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-BANDWIDTH-001",
+      "area": "bandwidth",
+      "behavior": "Connection and bandwidth limits support global, host and download scopes.",
+      "donors": [
+        "android_native_http",
+        "desktop_bandwidth_profile"
+      ],
+      "canonical_behavior": "Go central limiter arbitrates connection permits and byte rate fairly using monotonic time.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-32",
+      "test_id": "fixture:xgo-cap-bandwidth-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-CHECKSUM-001",
+      "area": "checksum",
+      "behavior": "Expected checksum verification is streaming and canonical.",
+      "donors": [
+        "android_checksum_contract",
+        "desktop_checksum_service"
+      ],
+      "canonical_behavior": "Go normalizes expected checksums from request/Metalink and records verification result independently of transport.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-33",
+      "test_id": "fixture:xgo-cap-checksum-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-REPAIR-001",
+      "area": "repair",
+      "behavior": "Selective repair redownloads damaged blocks without replacing good verified ranges.",
+      "donors": [
+        "android_selective_repair",
+        "desktop_partial_repair",
+        "android_checkpoint_integrity"
+      ],
+      "canonical_behavior": "Go invalidates damaged blocks, refetches exact ranges under current validators and re-verifies artifact.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-34",
+      "test_id": "fixture:xgo-cap-repair-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-FINALIZE-001",
+      "area": "finalization",
+      "behavior": "Verified staging becomes a versioned artifact before publication.",
+      "donors": [
+        "android_atomic_finalization",
+        "android_completion_verification"
+      ],
+      "canonical_behavior": "Go freezes writes, verifies, creates ArtifactGeneration and queues publication without conflating user-visible completion.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-35",
+      "test_id": "fixture:xgo-cap-finalize-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-REQUEST-002",
+      "area": "request",
+      "behavior": "Replayable POST/body downloads are preserved from desktop.",
+      "donors": [
+        "desktop_download_request",
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "Go distinguishes replayable, secret and one-shot bodies and gates retry/redirect/resume accordingly.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-36",
+      "test_id": "fixture:xgo-cap-request-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-FTP-001",
+      "area": "ftp",
+      "behavior": "FTP/FTPS downloads use canonical attempt/checkpoint/verification lifecycle.",
+      "donors": [
+        "desktop_ftp"
+      ],
+      "canonical_behavior": "Go FTP adapter reuses limiter, retry taxonomy, staging, verification and publication infrastructure.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-37",
+      "test_id": "fixture:xgo-cap-ftp-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-METALINK-001",
+      "area": "metalink",
+      "behavior": "Metalink contributes mirrors, hashes and size to canonical request metadata.",
+      "donors": [
+        "desktop_metalink"
+      ],
+      "canonical_behavior": "Go parses Metalink into standard request/verification inputs instead of a parallel engine.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-38",
+      "test_id": "fixture:xgo-cap-metalink-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-BACKEND-001",
+      "area": "backend",
+      "behavior": "Backend compatibility is exact for the concrete operation.",
+      "donors": [
+        "android_backend_contract",
+        "android_aria2_backend",
+        "desktop_backend_advisor"
+      ],
+      "canonical_behavior": "Each Go backend implements CanExecute(intent) with typed incompatibility reasons matching execution preflight.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-39",
+      "test_id": "fixture:xgo-cap-backend-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-BACKEND-002",
+      "area": "backend",
+      "behavior": "Backend selection is deterministic and explainable.",
+      "donors": [
+        "android_backend_contract",
+        "desktop_backend_advisor"
+      ],
+      "canonical_behavior": "Go selects among compatible healthy backends using user preference and operation requirements; switching after start requires migration.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-40",
+      "test_id": "fixture:xgo-cap-backend-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ARIA2-001",
+      "area": "aria2",
+      "behavior": "Generic aria2 RPC supports add/status/pause/resume/remove/options/session/health.",
+      "donors": [
+        "desktop_aria2_rpc",
+        "android_aria2_rpc"
+      ],
+      "canonical_behavior": "Go aria2 client owns protocol mechanics with typed timeouts and malformed reply handling.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-41",
+      "test_id": "fixture:xgo-cap-aria2-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ARIA2-002",
+      "area": "aria2",
+      "behavior": "Aria2 GID is bound durably to attempt generation before activation.",
+      "donors": [
+        "android_aria2_backend",
+        "android_aria2_contract_test"
+      ],
+      "canonical_behavior": "Go creates task paused where possible, persists GID/runtime ownership then activates.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-42",
+      "test_id": "fixture:xgo-cap-aria2-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ARIA2-003",
+      "area": "aria2",
+      "behavior": "Aria2 reconciliation handles daemon restart, missing task and offline completion.",
+      "donors": [
+        "android_aria2_backend",
+        "android_aria2_contract_test",
+        "desktop_aria2_rpc"
+      ],
+      "canonical_behavior": "Go compares DB ownership with daemon runtime/task state and reconciles without stale authority.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-43",
+      "test_id": "fixture:xgo-cap-aria2-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-BACKEND-003",
+      "area": "backend",
+      "behavior": "Backend migration fences source backend and transfers authority through a new generation.",
+      "donors": [
+        "android_backend_migration_contract",
+        "android_backend_migration_coordinator",
+        "android_backend_migration_test"
+      ],
+      "canonical_behavior": "Go quiesces/fences source, reserves target generation/ownership, activates target, then retires source.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-43",
+      "test_id": "fixture:xgo-cap-backend-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-QUEUE-001",
+      "area": "queue",
+      "behavior": "Queues persist priority, enablement, concurrency and membership ordering.",
+      "donors": [
+        "android_queue_intelligence",
+        "android_queue_coordinator"
+      ],
+      "canonical_behavior": "Go queue state is authoritative and revisioned.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-44",
+      "test_id": "fixture:xgo-cap-queue-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-QUEUE-002",
+      "area": "queue",
+      "behavior": "Download dependencies support completion/success requirements with cycle detection.",
+      "donors": [
+        "desktop_queue_graph"
+      ],
+      "canonical_behavior": "Go stores dependency graph and returns explicit blocked reason/failure propagation.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-45",
+      "test_id": "fixture:xgo-cap-queue-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SCHED-001",
+      "area": "scheduler",
+      "behavior": "Runtime conditions include online/metered/Wi-Fi/charging/battery/storage.",
+      "donors": [
+        "android_queue_intelligence",
+        "android_queue_coordinator"
+      ],
+      "canonical_behavior": "Platform supplies condition snapshot; Go evaluates eligibility and hold reasons.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-46",
+      "test_id": "fixture:xgo-cap-sched-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SCHED-002",
+      "area": "scheduler",
+      "behavior": "Schedules are timezone-aware and define missed-run behavior.",
+      "donors": [
+        "desktop_schedule_window",
+        "desktop_download_schedule"
+      ],
+      "canonical_behavior": "Go evaluates recurring windows and missed-run policy with injected clock/timezone.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-46",
+      "test_id": "fixture:xgo-cap-sched-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SCHED-003",
+      "area": "scheduler",
+      "behavior": "Queue arbitration is deterministic and starvation-resistant.",
+      "donors": [
+        "android_queue_coordinator",
+        "android_queue_intelligence",
+        "desktop_queue_graph"
+      ],
+      "canonical_behavior": "Go combines priority, fairness, dependencies, capacity, retry deadlines and runtime holds.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-47",
+      "test_id": "fixture:xgo-cap-sched-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SCHED-004",
+      "area": "scheduler",
+      "behavior": "Global Pause All is durable across restart.",
+      "donors": [
+        "android_queue_coordinator",
+        "android_queue_intelligence"
+      ],
+      "canonical_behavior": "Go prevents automatic starts while durable global hold is active.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-47",
+      "test_id": "fixture:xgo-cap-sched-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SCHED-005",
+      "area": "scheduler",
+      "behavior": "Bandwidth profiles compose global, schedule, queue and per-download scopes.",
+      "donors": [
+        "desktop_bandwidth_profile",
+        "android_queue_intelligence"
+      ],
+      "canonical_behavior": "Go owns deterministic limit precedence and live profile switching.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-48",
+      "test_id": "fixture:xgo-cap-sched-005",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-SCHED-006",
+      "area": "scheduler",
+      "behavior": "Completion actions are decided once by engine and executed idempotently by host.",
+      "donors": [
+        "desktop_download_schedule"
+      ],
+      "canonical_behavior": "Go emits idempotent platform request only when canonical terminal conditions are met.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-48",
+      "test_id": "fixture:xgo-cap-sched-006",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-CAPTURE-001",
+      "area": "capture",
+      "behavior": "Browser transports feed one versioned CaptureEnvelope with exact replay evidence.",
+      "donors": [
+        "android_browser_capture_models",
+        "android_capture_registry",
+        "desktop_browser_protocol",
+        "desktop_firefox_handoff"
+      ],
+      "canonical_behavior": "Go receives URL/method/headers/body ref/page/frame/session/response metadata under bounded parsing.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-49",
+      "test_id": "fixture:xgo-cap-capture-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-CAPTURE-002",
+      "area": "capture",
+      "behavior": "Document/session generation fences stale browser observations.",
+      "donors": [
+        "android_browser_capture_models",
+        "android_capture_registry"
+      ],
+      "canonical_behavior": "Late observations from previous generation remain historical but cannot mutate active graph.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-50",
+      "test_id": "fixture:xgo-cap-capture-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-MEDIA-001",
+      "area": "media",
+      "behavior": "Transport URL, signed URL identity, logical resource identity and credential scope are distinct.",
+      "donors": [
+        "android_logical_media_graph",
+        "android_media_security"
+      ],
+      "canonical_behavior": "Go canonicalizes resource identity without blindly discarding identity-relevant query parameters.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-51",
+      "test_id": "fixture:xgo-cap-media-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-MEDIA-002",
+      "area": "media",
+      "behavior": "Repeated captures converge into bounded logical media graph.",
+      "donors": [
+        "android_logical_media_graph",
+        "android_logical_media_graph_test"
+      ],
+      "canonical_behavior": "Go graph models media item/source/variant/track/rendition/manifest/fragment-set/protection with provenance.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-52",
+      "test_id": "fixture:xgo-cap-media-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-MEDIA-003",
+      "area": "media",
+      "behavior": "Media selection is deterministic over resolution, bitrate, codec, language and track pairing.",
+      "donors": [
+        "desktop_media_selection",
+        "desktop_media_selection_test",
+        "android_media_dispatcher"
+      ],
+      "canonical_behavior": "Go returns available choices and explicit selected video/audio/subtitle tracks without UI ranking logic.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-53",
+      "test_id": "fixture:xgo-cap-media-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-MEDIA-004",
+      "area": "media",
+      "behavior": "Child manifest/segment/key requests obey origin and credential scope.",
+      "donors": [
+        "android_media_security",
+        "desktop_browser_security_test"
+      ],
+      "canonical_behavior": "Go reevaluates credential forwarding for every child resource.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-51",
+      "test_id": "fixture:xgo-cap-media-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HLS-001",
+      "area": "hls",
+      "behavior": "Common durable fragment ledger backs HLS/DASH media parts.",
+      "donors": [
+        "android_hls_dao",
+        "android_native_hls",
+        "desktop_fragment_checkpoint"
+      ],
+      "canonical_behavior": "Go fragment record has stable identity, role, timeline, resource/range/encryption identity, state and integrity.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-54",
+      "test_id": "fixture:xgo-cap-hls-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HLS-002",
+      "area": "hls",
+      "behavior": "HLS parser handles master/media playlists, variants and rendition groups.",
+      "donors": [
+        "android_native_hls",
+        "desktop_hls_parser",
+        "desktop_hls_parser_test"
+      ],
+      "canonical_behavior": "Go parser builds typed playlist model with URI resolution through shared security policy.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-55",
+      "test_id": "fixture:xgo-cap-hls-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HLS-003",
+      "area": "hls",
+      "behavior": "HLS parser handles EXT-X-MAP, BYTERANGE, KEY, GAP, sequence and discontinuity.",
+      "donors": [
+        "android_native_hls",
+        "desktop_hls_parser"
+      ],
+      "canonical_behavior": "Go preserves byte ranges/init maps/encryption/timeline metadata for execution and recovery.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-55",
+      "test_id": "fixture:xgo-cap-hls-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HLS-004",
+      "area": "hls",
+      "behavior": "HLS protection is classified separately from generic network failure.",
+      "donors": [
+        "android_native_hls",
+        "android_hls_test"
+      ],
+      "canonical_behavior": "Go explicitly classifies AES-128 support and SAMPLE-AES/DRM/unknown methods.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-55",
+      "test_id": "fixture:xgo-cap-hls-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HLS-005",
+      "area": "hls",
+      "behavior": "HLS recovery uses stable timeline identity, not list index/part count.",
+      "donors": [
+        "android_native_hls",
+        "desktop_hls_downloader"
+      ],
+      "canonical_behavior": "Go reconciles media/discontinuity sequence plus resource/range/encryption identity across refreshes.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-56",
+      "test_id": "fixture:xgo-cap-hls-005",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HLS-006",
+      "area": "hls",
+      "behavior": "Durable HLS VOD execution survives restart with verified fragments.",
+      "donors": [
+        "android_native_hls",
+        "android_hls_test"
+      ],
+      "canonical_behavior": "Go persists fragment state, AES-128, byte-range/init-map handling and aggregate progress.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-57",
+      "test_id": "fixture:xgo-cap-hls-006",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-HLS-007",
+      "area": "hls",
+      "behavior": "Live/evolving HLS preserves completed fragments while sliding window advances.",
+      "donors": [
+        "desktop_hls_downloader",
+        "android_native_hls"
+      ],
+      "canonical_behavior": "Go polls live playlists, deduplicates known timeline fragments and supports ENDLIST transition/bounded capture.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-57",
+      "test_id": "fixture:xgo-cap-hls-007",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DASH-001",
+      "area": "dash",
+      "behavior": "DASH parser supports Period/AdaptationSet/Representation/BaseURL.",
+      "donors": [
+        "desktop_dash_parser",
+        "desktop_dash_parser_test",
+        "android_manifest_resolution_test"
+      ],
+      "canonical_behavior": "Go constructs canonical track/representation model under media security context.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-58",
+      "test_id": "fixture:xgo-cap-dash-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DASH-002",
+      "area": "dash",
+      "behavior": "DASH parser supports SegmentTemplate/SegmentTimeline/SegmentList including valid r=-1.",
+      "donors": [
+        "desktop_dash_parser",
+        "desktop_dash_parser_test"
+      ],
+      "canonical_behavior": "Go expands stable segment timeline without positional-only identity.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-58",
+      "test_id": "fixture:xgo-cap-dash-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DASH-003",
+      "area": "dash",
+      "behavior": "Dynamic DASH refresh reconciles evolving timeline and new Periods.",
+      "donors": [
+        "desktop_dash_downloader",
+        "desktop_dash_downloader_test",
+        "android_manifest_resolution_test"
+      ],
+      "canonical_behavior": "Go honors minimumUpdatePeriod, deduplicates existing fragments and persists new track state.",
+      "donor_strategy": "desktop_led",
+      "target_overlay": "XGO-59",
+      "test_id": "fixture:xgo-cap-dash-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DASH-004",
+      "area": "dash",
+      "behavior": "DASH multi-track execution downloads separate video/audio/subtitle roles for mux.",
+      "donors": [
+        "desktop_dash_downloader",
+        "android_media_dispatcher"
+      ],
+      "canonical_behavior": "Go uses shared fragment ledger/retry/security and produces role-tagged track artifacts.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-59",
+      "test_id": "fixture:xgo-cap-dash-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-FFMPEG-001",
+      "area": "ffmpeg",
+      "behavior": "Post-processing is represented as typed plan, not shell business logic.",
+      "donors": [
+        "android_ffmpeg_compiler",
+        "desktop_ffmpeg_service"
+      ],
+      "canonical_behavior": "Go plan defines input roles, mapping, copy/transcode mode, output container and verification expectations.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-60",
+      "test_id": "fixture:xgo-cap-ffmpeg-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-FFMPEG-002",
+      "area": "ffmpeg",
+      "behavior": "External media tool arguments cannot be shell-injected.",
+      "donors": [
+        "android_ffmpeg_compiler",
+        "android_ffmpeg_test"
+      ],
+      "canonical_behavior": "Go sends structured argument arrays to platform executor and never builds shell command strings in domain layer.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-60",
+      "test_id": "fixture:xgo-cap-ffmpeg-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-FFMPEG-003",
+      "area": "ffmpeg",
+      "behavior": "FFmpeg job state/recovery is engine-owned while host launches trusted runtime.",
+      "donors": [
+        "android_media_dispatcher",
+        "desktop_ffmpeg_service"
+      ],
+      "canonical_behavior": "Go persists external tool job and handles progress/cancel/crash/restart via platform request/reply.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-61",
+      "test_id": "fixture:xgo-cap-ffmpeg-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-FFMPEG-004",
+      "area": "ffmpeg",
+      "behavior": "FFprobe-style output verification precedes publication.",
+      "donors": [
+        "android_ffmpeg_verifier",
+        "desktop_ffmpeg_service"
+      ],
+      "canonical_behavior": "Go validates container/streams/duration expectations before creating verified Artifact.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-61",
+      "test_id": "fixture:xgo-cap-ffmpeg-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OPS-001",
+      "area": "settings",
+      "behavior": "Shared engine settings are separated from host/UI preferences.",
+      "donors": [
+        "desktop_bandwidth_profile",
+        "desktop_proxy_settings",
+        "android_queue_intelligence"
+      ],
+      "canonical_behavior": "Go settings schema owns retry/connections/backend/bandwidth/queue/network/media/retention only.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-62",
+      "test_id": "fixture:xgo-cap-ops-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OPS-002",
+      "area": "secrets",
+      "behavior": "Persistent engine state stores secret references instead of ordinary plaintext credentials where possible.",
+      "donors": [
+        "android_request_security_guard",
+        "desktop_download_request"
+      ],
+      "canonical_behavior": "Go resolves SecretRef via platform broker and redacts before persistence/export.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-63",
+      "test_id": "fixture:xgo-cap-ops-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OPS-003",
+      "area": "diagnostics",
+      "behavior": "Structured diagnostics correlate operation/download/attempt/subsystem/stage.",
+      "donors": [
+        "android_completion_verification",
+        "android_media_dispatcher",
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "Go emits bounded structured diagnostic events with typed failure and safe context.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-64",
+      "test_id": "fixture:xgo-cap-ops-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OPS-004",
+      "area": "diagnostics",
+      "behavior": "Verbose diagnostics remain bounded and structurally redacted.",
+      "donors": [
+        "android_media_security",
+        "desktop_browser_security_test"
+      ],
+      "canonical_behavior": "Go applies redaction before persistence/export and enforces count/byte/age limits.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-64",
+      "test_id": "fixture:xgo-cap-ops-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-OPS-005",
+      "area": "import",
+      "behavior": "Legacy imports are journaled, idempotent and restart-safe.",
+      "donors": [
+        "android_database",
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "Go import framework records source/version/hash/status and never requires permanent dual-write.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-65",
+      "test_id": "fixture:xgo-cap-ops-005",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ANDROID-001",
+      "area": "android",
+      "behavior": "Android packages the Go core as versioned shared library and narrow JNI bridge.",
+      "donors": [
+        "android_download_models"
+      ],
+      "canonical_behavior": "Android host owns ABI lifecycle only; domain decisions remain in Go.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-66",
+      "test_id": "fixture:xgo-cap-android-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ANDROID-002",
+      "area": "android",
+      "behavior": "One EngineService owns the Go engine across UI recreation/process lifecycle.",
+      "donors": [
+        "android_startup_recovery",
+        "android_queue_coordinator"
+      ],
+      "canonical_behavior": "Android UI/services bind to one engine instance and recovery runs after process restart.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-68",
+      "test_id": "fixture:xgo-cap-android-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ANDROID-003",
+      "area": "android",
+      "behavior": "SAF/MediaStore/ContentResolver implement publication platform request with durable receipt.",
+      "donors": [
+        "android_destination_writer",
+        "android_publication_safety"
+      ],
+      "canonical_behavior": "Android broker performs physical commit while Go publication saga remains authoritative.",
+      "donor_strategy": "android_led",
+      "target_overlay": "XGO-69",
+      "test_id": "fixture:xgo-cap-android-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ANDROID-004",
+      "area": "android",
+      "behavior": "WorkManager/FGS/UIDT provide execution opportunity but not scheduler policy.",
+      "donors": [
+        "android_queue_coordinator",
+        "android_startup_recovery"
+      ],
+      "canonical_behavior": "Android wakes/hosts Go; retry/eligibility decisions are not duplicated in Kotlin.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-71",
+      "test_id": "fixture:xgo-cap-android-004",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-ANDROID-005",
+      "area": "android",
+      "behavior": "Legacy Room engine state imports once into Go without dual-write.",
+      "donors": [
+        "android_entities",
+        "android_database",
+        "android_download_dao"
+      ],
+      "canonical_behavior": "Android importer maps supported legacy rows into versioned Go import package then stops authoritative Room writes.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-74",
+      "test_id": "fixture:xgo-cap-android-005",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DESKTOP-001",
+      "area": "desktop",
+      "behavior": "Desktop loads same versioned Go engine through P/Invoke.",
+      "donors": [
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "Desktop bridge owns ABI lifecycle only and exposes Go projections to Avalonia.",
+      "donor_strategy": "new_design",
+      "target_overlay": "XGO-76",
+      "test_id": "fixture:xgo-cap-desktop-001",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DESKTOP-002",
+      "area": "desktop",
+      "behavior": "Filesystem publication implements same idempotent publication saga.",
+      "donors": [
+        "desktop_download_manager"
+      ],
+      "canonical_behavior": "Desktop broker performs rename/replace/collision handling and returns durable result identity to Go.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-77",
+      "test_id": "fixture:xgo-cap-desktop-002",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DESKTOP-003",
+      "area": "desktop",
+      "behavior": "Desktop system proxy/PAC/secrets/wakeup services answer Go platform requests.",
+      "donors": [
+        "desktop_proxy_settings",
+        "desktop_download_schedule"
+      ],
+      "canonical_behavior": "Desktop host executes OS mechanisms without recreating retry/scheduler policy.",
+      "donor_strategy": "merged",
+      "target_overlay": "XGO-78",
+      "test_id": "fixture:xgo-cap-desktop-003",
+      "status": "PLANNED"
+    },
+    {
+      "id": "XGO-CAP-DESKTOP-004",
+      "area": "desktop",
+      "behavior": "Legacy C# transfer/media engines are deleted after UI reconnection.",
+      "donors": [
+        "desktop_download_manager",
+        "desktop_hls_downloader",
+        "desktop_dash_downloader"
+      ],
+      "canonical_behavior": "Architecture scan proves no normal execution bypasses Go authoritative engine.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-80",
+      "test_id": "fixture:xgo-cap-desktop-004",
+      "status": "PLANNED"
+    }
+  ]
+}
