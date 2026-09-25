@@ -110,3 +110,14 @@ func (u TransportURL) String() string                 { return u.canonical }
 func (u TransportURL) Origin() Origin                 { return u.origin }
 func (u TransportURL) IsZero() bool                   { return u.canonical == "" }
 func (u TransportURL) SameOrigin(v TransportURL) bool { return u.origin == v.origin }
+
+// MustOrigin returns the canonical origin for an already-validated transport URL.
+// Invalid input returns the zero Origin and is intended only for internal call sites
+// that have already passed ParseTransport.
+func MustOrigin(raw string) Origin {
+	t, err := ParseTransport(raw)
+	if err != nil {
+		return Origin{}
+	}
+	return t.Origin()
+}

@@ -13,14 +13,33 @@
     "android_security_guard_test"
   ],
   "expected": {
+    "cross_origin_credentials": "stripped",
+    "diagnostics": "query strings redacted",
+    "https_to_http": "platform cleartext policy plus exact credential approval when sensitive",
     "invariants": [
-      "Redirect handling is a security state machine with loop/count and scheme downgrade checks."
-    ]
+      "Every hop is normalized and route-evaluated again.",
+      "Redirect method/body behavior is explicit and bounded.",
+      "Credential forwarding is recomputed for the destination."
+    ],
+    "loop": "rejected",
+    "post_302": "GET without body",
+    "post_307_one_shot": "rejected",
+    "public_to_private": "fresh approval required",
+    "same_origin_credentials": "scoped-only"
   },
   "fixture_id": "xgo-cap-security-005",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Every redirect repeats URL, route, cleartext and credential policy."
+    "cases": [
+      "same_origin",
+      "cross_origin",
+      "public_to_private",
+      "https_to_http",
+      "post_302",
+      "post_307_one_shot",
+      "loop",
+      "credential_leak_attempt",
+      "mirror_redirect"
+    ]
   },
   "schema_version": 1
 }

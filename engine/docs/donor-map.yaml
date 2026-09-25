@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "donor_root_default": "../xdm",
+  "donor_root_default": "~/Code/xdm",
   "selection_policy": "Primary implementation and contract-test donors selected to pin migration semantics; this is a behavioral fingerprint, not a full repository archive hash.",
   "aggregate_sha256": "e1170e288c4ddbcd1c9e13c2a7a05416fbf0b4d08752c6657168c25a7176e6dc",
   "entries": [

@@ -14,20 +14,28 @@
   ],
   "expected": {
     "dial_127_0_0_1": false,
-    "dial_allowed_addresses": [
-      "203.0.113.10"
+    "dial_sequence": [
+      "8.8.8.8",
+      "1.1.1.1"
     ],
+    "http_host": "origin.test",
     "invariants": [
-      "Actual dial candidates are restricted to the validated address set."
-    ]
+      "The resolver is consulted once for a target.",
+      "The dial callback receives literal approved IP endpoints only.",
+      "Transport re-resolution cannot introduce a new address after route validation."
+    ],
+    "tls_server_name": "origin.test"
   },
   "fixture_id": "xgo-cap-security-004",
   "input": {
-    "transport_reresolution": [
-      "127.0.0.1"
+    "first_candidate_failure": true,
+    "resolution": [
+      "8.8.8.8",
+      "1.1.1.1"
     ],
-    "validated_addresses": [
-      "203.0.113.10"
+    "target": "https://origin.test/file",
+    "transport_reresolution_attempt": [
+      "127.0.0.1"
     ]
   },
   "schema_version": 1

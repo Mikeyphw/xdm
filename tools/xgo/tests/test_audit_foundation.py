@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
+import tomllib
 import subprocess
 import tempfile
 import unittest
@@ -26,6 +28,42 @@ class FoundationAuditTests(unittest.TestCase):
         subprocess.run(["git", "-C", str(root), "config", "user.name", "XGO Test"], check=True)
         subprocess.run(["git", "-C", str(root), "add", "."], check=True)
         subprocess.run(["git", "-C", str(root), "commit", "-qm", "fixture"], check=True)
+
+
+    def test_donor_root_resolution_ignores_transaction_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            donor = root / "donor"
+            donor.mkdir()
+            mapping = root / "map.yaml"
+            mapping.write_text(json.dumps({
+                "schema_version": 1,
+                "donor_root_default": str(donor),
+                "entries": [],
+            }))
+            transaction = root / ".local" / "share" / "devtool" / "transactions" / "repo" / "tx"
+            transaction.mkdir(parents=True)
+            previous = Path.cwd()
+            previous_override = os.environ.pop("XGO_DONOR_ROOT", None)
+            try:
+                os.chdir(transaction)
+                resolved = AUDIT._resolve_donor_root("", mapping)
+            finally:
+                os.chdir(previous)
+                if previous_override is not None:
+                    os.environ["XGO_DONOR_ROOT"] = previous_override
+            self.assertEqual(resolved, donor.resolve())
+
+    def test_checked_in_donor_job_has_no_transaction_relative_override(self) -> None:
+        repo_root = Path(__file__).resolve().parents[3]
+        with (repo_root / ".devtool.toml").open("rb") as fh:
+            config = tomllib.load(fh)
+        command = config["targets"]["xgo_foundation"]["jobs"]["donor_audit"]["command"]
+        self.assertNotIn("--donor-root", command)
+        donor_map = json.loads((repo_root / "engine/docs/donor-map.yaml").read_text())
+        default = str(donor_map.get("donor_root_default") or "")
+        self.assertTrue(default.startswith("~/") or Path(default).is_absolute())
+        self.assertNotIn("..", Path(default).parts)
 
     def test_donor_audit_accepts_clean_pinned_git_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as td:

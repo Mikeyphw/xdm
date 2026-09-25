@@ -874,7 +874,7 @@
         "XGO-CAP-PROXY-001"
       ],
       "category": "proxy",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_proxy_settings",
         "desktop_download_request"
@@ -1173,7 +1173,7 @@
         "XGO-CAP-SECURITY-005"
       ],
       "category": "security",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_request_security_guard",
         "android_security_guard_test"
@@ -1186,7 +1186,7 @@
         "XGO-CAP-SECURITY-006"
       ],
       "category": "security",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_request_security_guard"
       ],

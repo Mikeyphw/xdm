@@ -13,14 +13,24 @@
     "desktop_download_request"
   ],
   "expected": {
+    "invalid_or_missing_resolution": "fail closed",
     "invariants": [
-      "Go owns proxy intent; platform may resolve PAC/system settings and returns explicit route decision."
-    ]
+      "PAC execution may remain host-side but Go consumes an explicit resolved route.",
+      "Proxy credentials are a distinct credential class from origin credentials."
+    ],
+    "proxy_credentials": "never forwarded to origin",
+    "system_and_pac": "platform returns explicit direct/http/socks decision"
   },
   "fixture_id": "xgo-cap-proxy-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Canonical proxy model covers direct, HTTP, SOCKS, system and PAC-resolved routing."
+    "authenticated_proxy": true,
+    "modes": [
+      "direct",
+      "http",
+      "socks",
+      "system",
+      "pac_resolved"
+    ]
   },
   "schema_version": 1
 }

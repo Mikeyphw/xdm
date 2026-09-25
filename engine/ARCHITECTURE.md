@@ -134,3 +134,31 @@ Network execution begins from a canonical `request.NetworkIntent`, not from host
 Persisted non-secret headers pass an engine-owned admission policy. CR/LF injection, transport-owned fields (`Host`, `Content-Length`, connection framing), and raw sensitive credential headers are rejected. Trusted engine requests may preserve safe custom headers; external handoffs use a conservative allowlist. Authorization, cookie and proxy authorization are distinct credential-reference kinds with explicit origin/resource/path scope, and destination forwarding recomputes scope instead of copying credential state through redirects.
 
 Resolved addresses are classified as public, private, loopback, link-local, reserved, multicast or unspecified after IPv4-mapped IPv6 normalization. Any non-public candidate requires a durable scoped approval bound to the exact RequestID, logical resource, target URL scope and address class. Approval is never a global `allow private network` boolean and cannot be reused for a mirror, redirect, another request or another logical resource. XGO-23 will bind this approved candidate set to the actual dial path.
+
+## Bound dial, redirect and platform transport security (XGO-23..25)
+
+DNS approval is inseparable from the actual socket endpoint. `security/dial`
+resolves a hostname once, passes that exact candidate set through route policy,
+and gives the connector literal IP:port endpoints only. The transport is never
+allowed to re-resolve the hostname after approval. The original hostname is
+retained separately as HTTP Host/TLS server name/certificate identity. Candidate
+fallback is limited to the approved set; resolver host mismatch, mixed
+unapproved routes, or rebinding attempts fail before any socket is opened.
+
+Redirects are an engine-owned security state machine. Every hop canonicalizes
+the target, re-runs route evaluation, recomputes scoped credential forwarding,
+re-checks cleartext policy, applies explicit HTTP method/body replay semantics,
+and enforces bounded loop/count state. Cross-origin credentials are stripped by
+scope rather than copied and then removed heuristically. HTTPS-to-HTTP and any
+other cleartext hop require an explicit platform policy result; sensitive query
+material or credential references additionally require exact-target cleartext
+credential approval. Redirect diagnostics remove query strings and fragments.
+
+Platform networking policy is explicit rather than inferred from the Go host.
+`security/transportpolicy` requests cleartext and system/PAC proxy decisions via
+the typed platform broker. Missing or malformed replies fail closed. The proxy
+model distinguishes direct, HTTP, SOCKS, system and host-resolved PAC decisions;
+proxy credential references are a separate class and are never part of origin
+credential forwarding. TLS planning preserves the original hostname, requires
+TLS 1.2 or newer, and makes the root-store strategy explicit (`platform_roots`,
+`bundled_roots`, or `custom_roots`) without weakening engine-level policy.

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -13,8 +16,11 @@ import (
 	"github.com/subhra74/xdm/engine/domain/request"
 	"github.com/subhra74/xdm/engine/domain/resource"
 	"github.com/subhra74/xdm/engine/security/credentials"
+	"github.com/subhra74/xdm/engine/security/dial"
 	"github.com/subhra74/xdm/engine/security/header"
+	redirectpolicy "github.com/subhra74/xdm/engine/security/redirect"
 	"github.com/subhra74/xdm/engine/security/route"
+	"github.com/subhra74/xdm/engine/security/transportpolicy"
 )
 
 type report struct {
@@ -239,8 +245,158 @@ func auditRoute(repoRoot string) error {
 	return nil
 }
 
+type auditResolver struct{ resolution dial.Resolution }
+
+func (r auditResolver) Resolve(context.Context, string) (dial.Resolution, error) {
+	return r.resolution, nil
+}
+
+func auditDNSDial(repoRoot string) error {
+	if err := requireFixture(filepath.Join(repoRoot, "engine/testdata/security/xgo-cap-security-004.json"), "xgo-cap-security-004", "XGO-CAP-SECURITY-004"); err != nil {
+		return err
+	}
+	if err := requireImplemented(filepath.Join(repoRoot, "engine/docs/capability-ledger.yaml"), "XGO-CAP-SECURITY-004"); err != nil {
+		return err
+	}
+	target := route.Target{RequestID: mustReq(), Resource: mustRes(), URL: "https://origin.test/file"}
+	calls := []string{}
+	d := dial.BoundDialer{
+		Resolver: auditResolver{dial.Resolution{Host: "origin.test", Candidates: []netip.Addr{netip.MustParseAddr("8.8.8.8"), netip.MustParseAddr("1.1.1.1")}, Source: "audit"}},
+		DialContext: func(_ context.Context, _ string, address string) (net.Conn, error) {
+			calls = append(calls, address)
+			if len(calls) == 1 {
+				return nil, fmt.Errorf("first candidate failed")
+			}
+			a, b := net.Pipe()
+			_ = b.Close()
+			return a, nil
+		},
+	}
+	_, binding, err := d.Dial(context.Background(), target, nil)
+	if err != nil {
+		return err
+	}
+	if len(calls) != 2 || binding.TLSServerName != "origin.test" || binding.OriginalHost != "origin.test" || binding.Connected != netip.MustParseAddr("1.1.1.1") {
+		return fmt.Errorf("dns-to-dial binding mismatch: %+v calls=%v", binding, calls)
+	}
+	blocked := false
+	d.Resolver = auditResolver{dial.Resolution{Host: "origin.test", Candidates: []netip.Addr{netip.MustParseAddr("127.0.0.1")}, Source: "rebind"}}
+	d.DialContext = func(context.Context, string, string) (net.Conn, error) { blocked = true; return nil, nil }
+	if _, _, err := d.Dial(context.Background(), target, nil); err == nil || blocked {
+		return fmt.Errorf("rebinding/private candidate reached dial path")
+	}
+	return nil
+}
+
+func auditRedirect(repoRoot string) error {
+	if err := requireFixture(filepath.Join(repoRoot, "engine/testdata/security/xgo-cap-security-005.json"), "xgo-cap-security-005", "XGO-CAP-SECURITY-005"); err != nil {
+		return err
+	}
+	if err := requireImplemented(filepath.Join(repoRoot, "engine/docs/capability-ledger.yaml"), "XGO-CAP-SECURITY-005"); err != nil {
+		return err
+	}
+	res := mustRes()
+	body, _ := request.NewBodyReference("body/redirect-audit")
+	in, err := request.NewNetworkIntent(request.NetworkIntent{TransportURL: "https://a.test/start", Resource: res, Method: "POST", Body: &request.Body{Ref: body, Replayability: request.BodyReplayable}, Credentials: []request.CredentialReference{{Kind: request.CredentialAuthorization, Ref: mustSecret("secret/audit-auth"), Scope: request.CredentialScope{Origin: "https://a.test", Resource: res}}}})
+	if err != nil {
+		return err
+	}
+	s, err := redirectpolicy.Next(mustReq(), res, in, redirectpolicy.Chain{}, 302, "/same", []netip.Addr{netip.MustParseAddr("8.8.8.8")}, nil, transportpolicy.CleartextDecision{})
+	if err != nil || s.Method != "GET" || len(s.Credentials) != 1 {
+		return fmt.Errorf("same-origin redirect failed: %+v %v", s, err)
+	}
+	s, err = redirectpolicy.Next(mustReq(), res, in, redirectpolicy.Chain{}, 302, "https://b.test/cross", []netip.Addr{netip.MustParseAddr("8.8.4.4")}, nil, transportpolicy.CleartextDecision{})
+	if err != nil || len(s.Credentials) != 0 || !s.CrossOrigin {
+		return fmt.Errorf("cross-origin strip failed: %+v %v", s, err)
+	}
+	if _, err := redirectpolicy.Next(mustReq(), res, in, redirectpolicy.Chain{}, 302, "https://private.test/x", []netip.Addr{netip.MustParseAddr("10.0.0.2")}, nil, transportpolicy.CleartextDecision{}); err == nil {
+		return fmt.Errorf("public-to-private redirect accepted")
+	}
+	if _, err := redirectpolicy.Next(mustReq(), res, in, redirectpolicy.Chain{Visited: []string{"https://a.test/same"}}, 302, "/same", []netip.Addr{netip.MustParseAddr("8.8.8.8")}, nil, transportpolicy.CleartextDecision{}); err == nil {
+		return fmt.Errorf("redirect loop accepted")
+	}
+	return nil
+}
+
+func auditTLSProxy(repoRoot string) error {
+	for _, item := range []struct{ path, fid, cid string }{
+		{"engine/testdata/security/xgo-cap-security-006.json", "xgo-cap-security-006", "XGO-CAP-SECURITY-006"},
+		{"engine/testdata/proxy/xgo-cap-proxy-001.json", "xgo-cap-proxy-001", "XGO-CAP-PROXY-001"},
+	} {
+		if err := requireFixture(filepath.Join(repoRoot, item.path), item.fid, item.cid); err != nil {
+			return err
+		}
+	}
+	if err := requireImplemented(filepath.Join(repoRoot, "engine/docs/capability-ledger.yaml"), "XGO-CAP-SECURITY-006", "XGO-CAP-PROXY-001"); err != nil {
+		return err
+	}
+	clearURL := "http://a.test/file"
+	if err := transportpolicy.CheckCleartext(clearURL, false, transportpolicy.CleartextDecision{}); err == nil {
+		return fmt.Errorf("missing platform cleartext policy accepted")
+	}
+	if err := transportpolicy.CheckCleartext(clearURL, false, transportpolicy.CleartextDecision{Known: true, Allowed: true, Host: "a.test"}); err != nil {
+		return err
+	}
+	if err := transportpolicy.CheckCleartext(clearURL, true, transportpolicy.CleartextDecision{Known: true, Allowed: true, Host: "a.test"}); err == nil {
+		return fmt.Errorf("cleartext credentials accepted without exact approval")
+	}
+	proxySecret := mustSecret("secret/proxy-audit")
+	p, err := transportpolicy.ResolveProxy(transportpolicy.ProxyIntent{Mode: transportpolicy.ProxyHTTP, Endpoint: "http://proxy.test:8080", CredentialRefs: []request.CredentialReference{{Kind: request.CredentialProxyAuthorization, Ref: proxySecret}}}, nil)
+	if err != nil || p.Mode != transportpolicy.ProxyHTTP {
+		return fmt.Errorf("proxy resolution: %+v %v", p, err)
+	}
+	if _, err := transportpolicy.ResolveProxy(transportpolicy.ProxyIntent{Mode: transportpolicy.ProxySystem}, nil); err == nil {
+		return fmt.Errorf("unresolved system proxy accepted")
+	}
+	tlsPlan, err := transportpolicy.PlanTLS("https://a.test/file", transportpolicy.PlatformRoots)
+	if err != nil || tlsPlan.ServerName != "a.test" || tlsPlan.MinVersion == 0 {
+		return fmt.Errorf("tls plan: %+v %v", tlsPlan, err)
+	}
+	return nil
+}
+
+func auditGate(repoRoot string) error {
+	if err := auditDNSDial(repoRoot); err != nil {
+		return err
+	}
+	if err := auditRedirect(repoRoot); err != nil {
+		return err
+	}
+	if err := auditTLSProxy(repoRoot); err != nil {
+		return err
+	}
+	sentinel := "XGO_PLANTED_SECRET_9f93a73b"
+	diag := redirectpolicy.DiagnosticURL("https://a.test/file?access_token=" + sentinel)
+	if strings.Contains(diag, sentinel) {
+		return fmt.Errorf("redirect diagnostics leaked planted secret")
+	}
+	headers := http.Header{"Authorization": []string{"Bearer " + sentinel}, "Accept": []string{"application/octet-stream"}}
+	safe := header.DiagnosticSafe(headers, nil)
+	encoded, _ := json.Marshal(safe)
+	if strings.Contains(string(encoded), sentinel) {
+		return fmt.Errorf("header diagnostics leaked planted secret")
+	}
+	reportDir := filepath.Join(repoRoot, ".devtool/reports/xgo/security")
+	if err := filepath.Walk(reportDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil || info == nil || info.IsDir() {
+			return walkErr
+		}
+		b, e := os.ReadFile(path)
+		if e != nil {
+			return e
+		}
+		if strings.Contains(string(b), sentinel) {
+			return fmt.Errorf("planted secret found in report %s", path)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
-	mode := flag.String("mode", "", "request|header|route")
+	mode := flag.String("mode", "", "request|header|route|dns|redirect|tlsproxy|gate")
 	repoRoot := flag.String("repo-root", ".", "repository root")
 	out := flag.String("output", "", "report path")
 	flag.Parse()
@@ -262,6 +418,26 @@ func main() {
 		fixtures = []string{"xgo-cap-security-003"}
 		capabilities = []string{"XGO-CAP-SECURITY-003"}
 		checks = []string{"representative IPv4/IPv6 classification", "IPv4-mapped IPv6", "mixed candidates", "scoped approval", "mirror/redirect reevaluation"}
+	case "dns":
+		err = auditDNSDial(*repoRoot)
+		fixtures = []string{"xgo-cap-security-004"}
+		capabilities = []string{"XGO-CAP-SECURITY-004"}
+		checks = []string{"resolver candidate binding", "literal IP dial endpoints", "approved candidate retry", "rebinding denial", "original hostname preserved for Host/SNI"}
+	case "redirect":
+		err = auditRedirect(*repoRoot)
+		fixtures = []string{"xgo-cap-security-005"}
+		capabilities = []string{"XGO-CAP-SECURITY-005"}
+		checks = []string{"same-origin forwarding", "cross-origin stripping", "public-to-private denial", "POST redirect semantics", "loop/count limits", "scheme downgrade reauthorization"}
+	case "tlsproxy":
+		err = auditTLSProxy(*repoRoot)
+		fixtures = []string{"xgo-cap-security-006", "xgo-cap-proxy-001"}
+		capabilities = []string{"XGO-CAP-SECURITY-006", "XGO-CAP-PROXY-001"}
+		checks = []string{"cleartext platform policy", "cleartext credential approval", "proxy model", "proxy/origin credential separation", "TLS hostname/root strategy", "missing platform decision fails closed"}
+	case "gate":
+		err = auditGate(*repoRoot)
+		fixtures = []string{"xgo-cap-security-004", "xgo-cap-security-005", "xgo-cap-security-006", "xgo-cap-proxy-001"}
+		capabilities = []string{"XGO-CAP-SECURITY-004", "XGO-CAP-SECURITY-005", "XGO-CAP-SECURITY-006", "XGO-CAP-PROXY-001"}
+		checks = []string{"adversarial DNS/redirect/private-route corpus", "cleartext/proxy/TLS policy", "planted-secret diagnostic redaction", "report secret scan"}
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}

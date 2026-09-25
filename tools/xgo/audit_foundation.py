@@ -98,6 +98,21 @@ def _write_report(path: Path, payload: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _resolve_donor_root(explicit: str, map_path: Path) -> Path:
+    override = os.environ.get("XGO_DONOR_ROOT", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+    if explicit.strip():
+        return Path(explicit).expanduser().resolve()
+    document = _load_json_yaml(map_path)
+    configured = str(document.get("donor_root_default") or "").strip()
+    if not configured:
+        raise AuditError(
+            "donor root is not configured; set XGO_DONOR_ROOT or donor_root_default"
+        )
+    return Path(configured).expanduser().resolve()
+
+
 def audit_donor(donor_root: Path, map_path: Path, output: Path) -> dict[str, Any]:
     donor_root = donor_root.expanduser().resolve()
     repo_root = Path.cwd().resolve()
@@ -259,7 +274,7 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     donor = sub.add_parser("donor", help="verify selected donor files against the untouched donor checkout")
-    donor.add_argument("--donor-root", default="../xdm")
+    donor.add_argument("--donor-root", default="")
     donor.add_argument("--map", dest="map_path", default="engine/docs/donor-map.yaml")
     donor.add_argument("--output", default=".devtool/reports/xgo/foundation/donor-audit.json")
 
@@ -274,7 +289,9 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "donor":
-            report = audit_donor(Path(args.donor_root), Path(args.map_path), Path(args.output))
+            map_path = Path(args.map_path)
+            donor_root = _resolve_donor_root(str(args.donor_root), map_path)
+            report = audit_donor(donor_root, map_path, Path(args.output))
             print(f"XGO donor audit PASS: {report['entry_count']} files, {report['aggregate_sha256']}")
         else:
             report = audit_ledger(Path(args.map_path), Path(args.ledger_path), Path(args.output))

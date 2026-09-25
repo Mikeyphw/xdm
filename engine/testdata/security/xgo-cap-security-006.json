@@ -12,14 +12,29 @@
     "android_request_security_guard"
   ],
   "expected": {
+    "cleartext_allowed": "allowed",
+    "cleartext_credentials": "exact target approval required",
+    "cleartext_denied": "blocked",
+    "credential_bearing_query": "treated as sensitive",
     "invariants": [
-      "Go requests platform cleartext allowance when required and fails safely if policy cannot be established."
-    ]
+      "Platform cleartext decision is explicit.",
+      "Secure transport does not require a cleartext policy reply.",
+      "TLS server identity remains the original hostname."
+    ],
+    "minimum_tls": "1.2",
+    "missing_platform_reply": "fail closed",
+    "tls_hostname": "original hostname"
   },
   "fixture_id": "xgo-cap-security-006",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Platform cleartext policy is preserved when networking moves to Go."
+    "cases": [
+      "cleartext_denied",
+      "cleartext_allowed",
+      "cleartext_credentials",
+      "credential_bearing_query",
+      "missing_platform_reply",
+      "tls_hostname"
+    ]
   },
   "schema_version": 1
 }

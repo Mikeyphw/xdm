@@ -15,7 +15,7 @@ def main()->int:
     run(['python3','tools/xgo/audit_fixtures.py','lint','--ledger','engine/docs/capability-ledger.yaml','--map','engine/docs/donor-map.yaml','--registry','engine/testdata/fixture-registry.json','--output',str(fixture_report)],root)
     ledger=json.loads((root/'engine/docs/capability-ledger.yaml').read_text());registry=json.loads((root/'engine/testdata/fixture-registry.json').read_text())
     caps={c['id']:c for c in ledger['capabilities']};fixtures={f['fixture_id']:f for f in registry['fixtures']}
-    expected={'XGO-CAP-REQUEST-001':'XGO-20','XGO-CAP-SECURITY-001':'XGO-21','XGO-CAP-SECURITY-002':'XGO-21','XGO-CAP-SECURITY-003':'XGO-22'}
+    expected={'XGO-CAP-REQUEST-001':'XGO-20','XGO-CAP-SECURITY-001':'XGO-21','XGO-CAP-SECURITY-002':'XGO-21','XGO-CAP-SECURITY-003':'XGO-22','XGO-CAP-SECURITY-004':'XGO-23','XGO-CAP-SECURITY-005':'XGO-24','XGO-CAP-SECURITY-006':'XGO-25','XGO-CAP-PROXY-001':'XGO-25'}
     for cap_id,overlay in expected.items():
         cap=caps.get(cap_id)
         if not cap: raise SystemExit(f'missing capability {cap_id}')

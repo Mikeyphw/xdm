@@ -419,8 +419,6 @@ command = [
   "python3",
   "tools/xgo/audit_foundation.py",
   "donor",
-  "--donor-root",
-  "../xdm",
   "--map",
   "engine/docs/donor-map.yaml",
   "--output",
@@ -1066,6 +1064,84 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/security/route-matrix.json"]
 
+[targets.xgo_security.jobs.dns_dial_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-security-audit",
+  "--mode", "dns",
+  "--output", ".devtool/reports/xgo/security/dns-dial-lab.json",
+]
+inputs = [
+  "engine/security/dial/**",
+  "engine/security/route/**",
+  "engine/security/urlpolicy/**",
+  "engine/cmd/xgo-security-audit/**",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/security/xgo-cap-security-004.json",
+]
+outputs = [".devtool/reports/xgo/security/dns-dial-lab.json"]
+
+[targets.xgo_security.jobs.redirect_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-security-audit",
+  "--mode", "redirect",
+  "--output", ".devtool/reports/xgo/security/redirect-lab.json",
+]
+inputs = [
+  "engine/domain/request/**",
+  "engine/security/credentials/**",
+  "engine/security/redirect/**",
+  "engine/security/route/**",
+  "engine/security/transportpolicy/**",
+  "engine/cmd/xgo-security-audit/**",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/security/xgo-cap-security-005.json",
+]
+outputs = [".devtool/reports/xgo/security/redirect-lab.json"]
+
+[targets.xgo_security.jobs.tls_proxy_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-security-audit",
+  "--mode", "tlsproxy",
+  "--output", ".devtool/reports/xgo/security/tls-proxy-lab.json",
+]
+inputs = [
+  "engine/domain/request/**",
+  "engine/runtime/platform/**",
+  "engine/security/credentials/**",
+  "engine/security/transportpolicy/**",
+  "engine/cmd/xgo-security-audit/**",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/security/xgo-cap-security-006.json",
+  "engine/testdata/proxy/xgo-cap-proxy-001.json",
+]
+outputs = [".devtool/reports/xgo/security/tls-proxy-lab.json"]
+
+[targets.xgo_security.jobs.network_security_gate]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-security-audit",
+  "--mode", "gate",
+  "--output", ".devtool/reports/xgo/security/network-security-gate.json",
+]
+inputs = [
+  "engine/security/**",
+  "engine/domain/request/**",
+  "engine/runtime/platform/**",
+  "engine/cmd/xgo-security-audit/**",
+  "engine/docs/capability-ledger.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/security/**",
+  "engine/testdata/proxy/xgo-cap-proxy-001.json",
+  ".devtool/reports/xgo/security/**",
+]
+outputs = [".devtool/reports/xgo/security/network-security-gate.json"]
+
 [targets.xgo_security.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1073,6 +1149,10 @@ validate = [
   { id = "request_fixture_diff", ref = "job:request_fixture_diff", depends_on = ["security_contract_audit"] },
   { id = "header_security_matrix", ref = "job:header_security_matrix", depends_on = ["request_fixture_diff"] },
   { id = "route_matrix", ref = "job:route_matrix", depends_on = ["header_security_matrix"] },
+  { id = "dns_dial_lab", ref = "job:dns_dial_lab", depends_on = ["route_matrix"] },
+  { id = "redirect_lab", ref = "job:redirect_lab", depends_on = ["dns_dial_lab"] },
+  { id = "tls_proxy_lab", ref = "job:tls_proxy_lab", depends_on = ["redirect_lab"] },
+  { id = "network_security_gate", ref = "job:network_security_gate", depends_on = ["tls_proxy_lab"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
