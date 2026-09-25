@@ -1,0 +1,25 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FTP-001"
+  ],
+  "category": "ftp",
+  "derivation": {
+    "behavior": "FTP/FTPS downloads use canonical attempt/checkpoint/verification lifecycle.",
+    "canonical_behavior": "Go FTP adapter reuses limiter, retry taxonomy, staging, verification and publication infrastructure.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_ftp"
+  ],
+  "expected": {
+    "invariants": [
+      "Go FTP adapter reuses limiter, retry taxonomy, staging, verification and publication infrastructure."
+    ]
+  },
+  "fixture_id": "xgo-cap-ftp-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "FTP/FTPS downloads use canonical attempt/checkpoint/verification lifecycle."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FFMPEG-003"
+  ],
+  "category": "ffmpeg",
+  "derivation": {
+    "behavior": "FFmpeg job state/recovery is engine-owned while host launches trusted runtime.",
+    "canonical_behavior": "Go persists external tool job and handles progress/cancel/crash/restart via platform request/reply.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_media_dispatcher",
+    "desktop_ffmpeg_service"
+  ],
+  "expected": {
+    "invariants": [
+      "Go persists external tool job and handles progress/cancel/crash/restart via platform request/reply."
+    ]
+  },
+  "fixture_id": "xgo-cap-ffmpeg-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "FFmpeg job state/recovery is engine-owned while host launches trusted runtime."
+  },
+  "schema_version": 1
+}

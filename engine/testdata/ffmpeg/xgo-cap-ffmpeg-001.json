@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FFMPEG-001"
+  ],
+  "category": "ffmpeg",
+  "derivation": {
+    "behavior": "Post-processing is represented as typed plan, not shell business logic.",
+    "canonical_behavior": "Go plan defines input roles, mapping, copy/transcode mode, output container and verification expectations.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_ffmpeg_compiler",
+    "desktop_ffmpeg_service"
+  ],
+  "expected": {
+    "invariants": [
+      "Go plan defines input roles, mapping, copy/transcode mode, output container and verification expectations."
+    ]
+  },
+  "fixture_id": "xgo-cap-ffmpeg-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Post-processing is represented as typed plan, not shell business logic."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,31 @@
+{
+  "capability_ids": [
+    "XGO-CAP-RETRY-001"
+  ],
+  "category": "retry",
+  "derivation": {
+    "behavior": "Retry policy is typed and persistent, including Retry-After.",
+    "canonical_behavior": "Go computes retry-now/retry-at/hold/terminal from typed failure, replayability, policy and runtime conditions.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_queue_retry_ledger",
+    "desktop_retry_policy",
+    "android_native_http"
+  ],
+  "expected": {
+    "decision": "retry_at",
+    "invariants": [
+      "Retry-After is represented as a durable retry deadline."
+    ],
+    "retry_epoch_ms": 1120000
+  },
+  "fixture_id": "xgo-cap-retry-001",
+  "input": {
+    "attempt": 3,
+    "failure": "RateLimited",
+    "now_epoch_ms": 1000000,
+    "retry_after_seconds": 120
+  },
+  "schema_version": 1
+}

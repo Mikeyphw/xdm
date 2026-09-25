@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SCHED-003"
+  ],
+  "category": "scheduler",
+  "derivation": {
+    "behavior": "Queue arbitration is deterministic and starvation-resistant.",
+    "canonical_behavior": "Go combines priority, fairness, dependencies, capacity, retry deadlines and runtime holds.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_queue_coordinator",
+    "android_queue_intelligence",
+    "desktop_queue_graph"
+  ],
+  "expected": {
+    "invariants": [
+      "Go combines priority, fairness, dependencies, capacity, retry deadlines and runtime holds."
+    ]
+  },
+  "fixture_id": "xgo-cap-sched-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Queue arbitration is deterministic and starvation-resistant."
+  },
+  "schema_version": 1
+}

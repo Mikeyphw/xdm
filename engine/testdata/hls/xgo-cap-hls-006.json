@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HLS-006"
+  ],
+  "category": "hls",
+  "derivation": {
+    "behavior": "Durable HLS VOD execution survives restart with verified fragments.",
+    "canonical_behavior": "Go persists fragment state, AES-128, byte-range/init-map handling and aggregate progress.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_native_hls",
+    "android_hls_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Go persists fragment state, AES-128, byte-range/init-map handling and aggregate progress."
+    ]
+  },
+  "fixture_id": "xgo-cap-hls-006",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Durable HLS VOD execution survives restart with verified fragments."
+  },
+  "schema_version": 1
+}

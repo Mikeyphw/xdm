@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FINALIZE-001"
+  ],
+  "category": "finalization",
+  "derivation": {
+    "behavior": "Verified staging becomes a versioned artifact before publication.",
+    "canonical_behavior": "Go freezes writes, verifies, creates ArtifactGeneration and queues publication without conflating user-visible completion.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_atomic_finalization",
+    "android_completion_verification"
+  ],
+  "expected": {
+    "invariants": [
+      "Go freezes writes, verifies, creates ArtifactGeneration and queues publication without conflating user-visible completion."
+    ]
+  },
+  "fixture_id": "xgo-cap-finalize-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Verified staging becomes a versioned artifact before publication."
+  },
+  "schema_version": 1
+}

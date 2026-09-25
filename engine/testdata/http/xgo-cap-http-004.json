@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HTTP-004"
+  ],
+  "category": "http",
+  "derivation": {
+    "behavior": "Segmented HTTP writes ranges into one preallocated random-access staging artifact.",
+    "canonical_behavior": "Go uses Android-style direct range writes and avoids desktop full-size segment merge for normal HTTP downloads.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_native_http",
+    "android_native_http_test",
+    "desktop_segmented_executor"
+  ],
+  "expected": {
+    "invariants": [
+      "Go uses Android-style direct range writes and avoids desktop full-size segment merge for normal HTTP downloads."
+    ]
+  },
+  "fixture_id": "xgo-cap-http-004",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Segmented HTTP writes ranges into one preallocated random-access staging artifact."
+  },
+  "schema_version": 1
+}

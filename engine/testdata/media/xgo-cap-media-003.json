@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-MEDIA-003"
+  ],
+  "category": "media",
+  "derivation": {
+    "behavior": "Media selection is deterministic over resolution, bitrate, codec, language and track pairing.",
+    "canonical_behavior": "Go returns available choices and explicit selected video/audio/subtitle tracks without UI ranking logic.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "desktop_media_selection",
+    "desktop_media_selection_test",
+    "android_media_dispatcher"
+  ],
+  "expected": {
+    "invariants": [
+      "Go returns available choices and explicit selected video/audio/subtitle tracks without UI ranking logic."
+    ]
+  },
+  "fixture_id": "xgo-cap-media-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Media selection is deterministic over resolution, bitrate, codec, language and track pairing."
+  },
+  "schema_version": 1
+}

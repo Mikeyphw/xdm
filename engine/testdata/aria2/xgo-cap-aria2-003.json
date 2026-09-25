@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ARIA2-003"
+  ],
+  "category": "aria2",
+  "derivation": {
+    "behavior": "Aria2 reconciliation handles daemon restart, missing task and offline completion.",
+    "canonical_behavior": "Go compares DB ownership with daemon runtime/task state and reconciles without stale authority.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_aria2_backend",
+    "android_aria2_contract_test",
+    "desktop_aria2_rpc"
+  ],
+  "expected": {
+    "invariants": [
+      "Go compares DB ownership with daemon runtime/task state and reconciles without stale authority."
+    ]
+  },
+  "fixture_id": "xgo-cap-aria2-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Aria2 reconciliation handles daemon restart, missing task and offline completion."
+  },
+  "schema_version": 1
+}

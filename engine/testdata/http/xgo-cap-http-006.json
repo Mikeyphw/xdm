@@ -1,0 +1,30 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HTTP-006"
+  ],
+  "category": "http",
+  "derivation": {
+    "behavior": "If-Range/validator-aware resume handles 206/200 semantics safely.",
+    "canonical_behavior": "Go resumes only verified ranges and invalidates them when server proves representation changed.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_native_http",
+    "desktop_resume_checkpoint"
+  ],
+  "expected": {
+    "invariants": [
+      "A full 200 response after conditional range cannot append to incompatible partial bytes."
+    ],
+    "restart_representation": true,
+    "reuse_old_partial": false
+  },
+  "fixture_id": "xgo-cap-http-006",
+  "input": {
+    "if_range": "etag-v1",
+    "response_etag": "etag-v2",
+    "response_status": 200,
+    "resume_from": 500
+  },
+  "schema_version": 1
+}

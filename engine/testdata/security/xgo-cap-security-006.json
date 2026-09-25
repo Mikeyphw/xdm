@@ -1,0 +1,25 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SECURITY-006"
+  ],
+  "category": "security",
+  "derivation": {
+    "behavior": "Platform cleartext policy is preserved when networking moves to Go.",
+    "canonical_behavior": "Go requests platform cleartext allowance when required and fails safely if policy cannot be established.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_request_security_guard"
+  ],
+  "expected": {
+    "invariants": [
+      "Go requests platform cleartext allowance when required and fails safely if policy cannot be established."
+    ]
+  },
+  "fixture_id": "xgo-cap-security-006",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Platform cleartext policy is preserved when networking moves to Go."
+  },
+  "schema_version": 1
+}

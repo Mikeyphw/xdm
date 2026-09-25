@@ -1,0 +1,25 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SCHED-006"
+  ],
+  "category": "scheduler",
+  "derivation": {
+    "behavior": "Completion actions are decided once by engine and executed idempotently by host.",
+    "canonical_behavior": "Go emits idempotent platform request only when canonical terminal conditions are met.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_download_schedule"
+  ],
+  "expected": {
+    "invariants": [
+      "Go emits idempotent platform request only when canonical terminal conditions are met."
+    ]
+  },
+  "fixture_id": "xgo-cap-sched-006",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Completion actions are decided once by engine and executed idempotently by host."
+  },
+  "schema_version": 1
+}

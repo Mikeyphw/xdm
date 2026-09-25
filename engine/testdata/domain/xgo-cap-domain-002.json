@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DOMAIN-002"
+  ],
+  "category": "domain",
+  "derivation": {
+    "behavior": "Separate immutable/revisioned request intent from download presentation state.",
+    "canonical_behavior": "Go Request captures transport intent without UI presentation concerns; secrets are represented indirectly.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_download_intake",
+    "desktop_download_request"
+  ],
+  "expected": {
+    "invariants": [
+      "Go Request captures transport intent without UI presentation concerns; secrets are represented indirectly."
+    ]
+  },
+  "fixture_id": "xgo-cap-domain-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Separate immutable/revisioned request intent from download presentation state."
+  },
+  "schema_version": 1
+}

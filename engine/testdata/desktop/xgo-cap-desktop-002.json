@@ -1,0 +1,29 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DESKTOP-002"
+  ],
+  "category": "desktop",
+  "derivation": {
+    "behavior": "Filesystem publication implements same idempotent publication saga.",
+    "canonical_behavior": "Desktop broker performs rename/replace/collision handling and returns durable result identity to Go.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "Desktop filesystem publication implements the same idempotent saga semantics."
+    ],
+    "reconcile_receipt": true,
+    "republish": false
+  },
+  "fixture_id": "xgo-cap-desktop-002",
+  "input": {
+    "platform": "desktop",
+    "process_killed": true,
+    "publication_state": "PLATFORM_COMMITTED",
+    "receipt_id": "desktop-path-receipt"
+  },
+  "schema_version": 1
+}

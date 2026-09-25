@@ -1,0 +1,31 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SECURITY-003"
+  ],
+  "category": "security",
+  "derivation": {
+    "behavior": "Private/loopback/link-local/reserved routes require scoped approval.",
+    "canonical_behavior": "Go classifies resolved IPv4/IPv6 candidates and binds approval to explicit request/resource scope.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_request_security_guard",
+    "android_security_guard_test"
+  ],
+  "expected": {
+    "decision": "reject",
+    "invariants": [
+      "Loopback/private routes require explicit scoped approval."
+    ],
+    "reason": "scoped_private_route_approval_required"
+  },
+  "fixture_id": "xgo-cap-security-003",
+  "input": {
+    "approval": null,
+    "resolved_addresses": [
+      "127.0.0.1"
+    ],
+    "url": "http://example.invalid/file"
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-OWNERSHIP-003"
+  ],
+  "category": "ownership",
+  "derivation": {
+    "behavior": "Backend runtime/session identity prevents stale daemon/task impersonation.",
+    "canonical_behavior": "Backend task identity includes runtime/session provenance and generation, checked during every reconciliation.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_aria2_backend",
+    "android_aria2_contract_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Backend task identity includes runtime/session provenance and generation, checked during every reconciliation."
+    ]
+  },
+  "fixture_id": "xgo-cap-ownership-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Backend runtime/session identity prevents stale daemon/task impersonation."
+  },
+  "schema_version": 1
+}

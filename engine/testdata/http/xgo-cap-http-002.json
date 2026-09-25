@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HTTP-002"
+  ],
+  "category": "http",
+  "derivation": {
+    "behavior": "Resume requires compatible representation identity.",
+    "canonical_behavior": "Go compares strong validators first and rejects incompatible representation changes before reusing persisted bytes.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_native_http",
+    "android_checkpoint_integrity",
+    "desktop_resume_checkpoint"
+  ],
+  "expected": {
+    "invariants": [
+      "Go compares strong validators first and rejects incompatible representation changes before reusing persisted bytes."
+    ]
+  },
+  "fixture_id": "xgo-cap-http-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Resume requires compatible representation identity."
+  },
+  "schema_version": 1
+}

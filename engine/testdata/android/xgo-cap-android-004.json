@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ANDROID-004"
+  ],
+  "category": "android",
+  "derivation": {
+    "behavior": "WorkManager/FGS/UIDT provide execution opportunity but not scheduler policy.",
+    "canonical_behavior": "Android wakes/hosts Go; retry/eligibility decisions are not duplicated in Kotlin.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "android_queue_coordinator",
+    "android_startup_recovery"
+  ],
+  "expected": {
+    "invariants": [
+      "Android wakes/hosts Go; retry/eligibility decisions are not duplicated in Kotlin."
+    ]
+  },
+  "fixture_id": "xgo-cap-android-004",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "WorkManager/FGS/UIDT provide execution opportunity but not scheduler policy."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-OPS-005"
+  ],
+  "category": "import",
+  "derivation": {
+    "behavior": "Legacy imports are journaled, idempotent and restart-safe.",
+    "canonical_behavior": "Go import framework records source/version/hash/status and never requires permanent dual-write.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "android_database",
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "Go import framework records source/version/hash/status and never requires permanent dual-write."
+    ]
+  },
+  "fixture_id": "xgo-cap-ops-005",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Legacy imports are journaled, idempotent and restart-safe."
+  },
+  "schema_version": 1
+}

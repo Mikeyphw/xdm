@@ -1,0 +1,34 @@
+{
+  "capability_ids": [
+    "XGO-CAP-PUBLICATION-001"
+  ],
+  "category": "publication",
+  "derivation": {
+    "behavior": "Publication to non-transactional destinations is a durable saga.",
+    "canonical_behavior": "Go records publication intent/state and reconciles idempotent host commit receipts across crashes.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_atomic_finalization",
+    "android_finalization_store",
+    "android_publication_safety",
+    "android_destination_writer",
+    "android_publication_contract_test"
+  ],
+  "expected": {
+    "final_state": "ENGINE_COMMITTED",
+    "invariants": [
+      "Ambiguous crash after physical publication must reconcile rather than duplicate output."
+    ],
+    "reconcile_receipt": true,
+    "republish": false
+  },
+  "fixture_id": "xgo-cap-publication-001",
+  "input": {
+    "engine_commit_present": false,
+    "platform_receipt": "receipt-7",
+    "publication_state": "PLATFORM_COMMITTED",
+    "restart": true
+  },
+  "schema_version": 1
+}

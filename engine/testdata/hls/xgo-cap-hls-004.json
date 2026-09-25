@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HLS-004"
+  ],
+  "category": "hls",
+  "derivation": {
+    "behavior": "HLS protection is classified separately from generic network failure.",
+    "canonical_behavior": "Go explicitly classifies AES-128 support and SAMPLE-AES/DRM/unknown methods.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_native_hls",
+    "android_hls_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Go explicitly classifies AES-128 support and SAMPLE-AES/DRM/unknown methods."
+    ]
+  },
+  "fixture_id": "xgo-cap-hls-004",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "HLS protection is classified separately from generic network failure."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,30 @@
+{
+  "capability_ids": [
+    "XGO-CAP-CHECKPOINT-001"
+  ],
+  "category": "checkpoint",
+  "derivation": {
+    "behavior": "Resume checkpoints represent durable integrity-backed bytes.",
+    "canonical_behavior": "Go commits checkpoint blocks only after durable write and integrity evidence; partial/uncommitted blocks are disposable.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_checkpoint_integrity",
+    "android_checkpoint_store"
+  ],
+  "expected": {
+    "discard_uncommitted_tail": true,
+    "invariants": [
+      "Checkpoint state never claims bytes lacking committed integrity evidence."
+    ],
+    "resumable_bytes": 0
+  },
+  "fixture_id": "xgo-cap-checkpoint-001",
+  "input": {
+    "bytes_written": 1048576,
+    "fsync_completed": true,
+    "integrity_hash_committed": false,
+    "process_crash": true
+  },
+  "schema_version": 1
+}

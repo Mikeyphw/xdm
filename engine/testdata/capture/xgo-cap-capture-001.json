@@ -1,0 +1,28 @@
+{
+  "capability_ids": [
+    "XGO-CAP-CAPTURE-001"
+  ],
+  "category": "capture",
+  "derivation": {
+    "behavior": "Browser transports feed one versioned CaptureEnvelope with exact replay evidence.",
+    "canonical_behavior": "Go receives URL/method/headers/body ref/page/frame/session/response metadata under bounded parsing.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_browser_capture_models",
+    "android_capture_registry",
+    "desktop_browser_protocol",
+    "desktop_firefox_handoff"
+  ],
+  "expected": {
+    "invariants": [
+      "Go receives URL/method/headers/body ref/page/frame/session/response metadata under bounded parsing."
+    ]
+  },
+  "fixture_id": "xgo-cap-capture-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Browser transports feed one versioned CaptureEnvelope with exact replay evidence."
+  },
+  "schema_version": 1
+}

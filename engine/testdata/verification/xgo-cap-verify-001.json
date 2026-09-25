@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-VERIFY-001"
+  ],
+  "category": "verification",
+  "derivation": {
+    "behavior": "Transport completion does not equal verified completion.",
+    "canonical_behavior": "Go records verification separately and creates publishable artifact only after required integrity checks pass.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_completion_verification",
+    "android_checksum_contract",
+    "desktop_checksum_service"
+  ],
+  "expected": {
+    "invariants": [
+      "Go records verification separately and creates publishable artifact only after required integrity checks pass."
+    ]
+  },
+  "fixture_id": "xgo-cap-verify-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Transport completion does not equal verified completion."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,25 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ANDROID-001"
+  ],
+  "category": "android",
+  "derivation": {
+    "behavior": "Android packages the Go core as versioned shared library and narrow JNI bridge.",
+    "canonical_behavior": "Android host owns ABI lifecycle only; domain decisions remain in Go.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [
+    "android_download_models"
+  ],
+  "expected": {
+    "invariants": [
+      "Android host owns ABI lifecycle only; domain decisions remain in Go."
+    ]
+  },
+  "fixture_id": "xgo-cap-android-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Android packages the Go core as versioned shared library and narrow JNI bridge."
+  },
+  "schema_version": 1
+}

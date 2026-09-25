@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HLS-003"
+  ],
+  "category": "hls",
+  "derivation": {
+    "behavior": "HLS parser handles EXT-X-MAP, BYTERANGE, KEY, GAP, sequence and discontinuity.",
+    "canonical_behavior": "Go preserves byte ranges/init maps/encryption/timeline metadata for execution and recovery.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_native_hls",
+    "desktop_hls_parser"
+  ],
+  "expected": {
+    "invariants": [
+      "Go preserves byte ranges/init maps/encryption/timeline metadata for execution and recovery."
+    ]
+  },
+  "fixture_id": "xgo-cap-hls-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "HLS parser handles EXT-X-MAP, BYTERANGE, KEY, GAP, sequence and discontinuity."
+  },
+  "schema_version": 1
+}

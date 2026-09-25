@@ -1,0 +1,39 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DASH-002"
+  ],
+  "category": "dash",
+  "derivation": {
+    "behavior": "DASH parser supports SegmentTemplate/SegmentTimeline/SegmentList including valid r=-1.",
+    "canonical_behavior": "Go expands stable segment timeline without positional-only identity.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_dash_parser",
+    "desktop_dash_parser_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Valid negative repetition expands only to the applicable timeline boundary."
+    ],
+    "segment_starts": [
+      0,
+      2,
+      4,
+      6,
+      8
+    ]
+  },
+  "fixture_id": "xgo-cap-dash-002",
+  "input": {
+    "period_duration": 10,
+    "segment_timeline": [
+      {
+        "d": 2,
+        "r": -1,
+        "t": 0
+      }
+    ]
+  },
+  "schema_version": 1
+}

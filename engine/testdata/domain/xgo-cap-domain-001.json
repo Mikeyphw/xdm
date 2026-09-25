@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DOMAIN-001"
+  ],
+  "category": "domain",
+  "derivation": {
+    "behavior": "Separate download lifetime identity from execution attempt identity.",
+    "canonical_behavior": "Go models Download and Attempt as separate aggregates linked by typed identifiers and current-attempt pointer.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_download_models",
+    "android_backend_contract",
+    "desktop_download_request"
+  ],
+  "expected": {
+    "invariants": [
+      "Go models Download and Attempt as separate aggregates linked by typed identifiers and current-attempt pointer."
+    ]
+  },
+  "fixture_id": "xgo-cap-domain-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Separate download lifetime identity from execution attempt identity."
+  },
+  "schema_version": 1
+}

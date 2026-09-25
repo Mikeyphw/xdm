@@ -1,0 +1,30 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ANDROID-003"
+  ],
+  "category": "android",
+  "derivation": {
+    "behavior": "SAF/MediaStore/ContentResolver implement publication platform request with durable receipt.",
+    "canonical_behavior": "Android broker performs physical commit while Go publication saga remains authoritative.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_destination_writer",
+    "android_publication_safety"
+  ],
+  "expected": {
+    "invariants": [
+      "Android publication receipt survives process loss and prevents duplicate provider commit."
+    ],
+    "reconcile_receipt": true,
+    "republish": false
+  },
+  "fixture_id": "xgo-cap-android-003",
+  "input": {
+    "platform": "android",
+    "process_killed": true,
+    "publication_state": "PLATFORM_COMMITTED",
+    "receipt_id": "android-receipt-1"
+  },
+  "schema_version": 1
+}

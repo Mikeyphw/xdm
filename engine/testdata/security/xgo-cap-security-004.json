@@ -1,0 +1,34 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SECURITY-004"
+  ],
+  "category": "security",
+  "derivation": {
+    "behavior": "DNS validation is bound to actual dial candidates.",
+    "canonical_behavior": "Go dialer only connects to policy-approved resolved addresses while preserving original host for TLS/SNI/Host.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_request_security_guard",
+    "android_native_http"
+  ],
+  "expected": {
+    "dial_127_0_0_1": false,
+    "dial_allowed_addresses": [
+      "203.0.113.10"
+    ],
+    "invariants": [
+      "Actual dial candidates are restricted to the validated address set."
+    ]
+  },
+  "fixture_id": "xgo-cap-security-004",
+  "input": {
+    "transport_reresolution": [
+      "127.0.0.1"
+    ],
+    "validated_addresses": [
+      "203.0.113.10"
+    ]
+  },
+  "schema_version": 1
+}

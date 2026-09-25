@@ -1,0 +1,53 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HLS-005"
+  ],
+  "category": "hls",
+  "derivation": {
+    "behavior": "HLS recovery uses stable timeline identity, not list index/part count.",
+    "canonical_behavior": "Go reconciles media/discontinuity sequence plus resource/range/encryption identity across refreshes.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "android_native_hls",
+    "desktop_hls_downloader"
+  ],
+  "expected": {
+    "invariants": [
+      "HLS recovery uses stable timeline identity rather than list index/count."
+    ],
+    "new_pending": [
+      104,
+      105
+    ],
+    "redownload": [],
+    "retained_completed": [
+      100,
+      101,
+      102,
+      103
+    ]
+  },
+  "fixture_id": "xgo-cap-hls-005",
+  "input": {
+    "after": [
+      102,
+      103,
+      104,
+      105
+    ],
+    "before": [
+      100,
+      101,
+      102,
+      103
+    ],
+    "completed": [
+      100,
+      101,
+      102,
+      103
+    ]
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-OPS-001"
+  ],
+  "category": "settings",
+  "derivation": {
+    "behavior": "Shared engine settings are separated from host/UI preferences.",
+    "canonical_behavior": "Go settings schema owns retry/connections/backend/bandwidth/queue/network/media/retention only.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "desktop_bandwidth_profile",
+    "desktop_proxy_settings",
+    "android_queue_intelligence"
+  ],
+  "expected": {
+    "invariants": [
+      "Go settings schema owns retry/connections/backend/bandwidth/queue/network/media/retention only."
+    ]
+  },
+  "fixture_id": "xgo-cap-ops-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Shared engine settings are separated from host/UI preferences."
+  },
+  "schema_version": 1
+}

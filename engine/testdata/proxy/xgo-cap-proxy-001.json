@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-PROXY-001"
+  ],
+  "category": "proxy",
+  "derivation": {
+    "behavior": "Canonical proxy model covers direct, HTTP, SOCKS, system and PAC-resolved routing.",
+    "canonical_behavior": "Go owns proxy intent; platform may resolve PAC/system settings and returns explicit route decision.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_proxy_settings",
+    "desktop_download_request"
+  ],
+  "expected": {
+    "invariants": [
+      "Go owns proxy intent; platform may resolve PAC/system settings and returns explicit route decision."
+    ]
+  },
+  "fixture_id": "xgo-cap-proxy-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Canonical proxy model covers direct, HTTP, SOCKS, system and PAC-resolved routing."
+  },
+  "schema_version": 1
+}

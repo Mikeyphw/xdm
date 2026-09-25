@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ANDROID-002"
+  ],
+  "category": "android",
+  "derivation": {
+    "behavior": "One EngineService owns the Go engine across UI recreation/process lifecycle.",
+    "canonical_behavior": "Android UI/services bind to one engine instance and recovery runs after process restart.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [
+    "android_startup_recovery",
+    "android_queue_coordinator"
+  ],
+  "expected": {
+    "invariants": [
+      "Android UI/services bind to one engine instance and recovery runs after process restart."
+    ]
+  },
+  "fixture_id": "xgo-cap-android-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "One EngineService owns the Go engine across UI recreation/process lifecycle."
+  },
+  "schema_version": 1
+}

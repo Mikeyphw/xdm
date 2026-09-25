@@ -1,0 +1,29 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SECURITY-001"
+  ],
+  "category": "security",
+  "derivation": {
+    "behavior": "Header admission blocks CRLF injection and transport-owned header abuse.",
+    "canonical_behavior": "Go validates header names/values and reserves transport-owned fields before network execution.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_request_security_guard",
+    "android_security_guard_test"
+  ],
+  "expected": {
+    "decision": "reject",
+    "invariants": [
+      "CR/LF header injection is rejected before transport."
+    ],
+    "reason": "header_injection"
+  },
+  "fixture_id": "xgo-cap-security-001",
+  "input": {
+    "headers": {
+      "X-Test": "ok\\r\\nAuthorization: injected"
+    }
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,29 @@
+{
+  "capability_ids": [
+    "XGO-CAP-MEDIA-004"
+  ],
+  "category": "media",
+  "derivation": {
+    "behavior": "Child manifest/segment/key requests obey origin and credential scope.",
+    "canonical_behavior": "Go reevaluates credential forwarding for every child resource.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_media_security",
+    "desktop_browser_security_test"
+  ],
+  "expected": {
+    "forward_credentials": false,
+    "invariants": [
+      "Media child requests obey origin-scoped credential policy."
+    ]
+  },
+  "fixture_id": "xgo-cap-media-004",
+  "input": {
+    "child_origin": "https://cdn.other.example",
+    "child_policy": "not-approved",
+    "manifest_origin": "https://media.example",
+    "parent_credentials": "<secret-ref>"
+  },
+  "schema_version": 1
+}

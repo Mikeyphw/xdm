@@ -1,0 +1,28 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FFMPEG-002"
+  ],
+  "category": "ffmpeg",
+  "derivation": {
+    "behavior": "External media tool arguments cannot be shell-injected.",
+    "canonical_behavior": "Go sends structured argument arrays to platform executor and never builds shell command strings in domain layer.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_ffmpeg_compiler",
+    "android_ffmpeg_test"
+  ],
+  "expected": {
+    "invariants": [
+      "External media tool arguments are transported as argv/typed fields, never shell interpolation."
+    ],
+    "literal_argument_preserved": true,
+    "shell_interpretation": false
+  },
+  "fixture_id": "xgo-cap-ffmpeg-002",
+  "input": {
+    "argument_transport": "argv",
+    "input_path": "video; touch /tmp/pwned"
+  },
+  "schema_version": 1
+}

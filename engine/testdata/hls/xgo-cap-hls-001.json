@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HLS-001"
+  ],
+  "category": "hls",
+  "derivation": {
+    "behavior": "Common durable fragment ledger backs HLS/DASH media parts.",
+    "canonical_behavior": "Go fragment record has stable identity, role, timeline, resource/range/encryption identity, state and integrity.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_hls_dao",
+    "android_native_hls",
+    "desktop_fragment_checkpoint"
+  ],
+  "expected": {
+    "invariants": [
+      "Go fragment record has stable identity, role, timeline, resource/range/encryption identity, state and integrity."
+    ]
+  },
+  "fixture_id": "xgo-cap-hls-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Common durable fragment ledger backs HLS/DASH media parts."
+  },
+  "schema_version": 1
+}

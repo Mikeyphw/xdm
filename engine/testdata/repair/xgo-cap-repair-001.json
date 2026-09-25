@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-REPAIR-001"
+  ],
+  "category": "repair",
+  "derivation": {
+    "behavior": "Selective repair redownloads damaged blocks without replacing good verified ranges.",
+    "canonical_behavior": "Go invalidates damaged blocks, refetches exact ranges under current validators and re-verifies artifact.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_selective_repair",
+    "desktop_partial_repair",
+    "android_checkpoint_integrity"
+  ],
+  "expected": {
+    "invariants": [
+      "Go invalidates damaged blocks, refetches exact ranges under current validators and re-verifies artifact."
+    ]
+  },
+  "fixture_id": "xgo-cap-repair-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Selective repair redownloads damaged blocks without replacing good verified ranges."
+  },
+  "schema_version": 1
+}

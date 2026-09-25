@@ -1,0 +1,31 @@
+{
+  "capability_ids": [
+    "XGO-CAP-OPS-004"
+  ],
+  "category": "diagnostics",
+  "derivation": {
+    "behavior": "Verbose diagnostics remain bounded and structurally redacted.",
+    "canonical_behavior": "Go applies redaction before persistence/export and enforces count/byte/age limits.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_media_security",
+    "desktop_browser_security_test"
+  ],
+  "expected": {
+    "bounded": true,
+    "invariants": [
+      "Verbose diagnostics remain structurally redacted and bounded."
+    ],
+    "raw_secret_present_in_diagnostics": false
+  },
+  "fixture_id": "xgo-cap-ops-004",
+  "input": {
+    "headers": {
+      "Authorization": "<secret-ref>"
+    },
+    "url": "https://e.invalid/x?token=<secret-ref>",
+    "verbose": true
+  },
+  "schema_version": 1
+}

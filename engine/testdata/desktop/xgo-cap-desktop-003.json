@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DESKTOP-003"
+  ],
+  "category": "desktop",
+  "derivation": {
+    "behavior": "Desktop system proxy/PAC/secrets/wakeup services answer Go platform requests.",
+    "canonical_behavior": "Desktop host executes OS mechanisms without recreating retry/scheduler policy.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "desktop_proxy_settings",
+    "desktop_download_schedule"
+  ],
+  "expected": {
+    "invariants": [
+      "Desktop host executes OS mechanisms without recreating retry/scheduler policy."
+    ]
+  },
+  "fixture_id": "xgo-cap-desktop-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Desktop system proxy/PAC/secrets/wakeup services answer Go platform requests."
+  },
+  "schema_version": 1
+}

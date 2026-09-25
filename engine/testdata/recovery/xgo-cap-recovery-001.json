@@ -1,0 +1,28 @@
+{
+  "capability_ids": [
+    "XGO-CAP-RECOVERY-001"
+  ],
+  "category": "recovery",
+  "derivation": {
+    "behavior": "Startup recovery reconciles ownership, backend, checkpoints, artifacts and publication.",
+    "canonical_behavior": "Go classifies every incomplete state and performs idempotent generation-fenced recovery.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_recovery_contracts",
+    "android_startup_recovery",
+    "android_startup_recovery_test",
+    "desktop_recovery_coordinator"
+  ],
+  "expected": {
+    "invariants": [
+      "Go classifies every incomplete state and performs idempotent generation-fenced recovery."
+    ]
+  },
+  "fixture_id": "xgo-cap-recovery-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Startup recovery reconciles ownership, backend, checkpoints, artifacts and publication."
+  },
+  "schema_version": 1
+}

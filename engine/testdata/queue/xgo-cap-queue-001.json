@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-QUEUE-001"
+  ],
+  "category": "queue",
+  "derivation": {
+    "behavior": "Queues persist priority, enablement, concurrency and membership ordering.",
+    "canonical_behavior": "Go queue state is authoritative and revisioned.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_queue_intelligence",
+    "android_queue_coordinator"
+  ],
+  "expected": {
+    "invariants": [
+      "Go queue state is authoritative and revisioned."
+    ]
+  },
+  "fixture_id": "xgo-cap-queue-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Queues persist priority, enablement, concurrency and membership ordering."
+  },
+  "schema_version": 1
+}

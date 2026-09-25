@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-MEDIA-002"
+  ],
+  "category": "media",
+  "derivation": {
+    "behavior": "Repeated captures converge into bounded logical media graph.",
+    "canonical_behavior": "Go graph models media item/source/variant/track/rendition/manifest/fragment-set/protection with provenance.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_logical_media_graph",
+    "android_logical_media_graph_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Go graph models media item/source/variant/track/rendition/manifest/fragment-set/protection with provenance."
+    ]
+  },
+  "fixture_id": "xgo-cap-media-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Repeated captures converge into bounded logical media graph."
+  },
+  "schema_version": 1
+}

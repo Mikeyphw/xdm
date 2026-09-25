@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SECURITY-005"
+  ],
+  "category": "security",
+  "derivation": {
+    "behavior": "Every redirect repeats URL, route, cleartext and credential policy.",
+    "canonical_behavior": "Redirect handling is a security state machine with loop/count and scheme downgrade checks.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_request_security_guard",
+    "android_security_guard_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Redirect handling is a security state machine with loop/count and scheme downgrade checks."
+    ]
+  },
+  "fixture_id": "xgo-cap-security-005",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Every redirect repeats URL, route, cleartext and credential policy."
+  },
+  "schema_version": 1
+}

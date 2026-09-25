@@ -1,0 +1,33 @@
+{
+  "capability_ids": [
+    "XGO-CAP-OWNERSHIP-002"
+  ],
+  "category": "ownership",
+  "derivation": {
+    "behavior": "Backend ownership is durable before bytes become authoritative.",
+    "canonical_behavior": "Reserve generation, prepare staging, persist ownership/task binding, then activate backend.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_backend_contract",
+    "android_backend_ownership_dao",
+    "android_backend_coordinator_test"
+  ],
+  "expected": {
+    "decision": "reject_activation",
+    "invariants": [
+      "Backend activation requires durable ownership/task binding first."
+    ]
+  },
+  "fixture_id": "xgo-cap-ownership-002",
+  "input": {
+    "ownership_persisted_before_activation": false,
+    "sequence": [
+      "reserve_generation",
+      "prepare_staging",
+      "create_backend_task",
+      "activate_backend"
+    ]
+  },
+  "schema_version": 1
+}

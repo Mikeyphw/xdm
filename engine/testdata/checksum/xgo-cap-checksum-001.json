@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-CHECKSUM-001"
+  ],
+  "category": "checksum",
+  "derivation": {
+    "behavior": "Expected checksum verification is streaming and canonical.",
+    "canonical_behavior": "Go normalizes expected checksums from request/Metalink and records verification result independently of transport.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_checksum_contract",
+    "desktop_checksum_service"
+  ],
+  "expected": {
+    "invariants": [
+      "Go normalizes expected checksums from request/Metalink and records verification result independently of transport."
+    ]
+  },
+  "fixture_id": "xgo-cap-checksum-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Expected checksum verification is streaming and canonical."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,39 @@
+{
+  "capability_ids": [
+    "XGO-CAP-QUEUE-002"
+  ],
+  "category": "queue",
+  "derivation": {
+    "behavior": "Download dependencies support completion/success requirements with cycle detection.",
+    "canonical_behavior": "Go stores dependency graph and returns explicit blocked reason/failure propagation.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_queue_graph"
+  ],
+  "expected": {
+    "decision": "reject_mutation",
+    "invariants": [
+      "Queue dependency graph must remain acyclic."
+    ],
+    "reason": "dependency_cycle"
+  },
+  "fixture_id": "xgo-cap-queue-002",
+  "input": {
+    "dependencies": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "B",
+        "C"
+      ],
+      [
+        "C",
+        "A"
+      ]
+    ]
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DASH-003"
+  ],
+  "category": "dash",
+  "derivation": {
+    "behavior": "Dynamic DASH refresh reconciles evolving timeline and new Periods.",
+    "canonical_behavior": "Go honors minimumUpdatePeriod, deduplicates existing fragments and persists new track state.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_dash_downloader",
+    "desktop_dash_downloader_test",
+    "android_manifest_resolution_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Go honors minimumUpdatePeriod, deduplicates existing fragments and persists new track state."
+    ]
+  },
+  "fixture_id": "xgo-cap-dash-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Dynamic DASH refresh reconciles evolving timeline and new Periods."
+  },
+  "schema_version": 1
+}

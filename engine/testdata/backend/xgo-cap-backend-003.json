@@ -1,0 +1,32 @@
+{
+  "capability_ids": [
+    "XGO-CAP-BACKEND-003"
+  ],
+  "category": "backend",
+  "derivation": {
+    "behavior": "Backend migration fences source backend and transfers authority through a new generation.",
+    "canonical_behavior": "Go quiesces/fences source, reserves target generation/ownership, activates target, then retires source.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_backend_migration_contract",
+    "android_backend_migration_coordinator",
+    "android_backend_migration_test"
+  ],
+  "expected": {
+    "accept_late_source_event": false,
+    "current_generation": 5,
+    "invariants": [
+      "Backend migration transfers authority through a new generation and fences the source."
+    ]
+  },
+  "fixture_id": "xgo-cap-backend-003",
+  "input": {
+    "late_source_event": "completed",
+    "source_backend": "native",
+    "source_generation": 4,
+    "target_backend": "aria2",
+    "target_generation": 5
+  },
+  "schema_version": 1
+}

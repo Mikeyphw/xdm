@@ -1,0 +1,29 @@
+{
+  "capability_ids": [
+    "XGO-CAP-CAPTURE-002"
+  ],
+  "category": "capture",
+  "derivation": {
+    "behavior": "Document/session generation fences stale browser observations.",
+    "canonical_behavior": "Late observations from previous generation remain historical but cannot mutate active graph.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_browser_capture_models",
+    "android_capture_registry"
+  ],
+  "expected": {
+    "historical_only": true,
+    "invariants": [
+      "Stale browser observations cannot contaminate the current document generation."
+    ],
+    "mutate_active_graph": false
+  },
+  "fixture_id": "xgo-cap-capture-002",
+  "input": {
+    "active_document_generation": 8,
+    "observation": "media_candidate",
+    "observation_generation": 7
+  },
+  "schema_version": 1
+}

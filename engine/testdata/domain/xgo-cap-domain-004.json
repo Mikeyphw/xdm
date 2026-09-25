@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DOMAIN-004"
+  ],
+  "category": "domain",
+  "derivation": {
+    "behavior": "Typed failure categories replace frontend/backend message matching.",
+    "canonical_behavior": "Go emits typed failure metadata with retryability, user-actionability, diagnostic cause, and safe presentation.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_execution_semantics_test",
+    "desktop_retry_policy"
+  ],
+  "expected": {
+    "invariants": [
+      "Go emits typed failure metadata with retryability, user-actionability, diagnostic cause, and safe presentation."
+    ]
+  },
+  "fixture_id": "xgo-cap-domain-004",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Typed failure categories replace frontend/backend message matching."
+  },
+  "schema_version": 1
+}

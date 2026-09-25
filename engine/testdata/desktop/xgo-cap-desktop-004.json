@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DESKTOP-004"
+  ],
+  "category": "desktop",
+  "derivation": {
+    "behavior": "Legacy C# transfer/media engines are deleted after UI reconnection.",
+    "canonical_behavior": "Architecture scan proves no normal execution bypasses Go authoritative engine.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "desktop_download_manager",
+    "desktop_hls_downloader",
+    "desktop_dash_downloader"
+  ],
+  "expected": {
+    "invariants": [
+      "Architecture scan proves no normal execution bypasses Go authoritative engine."
+    ]
+  },
+  "fixture_id": "xgo-cap-desktop-004",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Legacy C# transfer/media engines are deleted after UI reconnection."
+  },
+  "schema_version": 1
+}

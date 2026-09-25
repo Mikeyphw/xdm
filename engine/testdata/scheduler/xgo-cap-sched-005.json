@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SCHED-005"
+  ],
+  "category": "scheduler",
+  "derivation": {
+    "behavior": "Bandwidth profiles compose global, schedule, queue and per-download scopes.",
+    "canonical_behavior": "Go owns deterministic limit precedence and live profile switching.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "desktop_bandwidth_profile",
+    "android_queue_intelligence"
+  ],
+  "expected": {
+    "invariants": [
+      "Go owns deterministic limit precedence and live profile switching."
+    ]
+  },
+  "fixture_id": "xgo-cap-sched-005",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Bandwidth profiles compose global, schedule, queue and per-download scopes."
+  },
+  "schema_version": 1
+}

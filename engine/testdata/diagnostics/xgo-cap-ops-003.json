@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-OPS-003"
+  ],
+  "category": "diagnostics",
+  "derivation": {
+    "behavior": "Structured diagnostics correlate operation/download/attempt/subsystem/stage.",
+    "canonical_behavior": "Go emits bounded structured diagnostic events with typed failure and safe context.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_completion_verification",
+    "android_media_dispatcher",
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "Go emits bounded structured diagnostic events with typed failure and safe context."
+    ]
+  },
+  "fixture_id": "xgo-cap-ops-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Structured diagnostics correlate operation/download/attempt/subsystem/stage."
+  },
+  "schema_version": 1
+}

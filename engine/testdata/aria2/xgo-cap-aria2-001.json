@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ARIA2-001"
+  ],
+  "category": "aria2",
+  "derivation": {
+    "behavior": "Generic aria2 RPC supports add/status/pause/resume/remove/options/session/health.",
+    "canonical_behavior": "Go aria2 client owns protocol mechanics with typed timeouts and malformed reply handling.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_aria2_rpc",
+    "android_aria2_rpc"
+  ],
+  "expected": {
+    "invariants": [
+      "Go aria2 client owns protocol mechanics with typed timeouts and malformed reply handling."
+    ]
+  },
+  "fixture_id": "xgo-cap-aria2-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Generic aria2 RPC supports add/status/pause/resume/remove/options/session/health."
+  },
+  "schema_version": 1
+}

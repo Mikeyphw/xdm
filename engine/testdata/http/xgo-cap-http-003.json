@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HTTP-003"
+  ],
+  "category": "http",
+  "derivation": {
+    "behavior": "Single-stream HTTP supports bounded streaming, cancellation, exact byte accounting and durable lifecycle state.",
+    "canonical_behavior": "Go native backend performs direct streaming into staging under attempt ownership.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_native_http",
+    "android_native_http_test",
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "Go native backend performs direct streaming into staging under attempt ownership."
+    ]
+  },
+  "fixture_id": "xgo-cap-http-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Single-stream HTTP supports bounded streaming, cancellation, exact byte accounting and durable lifecycle state."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SCHED-001"
+  ],
+  "category": "scheduler",
+  "derivation": {
+    "behavior": "Runtime conditions include online/metered/Wi-Fi/charging/battery/storage.",
+    "canonical_behavior": "Platform supplies condition snapshot; Go evaluates eligibility and hold reasons.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_queue_intelligence",
+    "android_queue_coordinator"
+  ],
+  "expected": {
+    "invariants": [
+      "Platform supplies condition snapshot; Go evaluates eligibility and hold reasons."
+    ]
+  },
+  "fixture_id": "xgo-cap-sched-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Runtime conditions include online/metered/Wi-Fi/charging/battery/storage."
+  },
+  "schema_version": 1
+}

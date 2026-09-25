@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-REQUEST-002"
+  ],
+  "category": "request",
+  "derivation": {
+    "behavior": "Replayable POST/body downloads are preserved from desktop.",
+    "canonical_behavior": "Go distinguishes replayable, secret and one-shot bodies and gates retry/redirect/resume accordingly.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_download_request",
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "Go distinguishes replayable, secret and one-shot bodies and gates retry/redirect/resume accordingly."
+    ]
+  },
+  "fixture_id": "xgo-cap-request-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Replayable POST/body downloads are preserved from desktop."
+  },
+  "schema_version": 1
+}

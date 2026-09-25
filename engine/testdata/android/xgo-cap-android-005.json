@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ANDROID-005"
+  ],
+  "category": "android",
+  "derivation": {
+    "behavior": "Legacy Room engine state imports once into Go without dual-write.",
+    "canonical_behavior": "Android importer maps supported legacy rows into versioned Go import package then stops authoritative Room writes.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "android_entities",
+    "android_database",
+    "android_download_dao"
+  ],
+  "expected": {
+    "invariants": [
+      "Android importer maps supported legacy rows into versioned Go import package then stops authoritative Room writes."
+    ]
+  },
+  "fixture_id": "xgo-cap-android-005",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Legacy Room engine state imports once into Go without dual-write."
+  },
+  "schema_version": 1
+}

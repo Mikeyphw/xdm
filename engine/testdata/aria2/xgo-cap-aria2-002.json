@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-ARIA2-002"
+  ],
+  "category": "aria2",
+  "derivation": {
+    "behavior": "Aria2 GID is bound durably to attempt generation before activation.",
+    "canonical_behavior": "Go creates task paused where possible, persists GID/runtime ownership then activates.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_aria2_backend",
+    "android_aria2_contract_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Go creates task paused where possible, persists GID/runtime ownership then activates."
+    ]
+  },
+  "fixture_id": "xgo-cap-aria2-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Aria2 GID is bound durably to attempt generation before activation."
+  },
+  "schema_version": 1
+}

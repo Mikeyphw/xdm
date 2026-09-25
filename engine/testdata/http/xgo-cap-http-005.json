@@ -1,0 +1,30 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HTTP-005"
+  ],
+  "category": "http",
+  "derivation": {
+    "behavior": "Content-Range is validated exactly and server range lies cannot corrupt staging.",
+    "canonical_behavior": "Go rejects mismatched/overlapping/short range responses and safely falls back only when policy allows.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_native_http",
+    "android_native_protocol_test"
+  ],
+  "expected": {
+    "decision": "reject_response",
+    "invariants": [
+      "A contradictory Content-Range can never be written as the requested segment."
+    ],
+    "reason": "content_range_contradiction",
+    "staging_mutated": false
+  },
+  "fixture_id": "xgo-cap-http-005",
+  "input": {
+    "content_range": "bytes 99-198/1000",
+    "requested_range": "bytes=100-199",
+    "status": 206
+  },
+  "schema_version": 1
+}

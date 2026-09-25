@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-BACKEND-001"
+  ],
+  "category": "backend",
+  "derivation": {
+    "behavior": "Backend compatibility is exact for the concrete operation.",
+    "canonical_behavior": "Each Go backend implements CanExecute(intent) with typed incompatibility reasons matching execution preflight.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "android_backend_contract",
+    "android_aria2_backend",
+    "desktop_backend_advisor"
+  ],
+  "expected": {
+    "invariants": [
+      "Each Go backend implements CanExecute(intent) with typed incompatibility reasons matching execution preflight."
+    ]
+  },
+  "fixture_id": "xgo-cap-backend-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Backend compatibility is exact for the concrete operation."
+  },
+  "schema_version": 1
+}

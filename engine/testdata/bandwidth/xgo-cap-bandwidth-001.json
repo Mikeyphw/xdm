@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-BANDWIDTH-001"
+  ],
+  "category": "bandwidth",
+  "derivation": {
+    "behavior": "Connection and bandwidth limits support global, host and download scopes.",
+    "canonical_behavior": "Go central limiter arbitrates connection permits and byte rate fairly using monotonic time.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_native_http",
+    "desktop_bandwidth_profile"
+  ],
+  "expected": {
+    "invariants": [
+      "Go central limiter arbitrates connection permits and byte rate fairly using monotonic time."
+    ]
+  },
+  "fixture_id": "xgo-cap-bandwidth-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Connection and bandwidth limits support global, host and download scopes."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-FFMPEG-004"
+  ],
+  "category": "ffmpeg",
+  "derivation": {
+    "behavior": "FFprobe-style output verification precedes publication.",
+    "canonical_behavior": "Go validates container/streams/duration expectations before creating verified Artifact.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_ffmpeg_verifier",
+    "desktop_ffmpeg_service"
+  ],
+  "expected": {
+    "invariants": [
+      "Go validates container/streams/duration expectations before creating verified Artifact."
+    ]
+  },
+  "fixture_id": "xgo-cap-ffmpeg-004",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "FFprobe-style output verification precedes publication."
+  },
+  "schema_version": 1
+}

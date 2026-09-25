@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-STORE-002"
+  ],
+  "category": "persistence",
+  "derivation": {
+    "behavior": "Mutable rows use explicit revision-based compare-and-set.",
+    "canonical_behavior": "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleRevision.",
+    "strategy": "redesign"
+  },
+  "donor_ids": [
+    "android_download_dao",
+    "android_backend_ownership_dao"
+  ],
+  "expected": {
+    "invariants": [
+      "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleRevision."
+    ]
+  },
+  "fixture_id": "xgo-cap-store-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Mutable rows use explicit revision-based compare-and-set."
+  },
+  "schema_version": 1
+}

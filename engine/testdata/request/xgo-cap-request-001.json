@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-REQUEST-001"
+  ],
+  "category": "request",
+  "derivation": {
+    "behavior": "Canonical network intent supports GET/POST, headers, body refs, mirrors, validators and expected hashes.",
+    "canonical_behavior": "Go request is a strict superset of donor transport semantics with safe persisted form and runtime secret resolution.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_download_intake",
+    "android_native_http",
+    "desktop_download_request"
+  ],
+  "expected": {
+    "invariants": [
+      "Go request is a strict superset of donor transport semantics with safe persisted form and runtime secret resolution."
+    ]
+  },
+  "fixture_id": "xgo-cap-request-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Canonical network intent supports GET/POST, headers, body refs, mirrors, validators and expected hashes."
+  },
+  "schema_version": 1
+}

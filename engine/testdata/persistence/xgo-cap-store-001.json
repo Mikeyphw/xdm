@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-STORE-001"
+  ],
+  "category": "persistence",
+  "derivation": {
+    "behavior": "Authoritative engine state is transactional and normalized.",
+    "canonical_behavior": "Go-owned SQLite schema stores downloads, requests, attempts, artifacts, ownership, checkpoints, queues, media and diagnostics.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_entities",
+    "android_database",
+    "android_download_dao"
+  ],
+  "expected": {
+    "invariants": [
+      "Go-owned SQLite schema stores downloads, requests, attempts, artifacts, ownership, checkpoints, queues, media and diagnostics."
+    ]
+  },
+  "fixture_id": "xgo-cap-store-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Authoritative engine state is transactional and normalized."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-MEDIA-001"
+  ],
+  "category": "media",
+  "derivation": {
+    "behavior": "Transport URL, signed URL identity, logical resource identity and credential scope are distinct.",
+    "canonical_behavior": "Go canonicalizes resource identity without blindly discarding identity-relevant query parameters.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_logical_media_graph",
+    "android_media_security"
+  ],
+  "expected": {
+    "invariants": [
+      "Go canonicalizes resource identity without blindly discarding identity-relevant query parameters."
+    ]
+  },
+  "fixture_id": "xgo-cap-media-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Transport URL, signed URL identity, logical resource identity and credential scope are distinct."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DASH-001"
+  ],
+  "category": "dash",
+  "derivation": {
+    "behavior": "DASH parser supports Period/AdaptationSet/Representation/BaseURL.",
+    "canonical_behavior": "Go constructs canonical track/representation model under media security context.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_dash_parser",
+    "desktop_dash_parser_test",
+    "android_manifest_resolution_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Go constructs canonical track/representation model under media security context."
+    ]
+  },
+  "fixture_id": "xgo-cap-dash-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "DASH parser supports Period/AdaptationSet/Representation/BaseURL."
+  },
+  "schema_version": 1
+}

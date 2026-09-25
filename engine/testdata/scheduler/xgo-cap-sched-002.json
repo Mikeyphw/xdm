@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SCHED-002"
+  ],
+  "category": "scheduler",
+  "derivation": {
+    "behavior": "Schedules are timezone-aware and define missed-run behavior.",
+    "canonical_behavior": "Go evaluates recurring windows and missed-run policy with injected clock/timezone.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_schedule_window",
+    "desktop_download_schedule"
+  ],
+  "expected": {
+    "invariants": [
+      "Go evaluates recurring windows and missed-run policy with injected clock/timezone."
+    ]
+  },
+  "fixture_id": "xgo-cap-sched-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Schedules are timezone-aware and define missed-run behavior."
+  },
+  "schema_version": 1
+}

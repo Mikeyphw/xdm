@@ -1,0 +1,55 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HLS-007"
+  ],
+  "category": "hls",
+  "derivation": {
+    "behavior": "Live/evolving HLS preserves completed fragments while sliding window advances.",
+    "canonical_behavior": "Go polls live playlists, deduplicates known timeline fragments and supports ENDLIST transition/bounded capture.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_hls_downloader",
+    "android_native_hls"
+  ],
+  "expected": {
+    "download_once": [
+      100,
+      101,
+      102,
+      103,
+      104
+    ],
+    "duplicates": [],
+    "invariants": [
+      "Completed live fragments survive sliding-window refreshes without duplicate download."
+    ]
+  },
+  "fixture_id": "xgo-cap-hls-007",
+  "input": {
+    "completed": [
+      100,
+      101,
+      102
+    ],
+    "playlist_type": "live",
+    "refreshes": [
+      [
+        100,
+        101,
+        102
+      ],
+      [
+        101,
+        102,
+        103
+      ],
+      [
+        102,
+        103,
+        104
+      ]
+    ]
+  },
+  "schema_version": 1
+}

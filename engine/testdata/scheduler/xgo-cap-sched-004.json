@@ -1,0 +1,32 @@
+{
+  "capability_ids": [
+    "XGO-CAP-SCHED-004"
+  ],
+  "category": "scheduler",
+  "derivation": {
+    "behavior": "Global Pause All is durable across restart.",
+    "canonical_behavior": "Go prevents automatic starts while durable global hold is active.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_queue_coordinator",
+    "android_queue_intelligence"
+  ],
+  "expected": {
+    "hold_reason": "global_pause",
+    "invariants": [
+      "Pause All is durable and restored before scheduling work."
+    ],
+    "started": []
+  },
+  "fixture_id": "xgo-cap-sched-004",
+  "input": {
+    "eligible_downloads": [
+      "dl-1",
+      "dl-2"
+    ],
+    "global_pause": true,
+    "restart": true
+  },
+  "schema_version": 1
+}

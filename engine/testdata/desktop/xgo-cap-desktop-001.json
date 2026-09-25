@@ -1,0 +1,25 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DESKTOP-001"
+  ],
+  "category": "desktop",
+  "derivation": {
+    "behavior": "Desktop loads same versioned Go engine through P/Invoke.",
+    "canonical_behavior": "Desktop bridge owns ABI lifecycle only and exposes Go projections to Avalonia.",
+    "strategy": "new_design"
+  },
+  "donor_ids": [
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "Desktop bridge owns ABI lifecycle only and exposes Go projections to Avalonia."
+    ]
+  },
+  "fixture_id": "xgo-cap-desktop-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Desktop loads same versioned Go engine through P/Invoke."
+  },
+  "schema_version": 1
+}

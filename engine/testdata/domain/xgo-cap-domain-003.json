@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DOMAIN-003"
+  ],
+  "category": "domain",
+  "derivation": {
+    "behavior": "Separate produced artifact identity from transfer completion.",
+    "canonical_behavior": "ArtifactGeneration exists only after verification succeeds and remains distinct from Download/Attempt state.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_completion_verification",
+    "android_atomic_finalization",
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "ArtifactGeneration exists only after verification succeeds and remains distinct from Download/Attempt state."
+    ]
+  },
+  "fixture_id": "xgo-cap-domain-003",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Separate produced artifact identity from transfer completion."
+  },
+  "schema_version": 1
+}

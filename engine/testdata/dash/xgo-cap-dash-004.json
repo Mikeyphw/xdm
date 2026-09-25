@@ -1,0 +1,26 @@
+{
+  "capability_ids": [
+    "XGO-CAP-DASH-004"
+  ],
+  "category": "dash",
+  "derivation": {
+    "behavior": "DASH multi-track execution downloads separate video/audio/subtitle roles for mux.",
+    "canonical_behavior": "Go uses shared fragment ledger/retry/security and produces role-tagged track artifacts.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "desktop_dash_downloader",
+    "android_media_dispatcher"
+  ],
+  "expected": {
+    "invariants": [
+      "Go uses shared fragment ledger/retry/security and produces role-tagged track artifacts."
+    ]
+  },
+  "fixture_id": "xgo-cap-dash-004",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "DASH multi-track execution downloads separate video/audio/subtitle roles for mux."
+  },
+  "schema_version": 1
+}

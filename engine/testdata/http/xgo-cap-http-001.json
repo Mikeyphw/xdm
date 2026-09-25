@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HTTP-001"
+  ],
+  "category": "http",
+  "derivation": {
+    "behavior": "Representation probe discovers length, range support, validators, filename/content metadata and effective URL.",
+    "canonical_behavior": "Go probes with HEAD/ranged fallback and validates contradictory/malformed metadata.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_native_http",
+    "android_native_protocol_test",
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "invariants": [
+      "Go probes with HEAD/ranged fallback and validates contradictory/malformed metadata."
+    ]
+  },
+  "fixture_id": "xgo-cap-http-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Representation probe discovers length, range support, validators, filename/content metadata and effective URL."
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,30 @@
+{
+  "capability_ids": [
+    "XGO-CAP-RECOVERY-002"
+  ],
+  "category": "recovery",
+  "derivation": {
+    "behavior": "Recovery cannot allow stale backend completion to overwrite newer attempt state.",
+    "canonical_behavior": "Late stale backend events are diagnostic-only once a newer generation is current.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_backend_migration_coordinator",
+    "android_backend_migration_test",
+    "android_execution_semantics_test"
+  ],
+  "expected": {
+    "authoritative_state_changed": false,
+    "diagnostic_only": true,
+    "invariants": [
+      "Late stale backend completion cannot overwrite a newer attempt."
+    ]
+  },
+  "fixture_id": "xgo-cap-recovery-002",
+  "input": {
+    "current_attempt_generation": 12,
+    "late_backend_attempt_generation": 11,
+    "late_event": "completed"
+  },
+  "schema_version": 1
+}

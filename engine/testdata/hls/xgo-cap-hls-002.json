@@ -1,0 +1,27 @@
+{
+  "capability_ids": [
+    "XGO-CAP-HLS-002"
+  ],
+  "category": "hls",
+  "derivation": {
+    "behavior": "HLS parser handles master/media playlists, variants and rendition groups.",
+    "canonical_behavior": "Go parser builds typed playlist model with URI resolution through shared security policy.",
+    "strategy": "merged"
+  },
+  "donor_ids": [
+    "android_native_hls",
+    "desktop_hls_parser",
+    "desktop_hls_parser_test"
+  ],
+  "expected": {
+    "invariants": [
+      "Go parser builds typed playlist model with URI resolution through shared security policy."
+    ]
+  },
+  "fixture_id": "xgo-cap-hls-002",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "HLS parser handles master/media playlists, variants and rendition groups."
+  },
+  "schema_version": 1
+}

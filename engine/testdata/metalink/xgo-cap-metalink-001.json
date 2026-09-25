@@ -1,0 +1,25 @@
+{
+  "capability_ids": [
+    "XGO-CAP-METALINK-001"
+  ],
+  "category": "metalink",
+  "derivation": {
+    "behavior": "Metalink contributes mirrors, hashes and size to canonical request metadata.",
+    "canonical_behavior": "Go parses Metalink into standard request/verification inputs instead of a parallel engine.",
+    "strategy": "desktop_led"
+  },
+  "donor_ids": [
+    "desktop_metalink"
+  ],
+  "expected": {
+    "invariants": [
+      "Go parses Metalink into standard request/verification inputs instead of a parallel engine."
+    ]
+  },
+  "fixture_id": "xgo-cap-metalink-001",
+  "input": {
+    "representation": "language-neutral behavioral invariant",
+    "scenario": "Metalink contributes mirrors, hashes and size to canonical request metadata."
+  },
+  "schema_version": 1
+}

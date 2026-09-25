@@ -1,0 +1,32 @@
+{
+  "capability_ids": [
+    "XGO-CAP-OWNERSHIP-001"
+  ],
+  "category": "ownership",
+  "derivation": {
+    "behavior": "Only current attempt generation may mutate authoritative execution state.",
+    "canonical_behavior": "All attempt-owned writes require DownloadID, AttemptGeneration and expected Revision; older generations are fenced.",
+    "strategy": "android_led"
+  },
+  "donor_ids": [
+    "android_backend_contract",
+    "android_backend_coordinator_test",
+    "android_execution_semantics_test"
+  ],
+  "expected": {
+    "authoritative_state_changed": false,
+    "decision": "reject",
+    "error": "ErrStaleAttempt",
+    "invariants": [
+      "Only current attempt generation may mutate authoritative execution state."
+    ]
+  },
+  "fixture_id": "xgo-cap-ownership-001",
+  "input": {
+    "current_attempt_generation": 9,
+    "download_id": "dl-42",
+    "mutation": "mark_completed",
+    "writer_attempt_generation": 8
+  },
+  "schema_version": 1
+}
