@@ -707,7 +707,7 @@
         "XGO-CAP-MEDIA-003"
       ],
       "category": "media",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_media_selection",
         "desktop_media_selection_test",

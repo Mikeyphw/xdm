@@ -32,6 +32,8 @@ func main() {
 		r, err = mediaIdentity()
 	case "media_graph":
 		r, err = mediaGraph()
+	case "media_selection":
+		r, err = mediaSelection()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -179,6 +181,70 @@ func mediaGraph() (report, error) {
 		return report{}, fmt.Errorf("bounded graph growth did not fail: %v", err)
 	}
 	return report{Mode: "media_graph", Pass: true, Checks: []string{"duplicate captures converge", "signed manifest graph convergence", "audio/video rendition groups", "protection precedence", "bounded repeated observations", "equivalent capture streams same graph"}}, nil
+}
+
+func mediaSelection() (report, error) {
+	graph, itemID := selectionAuditGraph()
+	result, err := media.SelectMedia(graph, media.MediaSelectionConstraints{ItemID: itemID, MaxWidth: 1920, MaxHeight: 1080, PreferredWidth: 1920, PreferredHeight: 1080})
+	if err != nil {
+		return report{}, err
+	}
+	if result.DefaultVideo == nil || result.DefaultVideo.Width != 3840 || result.SelectedVideo == nil || result.SelectedVideo.Width != 1920 {
+		return report{}, fmt.Errorf("default and constrained choices were conflated: %+v", result)
+	}
+	codec, err := media.SelectMedia(graph, media.MediaSelectionConstraints{ItemID: itemID, MaxWidth: 1920, MaxHeight: 1080, PreferredWidth: 1920, PreferredHeight: 1080, PreferredCodecs: []string{"vp9", "avc1"}})
+	if err != nil {
+		return report{}, err
+	}
+	if codec.SelectedVideo == nil || codec.SelectedVideo.Codec != "vp9" {
+		return report{}, fmt.Errorf("codec preference not honored for equivalent resolution: %+v", codec.SelectedVideo)
+	}
+	lang, err := media.SelectMedia(graph, media.MediaSelectionConstraints{ItemID: itemID, PreferredAudioLanguages: []string{"de"}})
+	if err != nil {
+		return report{}, err
+	}
+	if lang.SelectedAudio == nil || lang.SelectedAudio.Language != "en" {
+		return report{}, fmt.Errorf("unavailable audio language did not fall back deterministically: %+v", lang.SelectedAudio)
+	}
+	separate, err := media.SelectMedia(graph, media.MediaSelectionConstraints{ItemID: itemID, PreferredAudioLanguages: []string{"es"}, PreferredSubtitleLanguages: []string{"fr"}, SubtitlePolicy: media.SubtitleOptional})
+	if err != nil {
+		return report{}, err
+	}
+	if separate.SelectedVideo == nil || separate.SelectedAudio == nil || separate.SelectedAudio.Language != "es" || separate.SelectedSubtitle != nil {
+		return report{}, fmt.Errorf("separate audio/video optional subtitle selection failed: %+v", separate)
+	}
+	required, err := media.SelectMedia(graph, media.MediaSelectionConstraints{ItemID: itemID, PreferredSubtitleLanguages: []string{"fr"}, SubtitlePolicy: media.SubtitleRequired})
+	if err != nil {
+		return report{}, err
+	}
+	if required.SelectedSubtitle == nil || required.SelectedSubtitle.Language != "en" {
+		return report{}, fmt.Errorf("required subtitle did not fallback to available track: %+v", required.SelectedSubtitle)
+	}
+	return report{Mode: "media_selection", Pass: true, Checks: []string{"deterministic selection fixtures", "unavailable preferred language", "equivalent resolution codec preference", "separate audio/video", "subtitles optional/required"}}, nil
+}
+
+func selectionAuditGraph() (*media.MediaGraph, string) {
+	graph := media.NewMediaGraph(media.MediaGraphLimits{})
+	env := graphEnvelope("https://page.example/watch", 1)
+	manifest := "https://cdn.example/master.m3u8?sig=one"
+	observations := []media.MediaObservation{
+		{Envelope: env, Resource: mustAuditResource("https://cdn.example/v-720.mp4"), Title: "Movie", Container: "mp4", Codec: "avc1", Bitrate: 3000, Width: 1280, Height: 720, EstimatedSizeBytes: 500000000, TrackKind: media.TrackVideo, RenditionGroup: "video", ManifestURL: manifest, FragmentSetKey: "v720", Protection: media.ProtectionClear},
+		{Envelope: env, Resource: mustAuditResource("https://cdn.example/v-1080-avc.mp4"), Title: "Movie", Container: "mp4", Codec: "avc1", Bitrate: 6000, Width: 1920, Height: 1080, EstimatedSizeBytes: 850000000, TrackKind: media.TrackVideo, RenditionGroup: "video", ManifestURL: manifest, FragmentSetKey: "v1080a", Protection: media.ProtectionClear},
+		{Envelope: env, Resource: mustAuditResource("https://cdn.example/v-1080-vp9.webm"), Title: "Movie", Container: "webm", Codec: "vp9", Bitrate: 5000, Width: 1920, Height: 1080, EstimatedSizeBytes: 800000000, TrackKind: media.TrackVideo, RenditionGroup: "video", ManifestURL: manifest, FragmentSetKey: "v1080v", Protection: media.ProtectionClear},
+		{Envelope: env, Resource: mustAuditResource("https://cdn.example/v-4k.mp4"), Title: "Movie", Container: "mp4", Codec: "hevc", Bitrate: 16000, Width: 3840, Height: 2160, EstimatedSizeBytes: 2000000000, TrackKind: media.TrackVideo, RenditionGroup: "video", ManifestURL: manifest, FragmentSetKey: "v4k", Protection: media.ProtectionClear},
+		{Envelope: env, Resource: mustAuditResource("https://cdn.example/a-en.m4a"), Title: "Movie", Container: "m4a", Codec: "mp4a", Language: "en", TrackKind: media.TrackAudio, RenditionGroup: "audio", ManifestURL: manifest, FragmentSetKey: "a-en", Protection: media.ProtectionClear},
+		{Envelope: env, Resource: mustAuditResource("https://cdn.example/a-es.m4a"), Title: "Movie", Container: "m4a", Codec: "mp4a", Language: "es", TrackKind: media.TrackAudio, RenditionGroup: "audio", ManifestURL: manifest, FragmentSetKey: "a-es", Protection: media.ProtectionClear},
+		{Envelope: env, Resource: mustAuditResource("https://cdn.example/s-en.vtt"), Title: "Movie", Container: "vtt", Codec: "webvtt", Language: "en", TrackKind: media.TrackSubtitle, RenditionGroup: "subs", ManifestURL: manifest, FragmentSetKey: "s-en", Protection: media.ProtectionClear},
+	}
+	itemID := ""
+	for _, obs := range observations {
+		id, err := graph.Ingest(obs)
+		if err != nil {
+			panic(err)
+		}
+		itemID = id
+	}
+	return graph, itemID
 }
 
 func graphEnvelope(page string, gen int64) media.CaptureEnvelope {

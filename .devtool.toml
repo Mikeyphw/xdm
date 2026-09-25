@@ -1791,7 +1791,7 @@ validate = [
   { id = "bandwidth_completion_matrix", ref = "job:bandwidth_completion_matrix", depends_on = ["scheduler_stress"] },
 ]
 
-# XGO-49+50 activate media capture ownership on the native Go runner.
+# XGO-49..53 activate media capture, identity, graph, and selection ownership on the native Go runner.
 [targets.xgo_media]
 runner = "go"
 platform = "shared"
@@ -1809,6 +1809,7 @@ inputs = [
   "engine/testdata/capture/xgo-cap-capture-002.json",
   "engine/testdata/media/xgo-cap-media-001.json",
   "engine/testdata/media/xgo-cap-media-002.json",
+  "engine/testdata/media/xgo-cap-media-003.json",
   "engine/testdata/media/xgo-cap-media-004.json",
   "docs/xgo/**",
 ]
@@ -1882,6 +1883,20 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/media-graph-diff.json"]
 
+[targets.xgo_media.jobs.media_selection_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "media_selection",
+  "--output", ".devtool/reports/xgo/media/media-selection-matrix.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/media/xgo-cap-media-003.json",
+]
+outputs = [".devtool/reports/xgo/media/media-selection-matrix.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1889,6 +1904,7 @@ validate = [
   { id = "capture_generation_matrix", ref = "job:capture_generation_matrix", depends_on = ["capture_corpus"] },
   { id = "media_identity_matrix", ref = "job:media_identity_matrix", depends_on = ["capture_generation_matrix"] },
   { id = "media_graph_diff", ref = "job:media_graph_diff", depends_on = ["media_identity_matrix"] },
+  { id = "media_selection_matrix", ref = "job:media_selection_matrix", depends_on = ["media_graph_diff"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

@@ -801,7 +801,7 @@
         "android_media_dispatcher"
       ],
       "id": "XGO-CAP-MEDIA-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-53",
       "test_id": "fixture:xgo-cap-media-003"
     },

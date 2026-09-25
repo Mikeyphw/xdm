@@ -24,21 +24,22 @@ const (
 )
 
 type MediaObservation struct {
-	Envelope       CaptureEnvelope
-	Resource       MediaResource
-	Kind           ResourceKind
-	Title          string
-	Container      string
-	Codec          string
-	Language       string
-	Bitrate        int
-	Width          int
-	Height         int
-	TrackKind      TrackKind
-	RenditionGroup string
-	ManifestURL    string
-	FragmentSetKey string
-	Protection     ProtectionClass
+	Envelope           CaptureEnvelope
+	Resource           MediaResource
+	Kind               ResourceKind
+	Title              string
+	Container          string
+	Codec              string
+	Language           string
+	Bitrate            int
+	Width              int
+	Height             int
+	EstimatedSizeBytes int64
+	TrackKind          TrackKind
+	RenditionGroup     string
+	ManifestURL        string
+	FragmentSetKey     string
+	Protection         ProtectionClass
 }
 
 type MediaGraphLimits struct {
@@ -86,15 +87,16 @@ type MediaSource struct {
 }
 
 type MediaVariant struct {
-	ID         string
-	ItemID     string
-	SourceID   string
-	Container  string
-	Codec      string
-	Bitrate    int
-	Width      int
-	Height     int
-	Provenance []string
+	ID                 string
+	ItemID             string
+	SourceID           string
+	Container          string
+	Codec              string
+	Bitrate            int
+	Width              int
+	Height             int
+	EstimatedSizeBytes int64
+	Provenance         []string
 }
 
 type MediaTrack struct {
@@ -188,7 +190,10 @@ func (g *MediaGraph) Ingest(obs MediaObservation) (string, error) {
 		if len(g.Variants) >= g.limits.MaxVariants {
 			return "", fmt.Errorf("%w: variants", ErrMediaGraphLimit)
 		}
-		g.Variants[variantID] = &MediaVariant{ID: variantID, ItemID: itemID, SourceID: sourceID, Container: obs.Container, Codec: obs.Codec, Bitrate: obs.Bitrate, Width: obs.Width, Height: obs.Height}
+		g.Variants[variantID] = &MediaVariant{ID: variantID, ItemID: itemID, SourceID: sourceID, Container: obs.Container, Codec: obs.Codec, Bitrate: obs.Bitrate, Width: obs.Width, Height: obs.Height, EstimatedSizeBytes: obs.EstimatedSizeBytes}
+	}
+	if g.Variants[variantID].EstimatedSizeBytes == 0 && obs.EstimatedSizeBytes > 0 {
+		g.Variants[variantID].EstimatedSizeBytes = obs.EstimatedSizeBytes
 	}
 	g.Variants[variantID].Provenance = addUnique(g.Variants[variantID].Provenance, evidence)
 	item.VariantIDs = addUnique(item.VariantIDs, variantID)

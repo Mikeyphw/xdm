@@ -14,14 +14,106 @@
     "android_media_dispatcher"
   ],
   "expected": {
+    "selection_cases": [
+      {
+        "name": "deterministic_resolution_bitrate",
+        "selected_video": "1920x1080_avc1_6000",
+        "default_video": "3840x2160_hevc_16000"
+      },
+      {
+        "name": "unavailable_preferred_language",
+        "preferred_audio": [
+          "de"
+        ],
+        "selected_audio_language": "en",
+        "rationale_code": "preferred_language_unavailable"
+      },
+      {
+        "name": "equivalent_resolution_codec_preference",
+        "preferred_codecs": [
+          "vp9",
+          "avc1"
+        ],
+        "selected_video_codec": "vp9"
+      },
+      {
+        "name": "separate_audio_video",
+        "selected_video": true,
+        "selected_audio_language": "es"
+      },
+      {
+        "name": "subtitles_optional_required",
+        "optional_missing_preference": "not_selected",
+        "required_fallback_language": "en"
+      }
+    ],
     "invariants": [
-      "Go returns available choices and explicit selected video/audio/subtitle tracks without UI ranking logic."
+      "Available choices are emitted separately from default and selected choices.",
+      "Selection result explicitly names selected video, audio, and subtitle tracks where applicable.",
+      "Rationale is machine-readable and contains no UI ranking prose."
     ]
   },
   "fixture_id": "xgo-cap-media-003",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Media selection is deterministic over resolution, bitrate, codec, language and track pairing."
+    "variants": [
+      {
+        "id": "720p-avc1",
+        "width": 1280,
+        "height": 720,
+        "bitrate": 3000,
+        "codec": "avc1",
+        "container": "mp4"
+      },
+      {
+        "id": "1080p-avc1",
+        "width": 1920,
+        "height": 1080,
+        "bitrate": 6000,
+        "codec": "avc1",
+        "container": "mp4"
+      },
+      {
+        "id": "1080p-vp9",
+        "width": 1920,
+        "height": 1080,
+        "bitrate": 5000,
+        "codec": "vp9",
+        "container": "webm"
+      },
+      {
+        "id": "2160p-hevc",
+        "width": 3840,
+        "height": 2160,
+        "bitrate": 16000,
+        "codec": "hevc",
+        "container": "mp4"
+      }
+    ],
+    "audio_tracks": [
+      {
+        "language": "en",
+        "codec": "mp4a"
+      },
+      {
+        "language": "es",
+        "codec": "mp4a"
+      }
+    ],
+    "subtitle_tracks": [
+      {
+        "language": "en",
+        "codec": "webvtt"
+      }
+    ],
+    "constraints": [
+      "resolution",
+      "bitrate",
+      "codec",
+      "container",
+      "language",
+      "estimated_size",
+      "subtitle_policy"
+    ]
   },
   "schema_version": 1
 }
