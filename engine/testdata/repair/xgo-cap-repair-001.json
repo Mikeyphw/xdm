@@ -14,14 +14,26 @@
     "android_checkpoint_integrity"
   ],
   "expected": {
+    "decision": "repair_only_damaged_checkpoint_ranges",
     "invariants": [
-      "Go invalidates damaged blocks, refetches exact ranges under current validators and re-verifies artifact."
+      "Repair eligibility is decided against representation identity before checkpoint invalidation.",
+      "Only read-back-invalid committed checkpoint blocks are invalidated.",
+      "Exact damaged ranges are reacquired and recommitted under the current generation.",
+      "Good committed blocks remain byte-for-byte unchanged.",
+      "A changed representation aborts selective repair and preserves prior evidence for clean-restart policy.",
+      "Final checksum verification must pass after repair."
     ]
   },
   "fixture_id": "xgo-cap-repair-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Selective repair redownloads damaged blocks without replacing good verified ranges."
+    "block_bytes": 4096,
+    "scenarios": [
+      "single_corrupt_block",
+      "multiple_noncontiguous_corrupt_blocks",
+      "representation_changed_before_repair",
+      "good_blocks_preserved",
+      "fetched_bytes_equal_damaged_ranges"
+    ]
   },
   "schema_version": 1
 }

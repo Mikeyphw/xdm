@@ -461,7 +461,7 @@
         "desktop_checksum_service"
       ],
       "id": "XGO-CAP-CHECKSUM-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-33",
       "test_id": "fixture:xgo-cap-checksum-001"
     },
@@ -476,7 +476,7 @@
         "android_checkpoint_integrity"
       ],
       "id": "XGO-CAP-REPAIR-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-34",
       "test_id": "fixture:xgo-cap-repair-001"
     },
@@ -490,7 +490,7 @@
         "android_completion_verification"
       ],
       "id": "XGO-CAP-FINALIZE-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-35",
       "test_id": "fixture:xgo-cap-finalize-001"
     },

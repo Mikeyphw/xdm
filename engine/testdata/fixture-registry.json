@@ -217,7 +217,7 @@
         "XGO-CAP-CHECKSUM-001"
       ],
       "category": "checksum",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_checksum_contract",
         "desktop_checksum_service"
@@ -441,7 +441,7 @@
         "XGO-CAP-FINALIZE-001"
       ],
       "category": "finalization",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_atomic_finalization",
         "android_completion_verification"
@@ -957,7 +957,7 @@
         "XGO-CAP-REPAIR-001"
       ],
       "category": "repair",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_selective_repair",
         "desktop_partial_repair",

@@ -13,14 +13,27 @@
     "android_completion_verification"
   ],
   "expected": {
+    "decision": "verified_artifact_then_publication_saga",
     "invariants": [
-      "Go freezes writes, verifies, creates ArtifactGeneration and queues publication without conflating user-visible completion."
+      "Finalization freezes authoritative staging writes before reading bytes.",
+      "Only a transport_complete current generation may finalize.",
+      "Verified artifact creation and attempt transition to produced_artifact are one SQLite transaction.",
+      "Publication preparation requires a produced_artifact attempt and a verified current artifact.",
+      "A crash after artifact creation leaves an unpublished artifact recoverable by the publication saga.",
+      "Cancellation or checksum failure creates no publishable artifact."
     ]
   },
   "fixture_id": "xgo-cap-finalize-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Verified staging becomes a versioned artifact before publication."
+    "attempt_state": "transport_complete",
+    "scenarios": [
+      "valid_file",
+      "invalid_checksum",
+      "stale_attempt",
+      "crash_after_artifact_before_publication",
+      "cancel_during_verification",
+      "write_attempt_during_freeze"
+    ]
   },
   "schema_version": 1
 }

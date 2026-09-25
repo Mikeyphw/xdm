@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,12 +20,17 @@ import (
 
 	"github.com/subhra74/xdm/engine/domain/failure"
 	"github.com/subhra74/xdm/engine/domain/identity"
+	"github.com/subhra74/xdm/engine/domain/publication"
 	"github.com/subhra74/xdm/engine/domain/resource"
 	"github.com/subhra74/xdm/engine/store/checkpoint"
 	store "github.com/subhra74/xdm/engine/store/sqlite"
 	"github.com/subhra74/xdm/engine/transfer/arbitration"
+	"github.com/subhra74/xdm/engine/transfer/checksum"
+	"github.com/subhra74/xdm/engine/transfer/finalize"
 	httptransfer "github.com/subhra74/xdm/engine/transfer/http"
+	"github.com/subhra74/xdm/engine/transfer/repair"
 	retrypolicy "github.com/subhra74/xdm/engine/transfer/retry"
+	"github.com/subhra74/xdm/engine/transfer/staging"
 )
 
 type report struct {
@@ -34,7 +42,7 @@ type lifecycle struct{ states []string }
 
 func (l *lifecycle) Start(context.Context) error { l.states = append(l.states, "running"); return nil }
 func (l *lifecycle) Complete(context.Context) error {
-	l.states = append(l.states, "produced_artifact")
+	l.states = append(l.states, "transport_complete")
 	return nil
 }
 func (l *lifecycle) Pause(context.Context) error { l.states = append(l.states, "paused"); return nil }
@@ -93,6 +101,15 @@ func fixturePath(id string) string {
 	}
 	if strings.HasPrefix(id, "xgo-cap-bandwidth-") {
 		return "bandwidth/" + id + ".json"
+	}
+	if strings.HasPrefix(id, "xgo-cap-checksum-") {
+		return "checksum/" + id + ".json"
+	}
+	if strings.HasPrefix(id, "xgo-cap-repair-") {
+		return "repair/" + id + ".json"
+	}
+	if strings.HasPrefix(id, "xgo-cap-finalize-") {
+		return "finalization/" + id + ".json"
 	}
 	return "http/" + id + ".json"
 }
@@ -154,7 +171,7 @@ func auditHTTP() error {
 	if e != nil {
 		return e
 	}
-	if got.Committed != n || len(life.states) < 2 || life.states[len(life.states)-1] != "produced_artifact" {
+	if got.Committed != n || len(life.states) < 2 || life.states[len(life.states)-1] != "transport_complete" {
 		return fmt.Errorf("http execution invariant failed: %+v %v", got, life.states)
 	}
 	raw, _ := os.ReadFile(f.Name())
@@ -430,8 +447,228 @@ func auditBandwidth() error {
 	return nil
 }
 
+func expectedSHA256(data []byte) checksum.Expected {
+	sum := sha256.Sum256(data)
+	v, _ := checksum.NormalizeExpected(checksum.SourceUser, "sha256", hex.EncodeToString(sum[:]))
+	return v
+}
+
+func auditChecksum() error {
+	data := []byte(strings.Repeat("checksum-audit-", 1<<15))
+	expected := expectedSHA256(data)
+	result, err := checksum.Verify(context.Background(), strings.NewReader(string(data)), &expected, 32<<10)
+	if err != nil || !result.Matched || result.Bytes != int64(len(data)) {
+		return fmt.Errorf("checksum success invariant failed: %+v %v", result, err)
+	}
+	wrong := expected
+	wrong.Hex = strings.Repeat("0", 64)
+	if mismatch, err := checksum.Verify(context.Background(), strings.NewReader(string(data)), &wrong, 64<<10); !errors.Is(err, checksum.ErrMismatch) || mismatch.Matched {
+		return fmt.Errorf("checksum mismatch invariant failed: %+v %v", mismatch, err)
+	}
+	if _, err := checksum.NormalizeExpected(checksum.SourceMetalink, "sha256", "bad"); !errors.Is(err, checksum.ErrMalformedExpected) {
+		return fmt.Errorf("malformed checksum accepted: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := checksum.Verify(ctx, strings.NewReader(string(data)), &expected, 64<<10); !errors.Is(err, context.Canceled) {
+		return fmt.Errorf("cancelled verification continued: %v", err)
+	}
+	return nil
+}
+
+func auditRepair() error {
+	data := []byte(strings.Repeat("repair-audit-", 4096))
+	const block = int64(4096)
+	srv := rangedServer(data)
+	defer srv.Close()
+	db, repo, dl, g, raw, err := setupStore()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	file := staging.Wrap(raw)
+	defer file.Close()
+	attempt, err := repo.GetAttempt(context.Background(), dl, g)
+	if err != nil {
+		return err
+	}
+	life := &httptransfer.SQLiteLifecycle{Repository: repo, DownloadID: dl, Generation: g, Revision: attempt.Revision, State: attempt.State}
+	if err = life.Start(context.Background()); err != nil {
+		return err
+	}
+	committer := checkpoint.Committer{Repository: repo}
+	for start, idx := int64(0), int64(0); start < int64(len(data)); start, idx = start+block, idx+1 {
+		end := start + block
+		if end > int64(len(data)) {
+			end = int64(len(data))
+		}
+		if _, err = committer.CommitBlock(context.Background(), file, checkpoint.CommitRequest{DownloadID: dl, Generation: g, BlockIndex: idx, StartByte: start, Data: data[start:end], NowUnixMS: 20 + idx}); err != nil {
+			return err
+		}
+	}
+	if err = life.Complete(context.Background()); err != nil {
+		return err
+	}
+	_, _ = file.WriteAt([]byte("CORRUPT"), 0)
+	_, _ = file.WriteAt([]byte("BROKEN"), block*2)
+	_, _, res := ids()
+	n := int64(len(data))
+	rep, _ := httptransfer.RepresentationFromProbe(res, httptransfer.ProbeResult{EffectiveURL: srv.URL, Length: &n, ETag: `"audit-v1"`})
+	got, err := repair.Execute(context.Background(), srv.Client(), repair.ExecuteRequest{URL: srv.URL, Previous: rep, Current: rep, DownloadID: dl, Generation: g, BlockBytes: block, BufferBytes: 4096, File: file, Committer: committer, Repository: repo, Lifecycle: life, Expected: expectedSHA256(data)})
+	if err != nil {
+		return err
+	}
+	if len(got.Plan.DamagedBlocks) != 2 || got.FetchedBytes != got.Plan.Bytes || !got.Verification.Matched {
+		return fmt.Errorf("selective repair invariant failed: %+v", got)
+	}
+	changed := rep
+	changed.ETag = `"audit-v2"`
+	_, _ = file.WriteAt([]byte("AGAIN"), 0)
+	if _, err = repair.BuildPlan(context.Background(), repo, file, dl, g, rep, changed, httptransfer.ResumePolicy{}); !errors.Is(err, repair.ErrRepresentationChanged) {
+		return fmt.Errorf("changed representation accepted during repair: %v", err)
+	}
+	return nil
+}
+
+func auditFinalization() error {
+	prepare := func(data []byte) (*store.DB, *store.Repository, identity.DownloadID, identity.AttemptGeneration, *staging.File, httptransfer.Lifecycle, store.DownloadRecord, error) {
+		db, repo, dl, g, raw, err := setupStore()
+		if err != nil {
+			return nil, nil, "", 0, nil, nil, store.DownloadRecord{}, err
+		}
+		file := staging.Wrap(raw)
+		attempt, err := repo.GetAttempt(context.Background(), dl, g)
+		if err != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return nil, nil, "", 0, nil, nil, store.DownloadRecord{}, err
+		}
+		life := &httptransfer.SQLiteLifecycle{Repository: repo, DownloadID: dl, Generation: g, Revision: attempt.Revision, State: attempt.State}
+		if err = life.Start(context.Background()); err != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return nil, nil, "", 0, nil, nil, store.DownloadRecord{}, err
+		}
+		if _, err = file.WriteAt(data, 0); err != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return nil, nil, "", 0, nil, nil, store.DownloadRecord{}, err
+		}
+		if err = file.Sync(); err != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return nil, nil, "", 0, nil, nil, store.DownloadRecord{}, err
+		}
+		if err = life.Complete(context.Background()); err != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return nil, nil, "", 0, nil, nil, store.DownloadRecord{}, err
+		}
+		download, err := repo.GetDownload(context.Background(), dl)
+		if err != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return nil, nil, "", 0, nil, nil, store.DownloadRecord{}, err
+		}
+		return db, repo, dl, g, file, life, download, nil
+	}
+	makeRequest := func(repo *store.Repository, dl identity.DownloadID, g identity.AttemptGeneration, file *staging.File, download store.DownloadRecord, data []byte, expected checksum.Expected, suffix, key string, hook finalize.FaultHook) finalize.Request {
+		vid, _ := identity.ParseVerificationID("ver_" + suffix)
+		pid, _ := identity.ParsePublicationID("pub_" + suffix)
+		return finalize.Request{
+			Repository: repo, DownloadID: dl, Generation: g, ExpectedDownloadRevision: download.Revision,
+			VerificationID: vid, PublicationID: pid, PublicationKey: key, StagingIdentity: file.Name(),
+			SizeBytes: int64(len(data)), Reader: file, Freeze: file.Freeze, Expected: &expected, NowUnixMS: 50, Hook: hook,
+		}
+	}
+
+	// Happy path: transport-complete bytes become a verified artifact, and only
+	// then is a publication transaction prepared.
+	{
+		data := []byte(strings.Repeat("finalization-audit-", 1024))
+		db, repo, dl, g, file, _, download, err := prepare(data)
+		if err != nil {
+			return err
+		}
+		expected := expectedSHA256(data)
+		got, err := finalize.Finalize(context.Background(), makeRequest(repo, dl, g, file, download, data, expected, "00000000000000000000000000000077", "audit-publication-77", nil))
+		if err != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return err
+		}
+		if !got.Verification.Matched || got.Artifact.VerificationState != "verified" || got.Artifact.PublicationState != "publishing" || got.Publication.State != publication.Prepared {
+			_ = file.Close()
+			_ = db.Close()
+			return fmt.Errorf("finalization invariant failed: %+v", got)
+		}
+		storedAttempt, err := repo.GetAttempt(context.Background(), dl, g)
+		_ = file.Close()
+		_ = db.Close()
+		if err != nil || storedAttempt.State != "produced_artifact" {
+			return fmt.Errorf("attempt not promoted after verification: %+v %v", storedAttempt, err)
+		}
+	}
+
+	// Mismatch path: failed verification is journaled but no artifact escapes,
+	// leaving transport_complete repairable.
+	{
+		data := []byte("finalization-mismatch-audit")
+		db, repo, dl, g, file, _, download, err := prepare(data)
+		if err != nil {
+			return err
+		}
+		wrong := expectedSHA256([]byte("different-bytes"))
+		got, ferr := finalize.Finalize(context.Background(), makeRequest(repo, dl, g, file, download, data, wrong, "00000000000000000000000000000078", "audit-publication-78", nil))
+		if !errors.Is(ferr, checksum.ErrMismatch) || got.Record.Result != store.VerificationFailed || got.Record.ArtifactGeneration != nil {
+			_ = file.Close()
+			_ = db.Close()
+			return fmt.Errorf("mismatch finalization invariant failed: %+v %v", got, ferr)
+		}
+		current, _ := repo.GetDownload(context.Background(), dl)
+		attempt, _ := repo.GetAttempt(context.Background(), dl, g)
+		_ = file.Close()
+		_ = db.Close()
+		if current.CurrentArtifact != nil || attempt.State != "transport_complete" {
+			return fmt.Errorf("mismatch leaked artifact or authority: download=%+v attempt=%+v", current, attempt)
+		}
+	}
+
+	// Crash window: after atomic verification/artifact promotion but before
+	// PreparePublication, durable state remains recoverable and unpublished.
+	{
+		data := []byte("finalization-crash-window-audit")
+		db, repo, dl, g, file, _, download, err := prepare(data)
+		if err != nil {
+			return err
+		}
+		expected := expectedSHA256(data)
+		boom := errors.New("audit crash after verified artifact")
+		hook := func(stage finalize.Stage) error {
+			if stage == finalize.AfterVerifiedArtifact {
+				return boom
+			}
+			return nil
+		}
+		got, ferr := finalize.Finalize(context.Background(), makeRequest(repo, dl, g, file, download, data, expected, "00000000000000000000000000000079", "audit-publication-79", hook))
+		if !errors.Is(ferr, boom) || got.Artifact.Generation.Int64() != 1 {
+			_ = file.Close()
+			_ = db.Close()
+			return fmt.Errorf("crash-window invariant failed: %+v %v", got, ferr)
+		}
+		stored, err := repo.GetArtifact(context.Background(), dl, got.Artifact.Generation)
+		attempt, _ := repo.GetAttempt(context.Background(), dl, g)
+		_ = file.Close()
+		_ = db.Close()
+		if err != nil || stored.PublicationState != "unpublished" || attempt.State != "produced_artifact" {
+			return fmt.Errorf("crash-window state not recoverable: artifact=%+v attempt=%+v err=%v", stored, attempt, err)
+		}
+	}
+	return nil
+}
+
 func main() {
-	mode := flag.String("mode", "", "probe|representation|http|segmented|resume|retry|bandwidth")
+	mode := flag.String("mode", "", "probe|representation|http|segmented|resume|retry|bandwidth|checksum|repair|finalization")
 	out := flag.String("output", "", "report path")
 	flag.Parse()
 	root, _ := os.Getwd()
@@ -446,6 +683,9 @@ func main() {
 		"resume":         {[]string{"XGO-CAP-HTTP-006"}, []string{"xgo-cap-http-006"}, auditResume},
 		"retry":          {[]string{"XGO-CAP-RETRY-001"}, []string{"xgo-cap-retry-001"}, auditRetry},
 		"bandwidth":      {[]string{"XGO-CAP-BANDWIDTH-001"}, []string{"xgo-cap-bandwidth-001"}, auditBandwidth},
+		"checksum":       {[]string{"XGO-CAP-CHECKSUM-001"}, []string{"xgo-cap-checksum-001"}, auditChecksum},
+		"repair":         {[]string{"XGO-CAP-REPAIR-001"}, []string{"xgo-cap-repair-001"}, auditRepair},
+		"finalization":   {[]string{"XGO-CAP-FINALIZE-001"}, []string{"xgo-cap-finalize-001"}, auditFinalization},
 	}
 	s, ok := spec[*mode]
 	if !ok {

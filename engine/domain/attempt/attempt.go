@@ -17,27 +17,29 @@ var (
 type State string
 
 const (
-	Reserved         State = "reserved"
-	Prepared         State = "prepared"
-	Running          State = "running"
-	Paused           State = "paused"
-	ProducedArtifact State = "produced_artifact"
-	Failed           State = "failed"
-	Cancelled        State = "cancelled"
+	Reserved          State = "reserved"
+	Prepared          State = "prepared"
+	Running           State = "running"
+	Paused            State = "paused"
+	TransportComplete State = "transport_complete"
+	ProducedArtifact  State = "produced_artifact"
+	Failed            State = "failed"
+	Cancelled         State = "cancelled"
 )
 
 var transitions = map[State][]State{
-	Reserved:         {Prepared, Failed, Cancelled},
-	Prepared:         {Running, Failed, Cancelled},
-	Running:          {Paused, ProducedArtifact, Failed, Cancelled},
-	Paused:           {Running, Failed, Cancelled},
-	ProducedArtifact: nil,
-	Failed:           nil,
-	Cancelled:        nil,
+	Reserved:          {Prepared, Failed, Cancelled},
+	Prepared:          {Running, Failed, Cancelled},
+	Running:           {Paused, TransportComplete, Failed, Cancelled},
+	Paused:            {Running, Failed, Cancelled},
+	TransportComplete: {Running, ProducedArtifact, Failed, Cancelled},
+	ProducedArtifact:  nil,
+	Failed:            nil,
+	Cancelled:         nil,
 }
 
 func States() []State {
-	return []State{Reserved, Prepared, Running, Paused, ProducedArtifact, Failed, Cancelled}
+	return []State{Reserved, Prepared, Running, Paused, TransportComplete, ProducedArtifact, Failed, Cancelled}
 }
 func AllowedTransitions() map[State][]State {
 	out := make(map[State][]State, len(transitions))

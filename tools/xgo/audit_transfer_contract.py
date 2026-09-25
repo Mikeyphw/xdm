@@ -15,7 +15,7 @@ def main()->int:
     run(['python3','tools/xgo/audit_fixtures.py','lint','--ledger','engine/docs/capability-ledger.yaml','--map','engine/docs/donor-map.yaml','--registry','engine/testdata/fixture-registry.json','--output',str(fixture_report)],root)
     ledger=json.loads((root/'engine/docs/capability-ledger.yaml').read_text());registry=json.loads((root/'engine/testdata/fixture-registry.json').read_text())
     caps={c['id']:c for c in ledger['capabilities']};fixtures={f['fixture_id']:f for f in registry['fixtures']}
-    expected={'XGO-CAP-HTTP-001':'XGO-26','XGO-CAP-HTTP-002':'XGO-27','XGO-CAP-HTTP-003':'XGO-28','XGO-CAP-HTTP-004':'XGO-29','XGO-CAP-HTTP-005':'XGO-29','XGO-CAP-HTTP-006':'XGO-30','XGO-CAP-RETRY-001':'XGO-31','XGO-CAP-BANDWIDTH-001':'XGO-32'}
+    expected={'XGO-CAP-HTTP-001':'XGO-26','XGO-CAP-HTTP-002':'XGO-27','XGO-CAP-HTTP-003':'XGO-28','XGO-CAP-HTTP-004':'XGO-29','XGO-CAP-HTTP-005':'XGO-29','XGO-CAP-HTTP-006':'XGO-30','XGO-CAP-RETRY-001':'XGO-31','XGO-CAP-BANDWIDTH-001':'XGO-32','XGO-CAP-CHECKSUM-001':'XGO-33','XGO-CAP-REPAIR-001':'XGO-34','XGO-CAP-FINALIZE-001':'XGO-35'}
     for cap_id,overlay in expected.items():
         cap=caps.get(cap_id)
         if not cap: raise SystemExit(f'missing capability {cap_id}')

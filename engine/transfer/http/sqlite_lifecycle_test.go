@@ -11,7 +11,7 @@ import (
 	store "github.com/subhra74/xdm/engine/store/sqlite"
 )
 
-func TestSQLiteLifecyclePersistsRunningAndProducedArtifact(t *testing.T) {
+func TestSQLiteLifecyclePersistsRunningAndTransportComplete(t *testing.T) {
 	ctx := context.Background()
 	db, err := store.Open(filepath.Join(t.TempDir(), "engine.sqlite"), store.DefaultOptions())
 	if err != nil {
@@ -56,7 +56,7 @@ func TestSQLiteLifecyclePersistsRunningAndProducedArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows, _ = db.Query(ctx, `SELECT state,revision FROM download_attempts WHERE download_id=? AND attempt_generation=?`, dl.String(), attempt.Generation.Int64())
-	if rows[0][0].Text != "produced_artifact" || rows[0][1].I64 != 6 {
+	if rows[0][0].Text != "transport_complete" || rows[0][1].I64 != 6 {
 		t.Fatalf("rows=%#v", rows)
 	}
 }

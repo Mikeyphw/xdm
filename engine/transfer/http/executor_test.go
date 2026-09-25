@@ -32,7 +32,7 @@ func (f *fakeLifecycle) add(v string) {
 	f.states = append(f.states, v)
 }
 func (f *fakeLifecycle) Start(context.Context) error    { f.add("running"); return nil }
-func (f *fakeLifecycle) Complete(context.Context) error { f.add("produced_artifact"); return nil }
+func (f *fakeLifecycle) Complete(context.Context) error { f.add("transport_complete"); return nil }
 func (f *fakeLifecycle) Pause(context.Context) error    { f.add("paused"); return nil }
 func (f *fakeLifecycle) Fail(_ context.Context, x failure.Failure) error {
 	f.mu.Lock()
@@ -124,7 +124,7 @@ func TestExecuteNormalTransferAndProgress(t *testing.T) {
 	if string(raw) != string(data) {
 		t.Fatal("staging mismatch")
 	}
-	if life.states[len(life.states)-1] != "produced_artifact" {
+	if life.states[len(life.states)-1] != "transport_complete" {
 		t.Fatalf("states=%v", life.states)
 	}
 }

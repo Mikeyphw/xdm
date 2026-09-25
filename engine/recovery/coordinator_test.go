@@ -90,6 +90,26 @@ func activateRecovery(t *testing.T, repo *store.Repository, dl identity.Download
 
 func verifyRecovery(t *testing.T, repo *store.Repository, dl identity.DownloadID, attempt store.AttemptRecord, download store.DownloadRecord, suffix string, now int64) (store.ArtifactRecord, store.DownloadRecord) {
 	t.Helper()
+	ctx := context.Background()
+	current, err := repo.GetAttempt(ctx, dl, attempt.Generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.State != "transport_complete" {
+		current, err = repo.MutateAttempt(ctx, dl, current.Generation, current.Revision, "prepared", "", "", now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current, err = repo.MutateAttempt(ctx, dl, current.Generation, current.Revision, "running", "", "", now+1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current, err = repo.MutateAttempt(ctx, dl, current.Generation, current.Revision, "transport_complete", "", "", now+2)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	attempt = current
 	vid, err := identity.ParseVerificationID("ver_" + suffix)
 	if err != nil {
 		t.Fatal(err)

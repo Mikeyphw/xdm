@@ -1331,6 +1331,57 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/transfer/bandwidth-stress.json"]
 
+[targets.xgo_transfer.jobs.checksum_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "checksum",
+  "--output", ".devtool/reports/xgo/transfer/checksum-matrix.json",
+]
+inputs = [
+  "engine/transfer/checksum/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/checksum/xgo-cap-checksum-001.json",
+]
+outputs = [".devtool/reports/xgo/transfer/checksum-matrix.json"]
+
+[targets.xgo_transfer.jobs.repair_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "repair",
+  "--output", ".devtool/reports/xgo/transfer/repair-lab.json",
+]
+inputs = [
+  "engine/transfer/repair/**",
+  "engine/transfer/checksum/**",
+  "engine/transfer/http/**",
+  "engine/store/checkpoint/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/repair/xgo-cap-repair-001.json",
+]
+outputs = [".devtool/reports/xgo/transfer/repair-lab.json"]
+
+[targets.xgo_transfer.jobs.finalization_faults]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-transfer-audit",
+  "--mode", "finalization",
+  "--output", ".devtool/reports/xgo/transfer/finalization-faults.json",
+]
+inputs = [
+  "engine/transfer/finalize/**",
+  "engine/transfer/staging/**",
+  "engine/transfer/checksum/**",
+  "engine/store/sqlite/**",
+  "engine/recovery/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/testdata/finalization/xgo-cap-finalize-001.json",
+]
+outputs = [".devtool/reports/xgo/transfer/finalization-faults.json"]
+
 [targets.xgo_transfer.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1342,6 +1393,9 @@ validate = [
   { id = "checkpoint_crash_matrix", ref = "job:checkpoint_crash_matrix", depends_on = ["resume_lab"] },
   { id = "retry_matrix", ref = "job:retry_matrix", depends_on = ["checkpoint_crash_matrix"] },
   { id = "bandwidth_stress", ref = "job:bandwidth_stress", depends_on = ["retry_matrix"] },
+  { id = "checksum_matrix", ref = "job:checksum_matrix", depends_on = ["bandwidth_stress"] },
+  { id = "repair_lab", ref = "job:repair_lab", depends_on = ["checksum_matrix"] },
+  { id = "finalization_faults", ref = "job:finalization_faults", depends_on = ["repair_lab"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

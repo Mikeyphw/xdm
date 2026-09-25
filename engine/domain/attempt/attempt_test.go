@@ -44,10 +44,21 @@ func TestAttemptTransitionTableIsExhaustive(t *testing.T) {
 				if err == nil {
 					a, err = a.Transition(attempt.Paused)
 				}
+			case attempt.TransportComplete:
+				a, err = a.Transition(attempt.Prepared)
+				if err == nil {
+					a, err = a.Transition(attempt.Running)
+				}
+				if err == nil {
+					a, err = a.Transition(attempt.TransportComplete)
+				}
 			case attempt.ProducedArtifact:
 				a, err = a.Transition(attempt.Prepared)
 				if err == nil {
 					a, err = a.Transition(attempt.Running)
+				}
+				if err == nil {
+					a, err = a.Transition(attempt.TransportComplete)
 				}
 				if err == nil {
 					a, err = a.Transition(attempt.ProducedArtifact)

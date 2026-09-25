@@ -1,9 +1,29 @@
 {
-  "schema_version": 1,
-  "fixture_id": "xgo-cap-http-003",
-  "capability_ids": ["XGO-CAP-HTTP-003"],
+  "capability_ids": [
+    "XGO-CAP-HTTP-003"
+  ],
   "category": "http",
-  "donor_ids": ["android_native_http", "android_native_http_test", "desktop_download_manager"],
-  "input": {"expected_length": 8192, "buffer_bytes": 4096, "checkpoint_bytes": 4096, "resume_offset": 4096},
-  "expected": {"final_committed": 8192, "invariants": ["bytes become resumable only through checkpoint committer", "pause returns only at a durable checkpoint boundary", "early EOF and oversized bodies are typed range contradictions", "cancellation and planted network failures are typed separately", "attempt lifecycle persists running/paused/failed/produced_artifact"]}
+  "donor_ids": [
+    "android_native_http",
+    "android_native_http_test",
+    "desktop_download_manager"
+  ],
+  "expected": {
+    "final_committed": 8192,
+    "invariants": [
+      "bytes become resumable only through checkpoint committer",
+      "pause returns only at a durable checkpoint boundary",
+      "early EOF and oversized bodies are typed range contradictions",
+      "cancellation and planted network failures are typed separately",
+      "attempt lifecycle persists running/paused/failed/transport_complete; produced_artifact is reserved for verified finalization"
+    ]
+  },
+  "fixture_id": "xgo-cap-http-003",
+  "input": {
+    "buffer_bytes": 4096,
+    "checkpoint_bytes": 4096,
+    "expected_length": 8192,
+    "resume_offset": 4096
+  },
+  "schema_version": 1
 }

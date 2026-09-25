@@ -114,7 +114,7 @@ func (l *SQLiteLifecycle) Start(ctx context.Context) error {
 			return err
 		}
 		return l.mutateLocked(ctx, "running", nil)
-	case "prepared", "paused":
+	case "prepared", "paused", "transport_complete":
 		return l.mutateLocked(ctx, "running", nil)
 	case "running":
 		return nil
@@ -129,7 +129,7 @@ func (l *SQLiteLifecycle) Complete(ctx context.Context) error {
 	if l.State != "running" {
 		return fmt.Errorf("%w: complete from %s", ErrInvalidTransfer, l.State)
 	}
-	return l.mutateLocked(ctx, "produced_artifact", nil)
+	return l.mutateLocked(ctx, "transport_complete", nil)
 }
 
 func (l *SQLiteLifecycle) Pause(ctx context.Context) error {

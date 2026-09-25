@@ -221,3 +221,52 @@ grant times.
 Diagnostics snapshot active/peak connections, acquisition/wait/cancellation
 counts, total bandwidth requests/bytes/wait time, per-download accounted bytes
 and the current limits revision. Snapshot maps are detached from internal state.
+
+## Native transfer verification, selective repair and finalization (XGO-33..35)
+
+Transport byte completion is not artifact completion. Native HTTP now ends in the
+nonterminal `transport_complete` attempt state. That state is durable across
+process death and is the only state eligible for final verification. Selective
+repair may move `transport_complete -> running -> transport_complete`; only a
+successful verified-artifact transaction may move the attempt to
+`produced_artifact`.
+
+`transfer/checksum` owns bounded streaming whole-artifact hashing. Supported
+algorithms are explicitly enumerated (`md5`, `sha1`, `sha256`, `sha512`) and
+expected values are normalized from typed sources such as user input and
+Metalink metadata. Verification is cancellation-aware and records canonical
+lowercase hex plus the verifier version. A checksum mismatch creates an
+append-only failed verification record but no ArtifactGeneration.
+
+`transfer/repair` derives repair ranges from checkpoint read-back evidence, not
+from file length or segment-worker memory. Representation compatibility is
+checked before any durable invalidation. Only invalid committed checkpoint rows
+are revoked; exact damaged byte ranges are then re-fetched through the normal
+HTTP range/If-Range path, recommitted through the write/sync/read-back/hash
+checkpoint contract and followed by full-artifact verification. A changed
+representation aborts selective repair and leaves restart policy to the normal
+representation/resume layer.
+
+`transfer/staging.File` is the write-freeze boundary used during finalization.
+Authoritative WriteAt/Sync/Truncate operations share a read lock; finalization
+acquires the exclusive freeze and waits for in-flight writes to leave before it
+reads any verification bytes. Verification reads remain possible while frozen.
+The freeze remains held until the verified-artifact transaction and publication
+preparation decision complete.
+
+`transfer/finalize` verifies the current `transport_complete` generation, then
+uses SQLite to atomically append the successful verification record, create the
+next ArtifactGeneration, advance the current Download artifact pointer and
+promote the source attempt to `produced_artifact`. Publication preparation is a
+separate durable saga step. A crash after ArtifactGeneration creation but before
+publication therefore leaves a verified `unpublished` artifact that recovery can
+resume. `PreparePublication` additionally requires the source attempt to be
+`produced_artifact`, so a transport-complete or failed-verification attempt can
+never become publishable through a parallel caller.
+
+The native-Termux Gate-04 workflow deliberately does not invoke Go's race
+detector because `-race` is unsupported on Android/arm64. Deterministic transfer,
+checkpoint, arbitration, repair and finalization stress remains part of the
+native gate. A supplemental supported-host race qualification covers
+`engine/transfer/...` and `engine/store/checkpoint`; it is evidence, not a false
+Android capability claim.

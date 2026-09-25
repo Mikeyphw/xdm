@@ -38,8 +38,36 @@ func reserveForDurable(t *testing.T, repo *Repository, dl identity.DownloadID, e
 	return attempt, download
 }
 
+func transportCompleteForDurable(t *testing.T, repo *Repository, attempt AttemptRecord, now int64) AttemptRecord {
+	t.Helper()
+	ctx := context.Background()
+	var err error
+	attempt, err = repo.MutateAttempt(ctx, attempt.DownloadID, attempt.Generation, attempt.Revision, "prepared", "", "", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt, err = repo.MutateAttempt(ctx, attempt.DownloadID, attempt.Generation, attempt.Revision, "running", "", "", now+1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt, err = repo.MutateAttempt(ctx, attempt.DownloadID, attempt.Generation, attempt.Revision, "transport_complete", "", "", now+2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return attempt
+}
+
 func verifyForDurable(t *testing.T, repo *Repository, dl identity.DownloadID, attempt AttemptRecord, download DownloadRecord, suffix string, now int64) (VerificationRecord, ArtifactRecord, DownloadRecord) {
 	t.Helper()
+	current, getErr := repo.GetAttempt(context.Background(), dl, attempt.Generation)
+	if getErr != nil {
+		t.Fatal(getErr)
+	}
+	if current.State != "transport_complete" {
+		attempt = transportCompleteForDurable(t, repo, current, now-3)
+	} else {
+		attempt = current
+	}
 	verification, artifact, updated, err := repo.CommitVerifiedArtifact(context.Background(), VerificationCommitRequest{
 		VerificationID: mustVerificationID(t, suffix), DownloadID: dl, Generation: attempt.Generation,
 		ExpectedDownloadRevision: download.Revision, StagingIdentity: "stage-" + suffix, SizeBytes: 12,
@@ -86,6 +114,7 @@ func TestVerifiedArtifactCommitIsAtomicAndGenerationOnlyAdvancesOnAcceptance(t *
 	db, _ := openTestDB(t)
 	repo, dl := seedRepository(t, db)
 	attempt, download := reserveForDurable(t, repo, dl, mustRevision(t, 1), 2)
+	attempt = transportCompleteForDurable(t, repo, attempt, 3)
 	ctx := context.Background()
 	boom := errors.New("crash between verification and artifact")
 	_, _, _, err := repo.CommitVerifiedArtifact(ctx, VerificationCommitRequest{

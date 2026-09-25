@@ -482,6 +482,19 @@ func publicationID(suffix string) identity.PublicationID {
 	return id
 }
 
+func advanceAttemptToTransportComplete(ctx context.Context, repo *store.Repository, attempt store.AttemptRecord, nowMS int64) (store.AttemptRecord, error) {
+	var err error
+	attempt, err = repo.MutateAttempt(ctx, attempt.DownloadID, attempt.Generation, attempt.Revision, "prepared", "", "", nowMS)
+	if err != nil {
+		return store.AttemptRecord{}, err
+	}
+	attempt, err = repo.MutateAttempt(ctx, attempt.DownloadID, attempt.Generation, attempt.Revision, "running", "", "", nowMS+1)
+	if err != nil {
+		return store.AttemptRecord{}, err
+	}
+	return repo.MutateAttempt(ctx, attempt.DownloadID, attempt.Generation, attempt.Revision, "transport_complete", "", "", nowMS+2)
+}
+
 func auditVerification() (map[string]any, error) {
 	ctx := context.Background()
 	db, _, cleanup, err := tempDB()
@@ -506,6 +519,10 @@ func auditVerification() (map[string]any, error) {
 	}
 	if failed.Result != store.VerificationFailed || failed.ArtifactGeneration != nil {
 		return nil, fmt.Errorf("failed verification created artifact identity")
+	}
+	attempt1, err = advanceAttemptToTransportComplete(ctx, repo, attempt1, 4)
+	if err != nil {
+		return nil, err
 	}
 	boom := errors.New("verification crash")
 	_, _, _, err = repo.CommitVerifiedArtifact(ctx, store.VerificationCommitRequest{VerificationID: verificationID("00000000000000000000000000000022"), DownloadID: dl, Generation: attempt1.Generation, ExpectedDownloadRevision: d1.Revision, StagingIdentity: "audit-stage-21", SizeBytes: 8, Algorithm: "sha256", ExpectedValue: "aa", ActualValue: "aa", VerifierVersion: "audit-v1", NowUnixMS: 4}, func(stage store.VerificationStage) error {
@@ -538,6 +555,10 @@ func auditVerification() (map[string]any, error) {
 	_, err = repo.RecordVerificationFailure(ctx, store.VerificationRecord{ID: verificationID("00000000000000000000000000000024"), DownloadID: dl, Generation: attempt1.Generation, Algorithm: "sha256", VerifierVersion: "audit-v1", CreatedAtUnixMS: 7})
 	if !errors.Is(err, store.ErrStaleAttempt) {
 		return nil, fmt.Errorf("stale verification accepted: %v", err)
+	}
+	attempt2, err = advanceAttemptToTransportComplete(ctx, repo, attempt2, 8)
+	if err != nil {
+		return nil, err
 	}
 	_, artifact2, _, err := repo.CommitVerifiedArtifact(ctx, store.VerificationCommitRequest{VerificationID: verificationID("00000000000000000000000000000025"), DownloadID: dl, Generation: attempt2.Generation, ExpectedDownloadRevision: d3.Revision, StagingIdentity: "audit-stage-22", SizeBytes: 9, Algorithm: "sha256", ExpectedValue: "cc", ActualValue: "cc", VerifierVersion: "audit-v1", NowUnixMS: 8}, nil)
 	if err != nil {
@@ -572,6 +593,10 @@ func seedVerifiedArtifact(db *store.DB, suffix string) (*store.Repository, ident
 		return nil, "", store.ArtifactRecord{}, store.DownloadRecord{}, err
 	}
 	attempt, d1, err := repo.ReserveAttemptGeneration(ctx, dl, rev(1), "native", 2)
+	if err != nil {
+		return nil, "", store.ArtifactRecord{}, store.DownloadRecord{}, err
+	}
+	attempt, err = advanceAttemptToTransportComplete(ctx, repo, attempt, 3)
 	if err != nil {
 		return nil, "", store.ArtifactRecord{}, store.DownloadRecord{}, err
 	}

@@ -13,14 +13,36 @@
     "desktop_checksum_service"
   ],
   "expected": {
+    "decision": "streaming_full_artifact_verification",
     "invariants": [
-      "Go normalizes expected checksums from request/Metalink and records verification result independently of transport."
+      "Transport completion remains transport_complete until verification succeeds.",
+      "Expected checksum aliases and hex are normalized before use.",
+      "Verification streams bounded buffers and honors cancellation.",
+      "Mismatch is journaled without creating ArtifactGeneration.",
+      "Successful verification records algorithm, actual digest, expected digest, source contract and verifier version."
     ]
   },
   "fixture_id": "xgo-cap-checksum-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Expected checksum verification is streaming and canonical."
+    "algorithms": [
+      "md5",
+      "sha1",
+      "sha256",
+      "sha512"
+    ],
+    "scenarios": [
+      "correct_hash",
+      "wrong_hash",
+      "malformed_expected",
+      "large_stream",
+      "cancelled_verification",
+      "restart_after_transport_complete"
+    ],
+    "sources": [
+      "user",
+      "metalink",
+      "metadata"
+    ]
   },
   "schema_version": 1
 }

@@ -18,6 +18,7 @@ var (
 	ErrArtifactNotCurrent  = errors.New("artifact is not current")
 	ErrPublicationState    = errors.New("invalid publication state")
 	ErrPublicationConflict = errors.New("publication receipt conflicts with durable state")
+	ErrAttemptNotReady     = errors.New("attempt is not ready for verified artifact")
 )
 
 const (
@@ -134,6 +135,20 @@ func (r *Repository) CommitVerifiedArtifact(ctx context.Context, req Verificatio
 	if download.Revision != req.ExpectedDownloadRevision {
 		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, ErrStaleWrite
 	}
+	attemptRows, err := tx.Query(ctx, `SELECT state,revision FROM download_attempts WHERE download_id=? AND attempt_generation=?`, req.DownloadID.String(), req.Generation.Int64())
+	if err != nil {
+		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, err
+	}
+	if len(attemptRows) == 0 {
+		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, ErrNotFound
+	}
+	if attemptRows[0][0].Text != "transport_complete" {
+		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, ErrAttemptNotReady
+	}
+	attemptRevision, err := identity.NewRevision(attemptRows[0][1].I64)
+	if err != nil {
+		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, err
+	}
 	var artifactGeneration identity.ArtifactGeneration
 	if download.CurrentArtifact == nil {
 		artifactGeneration, err = identity.NewArtifactGeneration(1)
@@ -170,11 +185,22 @@ func (r *Repository) CommitVerifiedArtifact(ctx context.Context, req Verificatio
 			return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, err
 		}
 	}
+	nextAttemptRevision, err := attemptRevision.Next()
+	if err != nil {
+		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, err
+	}
+	changes, err := tx.Exec(ctx, `UPDATE download_attempts SET state='produced_artifact',revision=?,updated_at_unix_ms=? WHERE download_id=? AND attempt_generation=? AND revision=? AND state='transport_complete'`, nextAttemptRevision.Int64(), req.NowUnixMS, req.DownloadID.String(), req.Generation.Int64(), attemptRevision.Int64())
+	if err != nil {
+		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, err
+	}
+	if changes != 1 {
+		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, ErrStaleWrite
+	}
 	nextDownloadRevision, err := download.Revision.Next()
 	if err != nil {
 		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, err
 	}
-	changes, err := tx.Exec(ctx, `UPDATE downloads SET current_artifact_generation=?,revision=?,updated_at_unix_ms=? WHERE download_id=? AND revision=? AND current_attempt_generation=?`, artifactGeneration.Int64(), nextDownloadRevision.Int64(), req.NowUnixMS, req.DownloadID.String(), download.Revision.Int64(), req.Generation.Int64())
+	changes, err = tx.Exec(ctx, `UPDATE downloads SET current_artifact_generation=?,revision=?,updated_at_unix_ms=? WHERE download_id=? AND revision=? AND current_attempt_generation=?`, artifactGeneration.Int64(), nextDownloadRevision.Int64(), req.NowUnixMS, req.DownloadID.String(), download.Revision.Int64(), req.Generation.Int64())
 	if err != nil {
 		return VerificationRecord{}, ArtifactRecord{}, DownloadRecord{}, err
 	}
@@ -353,6 +379,13 @@ func (r *Repository) PreparePublication(ctx context.Context, req PreparePublicat
 	}
 	if download.CurrentAttempt == nil || artifact.SourceAttempt != *download.CurrentAttempt {
 		return PublicationRecord{}, ArtifactRecord{}, ErrStaleAttempt
+	}
+	attemptRows, err := tx.Query(ctx, `SELECT state FROM download_attempts WHERE download_id=? AND attempt_generation=?`, req.DownloadID.String(), artifact.SourceAttempt.Int64())
+	if err != nil {
+		return PublicationRecord{}, ArtifactRecord{}, err
+	}
+	if len(attemptRows) == 0 || attemptRows[0][0].Text != "produced_artifact" {
+		return PublicationRecord{}, ArtifactRecord{}, ErrAttemptNotReady
 	}
 	if artifact.PublicationState != "unpublished" {
 		return PublicationRecord{}, ArtifactRecord{}, ErrPublicationState
