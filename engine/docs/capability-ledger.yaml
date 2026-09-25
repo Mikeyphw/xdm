@@ -12,7 +12,7 @@
     "redesign",
     "new_design"
   ],
-  "minimum_capability_count": 95,
+  "minimum_capability_count": 96,
   "capabilities": [
     {
       "id": "XGO-CAP-DOMAIN-001",
@@ -85,7 +85,7 @@
       "donor_strategy": "android_led",
       "target_overlay": "XGO-12",
       "test_id": "fixture:xgo-cap-store-001",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-STORE-002",
@@ -95,11 +95,24 @@
         "android_download_dao",
         "android_backend_ownership_dao"
       ],
-      "canonical_behavior": "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleRevision.",
+      "canonical_behavior": "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleWrite without implicit retry.",
       "donor_strategy": "redesign",
       "target_overlay": "XGO-13",
       "test_id": "fixture:xgo-cap-store-002",
-      "status": "PLANNED"
+      "status": "IMPLEMENTED"
+    },
+    {
+      "id": "XGO-CAP-STORE-003",
+      "area": "persistence",
+      "behavior": "SQLite runtime configuration and failure semantics are explicit and portable across host packaging.",
+      "donors": [
+        "android_database"
+      ],
+      "canonical_behavior": "Go opens SQLite with foreign keys, WAL, NORMAL synchronous mode, finite busy timeout and extended result codes; cgo-disabled builds fail explicitly with ErrUnavailable instead of selecting another store.",
+      "donor_strategy": "redesign",
+      "target_overlay": "XGO-11",
+      "test_id": "fixture:xgo-cap-store-003",
+      "status": "IMPLEMENTED"
     },
     {
       "id": "XGO-CAP-OWNERSHIP-001",

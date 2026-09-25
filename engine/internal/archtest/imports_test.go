@@ -19,6 +19,8 @@ func TestFoundationAndDomainImportBoundaries(t *testing.T) {
 	forbiddenDomain := []string{module + "runtime/", module + "store/", module + "backend/", module + "media/", "android.", "androidx.", "Avalonia", "Microsoft.EntityFrameworkCore"}
 	scanImports(t, filepath.Join(root, "foundation"), forbiddenFoundation)
 	scanImports(t, filepath.Join(root, "domain"), forbiddenDomain)
+	forbiddenStore := []string{module + "runtime/", module + "backend/", module + "media/", "android.", "androidx.", "Avalonia", "Microsoft.EntityFrameworkCore"}
+	scanImports(t, filepath.Join(root, "store"), forbiddenStore)
 }
 
 func moduleRoot(t *testing.T) string {

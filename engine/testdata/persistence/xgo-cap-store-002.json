@@ -1,26 +1,41 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-store-002",
   "capability_ids": [
     "XGO-CAP-STORE-002"
   ],
   "category": "persistence",
-  "derivation": {
-    "behavior": "Mutable rows use explicit revision-based compare-and-set.",
-    "canonical_behavior": "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleRevision.",
-    "strategy": "redesign"
-  },
   "donor_ids": [
     "android_download_dao",
     "android_backend_ownership_dao"
   ],
-  "expected": {
-    "invariants": [
-      "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleRevision."
+  "derivation": {
+    "behavior": "Mutable rows use explicit revision-based compare-and-set.",
+    "canonical_behavior": "Every authoritative mutable aggregate carries Revision; stale expected revisions change zero rows and return ErrStaleWrite without implicit retry.",
+    "strategy": "redesign"
+  },
+  "input": {
+    "representation": "language-neutral CAS contract",
+    "scenarios": [
+      {
+        "name": "two_writers",
+        "initial_revision": 1,
+        "writer_a_expected": 1,
+        "writer_b_expected": 1
+      },
+      {
+        "name": "concurrent_same_revision",
+        "initial_revision": 1,
+        "writers": 24
+      }
     ]
   },
-  "fixture_id": "xgo-cap-store-002",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Mutable rows use explicit revision-based compare-and-set."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "The first valid writer increments revision exactly once.",
+      "A stale expected revision changes zero rows and returns ErrStaleWrite.",
+      "Exactly one concurrent writer using the same expected revision succeeds.",
+      "Repository code does not automatically re-read and retry a stale mutation."
+    ]
+  }
 }

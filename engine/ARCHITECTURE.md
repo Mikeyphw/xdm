@@ -50,3 +50,23 @@ connection from satisfying a request owned by a newer connection.
 The C ABI is intentionally small and handle-based. Output memory is C-owned and
 must be released through `xdm_buffer_free`; tokenized allocation ownership makes
 repeated frees of the same returned buffer harmless.
+
+## Persistence authority (XGO-11..13)
+
+`store/sqlite` is the canonical persistence boundary. It owns SQLite connection
+configuration, schema migration, repository mutation semantics and revision CAS.
+Domain packages never import the store; the store may import typed domain
+identities but not runtime/backend/media/platform implementations.
+
+SQLite connections use foreign keys, WAL journaling, NORMAL synchronous mode,
+a finite busy timeout and extended result codes. The Go binding targets the
+stable SQLite C ABI and intentionally has no third-party Go module dependency.
+Host packaging supplies `libsqlite3`; `CGO_ENABLED=0` remains compilable but
+returns `ErrUnavailable` rather than choosing a second persistence engine.
+
+Schema v1 is normalized around Download/Request/Attempt/Artifact ownership and
+contains future durable records for backend ownership/tasks, publication,
+segments/checkpoints, verification, queues/schedules, media and diagnostics.
+Mutable authoritative tables carry a positive integer `revision`. Repository
+updates require the exact expected revision and increment it once; a stale write
+returns `ErrStaleWrite` and is never implicitly retried.

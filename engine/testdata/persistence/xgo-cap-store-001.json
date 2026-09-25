@@ -1,27 +1,47 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-store-001",
   "capability_ids": [
     "XGO-CAP-STORE-001"
   ],
   "category": "persistence",
-  "derivation": {
-    "behavior": "Authoritative engine state is transactional and normalized.",
-    "canonical_behavior": "Go-owned SQLite schema stores downloads, requests, attempts, artifacts, ownership, checkpoints, queues, media and diagnostics.",
-    "strategy": "android_led"
-  },
   "donor_ids": [
     "android_entities",
     "android_database",
     "android_download_dao"
   ],
-  "expected": {
-    "invariants": [
-      "Go-owned SQLite schema stores downloads, requests, attempts, artifacts, ownership, checkpoints, queues, media and diagnostics."
+  "derivation": {
+    "behavior": "Authoritative engine state is transactional and normalized.",
+    "canonical_behavior": "Go-owned SQLite schema stores downloads, requests, attempts, artifacts, ownership, checkpoints, queues, media and diagnostics.",
+    "strategy": "android_led"
+  },
+  "input": {
+    "representation": "language-neutral storage contract",
+    "scenarios": [
+      {
+        "name": "fresh_migration",
+        "database_version": 0
+      },
+      {
+        "name": "idempotent_migration",
+        "database_version": 1
+      },
+      {
+        "name": "future_schema_rejected",
+        "database_version": 999
+      },
+      {
+        "name": "foreign_key_rejects_orphan_download",
+        "request_exists": false
+      }
     ]
   },
-  "fixture_id": "xgo-cap-store-001",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Authoritative engine state is transactional and normalized."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "Schema v1 creates canonical normalized tables and required indexes.",
+      "Migration is idempotent at version 1.",
+      "A schema newer than the engine returns ErrSchemaTooNew without downgrade.",
+      "Foreign keys reject orphan authoritative rows."
+    ]
+  }
 }

@@ -665,44 +665,122 @@ validate = [
 # Bootstrap target for future roadmap ownership. The command runner is intentional
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_store]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
+  "go.work",
+  "engine/domain/**",
+  "engine/store/**",
+  "engine/internal/archtest/**",
+  "engine/cmd/xgo-store-audit/**",
+  "tools/xgo/run_sqlite_platform_smoke.py",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/store/**",
 ]
 
-[targets.xgo_store.jobs.bootstrap_contract]
+[targets.xgo_store.go]
+packages = ["./engine/store/...", "./engine/internal/archtest"]
+build_targets = ["./engine/cmd/xgo-store-audit"]
+vet = true
+
+[targets.xgo_store.jobs.sqlite_platform_smoke]
 runner = "command"
 command = [
   "python3",
-  "tools/xgo/audit_topology.py",
-  "target-ready",
-  "--config",
-  ".devtool.toml",
-  "--target",
-  "xgo_store",
+  "tools/xgo/run_sqlite_platform_smoke.py",
   "--output",
-  ".devtool/reports/xgo/store/bootstrap.json",
+  ".devtool/reports/xgo/store/sqlite-platform-smoke.json",
 ]
 inputs = [
-  ".devtool.toml",
-  "tools/xgo/audit_topology.py",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-store-audit/**",
+  "tools/xgo/run_sqlite_platform_smoke.py",
 ]
 outputs = [
-  ".devtool/reports/xgo/store/bootstrap.json",
+  ".devtool/reports/xgo/store/sqlite-platform-smoke.json",
+  ".devtool/reports/xgo/store/sqlite-platform-audit.json",
+]
+
+[targets.xgo_store.jobs.schema_audit]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "schema",
+  "--output",
+  ".devtool/reports/xgo/store/schema-audit.json",
+]
+inputs = [
+  "engine/store/sqlite/schema.go",
+  "engine/store/sqlite/schema_test.go",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/schema-audit.json",
+]
+
+[targets.xgo_store.jobs.cas_stress]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-store-audit",
+  "--mode",
+  "cas",
+  "--iterations",
+  "64",
+  "--output",
+  ".devtool/reports/xgo/store/cas-stress.json",
+]
+inputs = [
+  "engine/domain/identity/**",
+  "engine/store/sqlite/repository.go",
+  "engine/store/sqlite/repository_test.go",
+  "engine/cmd/xgo-store-audit/**",
+]
+outputs = [
+  ".devtool/reports/xgo/store/cas-stress.json",
+]
+
+
+[targets.xgo_store.jobs.store_contract_audit]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_store_contract.py",
+  "--output",
+  ".devtool/reports/xgo/store/store-contract-audit.json",
+]
+inputs = [
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/persistence/**",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "tools/xgo/audit_store_contract.py",
+]
+outputs = [
+  ".devtool/reports/xgo/store/store-contract-audit.json",
+  ".devtool/reports/xgo/store/shared-ledger-audit.json",
+  ".devtool/reports/xgo/store/shared-fixture-audit.json",
 ]
 
 [targets.xgo_store.workflows]
 validate = [
-  { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "go", ref = "runner:go#validate", depends_on = [] },
+  { id = "store_contract_audit", ref = "job:store_contract_audit", depends_on = ["go"] },
+  { id = "sqlite_platform_smoke", ref = "job:sqlite_platform_smoke", depends_on = ["store_contract_audit"] },
+  { id = "schema_audit", ref = "job:schema_audit", depends_on = ["sqlite_platform_smoke"] },
+  { id = "cas_stress", ref = "job:cas_stress", depends_on = ["schema_audit"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

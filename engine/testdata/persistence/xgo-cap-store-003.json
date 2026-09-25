@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-store-003",
+  "capability_ids": [
+    "XGO-CAP-STORE-003"
+  ],
+  "category": "persistence",
+  "donor_ids": [
+    "android_database"
+  ],
+  "derivation": {
+    "behavior": "SQLite runtime configuration and failure semantics are explicit and portable across host packaging.",
+    "canonical_behavior": "Go opens SQLite with foreign keys, WAL, NORMAL synchronous mode, finite busy timeout and extended result codes; cgo-disabled builds fail explicitly with ErrUnavailable instead of selecting another store.",
+    "strategy": "redesign"
+  },
+  "input": {
+    "representation": "language-neutral SQLite runtime contract",
+    "scenarios": [
+      {
+        "name": "native_open",
+        "cgo_enabled": true
+      },
+      {
+        "name": "no_cgo",
+        "cgo_enabled": false
+      },
+      {
+        "name": "writer_contention",
+        "busy_timeout_ms": 50
+      },
+      {
+        "name": "corrupt_database",
+        "bytes": "not a sqlite database"
+      }
+    ]
+  },
+  "expected": {
+    "invariants": [
+      "Native open enables foreign_keys and WAL and configures a finite busy timeout.",
+      "No-cgo builds remain compilable but Open returns ErrUnavailable.",
+      "Writer contention waits for the configured busy timeout before returning busy/locked.",
+      "Corrupt/not-a-database failures are classified without exposing SQL arguments."
+    ]
+  }
+}
