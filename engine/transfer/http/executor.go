@@ -27,6 +27,37 @@ type Limiter interface {
 	WaitN(context.Context, int) error
 }
 
+// ResourceLimiter is the bound view of the central transfer arbiter. The same
+// handle owns both connection permits and byte-rate reservations for a transfer.
+type ResourceLimiter interface {
+	Limiter
+	AcquireConnection(context.Context) (func(), error)
+}
+
+func acquireConnection(ctx context.Context, resources ResourceLimiter) (func(), error) {
+	if resources == nil {
+		return func() {}, nil
+	}
+	release, err := resources.AcquireConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if release == nil {
+		return nil, ErrInvalidTransfer
+	}
+	return release, nil
+}
+
+func waitBytes(ctx context.Context, resources ResourceLimiter, legacy Limiter, n int) error {
+	if resources != nil {
+		return resources.WaitN(ctx, n)
+	}
+	if legacy != nil {
+		return legacy.WaitN(ctx, n)
+	}
+	return nil
+}
+
 type Progress struct {
 	Committed int64  `json:"committed"`
 	Total     *int64 `json:"total,omitempty"`
@@ -131,7 +162,8 @@ type ExecutePlan struct {
 	File            checkpoint.File
 	Committer       BlockCommitter
 	Lifecycle       Lifecycle
-	Limiter         Limiter
+	Limiter         Limiter // legacy byte-only hook; Resources is authoritative when set
+	Resources       ResourceLimiter
 	Progress        ProgressSink
 	PauseRequested  func() bool
 }
@@ -224,6 +256,15 @@ func Execute(ctx context.Context, client Doer, plan ExecutePlan) (ExecuteResult,
 	if err != nil {
 		return ExecuteResult{}, failLifecycle(ctx, plan.Lifecycle, failure.InvalidRequest, err)
 	}
+	releaseConnection, err := acquireConnection(ctx, plan.Resources)
+	if err != nil {
+		category := failure.InternalFailure
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			category = failure.Cancelled
+		}
+		return ExecuteResult{}, failLifecycle(ctx, plan.Lifecycle, category, err)
+	}
+	defer releaseConnection()
 	resp, err := client.Do(req)
 	if err != nil {
 		category := failure.NetworkUnavailable
@@ -285,14 +326,12 @@ func Execute(ctx context.Context, client Doer, plan ExecutePlan) (ExecuteResult,
 		}
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
-			if plan.Limiter != nil {
-				if err := plan.Limiter.WaitN(ctx, n); err != nil {
-					category := failure.NetworkUnavailable
-					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-						category = failure.Cancelled
-					}
-					return ExecuteResult{BytesThisRun: bytesRun, Committed: committed, Blocks: block - plan.StartBlockIndex}, failLifecycle(ctx, plan.Lifecycle, category, err)
+			if err := waitBytes(ctx, plan.Resources, plan.Limiter, n); err != nil {
+				category := failure.NetworkUnavailable
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					category = failure.Cancelled
 				}
+				return ExecuteResult{BytesThisRun: bytesRun, Committed: committed, Blocks: block - plan.StartBlockIndex}, failLifecycle(ctx, plan.Lifecycle, category, err)
 			}
 			if total != nil && plan.StartOffset+bytesRun+int64(n) > *total {
 				return ExecuteResult{BytesThisRun: bytesRun, Committed: committed, Blocks: block - plan.StartBlockIndex}, failLifecycle(ctx, plan.Lifecycle, failure.RangeContradiction, errors.New("response exceeds expected representation length"))

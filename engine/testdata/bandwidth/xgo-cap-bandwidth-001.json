@@ -13,14 +13,36 @@
     "desktop_bandwidth_profile"
   ],
   "expected": {
+    "decision": "central_resource_arbiter",
     "invariants": [
-      "Go central limiter arbitrates connection permits and byte rate fairly using monotonic time."
+      "Global, host, and download connection caps are enforced by one arbiter.",
+      "A blocked host does not consume capacity available to another host.",
+      "Global and queue/profile/download byte-rate scopes compose through monotonic reservations.",
+      "Equal active transfers receive fair reservation opportunities and independently accounted bytes.",
+      "Live limit changes wake eligible connection waiters and affect subsequent byte reservations.",
+      "Cancellation removes queued connection requests and released leases return capacity.",
+      "Diagnostics expose active/peak connections, wait/cancellation counters, bytes and limit revision."
     ]
   },
   "fixture_id": "xgo-cap-bandwidth-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Connection and bandwidth limits support global, host and download scopes."
+    "scenarios": [
+      "global_connection_cap",
+      "per_host_isolation",
+      "per_download_segment_cap",
+      "global_bandwidth",
+      "queue_hook",
+      "profile_hook",
+      "download_hook",
+      "fair_two_transfer",
+      "live_limit_update",
+      "cancelled_waiter"
+    ],
+    "global_connections": 2,
+    "default_host_connections": 1,
+    "default_download_connections": 2,
+    "global_bytes_per_second": 1048576,
+    "chunk_bytes": 16384
   },
   "schema_version": 1
 }

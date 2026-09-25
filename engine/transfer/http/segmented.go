@@ -106,7 +106,8 @@ type SegmentedPlan struct {
 	Committer      BlockCommitter
 	Ledger         SegmentLedger
 	Lifecycle      Lifecycle
-	Limiter        Limiter
+	Limiter        Limiter // legacy byte-only hook
+	Resources      ResourceLimiter
 	Progress       ProgressSink
 }
 
@@ -156,11 +157,16 @@ func validateExactRange(resp *http.Response, br ByteRange, total int64) error {
 	return nil
 }
 
-func rangeSupport(ctx context.Context, client Doer, url string, rep Representation, total int64) (bool, error) {
+func rangeSupport(ctx context.Context, client Doer, url string, rep Representation, total int64, resources ResourceLimiter) (bool, error) {
 	req, err := transferRangeRequest(ctx, url, rep, ByteRange{0, 0})
 	if err != nil {
 		return false, err
 	}
+	releaseConnection, err := acquireConnection(ctx, resources)
+	if err != nil {
+		return false, err
+	}
+	defer releaseConnection()
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
@@ -184,6 +190,11 @@ func executeOneSegment(ctx context.Context, client Doer, p SegmentedPlan, seg Se
 	if err != nil {
 		return 0, 0, err
 	}
+	releaseConnection, err := acquireConnection(ctx, p.Resources)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer releaseConnection()
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, 0, err
@@ -229,10 +240,8 @@ func executeOneSegment(ctx context.Context, client Doer, p SegmentedPlan, seg Se
 		}
 		n, readErr := resp.Body.Read(buf[:want])
 		if n > 0 {
-			if p.Limiter != nil {
-				if err := p.Limiter.WaitN(ctx, n); err != nil {
-					return bytesWritten, blocks, err
-				}
+			if err := waitBytes(ctx, p.Resources, p.Limiter, n); err != nil {
+				return bytesWritten, blocks, err
 			}
 			pending = append(pending, buf[:n]...)
 			remaining -= int64(n)
@@ -287,7 +296,7 @@ func ExecuteSegmented(ctx context.Context, client Doer, p SegmentedPlan) (Segmen
 	if err != nil {
 		return SegmentedResult{}, err
 	}
-	supported, err := rangeSupport(ctx, client, p.URL, p.Representation, *p.Representation.Length)
+	supported, err := rangeSupport(ctx, client, p.URL, p.Representation, *p.Representation.Length, p.Resources)
 	if err != nil {
 		return SegmentedResult{}, failLifecycle(ctx, p.Lifecycle, failure.RangeContradiction, err)
 	}
@@ -354,7 +363,7 @@ func ExecuteAdaptive(ctx context.Context, client Doer, seg SegmentedPlan, single
 	if seg.Representation.Length == nil {
 		return SegmentedResult{}, ErrInvalidTransfer
 	}
-	supported, err := rangeSupport(ctx, client, seg.URL, seg.Representation, *seg.Representation.Length)
+	supported, err := rangeSupport(ctx, client, seg.URL, seg.Representation, *seg.Representation.Length, seg.Resources)
 	if err != nil {
 		return SegmentedResult{}, err
 	}

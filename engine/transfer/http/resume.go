@@ -132,7 +132,8 @@ type ResumeExecutePlan struct {
 	Committer      BlockCommitter
 	Repository     *store.Repository
 	Lifecycle      Lifecycle
-	Limiter        Limiter
+	Limiter        Limiter // legacy byte-only hook
+	Resources      ResourceLimiter
 	Progress       ProgressSink
 }
 
@@ -141,6 +142,11 @@ func executeResumeRange(ctx context.Context, client Doer, p ResumeExecutePlan, b
 	if err != nil {
 		return 0, 0, err
 	}
+	releaseConnection, err := acquireConnection(ctx, p.Resources)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer releaseConnection()
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, 0, err
@@ -197,10 +203,8 @@ func executeResumeRange(ctx context.Context, client Doer, p ResumeExecutePlan, b
 		}
 		n, re := resp.Body.Read(buf[:want])
 		if n > 0 {
-			if p.Limiter != nil {
-				if e := p.Limiter.WaitN(ctx, n); e != nil {
-					return bytes, blocks, e
-				}
+			if e := waitBytes(ctx, p.Resources, p.Limiter, n); e != nil {
+				return bytes, blocks, e
 			}
 			pending = append(pending, buf[:n]...)
 			remaining -= int64(n)

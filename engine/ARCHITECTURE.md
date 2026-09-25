@@ -193,3 +193,31 @@ and jitter sources. The chosen decision, including an absolute retry deadline,
 is serialized into the failed attempt's durable failure payload through the
 attempt revision CAS/current-generation fence; restart reloads the recorded
 deadline instead of recomputing it from the new process clock.
+
+## Native transfer resource arbitration (XGO-32)
+
+Native HTTP resource use is coordinated by one central `transfer/arbitration.Arbiter`.
+Callers bind a stable transfer key containing Download identity, host, queue and
+profile and pass the resulting handle into the HTTP executor. The same handle
+owns both connection permits and byte-rate reservations; executors do not build
+independent semaphores or token buckets.
+
+Connection admission composes global, per-host and per-download limits. Waiting
+requests are scanned for the first currently admissible key so a saturated host
+does not head-of-line block an unrelated host. A connection lease is idempotent
+on release, cancelled waiters are removed, and live limit changes wake queued
+requests. The per-download connection scope is also the authoritative segment
+concurrency cap for segmented HTTP.
+
+Bandwidth accounting composes global and optional queue/profile/download byte
+rates. Reservation deadlines are derived from injected monotonic time. At most
+one future byte reservation per Download is active at a time, so a many-segment
+Download cannot reserve an arbitrarily long run of global bandwidth ahead of an
+already-active peer. Queue/profile/download rates are policy hooks for the later
+scheduler/profile work; XGO-32 does not make scheduler policy itself authoritative.
+Live changes apply to subsequent reservations without rewriting already-promised
+grant times.
+
+Diagnostics snapshot active/peak connections, acquisition/wait/cancellation
+counts, total bandwidth requests/bytes/wait time, per-download accounted bytes
+and the current limits revision. Snapshot maps are detached from internal state.

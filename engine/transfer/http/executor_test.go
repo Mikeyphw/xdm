@@ -3,10 +3,12 @@ package httptransfer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/subhra74/xdm/engine/domain/resource"
 	"github.com/subhra74/xdm/engine/store/checkpoint"
 	store "github.com/subhra74/xdm/engine/store/sqlite"
+	"github.com/subhra74/xdm/engine/transfer/arbitration"
 )
 
 type fakeLifecycle struct {
@@ -246,5 +249,31 @@ func TestExecuteCancellationAndNetworkFailureAreTyped(t *testing.T) {
 	_, err = Execute(ctx, srv.Client(), plan)
 	if err == nil || life.failed != failure.Cancelled {
 		t.Fatalf("err=%v failed=%s", err, life.failed)
+	}
+}
+
+func TestExecuteUsesCentralResourceArbiter(t *testing.T) {
+	data := []byte(strings.Repeat("resource-arbiter", 1024))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+		_, _ = w.Write(data)
+	}))
+	defer srv.Close()
+	plan, _, _ := planFor(t, srv.URL, int64(len(data)))
+	arb, err := arbitration.New(arbitration.Limits{GlobalConnections: 1, DefaultHostConnections: 1, DefaultDownloadConnections: 1, GlobalBytesPerSecond: 16 << 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := arb.Bind(arbitration.Key{DownloadID: plan.DownloadID.String(), Host: "127.0.0.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.Resources = h
+	if _, err = Execute(context.Background(), srv.Client(), plan); err != nil {
+		t.Fatal(err)
+	}
+	m := arb.Metrics()
+	if m.ConnectionAcquisitions != 1 || m.ActiveConnections != 0 || m.BandwidthBytes != int64(len(data)) {
+		t.Fatalf("resource metrics=%+v", m)
 	}
 }

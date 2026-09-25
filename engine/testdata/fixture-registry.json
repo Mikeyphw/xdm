@@ -163,7 +163,7 @@
         "XGO-CAP-BANDWIDTH-001"
       ],
       "category": "bandwidth",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_native_http",
         "desktop_bandwidth_profile"

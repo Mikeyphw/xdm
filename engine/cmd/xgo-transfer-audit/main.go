@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/subhra74/xdm/engine/domain/failure"
@@ -19,6 +20,7 @@ import (
 	"github.com/subhra74/xdm/engine/domain/resource"
 	"github.com/subhra74/xdm/engine/store/checkpoint"
 	store "github.com/subhra74/xdm/engine/store/sqlite"
+	"github.com/subhra74/xdm/engine/transfer/arbitration"
 	httptransfer "github.com/subhra74/xdm/engine/transfer/http"
 	retrypolicy "github.com/subhra74/xdm/engine/transfer/retry"
 )
@@ -88,6 +90,9 @@ func requireFixture(root, id string) error {
 func fixturePath(id string) string {
 	if strings.HasPrefix(id, "xgo-cap-retry-") {
 		return "retry/" + id + ".json"
+	}
+	if strings.HasPrefix(id, "xgo-cap-bandwidth-") {
+		return "bandwidth/" + id + ".json"
 	}
 	return "http/" + id + ".json"
 }
@@ -320,8 +325,113 @@ func auditRetry() error {
 	return nil
 }
 
+func auditBandwidth() error {
+	limits := arbitration.Limits{GlobalConnections: 2, DefaultHostConnections: 1, DefaultDownloadConnections: 2, GlobalBytesPerSecond: 1 << 20}
+	arb, err := arbitration.New(limits)
+	if err != nil {
+		return err
+	}
+	a, _ := arb.Bind(arbitration.Key{DownloadID: "download-a", Host: "a.test"})
+	b, _ := arb.Bind(arbitration.Key{DownloadID: "download-b", Host: "b.test"})
+	aSame, _ := arb.Bind(arbitration.Key{DownloadID: "download-c", Host: "a.test"})
+
+	releaseA, err := a.AcquireConnection(context.Background())
+	if err != nil {
+		return err
+	}
+	defer releaseA()
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+	if _, err = aSame.AcquireConnection(ctx); err == nil {
+		return fmt.Errorf("per-host connection cap not enforced")
+	}
+	releaseB, err := b.AcquireConnection(context.Background())
+	if err != nil {
+		return fmt.Errorf("host isolation failed: %w", err)
+	}
+	releaseB()
+	releaseA()
+
+	// A live limit update must wake an already queued acquisition.
+	one, _ := arb.Bind(arbitration.Key{DownloadID: "download-one", Host: "one.test"})
+	two, _ := arb.Bind(arbitration.Key{DownloadID: "download-two", Host: "two.test"})
+	limits.GlobalConnections = 1
+	limits.DefaultHostConnections = 2
+	if err = arb.UpdateLimits(limits); err != nil {
+		return err
+	}
+	r1, err := one.AcquireConnection(context.Background())
+	if err != nil {
+		return err
+	}
+	done := make(chan error, 1)
+	go func() {
+		r, e := two.AcquireConnection(context.Background())
+		if r != nil {
+			r()
+		}
+		done <- e
+	}()
+	time.Sleep(20 * time.Millisecond)
+	limits.GlobalConnections = 2
+	if err = arb.UpdateLimits(limits); err != nil {
+		return err
+	}
+	select {
+	case e := <-done:
+		if e != nil {
+			return e
+		}
+	case <-time.After(time.Second):
+		return fmt.Errorf("live connection limit update did not wake waiter")
+	}
+	r1()
+
+	// Equal active transfers receive equal accounted bytes while the global rate
+	// enforces a measurable lower throughput bound.
+	limits.GlobalConnections = 4
+	limits.GlobalBytesPerSecond = 1 << 20
+	if err = arb.UpdateLimits(limits); err != nil {
+		return err
+	}
+	start := time.Now()
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+	for _, h := range []*arbitration.Handle{a, b} {
+		wg.Add(1)
+		go func(handle *arbitration.Handle) {
+			defer wg.Done()
+			for i := 0; i < 8; i++ {
+				if e := handle.WaitN(context.Background(), 16<<10); e != nil {
+					errCh <- e
+					return
+				}
+			}
+		}(h)
+	}
+	wg.Wait()
+	close(errCh)
+	for e := range errCh {
+		if e != nil {
+			return e
+		}
+	}
+	elapsed := time.Since(start)
+	if elapsed < 150*time.Millisecond || elapsed > 3*time.Second {
+		return fmt.Errorf("bandwidth throughput outside tolerance: %s", elapsed)
+	}
+	m := arb.Metrics()
+	if m.BytesByDownload["download-a"] != 128<<10 || m.BytesByDownload["download-b"] != 128<<10 {
+		return fmt.Errorf("fair bandwidth accounting failed: %+v", m.BytesByDownload)
+	}
+	if m.PeakConnections > 2 || m.ActiveConnections != 0 || m.LimitsRevision < 4 {
+		return fmt.Errorf("arbiter metrics invariant failed: %+v", m)
+	}
+	return nil
+}
+
 func main() {
-	mode := flag.String("mode", "", "probe|representation|http|segmented|resume|retry")
+	mode := flag.String("mode", "", "probe|representation|http|segmented|resume|retry|bandwidth")
 	out := flag.String("output", "", "report path")
 	flag.Parse()
 	root, _ := os.Getwd()
@@ -335,6 +445,7 @@ func main() {
 		"segmented":      {[]string{"XGO-CAP-HTTP-004", "XGO-CAP-HTTP-005"}, []string{"xgo-cap-http-004", "xgo-cap-http-005"}, auditSegmented},
 		"resume":         {[]string{"XGO-CAP-HTTP-006"}, []string{"xgo-cap-http-006"}, auditResume},
 		"retry":          {[]string{"XGO-CAP-RETRY-001"}, []string{"xgo-cap-retry-001"}, auditRetry},
+		"bandwidth":      {[]string{"XGO-CAP-BANDWIDTH-001"}, []string{"xgo-cap-bandwidth-001"}, auditBandwidth},
 	}
 	s, ok := spec[*mode]
 	if !ok {
