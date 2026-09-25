@@ -377,6 +377,10 @@ func main() {
 		r = runFTPLab()
 	case "metalink":
 		r = runMetalinkCorpus()
+	case "compatibility":
+		r = runCompatibilityMatrix()
+	case "selection":
+		r = runSelectionMatrix()
 	default:
 		fmt.Fprintln(os.Stderr, "unsupported mode:", *mode)
 		os.Exit(2)

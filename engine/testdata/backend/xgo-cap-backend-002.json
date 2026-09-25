@@ -1,26 +1,90 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-backend-002",
+  "category": "backend",
   "capability_ids": [
     "XGO-CAP-BACKEND-002"
   ],
-  "category": "backend",
+  "donor_ids": [
+    "android_backend_contract",
+    "desktop_backend_advisor"
+  ],
   "derivation": {
     "behavior": "Backend selection is deterministic and explainable.",
     "canonical_behavior": "Go selects among compatible healthy backends using user preference and operation requirements; switching after start requires migration.",
     "strategy": "merged"
   },
-  "donor_ids": [
-    "android_backend_contract",
-    "desktop_backend_advisor"
-  ],
-  "expected": {
-    "invariants": [
-      "Go selects among compatible healthy backends using user preference and operation requirements; switching after start requires migration."
+  "input": {
+    "cases": [
+      {
+        "name": "deterministic_same_input",
+        "runs": 50,
+        "expected": "byte_identical_decision"
+      },
+      {
+        "name": "preference_compatible_only",
+        "preference": "aria2",
+        "expected": "aria2_only_when_compatible"
+      },
+      {
+        "name": "unavailable_backend_fallback",
+        "preferred": "aria2",
+        "aria2_runtime": "unavailable",
+        "expected": "native_fallback"
+      },
+      {
+        "name": "degraded_backend",
+        "native_health": "degraded",
+        "expected": "healthy_compatible_alternative"
+      },
+      {
+        "name": "direct_http_default",
+        "shape": "https_get",
+        "expected": "native"
+      },
+      {
+        "name": "mirrors_and_ftp",
+        "shapes": [
+          "mirrored_https",
+          "ftp_get"
+        ],
+        "expected": "aria2"
+      },
+      {
+        "name": "media_external_shape",
+        "shapes": [
+          "direct_media",
+          "external_tool"
+        ],
+        "expected": [
+          "native",
+          "no_backend"
+        ]
+      },
+      {
+        "name": "migration_cost",
+        "target_cost": "unsafe",
+        "expected": "unsafe_target_rejected"
+      },
+      {
+        "name": "started_attempt_fence",
+        "attempt_started": true,
+        "expected": "existing_backend_only"
+      },
+      {
+        "name": "attempt_scoped_persistence",
+        "expected": "selection_reason_persisted_before_start_only"
+      }
     ]
   },
-  "fixture_id": "xgo-cap-backend-002",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Backend selection is deterministic and explainable."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "Selection considers only backends whose exact compatibility contract accepts the operation.",
+      "Identical selection inputs produce identical selected backend, reason, rejection ordering, and explanation.",
+      "User preference is honored only when compatible and available; fallback follows the request fallback policy.",
+      "Runtime availability, backend health, operation shape, and migration cost are explicit selection inputs.",
+      "The selected reason and ranked candidate evidence are persisted as an attempt-scoped safe diagnostic before execution starts.",
+      "A started attempt remains bound to its existing backend; changing backend requires the explicit migration contract."
+    ]
+  }
 }

@@ -545,7 +545,7 @@
         "desktop_backend_advisor"
       ],
       "id": "XGO-CAP-BACKEND-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-39",
       "test_id": "fixture:xgo-cap-backend-001"
     },
@@ -559,7 +559,7 @@
         "desktop_backend_advisor"
       ],
       "id": "XGO-CAP-BACKEND-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-40",
       "test_id": "fixture:xgo-cap-backend-002"
     },

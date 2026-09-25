@@ -1,27 +1,82 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-backend-001",
+  "category": "backend",
   "capability_ids": [
     "XGO-CAP-BACKEND-001"
   ],
-  "category": "backend",
-  "derivation": {
-    "behavior": "Backend compatibility is exact for the concrete operation.",
-    "canonical_behavior": "Each Go backend implements CanExecute(intent) with typed incompatibility reasons matching execution preflight.",
-    "strategy": "redesign"
-  },
   "donor_ids": [
     "android_backend_contract",
     "android_aria2_backend",
     "desktop_backend_advisor"
   ],
-  "expected": {
-    "invariants": [
-      "Each Go backend implements CanExecute(intent) with typed incompatibility reasons matching execution preflight."
+  "derivation": {
+    "behavior": "Backend compatibility is exact for the concrete operation.",
+    "canonical_behavior": "Each Go backend implements CanExecute(intent) with typed incompatibility reasons matching execution preflight.",
+    "strategy": "redesign"
+  },
+  "input": {
+    "cases": [
+      {
+        "name": "canonical_request_kinds",
+        "shapes": [
+          "https_get",
+          "https_post",
+          "ftp_get",
+          "ftps_get"
+        ],
+        "expected": "native_and_aria2_exact_matrix"
+      },
+      {
+        "name": "method_body",
+        "shape": "https_post",
+        "expected_aria2_reject": "method_body"
+      },
+      {
+        "name": "destination",
+        "destination": "platform_stream",
+        "expected_aria2_reject": "destination"
+      },
+      {
+        "name": "credential_mode",
+        "credential": "authorization",
+        "expected_aria2_reject": "credential_mode"
+      },
+      {
+        "name": "proxy",
+        "proxy": "http",
+        "expected_aria2_reject": "proxy"
+      },
+      {
+        "name": "media_shape",
+        "media_shape": "external_tool",
+        "expected_reject": "media_shape"
+      },
+      {
+        "name": "resume",
+        "shape": "post",
+        "resume": "required",
+        "expected_native_reject": "resume"
+      },
+      {
+        "name": "mirror_semantics",
+        "mirrors": 1,
+        "expected_native_reject": "mirror_semantics",
+        "expected_aria2": "compatible"
+      },
+      {
+        "name": "preflight_exactness",
+        "expected": "CanExecute_and_Preflight_agree"
+      }
     ]
   },
-  "fixture_id": "xgo-cap-backend-001",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Backend compatibility is exact for the concrete operation."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "Compatibility is computed from the canonical NetworkIntent plus execution requirements, not from frontend heuristics.",
+      "Every hard incompatibility uses one of the typed dimensions: protocol, method_body, destination, credential_mode, proxy, media_shape, resume, mirror_semantics.",
+      "Native and aria2 implement the same CanExecute and Preflight contract surface.",
+      "A request accepted by CanExecute must pass backend preflight; a rejected request must fail preflight with the same first typed reason.",
+      "Soft preference hints never convert an incompatible operation into a compatible one."
+    ]
+  }
 }

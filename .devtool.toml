@@ -1398,8 +1398,8 @@ validate = [
   { id = "finalization_faults", ref = "job:finalization_faults", depends_on = ["repair_lab"] },
 ]
 
-# Bootstrap target for future roadmap ownership. The command runner is intentional
-# until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
+# XGO-36 activated backend ownership on the native Go runner; later Wave 5 overlays
+# extend this same target-local validation DAG.
 [targets.xgo_backends]
 runner = "go"
 platform = "shared"
@@ -1438,6 +1438,8 @@ inputs = [
   "engine/testdata/request/xgo-cap-request-002.json",
   "engine/testdata/ftp/xgo-cap-ftp-001.json",
   "engine/testdata/metalink/xgo-cap-metalink-001.json",
+  "engine/testdata/backend/xgo-cap-backend-001.json",
+  "engine/testdata/backend/xgo-cap-backend-002.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1452,6 +1454,7 @@ packages = [
   "./engine/security/credentials",
   "./engine/security/redirect",
   "./engine/store/checkpoint",
+  "./engine/store/sqlite",
   "./engine/transfer/checksum",
   "./engine/transfer/finalize",
   "./engine/transfer/http",
@@ -1477,6 +1480,8 @@ inputs = [
   "engine/testdata/request/xgo-cap-request-002.json",
   "engine/testdata/ftp/xgo-cap-ftp-001.json",
   "engine/testdata/metalink/xgo-cap-metalink-001.json",
+  "engine/testdata/backend/xgo-cap-backend-001.json",
+  "engine/testdata/backend/xgo-cap-backend-002.json",
   "tools/xgo/audit_backends_contract.py",
   "tools/xgo/audit_foundation.py",
   "tools/xgo/audit_fixtures.py",
@@ -1552,6 +1557,40 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/backends/metalink-corpus.json"]
 
+[targets.xgo_backends.jobs.compatibility_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-backends-audit",
+  "--mode", "compatibility",
+  "--output", ".devtool/reports/xgo/backends/compatibility-matrix.json",
+]
+inputs = [
+  "engine/backends/router/**",
+  "engine/domain/request/**",
+  "engine/security/transportpolicy/**",
+  "engine/cmd/xgo-backends-audit/**",
+  "engine/testdata/backend/xgo-cap-backend-001.json",
+]
+outputs = [".devtool/reports/xgo/backends/compatibility-matrix.json"]
+
+[targets.xgo_backends.jobs.selection_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-backends-audit",
+  "--mode", "selection",
+  "--output", ".devtool/reports/xgo/backends/selection-matrix.json",
+]
+inputs = [
+  "engine/backends/router/**",
+  "engine/domain/identity/**",
+  "engine/domain/request/**",
+  "engine/security/transportpolicy/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-backends-audit/**",
+  "engine/testdata/backend/xgo-cap-backend-002.json",
+]
+outputs = [".devtool/reports/xgo/backends/selection-matrix.json"]
+
 [targets.xgo_backends.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1559,6 +1598,8 @@ validate = [
   { id = "post_replay_lab", ref = "job:post_replay_lab", depends_on = ["backend_contract_audit"] },
   { id = "ftp_lab", ref = "job:ftp_lab", depends_on = ["post_replay_lab"] },
   { id = "metalink_corpus", ref = "job:metalink_corpus", depends_on = ["ftp_lab"] },
+  { id = "compatibility_matrix", ref = "job:compatibility_matrix", depends_on = ["metalink_corpus"] },
+  { id = "selection_matrix", ref = "job:selection_matrix", depends_on = ["compatibility_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

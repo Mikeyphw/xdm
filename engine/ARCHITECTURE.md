@@ -363,3 +363,39 @@ forms are rejected at parse time. Legal relative subdirectories remain metadata
 for later host publication policy. Multiple files in one document receive
 deterministic distinct child resource identities so one logical resource cannot
 accidentally represent several artifacts.
+
+## Exact backend compatibility and deterministic selection (XGO-39..40)
+
+Backend routing consumes the existing canonical `domain/request.NetworkIntent`.
+`backends/router.Operation` supplements that request only with execution
+requirements that are not request identity: destination kind, resolved proxy
+mode, media shape, resume requirement and selective-repair requirement. It does
+not duplicate URL, method, headers, credentials, body, mirrors or integrity
+metadata.
+
+Every executable backend implements one inspection surface: `CanExecute` returns
+an exact `CompatibilityResult`, while `Preflight` enforces the same result at the
+execution boundary. Hard rejects use typed dimensions for protocol,
+method/body, destination, credential mode, proxy, media shape, resume and mirror
+semantics. Soft hints may express a preference, but cannot make an incompatible
+operation executable. The current aria2 compatibility contract is deliberately
+narrow: bodyless HTTP/HTTPS/FTP GET to staging with direct networking and no
+captured credential/header semantics. Capability expands only when later aria2
+RPC/ownership work proves the corresponding execution path. Native currently
+owns canonical HTTP GET/POST and FTP/FTPS execution, including request forms
+that need the existing native credential and platform-stream semantics.
+
+`backends/router.Select` is the sole backend-choice policy. Its inputs are the
+compatibility results plus canonical user preference/fallback policy, runtime
+availability, health, operation shape and migration cost. It produces a stable
+selected backend, a typed reason, an explanation and the complete candidate
+rejection evidence. Identical inputs therefore produce identical decisions;
+frontend surfaces do not carry their own backend heuristics.
+
+Before execution starts, the chosen decision is persisted as an attempt-scoped
+safe diagnostic event in the existing SQLite `diagnostic_events` store. The
+write is state-fenced to the `reserved` attempt and cannot change the durable
+`BackendKind`. Once an attempt has started, selection keeps it bound to the
+existing backend and marks every alternative as requiring explicit migration.
+Backend migration therefore remains a separate lifecycle operation rather than
+an implicit side effect of routing.
