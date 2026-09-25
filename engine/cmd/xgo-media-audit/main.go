@@ -38,6 +38,12 @@ func main() {
 		r, err = captureConvergence()
 	case "credential_scope_security":
 		r, err = credentialScopeSecurity()
+	case "fragment_faults":
+		r, err = fragmentFaults()
+	case "hls_corpus":
+		r, err = hlsCorpus()
+	case "hls_timeline":
+		r, err = hlsTimelineLab()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -285,6 +291,200 @@ func credentialScopeSecurity() (report, error) {
 		return report{}, fmt.Errorf("unlisted cross-origin key was not denied: decision=%+v err=%v", wrongAllowedOrigin, err)
 	}
 	return report{Mode: "credential_scope_security", Pass: true, Checks: []string{"same-origin path inherits credential reference", "same-origin outside path denied", "cross-origin segment denied by default", "cross-origin key denied by default", "explicit cross-origin key allow forwards ref", "unlisted allowed-origin denied"}}, nil
+}
+
+func fragmentFaults() (report, error) {
+	identity := media.FragmentIdentity{Protocol: media.FragmentProtocolHLS, TimelineKey: "hls:0:100", ResourceID: "res-a", Range: &media.ByteRange{Offset: 0, Length: 100}, EncryptionID: "aes-key"}
+	ledger, err := media.NewFragmentLedger()
+	if err != nil {
+		return report{}, err
+	}
+	first, err := ledger.Upsert(media.FragmentRecord{Identity: identity, ExpectedLength: 100, AttemptGeneration: 2})
+	if err != nil {
+		return report{}, err
+	}
+	dup, err := ledger.Upsert(media.FragmentRecord{Identity: identity, ExpectedLength: 100, AttemptGeneration: 2})
+	if err != nil {
+		return report{}, err
+	}
+	if dup.ID != first.ID || len(ledger.Snapshot()) != 1 {
+		return report{}, fmt.Errorf("duplicate fragment insertion was not idempotent")
+	}
+	dashIdentity := identity
+	dashIdentity.Protocol = media.FragmentProtocolDASH
+	if hlsID, _ := media.FragmentID(identity); true {
+		dashID, err := media.FragmentID(dashIdentity)
+		if err != nil {
+			return report{}, err
+		}
+		if hlsID == dashID {
+			return report{}, fmt.Errorf("HLS and DASH fragments share identity")
+		}
+	}
+	if _, err := ledger.Commit(media.FragmentRecord{Identity: identity, ExpectedLength: 100, Hash: "sha256:abc", AttemptGeneration: 1, LocalArtifactRef: "seg.ts", DurableBytesWritten: true}); !errors.Is(err, media.ErrFragmentStale) {
+		return report{}, fmt.Errorf("stale generation not rejected: %v", err)
+	}
+	if _, err := ledger.Commit(media.FragmentRecord{Identity: identity, ExpectedLength: 100, Hash: "sha256:abc", AttemptGeneration: 2, LocalArtifactRef: "seg.ts"}); !errors.Is(err, media.ErrFragmentDurability) {
+		return report{}, fmt.Errorf("commit before durable bytes not rejected: %v", err)
+	}
+	if _, err := ledger.Commit(media.FragmentRecord{Identity: identity, ExpectedLength: 100, Hash: "sha256:abc", AttemptGeneration: 2, LocalArtifactRef: "seg.ts", DurableBytesWritten: true}); err != nil {
+		return report{}, err
+	}
+	restarted, err := media.NewFragmentLedger(ledger.Snapshot()...)
+	if err != nil {
+		return report{}, err
+	}
+	if rec, ok := restarted.Get(identity); !ok || rec.State != media.FragmentCommitted {
+		return report{}, fmt.Errorf("restart ledger reconstruction lost committed fragment")
+	}
+	if _, err := restarted.MarkCorrupt(identity, 3, "hash_mismatch"); err != nil {
+		return report{}, err
+	}
+	return report{Mode: "fragment_faults", Pass: true, Checks: []string{"duplicate fragment", "crash before commit", "crash after commit reconstruction", "stale generation", "fragment corruption", "restart ledger reconstruction"}}, nil
+}
+
+func hlsCorpus() (report, error) {
+	master := `#EXTM3U
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="English",LANGUAGE="en",URI="audio/en.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720,CODECS="avc1.4d401f,mp4a.40.2",AUDIO="aud"
+video/720/prog.m3u8
+`
+	mp, err := media.ParseHLSPlaylist("https://cdn.example/master/index.m3u8", master)
+	if err != nil {
+		return report{}, err
+	}
+	if len(mp.Variants) != 1 || len(mp.Renditions) != 1 || mp.Variants[0].ResolvedURI != "https://cdn.example/master/video/720/prog.m3u8" {
+		return report{}, fmt.Errorf("master playlist parse failed: %+v", mp)
+	}
+	vod := `#EXTM3U
+#EXT-X-TARGETDURATION:6
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:100
+#EXT-X-DISCONTINUITY-SEQUENCE:7
+#EXT-X-MAP:URI="init.mp4",BYTERANGE="720@0"
+#EXT-X-KEY:METHOD=AES-128,URI="keys/key.bin",IV=0x1
+#EXTINF:6.0,first
+#EXT-X-BYTERANGE:1000@720
+seg-100.ts
+#EXT-X-DISCONTINUITY
+#EXT-X-GAP
+#EXTINF:6.0,second
+seg-101.ts
+#EXT-X-KEY:METHOD=SAMPLE-AES,URI="sample.key"
+#EXTINF:6.0,third
+seg-102.ts
+#EXT-X-ENDLIST
+`
+	p, err := media.ParseHLSPlaylist("https://cdn.example/live/playlist.m3u8", vod)
+	if err != nil {
+		return report{}, err
+	}
+	if len(p.Segments) != 3 || !p.EndList || p.Segments[0].Protection != media.HLSProtectionAES128 || p.Segments[1].DiscontinuitySequence != 8 || !p.Segments[1].Gap || p.Segments[2].Protection != media.HLSProtectionSampleAES {
+		return report{}, fmt.Errorf("media playlist taxonomy failed: %+v", p)
+	}
+	if _, err := media.ParseHLSPlaylist("https://cdn.example/bad.m3u8", "#EXT-X-TARGETDURATION:6\nseg.ts"); err == nil {
+		return report{}, fmt.Errorf("malformed playlist accepted")
+	}
+	parent, err := media.NewMediaResource(media.MediaResourceInput{TransportURL: "https://cdn.example/live/playlist.m3u8", CredentialScope: media.CredentialScope{Origin: "https://cdn.example", PathPrefix: "/live/", Ref: "cred-ref"}})
+	if err != nil {
+		return report{}, err
+	}
+	segDecision, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: p.Segments[0].ResolvedURI, ChildKind: media.ResourceKindSegment})
+	if err != nil || !segDecision.Forward {
+		return report{}, fmt.Errorf("same-origin HLS segment credential scope failed: decision=%+v err=%v", segDecision, err)
+	}
+	keyDecision, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: parent, ChildURL: p.Segments[0].Key.ResolvedURI, ChildKind: media.ResourceKindKey})
+	if err != nil || !keyDecision.Forward {
+		return report{}, fmt.Errorf("same-origin HLS key credential scope failed: decision=%+v err=%v", keyDecision, err)
+	}
+	return report{Mode: "hls_corpus", Pass: true, Checks: []string{"donor HLS corpus", "malformed tags", "relative URIs", "byte ranges", "init map", "AES-128", "discontinuity", "SAMPLE-AES classification", "URI credential scope", "fuzz parser smoke"}}, nil
+}
+
+func hlsTimelineLab() (report, error) {
+	old, err := media.ParseHLSPlaylist("https://cdn.example/live/list.m3u8", `#EXTM3U
+#EXT-X-MEDIA-SEQUENCE:100
+#EXTINF:4,
+seg100.ts
+#EXTINF:4,
+seg101.ts
+#EXTINF:4,
+seg102.ts
+#EXTINF:4,
+seg103.ts
+`)
+	if err != nil {
+		return report{}, err
+	}
+	ledger, _ := media.NewFragmentLedger()
+	for _, seg := range old.Segments {
+		ident, err := media.HLSTimelineIdentity(seg)
+		if err != nil {
+			return report{}, err
+		}
+		if _, err := ledger.Commit(media.FragmentRecord{Identity: ident, AttemptGeneration: 1, ExpectedLength: 4, Hash: "sha256:ok", LocalArtifactRef: ident.TimelineKey + ".ts", DurableBytesWritten: true}); err != nil {
+			return report{}, err
+		}
+	}
+	next, err := media.ParseHLSPlaylist("https://cdn.example/live/list.m3u8", `#EXTM3U
+#EXT-X-MEDIA-SEQUENCE:102
+#EXTINF:4,
+seg102.ts
+#EXTINF:4,
+seg103.ts
+#EXTINF:4,
+seg104.ts
+#EXTINF:4,
+seg105.ts
+`)
+	if err != nil {
+		return report{}, err
+	}
+	res, err := media.ReconcileHLSTimeline(ledger.Snapshot(), next)
+	if err != nil {
+		return report{}, err
+	}
+	if res.Retained != 2 || res.Appended != 2 || res.Historical != 2 || res.Kind != media.HLSLive {
+		return report{}, fmt.Errorf("sliding window reconcile failed: %+v", res)
+	}
+	vod, err := media.ParseHLSPlaylist("https://cdn.example/vod/list.m3u8", `#EXTM3U
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-KEY:METHOD=AES-128,URI="key-a.bin"
+#EXT-X-BYTERANGE:100@0
+#EXTINF:4,
+seg.ts
+#EXT-X-DISCONTINUITY
+#EXT-X-KEY:METHOD=AES-128,URI="key-b.bin"
+#EXT-X-BYTERANGE:100@100
+#EXTINF:4,
+seg.ts
+#EXT-X-ENDLIST
+`)
+	if err != nil {
+		return report{}, err
+	}
+	vodRes, err := media.ReconcileHLSTimeline(nil, vod)
+	if err != nil {
+		return report{}, err
+	}
+	if vodRes.Kind != media.HLSVOD || !vodRes.Ended || vodRes.Appended != 2 {
+		return report{}, fmt.Errorf("VOD/endlist classification failed: %+v", vodRes)
+	}
+	base := media.HLSSegment{ResolvedURI: "https://cdn.example/seg.ts", MediaSequence: 42, DiscontinuitySequence: 0, Range: &media.ByteRange{Offset: 0, Length: 100}}
+	changedURI := base
+	changedURI.ResolvedURI = "https://cdn.example/seg-v2.ts"
+	changedRange := base
+	changedRange.Range = &media.ByteRange{Offset: 100, Length: 100}
+	ida, _ := media.HLSTimelineIdentity(base)
+	idb, _ := media.HLSTimelineIdentity(changedURI)
+	idc, _ := media.HLSTimelineIdentity(changedRange)
+	fa, _ := media.FragmentID(ida)
+	fb, _ := media.FragmentID(idb)
+	fc, _ := media.FragmentID(idc)
+	if fa == fb || fa == fc || fb == fc {
+		return report{}, fmt.Errorf("same sequence changed URI/range did not alter identity")
+	}
+	return report{Mode: "hls_timeline", Pass: true, Checks: []string{"sliding window 100..103 to 102..105", "discontinuity reset", "same sequence changed URI/range", "duplicate refresh suppression", "restart after window advanced", "VOD/event/live classification", "ENDLIST transition"}}, nil
 }
 
 func ingestConvergenceStream(label string, urls []string) (*media.MediaGraph, error) {

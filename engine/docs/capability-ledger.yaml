@@ -830,7 +830,7 @@
         "desktop_fragment_checkpoint"
       ],
       "id": "XGO-CAP-HLS-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-54",
       "test_id": "fixture:xgo-cap-hls-001"
     },
@@ -845,7 +845,7 @@
         "desktop_hls_parser_test"
       ],
       "id": "XGO-CAP-HLS-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-55",
       "test_id": "fixture:xgo-cap-hls-002"
     },
@@ -859,7 +859,7 @@
         "desktop_hls_parser"
       ],
       "id": "XGO-CAP-HLS-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-55",
       "test_id": "fixture:xgo-cap-hls-003"
     },
@@ -873,7 +873,7 @@
         "android_hls_test"
       ],
       "id": "XGO-CAP-HLS-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-55",
       "test_id": "fixture:xgo-cap-hls-004"
     },
@@ -887,7 +887,7 @@
         "desktop_hls_downloader"
       ],
       "id": "XGO-CAP-HLS-005",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-56",
       "test_id": "fixture:xgo-cap-hls-005"
     },

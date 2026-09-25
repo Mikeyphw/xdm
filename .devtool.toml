@@ -1811,6 +1811,9 @@ inputs = [
   "engine/testdata/media/xgo-cap-media-002.json",
   "engine/testdata/media/xgo-cap-media-003.json",
   "engine/testdata/media/xgo-cap-media-004.json",
+  "engine/testdata/hls/xgo-cap-hls-001.json",
+  "engine/testdata/hls/xgo-cap-hls-002.json",
+  "engine/testdata/hls/xgo-cap-hls-003.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -1926,6 +1929,49 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/credential-scope-security.json"]
 
+
+[targets.xgo_media.jobs.fragment_faults]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "fragment_faults",
+  "--output", ".devtool/reports/xgo/media/fragment-faults.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/hls/xgo-cap-hls-001.json",
+]
+outputs = [".devtool/reports/xgo/media/fragment-faults.json"]
+
+[targets.xgo_media.jobs.hls_corpus]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "hls_corpus",
+  "--output", ".devtool/reports/xgo/media/hls-corpus.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/hls/xgo-cap-hls-002.json",
+]
+outputs = [".devtool/reports/xgo/media/hls-corpus.json"]
+
+[targets.xgo_media.jobs.hls_timeline_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "hls_timeline",
+  "--output", ".devtool/reports/xgo/media/hls-timeline-lab.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/hls/xgo-cap-hls-003.json",
+]
+outputs = [".devtool/reports/xgo/media/hls-timeline-lab.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -1936,6 +1982,9 @@ validate = [
   { id = "media_selection_matrix", ref = "job:media_selection_matrix", depends_on = ["media_graph_diff"] },
   { id = "capture_convergence_suite", ref = "job:capture_convergence_suite", depends_on = ["media_selection_matrix"] },
   { id = "credential_scope_security", ref = "job:credential_scope_security", depends_on = ["capture_convergence_suite"] },
+  { id = "fragment_faults", ref = "job:fragment_faults", depends_on = ["credential_scope_security"] },
+  { id = "hls_corpus", ref = "job:hls_corpus", depends_on = ["fragment_faults"] },
+  { id = "hls_timeline_lab", ref = "job:hls_timeline_lab", depends_on = ["hls_corpus"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
