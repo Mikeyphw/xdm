@@ -1401,44 +1401,103 @@ validate = [
 # Bootstrap target for future roadmap ownership. The command runner is intentional
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_backends]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
+  "go.work",
+  "engine/backends/**",
+  "engine/domain/failure/**",
+  "engine/domain/identity/**",
+  "engine/domain/request/**",
+  "engine/domain/resource/**",
+  "engine/security/credentials/**",
+  "engine/security/header/**",
+  "engine/security/redirect/**",
+  "engine/security/route/**",
+  "engine/security/transportpolicy/**",
+  "engine/security/urlpolicy/**",
+  "engine/store/checkpoint/**",
+  "engine/store/sqlite/**",
+  "engine/transfer/http/**",
+  "engine/transfer/retry/**",
+  "engine/cmd/xgo-backends-audit/**",
+  "tools/xgo/audit_backends_contract.py",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/request/xgo-cap-request-002.json",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/backends/**",
 ]
 
-[targets.xgo_backends.jobs.bootstrap_contract]
+[targets.xgo_backends.go]
+packages = [
+  "./engine/backends/...",
+  "./engine/domain/request",
+  "./engine/security/redirect",
+  "./engine/transfer/http",
+  "./engine/transfer/retry",
+]
+build_targets = ["./engine/cmd/xgo-backends-audit"]
+vet = true
+
+[targets.xgo_backends.jobs.backend_contract_audit]
 runner = "command"
 command = [
-  "python3",
-  "tools/xgo/audit_topology.py",
-  "target-ready",
-  "--config",
-  ".devtool.toml",
-  "--target",
-  "xgo_backends",
-  "--output",
-  ".devtool/reports/xgo/backends/bootstrap.json",
+  "python3", "tools/xgo/audit_backends_contract.py",
+  "--output", ".devtool/reports/xgo/backends/backend-contract-audit.json",
 ]
 inputs = [
   ".devtool.toml",
-  "tools/xgo/audit_topology.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/request/xgo-cap-request-002.json",
+  "tools/xgo/audit_backends_contract.py",
+  "tools/xgo/audit_foundation.py",
+  "tools/xgo/audit_fixtures.py",
 ]
 outputs = [
-  ".devtool/reports/xgo/backends/bootstrap.json",
+  ".devtool/reports/xgo/backends/backend-contract-audit.json",
+  ".devtool/reports/xgo/backends/shared-ledger-audit.json",
+  ".devtool/reports/xgo/backends/shared-fixture-audit.json",
 ]
+
+[targets.xgo_backends.jobs.post_replay_lab]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-backends-audit",
+  "--mode", "post-replay",
+  "--output", ".devtool/reports/xgo/backends/post-replay-lab.json",
+]
+inputs = [
+  "engine/backends/http/**",
+  "engine/domain/request/**",
+  "engine/security/credentials/**",
+  "engine/security/header/**",
+  "engine/security/redirect/**",
+  "engine/security/route/**",
+  "engine/security/transportpolicy/**",
+  "engine/transfer/http/**",
+  "engine/transfer/retry/**",
+  "engine/cmd/xgo-backends-audit/**",
+  "engine/testdata/request/xgo-cap-request-002.json",
+]
+outputs = [".devtool/reports/xgo/backends/post-replay-lab.json"]
 
 [targets.xgo_backends.workflows]
 validate = [
-  { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "go", ref = "runner:go#validate", depends_on = [] },
+  { id = "backend_contract_audit", ref = "job:backend_contract_audit", depends_on = ["go"] },
+  { id = "post_replay_lab", ref = "job:post_replay_lab", depends_on = ["backend_contract_audit"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

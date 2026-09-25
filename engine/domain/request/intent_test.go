@@ -81,6 +81,74 @@ func TestNetworkIntentTypedMethodBodyFailures(t *testing.T) {
 		}
 	}
 }
+
+func TestXGO36BodySourceNormalizationAndResumeSemantics(t *testing.T) {
+	legacy, err := NewNetworkIntent(NetworkIntent{
+		TransportURL: "https://api.example/export",
+		Resource:     rid(t, "legacy-post"),
+		Method:       "POST",
+		Body: &Body{
+			Ref:           bref(t, "body/legacy"),
+			Replayability: BodyReplayable,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacy.Body == nil || legacy.Body.Kind != BodySourceImmutableBytes {
+		t.Fatalf("legacy body kind=%v", legacy.Body)
+	}
+	if !legacy.Replayable() || legacy.RangeResumeAllowed() {
+		t.Fatalf("legacy replayable=%v range=%v", legacy.Replayable(), legacy.RangeResumeAllowed())
+	}
+
+	for _, kind := range []BodySourceKind{BodySourceImmutableBytes, BodySourceImmutableFile, BodySourceSecretReference} {
+		intent, err := NewNetworkIntent(NetworkIntent{
+			TransportURL: "https://api.example/export",
+			Resource:     rid(t, "replayable-"+string(kind)),
+			Method:       "POST",
+			Body:         &Body{Kind: kind, Ref: bref(t, "body/"+string(kind))},
+		})
+		if err != nil {
+			t.Fatalf("kind %s: %v", kind, err)
+		}
+		if intent.Body.Replayability != BodyReplayable || !intent.Replayable() || intent.RangeResumeAllowed() {
+			t.Fatalf("kind %s normalized=%+v replayable=%v range=%v", kind, intent.Body, intent.Replayable(), intent.RangeResumeAllowed())
+		}
+	}
+
+	oneShot, err := NewNetworkIntent(NetworkIntent{
+		TransportURL: "https://api.example/export",
+		Resource:     rid(t, "one-shot"),
+		Method:       "POST",
+		Body:         &Body{Kind: BodySourceOneShot, Ref: bref(t, "body/one-shot")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oneShot.Body.Replayability != BodyOneShot || oneShot.Replayable() || oneShot.RangeResumeAllowed() {
+		t.Fatalf("one-shot normalized=%+v replayable=%v range=%v", oneShot.Body, oneShot.Replayable(), oneShot.RangeResumeAllowed())
+	}
+
+	_, err = NewNetworkIntent(NetworkIntent{
+		TransportURL: "https://api.example/export",
+		Resource:     rid(t, "mismatch"),
+		Method:       "POST",
+		Body:         &Body{Kind: BodySourceImmutableBytes, Ref: bref(t, "body/mismatch"), Replayability: BodyOneShot},
+	})
+	var v *IntentValidationError
+	if !errors.As(err, &v) || v.Reason != IntentInvalidBody {
+		t.Fatalf("mismatch error=%v", err)
+	}
+
+	get, err := NewNetworkIntent(NetworkIntent{TransportURL: "https://api.example/file", Resource: rid(t, "get-range"), Method: "GET"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !get.Replayable() || !get.RangeResumeAllowed() {
+		t.Fatalf("GET replayable=%v range=%v", get.Replayable(), get.RangeResumeAllowed())
+	}
+}
 func TestLogicalResourceSurvivesTransportRotation(t *testing.T) {
 	r := rid(t, "logical")
 	a, _ := NewNetworkIntent(NetworkIntent{TransportURL: "https://a.example/x", Resource: r, Method: "GET"})

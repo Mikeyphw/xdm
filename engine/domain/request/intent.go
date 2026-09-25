@@ -52,12 +52,42 @@ const (
 	BodyOneShot    BodyReplayability = "one_shot"
 )
 
+// BodySourceKind describes how request-body material is resolved at execution
+// time. Persisted intent stores only this kind and an opaque BodyReference;
+// actual bytes, file paths and secret material remain runtime-only.
+type BodySourceKind string
+
+const (
+	BodySourceImmutableBytes  BodySourceKind = "immutable_bytes"
+	BodySourceImmutableFile   BodySourceKind = "immutable_file"
+	BodySourceSecretReference BodySourceKind = "secret_reference"
+	BodySourceOneShot         BodySourceKind = "one_shot"
+)
+
 type Body struct {
+	Kind          BodySourceKind    `json:"kind"`
 	Ref           BodyReference     `json:"ref"`
 	Replayability BodyReplayability `json:"replayability"`
 	ContentType   string            `json:"content_type,omitempty"`
 	Length        *int64            `json:"length,omitempty"`
 }
+
+func replayabilityForBodyKind(kind BodySourceKind) (BodyReplayability, bool) {
+	switch kind {
+	case BodySourceImmutableBytes, BodySourceImmutableFile, BodySourceSecretReference:
+		return BodyReplayable, true
+	case BodySourceOneShot:
+		return BodyOneShot, true
+	default:
+		return "", false
+	}
+}
+
+func (b Body) IsReplayable() bool {
+	want, ok := replayabilityForBodyKind(b.Kind)
+	return ok && want == BodyReplayable && b.Replayability == BodyReplayable
+}
+
 type ValidatorSet struct {
 	ETag         string `json:"etag,omitempty"`
 	LastModified string `json:"last_modified,omitempty"`
@@ -205,7 +235,23 @@ func NewNetworkIntent(in NetworkIntent) (NetworkIntent, error) {
 		if _, err := parseReference(string(in.Body.Ref)); err != nil {
 			return NetworkIntent{}, &IntentValidationError{IntentInvalidBody, "body.ref"}
 		}
-		if in.Body.Replayability != BodyReplayable && in.Body.Replayability != BodyOneShot {
+		// Pre-XGO-36 safe intents carried replayability but not an explicit source
+		// kind. Normalize that legacy shape rather than invalidating durable state.
+		if in.Body.Kind == "" {
+			if in.Body.Replayability == BodyOneShot {
+				in.Body.Kind = BodySourceOneShot
+			} else {
+				in.Body.Kind = BodySourceImmutableBytes
+			}
+		}
+		wantReplayability, ok := replayabilityForBodyKind(in.Body.Kind)
+		if !ok {
+			return NetworkIntent{}, &IntentValidationError{IntentInvalidBody, "body.kind"}
+		}
+		if in.Body.Replayability == "" {
+			in.Body.Replayability = wantReplayability
+		}
+		if in.Body.Replayability != wantReplayability {
 			return NetworkIntent{}, &IntentValidationError{IntentInvalidBody, "body.replayability"}
 		}
 		if in.Body.Length != nil && *in.Body.Length < 0 {
@@ -299,6 +345,23 @@ func (in NetworkIntent) SafeJSON() ([]byte, error) {
 	}
 	return json.Marshal(n)
 }
+
+// Replayable reports whether the complete request operation can be executed
+// again after a failed attempt. It is deliberately separate from byte-range
+// resumability: replayable POST requests restart from byte zero.
 func (in NetworkIntent) Replayable() bool {
-	return in.Body == nil || in.Body.Replayability == BodyReplayable
+	switch in.Method {
+	case "GET", "":
+		return in.Body == nil
+	case "POST":
+		return in.Body != nil && in.Body.IsReplayable()
+	default:
+		return false
+	}
+}
+
+// RangeResumeAllowed reports whether partial response bytes may be reused with
+// an HTTP Range request. XGO-36 deliberately limits this to bodyless GET.
+func (in NetworkIntent) RangeResumeAllowed() bool {
+	return (in.Method == "GET" || in.Method == "") && in.Body == nil
 }

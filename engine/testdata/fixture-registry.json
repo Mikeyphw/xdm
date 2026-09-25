@@ -985,7 +985,7 @@
         "XGO-CAP-REQUEST-002"
       ],
       "category": "request",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_download_request",
         "desktop_download_manager"

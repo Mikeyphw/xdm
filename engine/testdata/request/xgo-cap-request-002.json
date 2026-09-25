@@ -1,26 +1,85 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-request-002",
+  "category": "request",
   "capability_ids": [
     "XGO-CAP-REQUEST-002"
   ],
-  "category": "request",
+  "donor_ids": [
+    "desktop_download_request",
+    "desktop_download_manager"
+  ],
   "derivation": {
     "behavior": "Replayable POST/body downloads are preserved from desktop.",
     "canonical_behavior": "Go distinguishes replayable, secret and one-shot bodies and gates retry/redirect/resume accordingly.",
     "strategy": "desktop_led"
   },
-  "donor_ids": [
-    "desktop_download_request",
-    "desktop_download_manager"
-  ],
-  "expected": {
-    "invariants": [
-      "Go distinguishes replayable, secret and one-shot bodies and gates retry/redirect/resume accordingly."
+  "input": {
+    "cases": [
+      {
+        "name": "immutable_bytes_post",
+        "method": "POST",
+        "body_kind": "immutable_bytes",
+        "expected_replayable": true,
+        "expected_range_resume": false
+      },
+      {
+        "name": "immutable_file_post",
+        "method": "POST",
+        "body_kind": "immutable_file",
+        "expected_replayable": true,
+        "expected_range_resume": false
+      },
+      {
+        "name": "secret_reference_post",
+        "method": "POST",
+        "body_kind": "secret_reference",
+        "expected_replayable": true,
+        "expected_range_resume": false
+      },
+      {
+        "name": "one_shot_post",
+        "method": "POST",
+        "body_kind": "one_shot",
+        "expected_replayable": false,
+        "expected_execution": "unsupported"
+      },
+      {
+        "name": "redirect_303",
+        "method": "POST",
+        "status": 303,
+        "expected_method": "GET",
+        "expected_body": "dropped"
+      },
+      {
+        "name": "redirect_307",
+        "method": "POST",
+        "status": 307,
+        "body_kind": "immutable_bytes",
+        "expected_method": "POST",
+        "expected_body": "replayed"
+      },
+      {
+        "name": "credentialed_post",
+        "credential_kind": "authorization",
+        "expected_safe_log": "redacted"
+      },
+      {
+        "name": "partial_post_retry",
+        "method": "POST",
+        "existing_response_bytes": 4096,
+        "expected_retry_start": 0,
+        "range_header_allowed": false
+      }
     ]
   },
-  "fixture_id": "xgo-cap-request-002",
-  "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Replayable POST/body downloads are preserved from desktop."
-  },
-  "schema_version": 1
+  "expected": {
+    "invariants": [
+      "Immutable bytes, immutable file, and secret-reference body sources are replayable through opaque runtime resolution.",
+      "One-shot request bodies are explicitly unsupported for durable download execution and cannot be retried or replayed across preserving redirects.",
+      "Replayable POST retries restart from response byte zero; byte-range resume is limited to bodyless GET.",
+      "301/302/303 may convert POST to GET and drop the body, while 307/308 preserve method/body only when replayable.",
+      "Credential material and body material are absent from safe diagnostics by default."
+    ]
+  }
 }

@@ -77,6 +77,14 @@ type Lifecycle interface {
 	Fail(context.Context, failure.Failure) error
 }
 
+// RequestFactory lets a backend bind canonical request semantics (method,
+// headers, credentials and replayable body material) to the shared HTTP byte
+// executor without copying those semantics into ExecutePlan. The transfer layer
+// remains authoritative for Range/If-Range headers and checkpoint offsets.
+type RequestFactory interface {
+	NewRequest(context.Context, string, int64) (*http.Request, error)
+}
+
 type SQLiteLifecycle struct {
 	Repository *store.Repository
 	DownloadID identity.DownloadID
@@ -166,6 +174,7 @@ type ExecutePlan struct {
 	Resources       ResourceLimiter
 	Progress        ProgressSink
 	PauseRequested  func() bool
+	RequestFactory  RequestFactory
 }
 
 type ExecuteResult struct {
@@ -211,12 +220,25 @@ func contentRangeForResume(resp *http.Response, start int64, total *int64) error
 }
 
 func requestForTransfer(ctx context.Context, p ExecutePlan) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
+	var (
+		req *http.Request
+		err error
+	)
+	if p.RequestFactory != nil {
+		req, err = p.RequestFactory.NewRequest(ctx, p.URL, p.StartOffset)
+	} else {
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
+	if req == nil || req.URL == nil {
+		return nil, ErrInvalidTransfer
+	}
+	// Response byte offsets are meaningful only for the identity representation.
 	req.Header.Set("Accept-Encoding", "identity")
 	if p.StartOffset > 0 {
+		// A backend factory must reject an unsafe non-zero start before this point.
 		req.Header.Set("Range", "bytes="+strconv.FormatInt(p.StartOffset, 10)+"-")
 		if strongETag(p.Representation.ETag) {
 			req.Header.Set("If-Range", p.Representation.ETag)
@@ -279,7 +301,13 @@ func Execute(ctx context.Context, client Doer, plan ExecutePlan) (ExecuteResult,
 		return ExecuteResult{}, failLifecycle(ctx, plan.Lifecycle, failure.RangeContradiction, ErrEncodedRepresentation)
 	}
 	if plan.StartOffset == 0 {
-		if resp.StatusCode != http.StatusOK {
+		accepted := resp.StatusCode == http.StatusOK
+		if req.Method == http.MethodPost {
+			// Desktop accepted successful POST responses generally. Preserve that
+			// behavior while still rejecting unsolicited partial-content semantics.
+			accepted = resp.StatusCode >= 200 && resp.StatusCode < 300 && resp.StatusCode != http.StatusPartialContent
+		}
+		if !accepted {
 			category := failure.NetworkUnavailable
 			if resp.StatusCode == http.StatusPartialContent {
 				category = failure.RangeContradiction

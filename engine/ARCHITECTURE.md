@@ -270,3 +270,31 @@ checkpoint, arbitration, repair and finalization stress remains part of the
 native gate. A supplemental supported-host race qualification covers
 `engine/transfer/...` and `engine/store/checkpoint`; it is evidence, not a false
 Android capability claim.
+
+## Replayable POST/body backend semantics (XGO-36)
+
+The backend layer consumes the canonical `domain/request.NetworkIntent`; it does
+not define a second request model. Request bodies are persisted only as an opaque
+reference plus an explicit source kind: `immutable_bytes`, `immutable_file`,
+`secret_reference`, or `one_shot`. The first three kinds are replayable runtime
+sources. `one_shot` is represented so intake can reject it deterministically,
+but durable download execution does not accept it.
+
+Replayability and byte-range resumability are separate properties. A replayable
+POST may be retried because its body can be opened again, but retry starts the
+response from byte zero. Only a bodyless GET may carry a non-zero checkpoint
+offset into the HTTP executor and receive engine-owned `Range`/`If-Range`
+headers. A POST plan with a non-zero start offset fails before network I/O.
+
+`backends/http.Factory` resolves body and credential references only at runtime,
+applies admitted non-secret headers, and supplies a request factory to the shared
+checkpointed HTTP transfer executor. Replayable requests receive a `GetBody`
+re-opener so preserving redirects or retry execution can obtain fresh material.
+The canonical redirect state machine remains authoritative: 301/302/303 may
+rewrite POST to GET and drop its body, while 307/308 preserve method/body only
+when the body is replayable and re-run credential/route/cleartext policy.
+
+Safe backend diagnostics contain the query-stripped URL, method, admitted header
+metadata, redacted credential markers, body kind/replayability/content type and
+optional length. Body references, body bytes, query secrets, credential
+references and resolved credential material are excluded by default.

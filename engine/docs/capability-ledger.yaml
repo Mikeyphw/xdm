@@ -504,7 +504,7 @@
         "desktop_download_manager"
       ],
       "id": "XGO-CAP-REQUEST-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-36",
       "test_id": "fixture:xgo-cap-request-002"
     },
