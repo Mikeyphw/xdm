@@ -57,6 +57,7 @@ type Engine struct {
 	seen             map[command.ID]struct{}
 	active           map[identity.OperationID]*activeOperation
 	androidScheduler *androidhost.AndroidSchedulerHost
+	androidUI        *androidUIState
 	workers          sync.WaitGroup
 	loops            sync.WaitGroup
 }
@@ -86,11 +87,13 @@ func New(config Config) *Engine {
 		commands: make(chan queuedCommand, commandBuffer),
 		events:   event.NewQueue(eventBuffer), broker: platform.NewBroker(platformBuffer),
 		handlers: make(map[string]Handler), seen: make(map[command.ID]struct{}), active: make(map[identity.OperationID]*activeOperation),
-		androidScheduler: androidhost.NewAndroidSchedulerHost(),
+		androidScheduler: androidhost.NewAndroidSchedulerHost(), androidUI: newAndroidUIState(),
 	}
 	e.handlers["runtime.ping"] = pingHandler
 	e.handlers["runtime.platform_probe"] = platformProbeHandler
 	e.handlers["android.scheduler_wake"] = e.androidSchedulerWakeHandler
+	e.handlers[AndroidUISyncKind] = e.androidUISyncHandler
+	e.handlers[AndroidUICommandKind] = e.androidUICommandHandler
 	for kind, handler := range config.Handlers {
 		if kind != "" && handler != nil {
 			e.handlers[kind] = handler

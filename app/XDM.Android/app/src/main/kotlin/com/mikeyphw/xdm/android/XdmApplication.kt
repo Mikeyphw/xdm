@@ -32,6 +32,9 @@ import com.mikeyphw.xdm.android.scheduler.TransferRuntimeProvider
 import com.mikeyphw.xdm.android.scheduler.AndroidGoEngineHost
 import com.mikeyphw.xdm.android.scheduler.AndroidGoEngineHostProvider
 import com.mikeyphw.xdm.android.engine.AndroidEngineProcessAuthority
+import com.mikeyphw.xdm.android.engine.AndroidDownloadUiClient
+import com.mikeyphw.xdm.android.engine.AndroidDownloadUiPlatformBrokerProvider
+import com.mikeyphw.xdm.android.engine.AndroidLegacyDownloadUiBroker
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
@@ -63,12 +66,17 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, AndroidDownloadUiPlatformBrokerProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
     lateinit var container: AppContainer
         private set
 
     lateinit var androidEngineProcessAuthority: AndroidEngineProcessAuthority
         private set
+
+    private lateinit var androidDownloadUiPlatformBroker: AndroidLegacyDownloadUiBroker
+
+    override fun androidDownloadUiPlatformBrokerOrNull(): AndroidLegacyDownloadUiBroker? =
+        if (::androidDownloadUiPlatformBroker.isInitialized) androidDownloadUiPlatformBroker else null
 
     override val androidGoEngineHost: AndroidGoEngineHost = AndroidGoEngineHost { request ->
         androidEngineProcessAuthority.wake(request)
@@ -219,10 +227,22 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             destinationWriter = destinationWriter,
             phase4Coordinator = queueSchedulingRecoveryCoordinator,
         )
+        androidDownloadUiPlatformBroker = AndroidLegacyDownloadUiBroker(
+            repository = repository,
+            transferRuntime = transferRuntime,
+            queueCoordinator = queueIntelligenceCoordinator,
+            nativeHls = nativeHlsMediaManager,
+            termuxMedia = termuxMediaPipelineManager,
+        )
+        val androidDownloadUiClient = AndroidDownloadUiClient(this)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            androidDownloadUiPlatformBroker.mirrorIntoGo(androidEngineProcessAuthority)
+        }
         // Queue admission remains durably closed until migration and ownership recovery both finish.
         queueIntelligenceCoordinator.installStartupRecoveryHold()
         container = AppContainer(
             repository = repository,
+            androidDownloadUiClient = androidDownloadUiClient,
             preferences = preferences,
             ownershipStore = ownershipStore,
             backendSelectionPolicy = BackendSelectionPolicy(),
@@ -362,6 +382,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
 
 data class AppContainer(
     val repository: DownloadRepository,
+    val androidDownloadUiClient: AndroidDownloadUiClient,
     val preferences: UserPreferencesStore,
     val ownershipStore: BackendOwnershipStore,
     val backendSelectionPolicy: BackendSelectionPolicy,

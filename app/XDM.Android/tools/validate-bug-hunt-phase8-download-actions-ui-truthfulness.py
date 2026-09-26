@@ -73,11 +73,12 @@ manager = require(
 view_model = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
     "fun startNow(download: Download)",
-    "queueIntelligenceCoordinator.requestStart",
+    "androidDownloadUiClient.command",
+    'action = "resume"',
     "fun deleteDownloadEntry",
+    'action = "delete"',
     "fun deleteSavedFile",
     "downloadArtifactActionManager.delete(currentForAction)",
-    "repository.deleteDownloadEntryIfTerminal",
     "atomic terminal-state check",
     "fun renameCompletedFile",
     "fun refreshDownloadLink",
@@ -94,6 +95,14 @@ view_model = require(
     "fun restartFromZero",
     "selectedRecoveryDownloadId = download.id",
     "selectedRecoveryAction = action.name",
+)
+ui_broker = require(
+    "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt",
+    "queueCoordinator.requestStart",
+    "repository.deleteDownloadEntryIfTerminal",
+    "termuxMedia.prepareDownloadGraphDeletion",
+    "nativeHls.cancel(id)",
+    "transferRuntime.cancel(id)",
 )
 row = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",

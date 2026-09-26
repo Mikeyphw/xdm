@@ -23,17 +23,18 @@ var (
 type Kind string
 
 const (
-	SecretLookup      Kind = "secret_lookup"
-	SystemProxy       Kind = "system_proxy"
-	NetworkPolicy     Kind = "network_policy"
-	RuntimeConditions Kind = "runtime_conditions"
-	Publication       Kind = "publication"
-	ExternalMediaTool Kind = "external_media_tool"
+	SecretLookup           Kind = "secret_lookup"
+	SystemProxy            Kind = "system_proxy"
+	NetworkPolicy          Kind = "network_policy"
+	RuntimeConditions      Kind = "runtime_conditions"
+	Publication            Kind = "publication"
+	ExternalMediaTool      Kind = "external_media_tool"
+	AndroidDownloadCommand Kind = "android_download_command"
 )
 
 func (k Kind) Valid() bool {
 	switch k {
-	case SecretLookup, SystemProxy, NetworkPolicy, RuntimeConditions, Publication, ExternalMediaTool:
+	case SecretLookup, SystemProxy, NetworkPolicy, RuntimeConditions, Publication, ExternalMediaTool, AndroidDownloadCommand:
 		return true
 	default:
 		return false

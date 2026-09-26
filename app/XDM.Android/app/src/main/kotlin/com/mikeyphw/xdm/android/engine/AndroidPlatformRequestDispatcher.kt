@@ -9,8 +9,9 @@ import org.json.JSONObject
 class AndroidPlatformRequestDispatcher(
     private val bridge: AndroidGoEngineBridge,
     private val network: AndroidNetworkPolicyBroker,
+    private val downloadUiBroker: () -> AndroidLegacyDownloadUiBroker?,
 ) {
-    fun dispatch(frameBytes: ByteArray): Boolean {
+    suspend fun dispatch(frameBytes: ByteArray): Boolean {
         val envelope = runCatching { JSONObject(String(frameBytes, Charsets.UTF_8)) }.getOrNull() ?: return false
         if (envelope.optString("kind") != "platform.request") return false
         val request = envelope.optJSONObject("payload") ?: return false
@@ -23,6 +24,7 @@ class AndroidPlatformRequestDispatcher(
             "network_policy" -> networkPolicyReply(requestId, session, payload)
             "system_proxy" -> successReply(requestId, session, proxyJson())
             "secret_lookup" -> secretReply(requestId, session, payload)
+            "android_download_command" -> downloadCommandReply(requestId, session, payload)
             else -> return false
         }
         bridge.platformReply(reply.toString().toByteArray(Charsets.UTF_8))
@@ -75,6 +77,24 @@ class AndroidPlatformRequestDispatcher(
         return successReply(requestId, session, JSONObject().put("value", value))
     }
 
+
+    private suspend fun downloadCommandReply(requestId: Long, session: Long, payload: JSONObject): JSONObject {
+        val broker = downloadUiBroker() ?: return errorReply(requestId, session, "ui_broker_unavailable")
+        val result = runCatching { broker.execute(payload) }
+            .getOrElse { return errorReply(requestId, session, "ui_command_failed", it.message ?: "Android UI command failed") }
+        return if (result.optBoolean("ok", false)) {
+            successReply(requestId, session, result)
+        } else {
+            JSONObject()
+                .put("protocol", protocol())
+                .put("request_id", requestId)
+                .put("session", session)
+                .put("ok", false)
+                .put("payload", result)
+                .put("error_code", result.optString("error_code", "ui_command_rejected"))
+        }
+    }
+
     private fun successReply(requestId: Long, session: Long, payload: JSONObject): JSONObject = JSONObject()
         .put("protocol", protocol())
         .put("request_id", requestId)
@@ -82,12 +102,13 @@ class AndroidPlatformRequestDispatcher(
         .put("ok", true)
         .put("payload", payload)
 
-    private fun errorReply(requestId: Long, session: Long, errorCode: String): JSONObject = JSONObject()
+    private fun errorReply(requestId: Long, session: Long, errorCode: String, message: String? = null): JSONObject = JSONObject()
         .put("protocol", protocol())
         .put("request_id", requestId)
         .put("session", session)
         .put("ok", false)
         .put("error_code", errorCode)
+        .apply { message?.let { put("payload", JSONObject().put("message", it).put("error_code", errorCode).put("ok", false)) } }
 
     private fun protocol(): JSONObject = JSONObject().put("major", 1).put("minor", 0)
 }

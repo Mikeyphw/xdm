@@ -2383,6 +2383,29 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/android/android-scheduler-authority.json"]
 
+[targets.xgo_android.jobs.android_ui_smoke]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_ui_smoke",
+  "--output", ".devtool/reports/xgo/android/android-ui-smoke.json",
+]
+inputs = [
+  "engine/runtime/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadUiClient.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadUiProtocol.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineService.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidPlatformRequestDispatcher.kt",
+]
+outputs = [".devtool/reports/xgo/android/android-ui-smoke.json"]
+
 [targets.xgo_android.jobs.android_host_runtime_tests]
 runner = "command"
 command = ["go", "test", "./engine/androidhost", "./engine/runtime"]
@@ -2401,7 +2424,8 @@ validate = [
   { id = "android_publication_faults", ref = "job:android_publication_faults", depends_on = ["engine_service_instrumentation"] },
   { id = "android_network_security", ref = "job:android_network_security", depends_on = ["android_publication_faults"] },
   { id = "android_scheduler_authority", ref = "job:android_scheduler_authority", depends_on = ["android_network_security"] },
-  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_scheduler_authority"] },
+  { id = "android_ui_smoke", ref = "job:android_ui_smoke", depends_on = ["android_scheduler_authority"] },
+  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_ui_smoke"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

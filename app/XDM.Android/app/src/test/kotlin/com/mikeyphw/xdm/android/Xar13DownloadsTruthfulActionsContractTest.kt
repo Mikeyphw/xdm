@@ -19,9 +19,11 @@ class Xar13DownloadsTruthfulActionsContractTest {
     @Test
     fun downloadsActionsReloadCurrentRowsAndDoNotHideNativeHlsWork() {
         val vm = readUtf8("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
-        assertTrue(vm.contains("repository.findDownload(download.id) ?: return@launch"))
-        assertTrue(vm.contains("DownloadActionExecutionTruth.policyOverrideFromCurrent(current)"))
-        assertTrue(vm.contains("nativeHlsMediaManager.cancel(current.id) else transferRuntime.cancel(current.id)"))
+        val broker = readUtf8("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
+        assertTrue(vm.contains("private val semanticDownloads = androidDownloadUiClient.projection"))
+        assertTrue(vm.contains("DownloadActionExecutionTruth.policyOverrideFromCurrent(download)"))
+        assertTrue(vm.contains("androidDownloadUiClient.command") && vm.contains("action = \"delete\""))
+        assertTrue(broker.contains("nativeHls.cancel(id)") && broker.contains("transferRuntime.cancel(id)"))
         assertTrue(vm.contains("Archive retained"))
         assertTrue(vm.contains("setArchivedTruthfully"))
     }

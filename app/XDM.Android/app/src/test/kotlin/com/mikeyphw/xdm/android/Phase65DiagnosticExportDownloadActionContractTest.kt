@@ -29,6 +29,7 @@ class Phase65DiagnosticExportDownloadActionContractTest {
         val screen = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt")
         val viewModel = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
         val repository = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt")
+        val uiBroker = source("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
         val dao = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadDao.kt")
 
         assertTrue(planner.contains("deleteHistory(download, label = \"Delete download entry\")"))
@@ -36,8 +37,9 @@ class Phase65DiagnosticExportDownloadActionContractTest {
         assertTrue(screen.contains("DownloadActionKind.Cancel -> onCancelDownload(download)"))
         assertTrue(screen.contains("DownloadActionKind.DeleteRecord -> onDeleteRecord(download)"))
         assertTrue(viewModel.contains("fun cancelDownload(download: Download)"))
-        assertTrue(viewModel.contains("runCatching { transferRuntime.cancel(download.id) }"))
-        assertTrue(viewModel.contains("repository.deleteDownload"))
+        assertTrue(viewModel.contains("androidDownloadUiClient.command(action = \"cancel\", downloadId = download.id)"))
+        assertTrue(uiBroker.contains("transferRuntime.cancel(id)") && uiBroker.contains("nativeHls.cancel(id)"))
+        assertTrue(viewModel.contains("action = \"delete\"") && uiBroker.contains("repository.deleteDownloadEntryIfTerminal"))
         assertTrue(repository.contains("database.downloadGraphTransactionDao().deleteDownloadGraph(id)"))
         assertTrue(dao.contains("DELETE FROM recovery_records WHERE downloadId = :downloadId"))
     }

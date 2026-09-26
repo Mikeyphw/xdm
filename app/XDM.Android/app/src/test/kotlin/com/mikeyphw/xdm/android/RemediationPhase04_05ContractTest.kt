@@ -65,6 +65,7 @@ class RemediationPhase04_05ContractTest {
         val coordinator = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt")
         val gate = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/DurableQueueAdmissionGate.kt")
         val viewModel = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
+        val uiBroker = source("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
 
         assertTrue(dao.contains("@Transaction\n    suspend fun claimQueueSlot"))
         assertTrue(dao.contains("SET state = 'Connecting'"))
@@ -83,8 +84,8 @@ class RemediationPhase04_05ContractTest {
         assertTrue(coordinator.contains("current.updatedAtEpochMs != queueClaimToken"))
         assertTrue(coordinator.contains("AndroidExecutionClaimRegistry.install(current.id, current.updatedAtEpochMs)"))
         assertTrue(gate.contains("commit = true"))
-        assertTrue(viewModel.contains("queueIntelligenceCoordinator.pauseAllDurably()"))
-        assertTrue(viewModel.contains("queueIntelligenceCoordinator.resumeAllManual()"))
+        assertTrue(viewModel.contains("action = \"pause_all\"") && viewModel.contains("action = \"resume_all\""))
+        assertTrue(uiBroker.contains("queueCoordinator.pauseAllDurably()") && uiBroker.contains("queueCoordinator.resumeAllManual()"))
     }
 
     @Test fun restartControlAndAndroidExecutionOwnersRemainBoundToDurableState() {

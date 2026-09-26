@@ -6,6 +6,7 @@ import android.os.Binder
 import android.os.IBinder
 import com.mikeyphw.xdm.android.XdmApplication
 import kotlinx.coroutines.flow.StateFlow
+import org.json.JSONObject
 
 /**
  * Binder/service facade over the process-wide Go engine authority.
@@ -34,6 +35,8 @@ class AndroidEngineService : Service() {
     }
 
     fun projections(): StateFlow<AndroidEngineProjection> = authority.projections()
+    fun downloadProjections(): StateFlow<AndroidDownloadUiProjection> = authority.downloadProjections()
+    suspend fun submitDownloadUiCommand(payload: JSONObject): AndroidDownloadUiCommandResult = authority.submitDownloadUiCommand(payload)
 
     @Synchronized
     fun ensureSingleEngine(reason: ProcessRestartRecovery): String = authority.ensureSingleEngine(reason).also {

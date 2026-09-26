@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mikeyphw.xdm.android.engine.AndroidEngineUiConnection
 import com.mikeyphw.xdm.android.model.BackendCapabilityRow
 import com.mikeyphw.xdm.android.model.ChecksumResult
 import com.mikeyphw.xdm.android.model.Download
@@ -93,6 +94,7 @@ import androidx.core.net.toUri
 @UiSurface(UiAudience.User, "Manage downloads and transfer state")
 fun DownloadsScreen(
     downloads: List<Download>,
+    engineUiConnection: AndroidEngineUiConnection,
     mediaCaptures: List<MediaCaptureRecord> = emptyList(),
     mediaVariants: List<MediaVariant> = emptyList(),
     mediaOutputs: List<MediaOutputRecord> = emptyList(),
@@ -331,6 +333,17 @@ fun DownloadsScreen(
     }
 
     Column(Modifier.fillMaxSize().xdmScreen(XdmScreenTags.Downloads, "Downloads")) {
+        if (engineUiConnection != AndroidEngineUiConnection.Connected) {
+            XdmNoticeRow(
+                text = when (engineUiConnection) {
+                    AndroidEngineUiConnection.Connecting -> "Connecting to the XDM engine. The latest engine projection will appear when binding completes."
+                    AndroidEngineUiConnection.Rebinding -> "Reconnecting to the XDM engine. The last confirmed download state remains visible while the connection is restored."
+                    AndroidEngineUiConnection.Disconnected -> "The XDM engine connection is unavailable. Download commands will wait briefly for reconnection instead of mutating Android state directly."
+                    AndroidEngineUiConnection.Connected -> ""
+                },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
         DownloadsOverviewHeader(
             windowClass = windowClass,
             downloadingCount = metrics.downloadingCount,

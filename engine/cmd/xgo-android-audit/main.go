@@ -14,6 +14,9 @@ import (
 	"github.com/subhra74/xdm/engine/domain/identity"
 	"github.com/subhra74/xdm/engine/domain/publication"
 	"github.com/subhra74/xdm/engine/ops"
+	engineruntime "github.com/subhra74/xdm/engine/runtime"
+	"github.com/subhra74/xdm/engine/runtime/command"
+	"github.com/subhra74/xdm/engine/runtime/platform"
 	"github.com/subhra74/xdm/engine/scheduler"
 )
 
@@ -42,6 +45,8 @@ func main() {
 		r, err = androidNetworkSecurity()
 	case "android_scheduler_authority":
 		r, err = androidSchedulerAuthority()
+	case "android_ui_smoke":
+		r, err = androidUISmoke()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -469,6 +474,206 @@ func androidSchedulerAuthority() (report, error) {
 		"runtime conditions round-trip through the Go platform broker",
 		"process + Go duplicate fences suppress repeated host events",
 		"automatic reconcile path no longer calls Kotlin evaluateAndClaim",
+	}}, nil
+}
+
+func androidUISmoke() (report, error) {
+	engine := engineruntime.New(engineruntime.Config{EventBuffer: 32, PlatformBuffer: 8})
+	if err := engine.Start(); err != nil {
+		return report{}, err
+	}
+	defer engine.Shutdown(context.Background())
+
+	makeEnvelope := func(token, kind, payload string) (command.Envelope, error) {
+		id, err := command.ParseID("cmd_" + token)
+		if err != nil {
+			return command.Envelope{}, err
+		}
+		op, err := identity.ParseOperationID("op_" + token)
+		if err != nil {
+			return command.Envelope{}, err
+		}
+		return command.Envelope{ID: id, OperationID: op, Kind: kind, Payload: json.RawMessage(payload)}, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	syncEnv, err := makeEnvelope("00000000000000000000000000000072", engineruntime.AndroidUISyncKind, `{"revision":1,"downloads":[{"id":"dl-ui-audit","file_name":"audit.bin","source_url":"https://example.test/audit.bin","destination_uri":"content://downloads","state":"Queued","backend":"Native","bytes_received":0,"speed_bytes_per_second":0,"priority":0,"created_at_epoch_ms":1,"updated_at_epoch_ms":2,"conflict_policy":"Rename","requested_backend":"Automatic","backend_selection_reason":"DefaultNative","backend_selection_explanation":"","allow_backend_fallback":true,"archived":false,"attempt_generation":1,"observed_attempt_generation":1,"row_revision":2}]}`)
+	if err != nil {
+		return report{}, err
+	}
+	if err := engine.Submit(context.Background(), syncEnv); err != nil {
+		return report{}, err
+	}
+	for {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind == "android.ui.projection" {
+			var projection engineruntime.AndroidUIProjection
+			if err := json.Unmarshal(frame.Payload, &projection); err != nil {
+				return report{}, err
+			}
+			if projection.Revision != 1 || len(projection.Downloads) != 1 || projection.Downloads[0].ID != "dl-ui-audit" {
+				return report{}, fmt.Errorf("bad Go UI projection: %+v", projection)
+			}
+			break
+		}
+	}
+
+	cmdEnv, err := makeEnvelope("00000000000000000000000000000073", engineruntime.AndroidUICommandKind, `{"client_request_id":"ui-audit-1","action":"pause","download_id":"dl-ui-audit"}`)
+	if err != nil {
+		return report{}, err
+	}
+	if err := engine.Submit(context.Background(), cmdEnv); err != nil {
+		return report{}, err
+	}
+	var request platform.Request
+	for {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind != "platform.request" {
+			continue
+		}
+		if err := json.Unmarshal(frame.Payload, &request); err != nil {
+			return report{}, err
+		}
+		break
+	}
+	if request.Kind != platform.AndroidDownloadCommand {
+		return report{}, fmt.Errorf("UI command did not cross platform broker: %s", request.Kind)
+	}
+	if err := engine.PlatformReply(platform.Reply{RequestID: request.ID, Session: request.Session, OK: true, Payload: json.RawMessage(`{"ok":true,"status":"paused","download_id":"dl-ui-audit"}`)}); err != nil {
+		return report{}, err
+	}
+	for {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind != "android.ui.command_result" {
+			continue
+		}
+		var result map[string]any
+		if err := json.Unmarshal(frame.Payload, &result); err != nil {
+			return report{}, err
+		}
+		if result["client_request_id"] != "ui-audit-1" || result["ok"] != true || result["status"] != "paused" {
+			return report{}, fmt.Errorf("bad Go UI command result: %v", result)
+		}
+		break
+	}
+
+	viewModel := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
+	for _, needle := range []string{
+		"private val semanticDownloads = androidDownloadUiClient.projection",
+		"engineUiConnection = engineConnection",
+		"val downloads = durable.downloads",
+	} {
+		if !strings.Contains(viewModel, needle) {
+			return report{}, fmt.Errorf("ViewModel is not projection-driven: missing %s", needle)
+		}
+	}
+	if strings.Contains(viewModel, "live.progress[download.id]") {
+		return report{}, fmt.Errorf("ViewModel still rewrites Go download projections from Kotlin live progress")
+	}
+	sections := []struct {
+		name, start, end string
+		required         []string
+		forbidden        []string
+	}{
+		{"policy override start", "    fun startIgnoringQueuePolicy(", "    fun runAria2SmokeTest(", []string{"androidDownloadUiClient.command", `action = "resume"`, "policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(download)"}, []string{"queueIntelligenceCoordinator.requestStart(", "repository.findDownload("}},
+		{"bulk pause", "    fun bulkPause(", "    fun bulkResume(", []string{"androidDownloadUiClient.command", `action = "pause"`}, []string{"transferRuntime.pause(", "nativeHlsMediaManager.pause(", "repository.findDownloadsByIds("}},
+		{"bulk resume", "    fun bulkResume(", "    fun saveDestinationRule(", []string{"androidDownloadUiClient.command", `"retry"`, `"resume"`}, []string{"queueIntelligenceCoordinator.requestStart(", "nativeHlsMediaManager.resume(", "repository.findDownloadsByIds("}},
+		{"clear history", "    fun clearFinishedHistory(", "    suspend fun inspectCompletedArtifact(", []string{"androidDownloadUiClient.command", `action = "delete"`}, []string{"repository.deleteDownloadEntryIfTerminal(", "termuxMediaPipelineManager.prepareDownloadGraphDeletion("}},
+		{"start now", "    fun startNow(", "    fun removeDownloadFromHistory(", []string{"androidDownloadUiClient.command", `action = "resume"`, "policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(download)"}, []string{"queueIntelligenceCoordinator.requestStart(", "repository.findDownload("}},
+		{"delete", "    fun deleteDownloadEntry(", "    fun deleteSavedFile(", []string{"androidDownloadUiClient.command", `action = "delete"`}, []string{"transferRuntime.cancel(", "repository.deleteDownloadEntryIfTerminal(", "queueIntelligenceCoordinator.retireAndroidSystemId("}},
+		{"add", "    private suspend fun completeDownloadAdmission(", "    fun backendRecommendation(", []string{"androidDownloadUiClient.command", `action = "add"`, `action = "resume"`}, []string{"repository.admitDownload(", "queueIntelligenceCoordinator.requestStart("}},
+		{"pause all", "    fun pauseAll()", "    fun resumeAll()", []string{"androidDownloadUiClient.command", `action = "pause_all"`}, []string{"transferRuntime.pauseAll(", "nativeHlsMediaManager.pauseAll(", "queueIntelligenceCoordinator.pauseAllDurably("}},
+		{"resume all", "    fun resumeAll()", "    fun cancelDownload(", []string{"androidDownloadUiClient.command", `action = "resume_all"`}, []string{"nativeHlsMediaManager.resumeAll(", "queueIntelligenceCoordinator.resumeAllManual("}},
+		{"cancel", "    fun cancelDownload(", "    fun togglePause(", []string{"androidDownloadUiClient.command", `action = "cancel"`}, []string{"transferRuntime.cancel(", "nativeHlsMediaManager.cancel(", "repository.save("}},
+		{"toggle", "    fun togglePause(", "    private fun logBulkActionResult(", []string{"androidDownloadUiClient.command", `"pause"`, `"retry"`, `"resume"`}, []string{"transferRuntime.pause(", "nativeHlsMediaManager.pause(", "queueIntelligenceCoordinator.requestStart(", "repository.findDownload("}},
+	}
+	for _, check := range sections {
+		section, err := sourceSection(viewModel, check.start, check.end)
+		if err != nil {
+			return report{}, err
+		}
+		for _, needle := range check.required {
+			if !strings.Contains(section, needle) {
+				return report{}, fmt.Errorf("%s UI command path missing %s", check.name, needle)
+			}
+		}
+		for _, needle := range check.forbidden {
+			if strings.Contains(section, needle) {
+				return report{}, fmt.Errorf("%s still bypasses Go command authority via %s", check.name, needle)
+			}
+		}
+	}
+
+	client := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadUiClient.kt")
+	for _, needle := range []string{"bindService", "onServiceDisconnected", "onBindingDied", "Rebinding", "withTimeoutOrNull", "downloadProjections()"} {
+		if !strings.Contains(client, needle) {
+			return report{}, fmt.Errorf("UI engine client missing rebind/lifecycle token %s", needle)
+		}
+	}
+	rebind, err := sourceSection(client, "    private fun scheduleRebind()", "    private companion object")
+	if err != nil {
+		return report{}, err
+	}
+	if strings.Contains(rebind, "_projection.value") {
+		return report{}, fmt.Errorf("engine rebind clears the last Go projection")
+	}
+
+	authority := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt")
+	for _, needle := range []string{"syncLegacyDownloadProjection", "submitDownloadUiCommand", `"android.ui.projection"`, `"android.ui.command_result"`} {
+		if !strings.Contains(authority, needle) {
+			return report{}, fmt.Errorf("process authority missing UI bridge token %s", needle)
+		}
+	}
+	service := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineService.kt")
+	for _, needle := range []string{"downloadProjections()", "submitDownloadUiCommand"} {
+		if !strings.Contains(service, needle) {
+			return report{}, fmt.Errorf("engine service missing UI binder token %s", needle)
+		}
+	}
+	broker := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
+	for _, needle := range []string{"repository.downloads.collectLatest", "repository.admitDownload", `"pause"`, `"resume", "retry"`, `"cancel"`, `"delete"`, `"pause_all"`, `"resume_all"`, "queueCoordinator.pauseAllDurably()", "queueCoordinator.resumeAllManual()"} {
+		if !strings.Contains(broker, needle) {
+			return report{}, fmt.Errorf("temporary XGO-72 host broker missing %s", needle)
+		}
+	}
+	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
+	for _, needle := range []string{"AndroidDownloadUiClient(this)", "mirrorIntoGo(androidEngineProcessAuthority)", "androidDownloadUiClient = androidDownloadUiClient"} {
+		if !strings.Contains(application, needle) {
+			return report{}, fmt.Errorf("application does not preserve process-scoped UI/engine state: missing %s", needle)
+		}
+	}
+	platformDispatcher := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidPlatformRequestDispatcher.kt")
+	if !strings.Contains(platformDispatcher, `"android_download_command"`) || !strings.Contains(platformDispatcher, "downloadUiBroker") {
+		return report{}, fmt.Errorf("Android platform dispatcher does not route Go download commands")
+	}
+	downloadsScreen := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt")
+	for _, needle := range []string{"engineUiConnection: AndroidEngineUiConnection", "AndroidEngineUiConnection.Rebinding", "last confirmed download state remains visible", "commands will wait briefly for reconnection"} {
+		if !strings.Contains(downloadsScreen, needle) {
+			return report{}, fmt.Errorf("downloads UI does not surface engine reconnect state: missing %s", needle)
+		}
+	}
+	xdmApp := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt")
+	if !strings.Contains(xdmApp, "engineUiConnection = state.engineUiConnection") {
+		return report{}, fmt.Errorf("route does not pass engine connection projection to Downloads UI")
+	}
+
+	return report{Mode: "android_ui_smoke", Pass: true, Checks: []string{
+		"Go download projection round-trip",
+		"add/pause/resume/cancel/retry/delete cross Go commands",
+		"ViewModel download list is Go projection without Kotlin progress rewrite",
+		"temporary Room/runtime bridge is behind Go platform requests",
+		"connection loss keeps last projection and rebinds",
+		"activity recreation reuses process-scoped client and single engine authority",
 	}}, nil
 }
 

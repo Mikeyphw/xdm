@@ -225,6 +225,7 @@ private fun XdmRouteContent(
         when (route) {
             AppRoute.Downloads -> DownloadsScreen(
                 downloads = state.downloads,
+                engineUiConnection = state.engineUiConnection,
                 mediaCaptures = state.mediaCaptures,
                 mediaVariants = state.mediaVariants,
                 mediaOutputs = state.mediaOutputs,

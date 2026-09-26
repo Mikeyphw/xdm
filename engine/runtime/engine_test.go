@@ -228,3 +228,123 @@ func TestAndroidSchedulerWakeRequestsRuntimeConditionsBeforeDecision(t *testing.
 		t.Fatalf("completion kind=%s", completed.Kind)
 	}
 }
+
+func TestAndroidUIProjectionAndCommandRoundTrip(t *testing.T) {
+	e := New(Config{EventBuffer: 32, PlatformBuffer: 8})
+	if err := e.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = e.Shutdown(context.Background()) }()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	projectionPayload := json.RawMessage(`{"revision":7,"downloads":[{"id":"dl-ui-1","file_name":"a.bin","source_url":"https://example.test/a.bin","destination_uri":"content://downloads","state":"Queued","backend":"Native","bytes_received":0,"speed_bytes_per_second":0,"priority":0,"created_at_epoch_ms":1,"updated_at_epoch_ms":2,"conflict_policy":"Rename","requested_backend":"Automatic","backend_selection_reason":"DefaultNative","backend_selection_explanation":"","allow_backend_fallback":true,"archived":false,"attempt_generation":1,"observed_attempt_generation":1,"row_revision":2}]}`)
+	syncEnv := cmd(t, "00000000000000000000000000000072", "00000000000000000000000000000072", AndroidUISyncKind, string(projectionPayload))
+	if err := e.Submit(context.Background(), syncEnv); err != nil {
+		t.Fatal(err)
+	}
+	var frame event.Frame
+	for {
+		got, err := e.NextFrame(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Kind == "android.ui.projection" {
+			frame = got
+			break
+		}
+	}
+	var projected AndroidUIProjection
+	if err := json.Unmarshal(frame.Payload, &projected); err != nil {
+		t.Fatal(err)
+	}
+	if projected.Revision != 7 || len(projected.Downloads) != 1 || projected.Downloads[0].ID != "dl-ui-1" {
+		t.Fatalf("projection=%+v", projected)
+	}
+
+	commandPayload := json.RawMessage(`{"client_request_id":"ui-request-1","action":"pause","download_id":"dl-ui-1"}`)
+	commandEnv := cmd(t, "00000000000000000000000000000073", "00000000000000000000000000000073", AndroidUICommandKind, string(commandPayload))
+	if err := e.Submit(context.Background(), commandEnv); err != nil {
+		t.Fatal(err)
+	}
+	var requestFrame event.Frame
+	for {
+		got, err := e.NextFrame(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Kind == "platform.request" {
+			requestFrame = got
+			break
+		}
+	}
+	var req platform.Request
+	if err := json.Unmarshal(requestFrame.Payload, &req); err != nil {
+		t.Fatal(err)
+	}
+	if req.Kind != platform.AndroidDownloadCommand {
+		t.Fatalf("kind=%s", req.Kind)
+	}
+	if err := e.PlatformReply(platform.Reply{RequestID: req.ID, Session: req.Session, OK: true, Payload: json.RawMessage(`{"status":"applied"}`)}); err != nil {
+		t.Fatal(err)
+	}
+	var result event.Frame
+	for {
+		got, err := e.NextFrame(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Kind == "android.ui.command_result" {
+			result = got
+			break
+		}
+	}
+	var got map[string]any
+	if err := json.Unmarshal(result.Payload, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["client_request_id"] != "ui-request-1" || got["ok"] != true || got["status"] != "applied" {
+		t.Fatalf("result=%v", got)
+	}
+}
+
+func TestAndroidUIProjectionRejectsStaleRevision(t *testing.T) {
+	e := New(Config{EventBuffer: 32, PlatformBuffer: 8})
+	if err := e.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = e.Shutdown(context.Background()) }()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	newer := cmd(t, "00000000000000000000000000000074", "00000000000000000000000000000074", AndroidUISyncKind, `{"revision":9,"downloads":[{"id":"newer","file_name":"new.bin","source_url":"https://example.test/new.bin","destination_uri":"content://downloads","state":"Queued","backend":"Native","bytes_received":0,"speed_bytes_per_second":0,"priority":0,"created_at_epoch_ms":1,"updated_at_epoch_ms":9,"conflict_policy":"Rename","requested_backend":"Automatic","backend_selection_reason":"DefaultNative","backend_selection_explanation":"","allow_backend_fallback":true,"archived":false,"attempt_generation":1,"observed_attempt_generation":1,"row_revision":9}]}`)
+	if err := e.Submit(context.Background(), newer); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		frame, err := e.NextFrame(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if frame.Kind == "android.ui.projection" {
+			break
+		}
+	}
+
+	stale := cmd(t, "00000000000000000000000000000075", "00000000000000000000000000000075", AndroidUISyncKind, `{"revision":8,"downloads":[{"id":"stale","file_name":"stale.bin","source_url":"https://example.test/stale.bin","destination_uri":"content://downloads","state":"Paused","backend":"Native","bytes_received":0,"speed_bytes_per_second":0,"priority":0,"created_at_epoch_ms":1,"updated_at_epoch_ms":8,"conflict_policy":"Rename","requested_backend":"Automatic","backend_selection_reason":"DefaultNative","backend_selection_explanation":"","allow_backend_fallback":true,"archived":false,"attempt_generation":1,"observed_attempt_generation":1,"row_revision":8}]}`)
+	if err := e.Submit(context.Background(), stale); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		frame, err := e.NextFrame(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if frame.Kind == "android.ui.projection" {
+			t.Fatalf("stale projection was re-emitted: %s", frame.Payload)
+		}
+		if frame.CommandID == stale.ID && frame.Kind == "command.completed" {
+			break
+		}
+	}
+}

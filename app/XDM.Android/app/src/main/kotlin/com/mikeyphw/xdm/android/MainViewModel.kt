@@ -138,8 +138,9 @@ import com.mikeyphw.xdm.android.model.SettingsExchangeCodec
 import com.mikeyphw.xdm.android.model.SettingsExchangeImportResult
 import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
 import com.mikeyphw.xdm.android.model.SavedSearch
+import com.mikeyphw.xdm.android.engine.AndroidDownloadUiClient
+import com.mikeyphw.xdm.android.engine.AndroidEngineUiConnection
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
-import com.mikeyphw.xdm.android.persistence.DownloadAdmissionResult
 import com.mikeyphw.xdm.android.persistence.MediaDownloadAdmissionResult
 import com.mikeyphw.xdm.android.persistence.MediaCaptureRemovalResult
 import com.mikeyphw.xdm.android.scheduler.ActiveTransferSummary
@@ -188,6 +189,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -276,6 +278,7 @@ data class MainUiState(
     val browserBridgeStatus: BrowserBridgeIntegrationStatus = BrowserBridgeIntegrationStatus(),
     val browserBridgeDiagnostics: BrowserBridgeDiagnosticsPreferences = BrowserBridgeDiagnosticsPreferences(),
     val downloads: List<Download> = emptyList(),
+    val engineUiConnection: AndroidEngineUiConnection = AndroidEngineUiConnection.Connecting,
     val queues: List<QueueDefinition> = emptyList(),
     val schedules: List<ScheduleRule> = emptyList(),
     val recovery: List<RecoveryRecord> = emptyList(),
@@ -393,6 +396,7 @@ data class MainUiState(
 
 class MainViewModel(
     private val repository: DownloadRepository,
+    private val androidDownloadUiClient: AndroidDownloadUiClient,
     private val preferences: UserPreferencesStore,
     private val backendSelectionPolicy: BackendSelectionPolicy,
     private val transferRuntime: TransferExecutionRuntime,
@@ -552,12 +556,17 @@ class MainViewModel(
         }
     }
 
-    /** Byte/speed-only Room checkpoints must not invalidate the expensive whole-app projection. */
-    private val semanticDownloads = repository.downloads.distinctUntilChangedBy { downloads ->
-        downloads.map { download ->
-            download.copy(bytesReceived = 0L, speedBytesPerSecond = 0L, updatedAtEpochMs = 0L)
+    /**
+     * XGO-72: download presentation is sourced from the Go-emitted projection, not Room.
+     * The temporary Room -> Go mirror lives in AndroidLegacyDownloadUiBroker and is removed by XGO-74.
+     */
+    private val semanticDownloads = androidDownloadUiClient.projection
+        .map { it.downloads }
+        .distinctUntilChangedBy { downloads ->
+            downloads.map { download ->
+                download.copy(bytesReceived = 0L, speedBytesPerSecond = 0L, updatedAtEpochMs = 0L)
+            }
         }
-    }
 
     private val semanticVerificationRecords = repository.verificationRecords.distinctUntilChangedBy { records ->
         records.map { record ->
@@ -1057,17 +1066,8 @@ class MainViewModel(
     ) { summary, progress, verification -> LiveTransferUi(summary, progress, verification) }
 
     /** Cheap final overlay: high-frequency bytes and FFmpeg progress never recompute release reports/settings/activity. */
-    val uiState: StateFlow<MainUiState> = combine(durableUiState, liveTransferUi, embeddedFfmpegMediaManager.progress, settingsImportResult) { durable, live, ffmpegProgress, importResult ->
-        val downloads = durable.downloads.map { download ->
-            val snapshot = live.progress[download.id] ?: return@map download
-            download.copy(
-                state = snapshot.state,
-                bytesReceived = snapshot.bytesReceived,
-                totalBytes = snapshot.totalBytes ?: download.totalBytes,
-                speedBytesPerSecond = snapshot.speedBytesPerSecond,
-                errorMessage = snapshot.errorMessage,
-            )
-        }
+    val uiState: StateFlow<MainUiState> = combine(durableUiState, liveTransferUi, embeddedFfmpegMediaManager.progress, settingsImportResult, androidDownloadUiClient.connection) { durable, live, ffmpegProgress, importResult, engineConnection ->
+        val downloads = durable.downloads
         val liveVerificationIds = live.verification.keys
         val verificationRecords = if (liveVerificationIds.isEmpty()) {
             durable.verificationRecords
@@ -1080,6 +1080,7 @@ class MainViewModel(
             verificationRecords = verificationRecords,
             embeddedFfmpegProgress = ffmpegProgress,
             settingsImportResult = importResult,
+            engineUiConnection = engineConnection,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -1411,12 +1412,10 @@ class MainViewModel(
 
     fun startIgnoringQueuePolicy(download: Download) {
         viewModelScope.launch(Dispatchers.IO) {
-            val current = repository.findDownload(download.id) ?: return@launch
-            queueIntelligenceCoordinator.requestStart(
-                downloadId = current.id,
-                userVisible = true,
-                manual = true,
-                policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(current),
+            androidDownloadUiClient.command(
+                action = "resume",
+                downloadId = download.id,
+                policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(download),
             )
         }
     }
@@ -2040,27 +2039,23 @@ class MainViewModel(
     }
 
     fun bulkPause(downloads: List<Download>) {
-        val ids = downloads.map { it.id }.toSet()
-        if (ids.isEmpty()) return
+        val candidates = downloads.filter { it.state in setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing) }
+        if (candidates.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            repository.findDownloadsByIds(ids)
-                .filter { it.state in setOf(DownloadState.Queued, DownloadState.Connecting, DownloadState.Downloading, DownloadState.Verifying, DownloadState.Repairing, DownloadState.Finalizing) }
-                .forEach { current ->
-                    if (databaseNativeHlsOwnership(current.id)) nativeHlsMediaManager.pause(current.id) else runCatching { transferRuntime.pause(current.id) }
-                }
+            candidates.forEach { androidDownloadUiClient.command(action = "pause", downloadId = it.id) }
         }
     }
 
     fun bulkResume(downloads: List<Download>) {
-        val ids = downloads.map { it.id }.toSet()
-        if (ids.isEmpty()) return
+        val candidates = downloads.filter { it.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower, DownloadState.Failed, DownloadState.RecoveryRequired) }
+        if (candidates.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            repository.findDownloadsByIds(ids)
-                .filter { it.state in setOf(DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower, DownloadState.Failed, DownloadState.RecoveryRequired) }
-                .forEach { current ->
-                    if (databaseNativeHlsOwnership(current.id)) nativeHlsMediaManager.resume(current.id)
-                    else queueIntelligenceCoordinator.requestStart(current.id, userVisible = true, manual = true)
-                }
+            candidates.forEach { candidate ->
+                androidDownloadUiClient.command(
+                    action = if (candidate.state in setOf(DownloadState.Failed, DownloadState.RecoveryRequired)) "retry" else "resume",
+                    downloadId = candidate.id,
+                )
+            }
         }
     }
 
@@ -2122,14 +2117,9 @@ class MainViewModel(
 
     fun clearFinishedHistory() {
         val finished = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled)
+        val candidates = uiState.value.downloads.filter { it.state in finished }
         viewModelScope.launch(Dispatchers.IO) {
-            repository.findDownloadsByStates(finished).forEach { candidate ->
-                if (termuxMediaPipelineManager.prepareDownloadGraphDeletion(candidate.id)) {
-                    if (repository.deleteDownloadEntryIfTerminal(candidate, finished)) {
-                        queueIntelligenceCoordinator.retireAndroidSystemId(candidate.id)
-                    }
-                }
-            }
+            candidates.forEach { androidDownloadUiClient.command(action = "delete", downloadId = it.id) }
         }
     }
 
@@ -2143,12 +2133,10 @@ class MainViewModel(
 
     fun startNow(download: Download) {
         viewModelScope.launch(Dispatchers.IO) {
-            val current = repository.findDownload(download.id) ?: return@launch
-            queueIntelligenceCoordinator.requestStart(
-                downloadId = current.id,
-                userVisible = true,
-                manual = true,
-                policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(current),
+            androidDownloadUiClient.command(
+                action = "resume",
+                downloadId = download.id,
+                policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(download),
             )
         }
     }
@@ -2159,32 +2147,14 @@ class MainViewModel(
 
     fun deleteDownloadEntry(download: Download, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val message = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                val current = repository.findDownload(download.id) ?: return@withContext "This download entry was already removed."
-                if (current.state !in setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)) {
-                    val nativeHls = databaseNativeHlsOwnership(current.id)
-                    runCatching {
-                        if (nativeHls) nativeHlsMediaManager.cancel(current.id) else transferRuntime.cancel(current.id)
-                    }.getOrElse {
-                        return@withContext "The active ${if (nativeHls) "Native HLS/media" else "transfer"} owner could not be stopped, so its entry was not removed."
-                    }
-                    val afterCancel = repository.findDownload(current.id)
-                    if (afterCancel != null && afterCancel.state !in setOf(DownloadState.Cancelled, DownloadState.Failed, DownloadState.RecoveryRequired)) {
-                        return@withContext "The current backend still owns this transfer. Its entry was not removed or hidden."
-                    }
-                }
-                val terminalStates = setOf(DownloadState.Completed, DownloadState.Failed, DownloadState.Cancelled, DownloadState.RecoveryRequired)
-                val terminalCurrent = repository.findDownload(current.id) ?: return@withContext "This download entry was already removed."
-                if (!termuxMediaPipelineManager.prepareDownloadGraphDeletion(terminalCurrent.id)) {
-                    return@withContext "Post-processing still owns this download. Finish or cancel that work before deleting the entry."
-                }
-                val deleted = repository.deleteDownloadEntryIfTerminal(terminalCurrent, terminalStates)
-                if (!deleted) return@withContext "The transfer changed while deletion was being committed. Its entry was not removed."
-                MediaRequestHandoffStore.forget(current.id)
-                if (repository.findDownload(current.id) == null) {
-                    queueIntelligenceCoordinator.retireAndroidSystemId(current.id)
-                    "Deleted the download entry and its complete database graph after an atomic terminal-state check."
-                } else "The database did not confirm deletion of the download entry."
+            val result = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                androidDownloadUiClient.command(action = "delete", downloadId = download.id)
+            }
+            val message = when {
+                result.ok && result.status == "already_deleted" -> "This download entry was already removed."
+                result.ok -> "Deleted the download entry and its complete database graph after an atomic terminal-state check."
+                !result.message.isNullOrBlank() -> result.message
+                else -> "The download entry could not be deleted (${result.errorCode ?: "engine command rejected"})."
             }
             onResult(message)
         }
@@ -2670,14 +2640,14 @@ class MainViewModel(
         pending: PendingDownloadAdmission,
         duplicateActionOverride: DuplicateUrlAction? = null,
     ) {
-        val result = repository.admitDownload(
+        val result = androidDownloadUiClient.command(
+            action = "add",
             download = pending.download,
-            duplicateLookupUrl = pending.download.sourceUrl,
-            checksumExpectation = pending.checksumExpectation,
-            duplicateActionOverride = duplicateActionOverride,
+            duplicateAction = duplicateActionOverride,
+            checksum = pending.checksumExpectation,
         )
-        when (result) {
-            is DownloadAdmissionResult.Created -> {
+        when {
+            result.ok && result.status == "created" -> {
                 pendingDownloadAdmission = null
                 check(MediaRequestHandoffStore.remember(
                     downloadId = pending.download.id,
@@ -2691,46 +2661,51 @@ class MainViewModel(
                     cleartextCredentialsApproved = pending.cleartextCredentialsApproved,
                 )) { "Exact download handoff changed while Add Download was committing" }
                 pending.externalDraft?.let { markExternalDraftDownloadCreated(it, pending.download.id) }
-                queueIntelligenceCoordinator.requestStart(pending.download.id, userVisible = true, manual = true)
+                val startResult = androidDownloadUiClient.command(action = "resume", downloadId = pending.download.id)
                 externalAddDraft.value = null
                 addDownloadNavigationSession.value = null
-                _downloadAdmissionState.value = DownloadAdmissionUiState()
+                _downloadAdmissionState.value = DownloadAdmissionUiState(
+                    message = if (startResult.ok) null else (startResult.message ?: "Download was added and will remain queued until the engine reconnects."),
+                )
                 navigate(AppRoute.Downloads)
             }
-            is DownloadAdmissionResult.NeedsConfirmation -> {
+            result.ok && result.status == "needs_confirmation" -> {
                 pendingDownloadAdmission = pending
                 addDownloadNavigationSession.value = addDownloadNavigationSession.value?.recordDuplicateDecision(pending.requestedUrl)
                 _downloadAdmissionState.value = DownloadAdmissionUiState(
-                    duplicateDownloadId = result.existing.id,
-                    duplicateFileName = result.existing.fileName,
+                    duplicateDownloadId = result.existingDownloadId,
+                    duplicateFileName = result.existingDownloadFileName ?: "Existing download",
                     message = "This URL already exists. Choose what XDM should do.",
                 )
             }
-            is DownloadAdmissionResult.OpenExisting -> {
+            result.ok && result.status == "open_existing" -> {
                 pendingDownloadAdmission = null
-                pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, result.existing.id, "Opened the existing matching download") }
+                val existingId = result.existingDownloadId
+                if (existingId != null) pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, existingId, "Opened the existing matching download") }
                 externalAddDraft.value = null
                 addDownloadNavigationSession.value = null
                 _downloadAdmissionState.value = DownloadAdmissionUiState()
-                openDownloadFromNotification(result.existing.id)
+                if (existingId != null) openDownloadFromNotification(existingId) else navigate(AppRoute.Downloads)
             }
-            is DownloadAdmissionResult.Skipped -> {
+            result.ok && result.status == "skipped" -> {
                 pendingDownloadAdmission = null
-                pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, result.existing.id, "Skipped duplicate download") }
+                result.existingDownloadId?.let { existingId ->
+                    pending.externalDraft?.let { markExternalDraftDuplicateHandled(it, existingId, "Skipped duplicate download") }
+                }
                 externalAddDraft.value = null
                 addDownloadNavigationSession.value = null
                 _downloadAdmissionState.value = DownloadAdmissionUiState(message = "Duplicate skipped")
                 navigate(AppRoute.Downloads)
             }
-            is DownloadAdmissionResult.Rejected -> {
-                pendingDownloadAdmission = null
-                _downloadAdmissionState.value = DownloadAdmissionUiState(message = result.message)
+            else -> {
+                val message = result.message ?: "The XDM engine rejected the download command (${result.errorCode ?: "unknown error"})."
+                _downloadAdmissionState.value = DownloadAdmissionUiState(message = message)
                 pending.externalDraft?.let { draft ->
                     repository.findAutomationCommand(draft.id)?.let { command ->
                         repository.saveAutomationCommand(
                             command.copy(
                                 status = AutomationCommandStatus.Failed,
-                                resultMessage = result.message,
+                                resultMessage = message,
                                 rejectionReason = AutomationRejectionReason.ClaimLost,
                                 updatedAtEpochMs = System.currentTimeMillis(),
                             ),
@@ -5297,59 +5272,32 @@ class MainViewModel(
 
 
     fun pauseAll() {
-        viewModelScope.launch {
-            queueIntelligenceCoordinator.pauseAllDurably()
-            transferRuntime.pauseAll()
-            nativeHlsMediaManager.pauseAll()
+        viewModelScope.launch(Dispatchers.IO) {
+            androidDownloadUiClient.command(action = "pause_all")
         }
     }
 
     fun resumeAll() {
-        viewModelScope.launch {
-            queueIntelligenceCoordinator.resumeAllManual()
-            nativeHlsMediaManager.resumeAll()
+        viewModelScope.launch(Dispatchers.IO) {
+            androidDownloadUiClient.command(action = "resume_all")
         }
     }
 
     fun cancelDownload(download: Download) {
         viewModelScope.launch(Dispatchers.IO) {
-            val nativeHls = databaseNativeHlsOwnership(download.id)
-            if (nativeHls) {
-                nativeHlsMediaManager.cancel(download.id)
-                return@launch
-            }
-            runCatching { transferRuntime.cancel(download.id) }
-                .onFailure { error ->
-                    val current = repository.findDownload(download.id) ?: return@onFailure
-                    repository.save(
-                        current.copy(
-                            state = DownloadState.RecoveryRequired,
-                            speedBytesPerSecond = 0L,
-                            errorMessage = "Cancellation could not be confirmed: ${error.message ?: error::class.java.simpleName}",
-                            updatedAtEpochMs = System.currentTimeMillis(),
-                        ),
-                    )
-                }
+            androidDownloadUiClient.command(action = "cancel", downloadId = download.id)
         }
     }
 
     fun togglePause(download: Download) {
+        val action = when (download.state) {
+            DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing, DownloadState.Verifying, DownloadState.Repairing -> "pause"
+            DownloadState.Failed, DownloadState.RecoveryRequired -> "retry"
+            DownloadState.Paused, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower -> "resume"
+            else -> null
+        } ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            val current = repository.findDownload(download.id) ?: return@launch
-            if (databaseNativeHlsOwnership(current.id)) {
-                when (current.state) {
-                    DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing, DownloadState.Verifying -> nativeHlsMediaManager.pause(current.id)
-                    DownloadState.Paused, DownloadState.RecoveryRequired, DownloadState.Failed -> nativeHlsMediaManager.resume(current.id)
-                    else -> Unit
-                }
-                return@launch
-            }
-            when (current.state) {
-                DownloadState.Downloading, DownloadState.Connecting, DownloadState.Queued, DownloadState.Finalizing -> transferRuntime.pause(current.id)
-                DownloadState.Paused, DownloadState.Failed, DownloadState.RecoveryRequired, DownloadState.WaitingForNetwork, DownloadState.WaitingForPower ->
-                    queueIntelligenceCoordinator.requestStart(current.id, userVisible = true, manual = true)
-                else -> Unit
-            }
+            androidDownloadUiClient.command(action = action, downloadId = download.id)
         }
     }
 
@@ -5453,6 +5401,7 @@ class MainViewModel(
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(
             container.repository,
+            container.androidDownloadUiClient,
             container.preferences,
             container.backendSelectionPolicy,
             container.transferRuntime,

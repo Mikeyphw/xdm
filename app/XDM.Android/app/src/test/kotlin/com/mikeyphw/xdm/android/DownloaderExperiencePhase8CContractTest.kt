@@ -18,13 +18,12 @@ class DownloaderExperiencePhase8CContractTest {
         val worker = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt").readText()
         val coordinator = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt").readText()
         listOf(
-            "coordinator.evaluateAndClaim()",
-            "setForeground(createForegroundInfo",
-            "runtime.execute(downloadId, queueClaimToken)",
+            "AndroidSchedulerHost.wake(",
             "ExistingWorkPolicy.KEEP",
-        ).forEach { assertTrue("Foreground queue worker missing $it", worker.contains(it)) }
+        ).forEach { assertTrue("Go-host queue worker missing $it", worker.contains(it)) }
+        assertFalse(worker.contains("coordinator.evaluateAndClaim()"))
+        assertFalse(worker.contains("runtime.execute("))
         assertTrue(coordinator.contains("suspend fun evaluateAndClaim(): QueueReconcileOutcome"))
-        assertTrue(coordinator.contains("The caller owns execution"))
         assertFalse("Policy evaluation must not depend on WebView", worker.contains("android.webkit"))
     }
 
@@ -60,6 +59,7 @@ class DownloaderExperiencePhase8CContractTest {
         val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val application = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt").readText()
+        val broker = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt").readText()
         listOf(
             "QueueNetworkRequirement.entries",
             "QueueRetryStrategy.entries",
@@ -69,7 +69,8 @@ class DownloaderExperiencePhase8CContractTest {
             "recentDecisions.take(4)",
         ).forEach { assertTrue("Phase 8C UI missing $it", screens.contains(it)) }
         assertTrue(viewModel.contains("fun startIgnoringQueuePolicy(download: Download)"))
-        assertTrue(viewModel.contains("policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(current)"))
+        assertTrue(viewModel.contains("policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(download)"))
+        assertTrue(viewModel.contains("androidDownloadUiClient.command") && broker.contains("policyOverride = payload.optBoolean(\"policy_override\", false)"))
         assertTrue(application.contains("QueueConditionMonitor"))
         assertTrue(application.contains("QueueIntelligenceWorker.enqueueImmediate"))
     }
