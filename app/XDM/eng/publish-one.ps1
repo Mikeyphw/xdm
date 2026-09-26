@@ -13,6 +13,7 @@ $UpdaterOutput = Join-Path $OutputRoot "updater-$Runtime"
 Remove-Item -Recurse -Force $Output, $HostOutput, $UpdaterOutput -ErrorAction SilentlyContinue
 dotnet publish (Join-Path $RepoRoot "app/XDM/src/XDM.App/XDM.App.csproj") -c Release -r $Runtime --self-contained true `
     -p:Version=$Version -p:ContinuousIntegrationBuild=true -p:PublishSingleFile=false -p:PublishTrimmed=false -o $Output
+& (Join-Path $PSScriptRoot "build-xgo-native.ps1") -Runtime $Runtime -OutputDirectory $Output
 dotnet publish (Join-Path $RepoRoot "app/XDM/src/XDM.NativeHost/XDM.NativeHost.csproj") -c Release -r $Runtime --self-contained true `
     -p:Version=$Version -p:ContinuousIntegrationBuild=true -p:PublishSingleFile=true -p:PublishTrimmed=false -o $HostOutput
 dotnet publish (Join-Path $RepoRoot "app/XDM/src/XDM.Updater/XDM.Updater.csproj") -c Release -r $Runtime --self-contained true `

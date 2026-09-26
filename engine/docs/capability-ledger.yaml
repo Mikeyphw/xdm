@@ -1213,7 +1213,7 @@
         "desktop_download_manager"
       ],
       "id": "XGO-CAP-DESKTOP-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-76",
       "test_id": "fixture:xgo-cap-desktop-001"
     },
@@ -1226,7 +1226,7 @@
         "desktop_download_manager"
       ],
       "id": "XGO-CAP-DESKTOP-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-77",
       "test_id": "fixture:xgo-cap-desktop-002"
     },
@@ -1240,7 +1240,7 @@
         "desktop_download_schedule"
       ],
       "id": "XGO-CAP-DESKTOP-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-78",
       "test_id": "fixture:xgo-cap-desktop-003"
     },

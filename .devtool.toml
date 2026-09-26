@@ -2501,8 +2501,7 @@ validate = [
   { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_legacy_authority_scan"] },
 ]
 
-# Bootstrap target for future roadmap ownership. The command runner is intentional
-# until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
+# Desktop host validation target. XGO-76..78 keep Avalonia presentation/command reconnection for XGO-79; this target proves the ABI host and platform mechanism boundary only.
 [targets.xgo_desktop]
 runner = "command"
 platform = "shared"
@@ -2513,9 +2512,14 @@ inputs = [
   "engine/**",
   "tools/xgo/**",
   "docs/xgo/**",
+  "app/XDM/src/XDM.App/**",
+  "app/XDM/src/XDM.Platform/**",
+  "app/XDM/src/XDM.Core.Tests/**",
+  "app/XDM/eng/**",
 ]
 outputs = [
   ".devtool/reports/xgo/desktop/**",
+  ".devtool/build/xgo/abi/**",
 ]
 
 [targets.xgo_desktop.jobs.bootstrap_contract]
@@ -2531,17 +2535,47 @@ command = [
   "--output",
   ".devtool/reports/xgo/desktop/bootstrap.json",
 ]
-inputs = [
-  ".devtool.toml",
-  "tools/xgo/audit_topology.py",
-]
-outputs = [
-  ".devtool/reports/xgo/desktop/bootstrap.json",
-]
+inputs = [".devtool.toml", "tools/xgo/audit_topology.py"]
+outputs = [".devtool/reports/xgo/desktop/bootstrap.json"]
+
+[targets.xgo_desktop.jobs.desktop_engine_host]
+runner = "command"
+command = ["python3", "tools/xgo/audit_desktop.py", "--mode", "engine-host", "--output", ".devtool/reports/xgo/desktop/engine-host.json"]
+inputs = ["tools/xgo/audit_desktop.py", "app/XDM/src/XDM.App/**", "app/XDM/src/XDM.Platform/**", "app/XDM/eng/**"]
+outputs = [".devtool/reports/xgo/desktop/engine-host.json"]
+
+[targets.xgo_desktop.jobs.desktop_abi_harness]
+runner = "command"
+command = ["python3", "tools/xgo/run_abi_harness.py", "--output", ".devtool/reports/xgo/desktop/abi-harness.json"]
+inputs = ["engine/bridge/cabi/**", "engine/api/v1/**", "engine/runtime/**", "tools/xgo/run_abi_harness.py"]
+outputs = [".devtool/reports/xgo/desktop/abi-harness.json", ".devtool/build/xgo/abi/**"]
+
+[targets.xgo_desktop.jobs.desktop_publication]
+runner = "command"
+command = ["python3", "tools/xgo/audit_desktop.py", "--mode", "publication", "--output", ".devtool/reports/xgo/desktop/publication.json"]
+inputs = ["tools/xgo/audit_desktop.py", "engine/runtime/desktop_host.go", "app/XDM/src/XDM.Platform/DesktopGoPublicationBroker.cs", "app/XDM/src/XDM.Core.Tests/DesktopGoHostTests.cs"]
+outputs = [".devtool/reports/xgo/desktop/publication.json"]
+
+[targets.xgo_desktop.jobs.desktop_platform_services]
+runner = "command"
+command = ["python3", "tools/xgo/audit_desktop.py", "--mode", "platform-services", "--output", ".devtool/reports/xgo/desktop/platform-services.json"]
+inputs = ["tools/xgo/audit_desktop.py", "engine/runtime/desktop_host.go", "engine/runtime/platform/broker.go", "app/XDM/src/XDM.Platform/DesktopGoPlatformDispatcher.cs", "app/XDM/src/XDM.Platform/DesktopGoEngineHost.cs"]
+outputs = [".devtool/reports/xgo/desktop/platform-services.json"]
+
+[targets.xgo_desktop.jobs.desktop_runtime_tests]
+runner = "command"
+command = ["go", "test", "./engine/runtime", "-run", "^TestDesktop"]
+inputs = ["engine/runtime/**", "engine/domain/**", "engine/ops/**"]
+outputs = []
 
 [targets.xgo_desktop.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "desktop_engine_host", ref = "job:desktop_engine_host", depends_on = ["bootstrap_contract"] },
+  { id = "desktop_abi_harness", ref = "job:desktop_abi_harness", depends_on = ["desktop_engine_host"] },
+  { id = "desktop_publication", ref = "job:desktop_publication", depends_on = ["desktop_abi_harness"] },
+  { id = "desktop_platform_services", ref = "job:desktop_platform_services", depends_on = ["desktop_publication"] },
+  { id = "desktop_runtime_tests", ref = "job:desktop_runtime_tests", depends_on = ["desktop_platform_services"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

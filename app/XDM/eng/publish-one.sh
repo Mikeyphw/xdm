@@ -10,6 +10,7 @@ updater_output="$out_root/updater-$rid"
 rm -rf "$output" "$host_output" "$updater_output"
 dotnet publish "$repo_root/app/XDM/src/XDM.App/XDM.App.csproj" -c Release -r "$rid" --self-contained true \
   -p:Version="$version" -p:ContinuousIntegrationBuild=true -p:PublishSingleFile=false -p:PublishTrimmed=false -o "$output"
+bash "$repo_root/app/XDM/eng/build-xgo-native.sh" "$rid" "$output"
 dotnet publish "$repo_root/app/XDM/src/XDM.NativeHost/XDM.NativeHost.csproj" -c Release -r "$rid" --self-contained true \
   -p:Version="$version" -p:ContinuousIntegrationBuild=true -p:PublishSingleFile=true -p:PublishTrimmed=false -o "$host_output"
 dotnet publish "$repo_root/app/XDM/src/XDM.Updater/XDM.Updater.csproj" -c Release -r "$rid" --self-contained true \

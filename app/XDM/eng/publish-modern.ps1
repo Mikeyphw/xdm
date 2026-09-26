@@ -13,6 +13,7 @@ $Output = Join-Path $OutputRoot $Runtime
 $HostOutput = Join-Path $OutputRoot "native-host-$Runtime"
 dotnet publish $AppProject -c Release -r $Runtime --self-contained true `
     -p:PublishSingleFile=false -p:PublishTrimmed=false -o $Output
+& (Join-Path $PSScriptRoot "build-xgo-native.ps1") -Runtime $Runtime -OutputDirectory $Output
 dotnet publish $HostProject -c Release -r $Runtime --self-contained true `
     -p:PublishSingleFile=true -p:PublishTrimmed=false -o $HostOutput
 Copy-Item (Join-Path $HostOutput "XDM.NativeHost.exe") (Join-Path $Output "XDM.NativeHost.exe") -Force

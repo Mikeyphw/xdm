@@ -117,6 +117,11 @@ func New(config Config) *Engine {
 	e.handlers[AndroidMediaSelectKind] = e.androidMediaSelectHandler
 	e.handlers[AndroidMediaExecuteKind] = e.androidMediaExecuteHandler
 	e.handlers[AndroidLegacyRoomImportKind] = e.androidLegacyRoomImportHandler
+	e.handlers[DesktopPublicationCommitKind] = e.desktopPublicationCommitHandler
+	e.handlers[DesktopSystemProxyKind] = e.desktopSystemProxyHandler
+	e.handlers[DesktopSecretLookupKind] = e.desktopSecretLookupHandler
+	e.handlers[DesktopWakeupKind] = e.desktopWakeupHandler
+	e.handlers[DesktopWakeDueKind] = e.desktopWakeDueHandler
 	for kind, handler := range config.Handlers {
 		if kind != "" && handler != nil {
 			e.handlers[kind] = handler

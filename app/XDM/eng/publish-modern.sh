@@ -8,6 +8,7 @@ for rid in linux-x64 linux-arm64; do
   output="$out_root/$rid"
   dotnet publish "$app_project" -c Release -r "$rid" --self-contained true \
     -p:PublishSingleFile=false -p:PublishTrimmed=false -o "$output"
+bash "$repo_root/app/XDM/eng/build-xgo-native.sh" "$rid" "$output"
   host_output="$out_root/native-host-$rid"
   dotnet publish "$host_project" -c Release -r "$rid" --self-contained true \
     -p:PublishSingleFile=true -p:PublishTrimmed=false -o "$host_output"

@@ -17,6 +17,7 @@ dotnet publish "$project" \
   -p:PublishSingleFile=false \
   -p:PublishTrimmed=false \
   --output "$output"
+bash "$repo_root/app/XDM/eng/build-xgo-native.sh" "$runtime" "$output"
 
 dotnet publish "$host_project" \
   --configuration Release \

@@ -27,6 +27,7 @@ dotnet publish $Project `
     -p:PublishSingleFile=false `
     -p:PublishTrimmed=false `
     --output $Output
+& (Join-Path $PSScriptRoot "build-xgo-native.ps1") -Runtime $Runtime -OutputDirectory $Output
 
 dotnet publish $HostProject `
     --configuration Release `

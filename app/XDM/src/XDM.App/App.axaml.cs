@@ -92,6 +92,10 @@ public partial class App : Application
             () => services.GetRequiredService<ISettingsService>().InitializeAsync(),
             diagnostics);
         coreReady &= InitializeService(
+            "XGO-DESKTOP-GO-ENGINE",
+            () => services.GetRequiredService<DesktopGoEngineHost>().StartAsync(),
+            diagnostics);
+        coreReady &= InitializeService(
             "XDM-STARTUP-TRANSFER-POLICY",
             () => services.GetRequiredService<ITransferPolicyRuntime>().InitializeAsync(),
             diagnostics);
@@ -257,6 +261,14 @@ public partial class App : Application
             {
                 _trayViewModel.PropertyChanged -= TrayViewModel_PropertyChanged;
             }
+            try
+            {
+                services.GetRequiredService<DesktopGoEngineHost>().StopAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
+            {
+                diagnostics.Record(DiagnosticSeverity.Warning, "XGO-DESKTOP-GO-SHUTDOWN", $"Go desktop host shutdown was incomplete: {exception.Message}");
+            }
             _crashDiagnostics?.Dispose();
             _crashDiagnostics = null;
             _services = null;
@@ -400,6 +412,9 @@ public partial class App : Application
         services.AddSingleton<ICompletionActionService, PlatformCompletionActionService>();
         services.AddSingleton<IAntivirusScanner, AntivirusScanner>();
         services.AddSingleton<ITransferEnvironmentProbe, SystemTransferEnvironmentProbe>();
+        services.AddSingleton<DesktopGoPublicationBroker>();
+        services.AddSingleton<DesktopGoPlatformDispatcher>();
+        services.AddSingleton<DesktopGoEngineHost>();
         services.AddSingleton<ITransferPolicyRuntime, TransferPolicyRuntime>();
         services.AddSingleton<DownloadChecksumWorkflowStore>();
         services.AddSingleton<FinalizationJournalStore>();
