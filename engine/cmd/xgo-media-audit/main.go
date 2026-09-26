@@ -57,6 +57,10 @@ func main() {
 		r, err = ffmpegPlanGoldens()
 	case "ffmpeg_execution":
 		r, err = ffmpegExecutionLab()
+	case "hls_dash_simulated_servers":
+		r, err = hlsDashSimulatedServers()
+	case "media_security_scope_suite":
+		r, err = mediaSecurityScopeSuite()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -1009,6 +1013,90 @@ func ffmpegExecutionLab() (report, error) {
 		}
 	}
 	return report{Mode: "ffmpeg_execution", Pass: true, Checks: []string{"success", "progress", "cancel", "nonzero exit", "timeout", "crash", "malformed/missing probe", "verified artifact", "publication crash recovery"}}, nil
+}
+
+func hlsDashSimulatedServers() (report, error) {
+	hls, err := hlsExecutionLab()
+	if err != nil {
+		return report{}, fmt.Errorf("hls simulated server lab failed: %w", err)
+	}
+	dash, err := dashExecutionLab()
+	if err != nil {
+		return report{}, fmt.Errorf("dash simulated server lab failed: %w", err)
+	}
+	checks := []string{
+		"HLS VOD simulated server",
+		"HLS live sliding-window simulated server",
+		"HLS restart against persisted fragment ledger",
+		"DASH static MPD simulated server",
+		"DASH dynamic update simulated server",
+		"DASH multi-track artifacts over shared fragment ledger",
+	}
+	if !containsCheck(hls.Checks, "live sliding window") || !containsCheck(dash.Checks, "dynamic update") || !containsCheck(dash.Checks, "track artifacts for post-processing") {
+		return report{}, fmt.Errorf("simulated server labs did not cover required HLS/DASH execution promises")
+	}
+	return report{Mode: "hls_dash_simulated_servers", Pass: true, Checks: checks}, nil
+}
+
+func mediaSecurityScopeSuite() (report, error) {
+	base, err := media.NewMediaResource(media.MediaResourceInput{
+		TransportURL:    "https://cdn.example/hls/master.m3u8?sig=transport-only&quality=hd",
+		CredentialScope: media.CredentialScope{Origin: "https://cdn.example", PathPrefix: "/hls/", Ref: "cred-ref"},
+	})
+	if err != nil {
+		return report{}, err
+	}
+	rotated, err := media.NewMediaResource(media.MediaResourceInput{
+		TransportURL:    "https://cdn.example/hls/master.m3u8?quality=hd&sig=rotated",
+		CredentialScope: base.CredentialScope,
+	})
+	if err != nil {
+		return report{}, err
+	}
+	if base.ResourceID != rotated.ResourceID {
+		return report{}, fmt.Errorf("signed transport tokens affected media identity")
+	}
+	sameOriginSegment, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: base, ChildURL: "https://cdn.example/hls/seg-1.ts", ChildKind: media.ResourceKindSegment})
+	if err != nil || !sameOriginSegment.Forward || sameOriginSegment.CredentialRef != "cred-ref" {
+		return report{}, fmt.Errorf("same-origin HLS segment credential scope failed: %+v %v", sameOriginSegment, err)
+	}
+	outsidePath, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: base, ChildURL: "https://cdn.example/private/seg-2.ts", ChildKind: media.ResourceKindSegment})
+	if err != nil || outsidePath.Forward || outsidePath.Reason != "path_denied" {
+		return report{}, fmt.Errorf("path-bounded segment credential scope failed: %+v %v", outsidePath, err)
+	}
+	crossOriginKeyDenied, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: base, ChildURL: "https://keys.example/key.bin", ChildKind: media.ResourceKindKey})
+	if err != nil || crossOriginKeyDenied.Forward || crossOriginKeyDenied.Reason != "origin_denied" {
+		return report{}, fmt.Errorf("cross-origin HLS key denial failed: %+v %v", crossOriginKeyDenied, err)
+	}
+	crossOriginKeyAllowed, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: base, ChildURL: "https://keys.example/key.bin", ChildKind: media.ResourceKindKey, AllowCrossOriginKeys: true, AllowedOrigins: []string{"https://keys.example"}})
+	if err != nil || !crossOriginKeyAllowed.Forward || crossOriginKeyAllowed.CredentialRef != "cred-ref" {
+		return report{}, fmt.Errorf("explicit cross-origin HLS key allow failed: %+v %v", crossOriginKeyAllowed, err)
+	}
+	dash, err := media.NewMediaResource(media.MediaResourceInput{
+		TransportURL:    "https://cdn.example/dash/manifest.mpd?x-amz-signature=one&track=main",
+		CredentialScope: media.CredentialScope{Origin: "https://cdn.example", PathPrefix: "/dash/", Ref: "dash-cred-ref"},
+	})
+	if err != nil {
+		return report{}, err
+	}
+	dashSegment, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: dash, ChildURL: "https://cdn.example/dash/video/seg-1.m4s", ChildKind: media.ResourceKindSegment})
+	if err != nil || !dashSegment.Forward || dashSegment.CredentialRef != "dash-cred-ref" {
+		return report{}, fmt.Errorf("DASH segment credential scope failed: %+v %v", dashSegment, err)
+	}
+	crossOriginManifest, err := media.EvaluateCredentialForwarding(media.ChildCredentialPolicy{Parent: dash, ChildURL: "https://mirror.example/dash/manifest.mpd", ChildKind: media.ResourceKindManifest})
+	if err != nil || crossOriginManifest.Forward {
+		return report{}, fmt.Errorf("cross-origin DASH manifest credential denial failed: %+v %v", crossOriginManifest, err)
+	}
+	return report{Mode: "media_security_scope_suite", Pass: true, Checks: []string{"signed transport-token rotation does not change identity", "same-origin HLS segment forwards credential reference", "path-bounded HLS segment denial", "cross-origin HLS key denied by default", "explicit cross-origin HLS key allow", "DASH segment scope forwards credential reference", "cross-origin DASH manifest denied by default"}}, nil
+}
+
+func containsCheck(checks []string, want string) bool {
+	for _, check := range checks {
+		if check == want {
+			return true
+		}
+	}
+	return false
 }
 
 func auditFFmpegBase(mode media.FFmpegPlanMode) media.FFmpegPlanInput {

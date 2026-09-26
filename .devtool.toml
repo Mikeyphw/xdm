@@ -2061,6 +2061,40 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/media/ffmpeg-execution-lab.json"]
 
+[targets.xgo_media.jobs.hls_dash_simulated_servers]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "hls_dash_simulated_servers",
+  "--output", ".devtool/reports/xgo/media/hls-dash-simulated-servers.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/hls/xgo-cap-hls-004.json",
+  "engine/testdata/hls/xgo-cap-hls-006.json",
+  "engine/testdata/hls/xgo-cap-hls-007.json",
+  "engine/testdata/dash/xgo-cap-dash-003.json",
+  "engine/testdata/dash/xgo-cap-dash-004.json",
+]
+outputs = [".devtool/reports/xgo/media/hls-dash-simulated-servers.json"]
+
+[targets.xgo_media.jobs.media_security_scope_suite]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-media-audit",
+  "--mode", "media_security_scope_suite",
+  "--output", ".devtool/reports/xgo/media/media-security-scope-suite.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/testdata/media/xgo-cap-media-004.json",
+  "engine/testdata/hls/xgo-cap-hls-004.json",
+  "engine/testdata/dash/xgo-cap-dash-003.json",
+]
+outputs = [".devtool/reports/xgo/media/media-security-scope-suite.json"]
+
 [targets.xgo_media.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -2077,7 +2111,9 @@ validate = [
   { id = "hls_execution_lab", ref = "job:hls_execution_lab", depends_on = ["hls_timeline_lab"] },
   { id = "dash_corpus", ref = "job:dash_corpus", depends_on = ["hls_execution_lab"] },
   { id = "dash_execution_lab", ref = "job:dash_execution_lab", depends_on = ["dash_corpus"] },
-  { id = "ffmpeg_plan_goldens", ref = "job:ffmpeg_plan_goldens", depends_on = ["dash_execution_lab"] },
+  { id = "hls_dash_simulated_servers", ref = "job:hls_dash_simulated_servers", depends_on = ["dash_execution_lab"] },
+  { id = "media_security_scope_suite", ref = "job:media_security_scope_suite", depends_on = ["hls_dash_simulated_servers"] },
+  { id = "ffmpeg_plan_goldens", ref = "job:ffmpeg_plan_goldens", depends_on = ["media_security_scope_suite"] },
   { id = "ffmpeg_execution_lab", ref = "job:ffmpeg_execution_lab", depends_on = ["ffmpeg_plan_goldens"] },
 ]
 
@@ -2448,7 +2484,9 @@ validate = [
   { id = "store", ref = "target:xgo_store#validate", depends_on = ["foundation"] },
   { id = "security", ref = "target:xgo_security#validate", depends_on = ["store"] },
   { id = "transfer", ref = "target:xgo_transfer#validate", depends_on = ["security"] },
-  { id = "media", ref = "target:xgo_media#validate", depends_on = ["transfer"] }
+  { id = "backends", ref = "target:xgo_backends#validate", depends_on = ["transfer"] },
+  { id = "scheduler", ref = "target:xgo_scheduler#validate", depends_on = ["backends"] },
+  { id = "media", ref = "target:xgo_media#validate", depends_on = ["scheduler"] }
 ]
 
 [targets.xgo_gate_ops]
