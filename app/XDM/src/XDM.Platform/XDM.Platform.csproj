@@ -5,5 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
+    <ProjectReference Include="../XDM.DownloadEngine/XDM.DownloadEngine.csproj" />
   </ItemGroup>
 </Project>

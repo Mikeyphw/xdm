@@ -16,15 +16,23 @@ public sealed class DesktopGoPlatformDispatcher : IDisposable
     };
     private readonly ISettingsService _settings;
     private readonly DesktopGoPublicationBroker _publication;
+    private readonly DesktopGoDownloadExecutionBroker _downloads;
+    private readonly DesktopGoMediaBroker _media;
     private static readonly TimeSpan MaxTimerSlice = TimeSpan.FromDays(24);
     private readonly Dictionary<string, Timer> _wakeups = new(StringComparer.Ordinal);
     private readonly object _wakeGate = new();
     private bool _disposed;
 
-    public DesktopGoPlatformDispatcher(ISettingsService settings, DesktopGoPublicationBroker publication)
+    public DesktopGoPlatformDispatcher(
+        ISettingsService settings,
+        DesktopGoPublicationBroker publication,
+        DesktopGoDownloadExecutionBroker downloads,
+        DesktopGoMediaBroker media)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _publication = publication ?? throw new ArgumentNullException(nameof(publication));
+        _downloads = downloads ?? throw new ArgumentNullException(nameof(downloads));
+        _media = media ?? throw new ArgumentNullException(nameof(media));
     }
 
     public event EventHandler<DesktopWakeupRegistration>? WakeDue;
@@ -42,6 +50,8 @@ public sealed class DesktopGoPlatformDispatcher : IDisposable
             "system_proxy" => ResolveProxy(payload),
             "secret_lookup" => ResolveSecret(payload),
             "wakeup" => RegisterWakeup(payload),
+            "desktop_download_command" => await _downloads.ExecuteAsync(payload, cancellationToken).ConfigureAwait(false),
+            "external_media_tool" => await _media.ExecuteAsync(payload, cancellationToken).ConfigureAwait(false),
             "runtime_conditions" => JsonSerializer.SerializeToElement(new
             {
                 network_available = NetworkInterface.GetIsNetworkAvailable(),

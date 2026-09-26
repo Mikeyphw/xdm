@@ -78,7 +78,7 @@ public partial class MainWindowViewModel
                 _downloadRecoveryCoordinator.MarkResumeStarted(selected.Id);
                 try
                 {
-                    await _downloadManager.ResumeAsync(downloadId);
+                    await _desktopGo.ExecuteDownloadActionAsync("resume", downloadId);
                 }
                 catch
                 {

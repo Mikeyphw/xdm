@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.Media;
@@ -23,6 +24,10 @@ public partial class MainWindowViewModel
     private MediaRequestMetadata _currentMediaMetadata = MediaRequestMetadata.Empty;
 
     private string? _lastSuggestedConversionDestination;
+    private readonly Dictionary<string, string> _goMediaCaptureIdsBySource = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (string? Video, string? Audio, string? Subtitle)> _goMediaSelections = new(StringComparer.Ordinal);
+    private string? _currentGoMediaCaptureId;
+    private bool _applyingGoMediaProjection;
 
     public ObservableCollection<MediaInboxItemViewModel> MediaInbox { get; } = [];
 
@@ -117,7 +122,7 @@ public partial class MainWindowViewModel
                 return;
             }
 
-            AddMediaInboxEntry(catalog, current.Metadata, current.SourcePage, current.Browser, select: true);
+            await SubmitMediaCatalogToGoAsync(catalog, current.Metadata, current.SourcePage, current.Browser).ConfigureAwait(false);
         }
         catch (HttpRequestException exception)
         {
@@ -162,7 +167,10 @@ public partial class MainWindowViewModel
         => ApplyMediaSelectionPreferences();
 
     partial void OnSelectedMediaAudioFormatChanged(MediaFormatViewModel? value)
-        => RefreshMediaSelectionSummary();
+    {
+        RefreshMediaSelectionSummary();
+        QueueGoMediaSelection();
+    }
 
     partial void OnMediaLiveDurationMinutesChanged(string value)
         => RefreshMediaSelectionSummary();
@@ -205,6 +213,7 @@ public partial class MainWindowViewModel
     {
         _currentMediaCatalog = entry.Catalog;
         _currentMediaMetadata = entry.Metadata;
+        _goMediaCaptureIdsBySource.TryGetValue(entry.Catalog.Source.AbsoluteUri, out _currentGoMediaCaptureId);
         OnPropertyChanged(nameof(IsSelectedMediaLive));
         MediaSourceUrl = entry.Catalog.Source.AbsoluteUri;
         DetachMediaFormatHandlers();
@@ -233,7 +242,14 @@ public partial class MainWindowViewModel
         }
 
         ReplaceLanguageOptions();
-        ApplyMediaSelectionPreferences();
+        if (_desktopGo.HasMediaProjection)
+        {
+            ApplySelectionFromGoProjection();
+        }
+        else
+        {
+            ApplyMediaSelectionPreferences();
+        }
         string duration = entry.Catalog.Duration is TimeSpan catalogDuration
             ? $" • {FormatDuration(catalogDuration)}"
             : string.Empty;
@@ -248,6 +264,7 @@ public partial class MainWindowViewModel
     {
         _currentMediaCatalog = null;
         _currentMediaMetadata = MediaRequestMetadata.Empty;
+        _currentGoMediaCaptureId = null;
         OnPropertyChanged(nameof(IsSelectedMediaLive));
         DetachMediaFormatHandlers();
         MediaAllFormats.Clear();
@@ -266,6 +283,7 @@ public partial class MainWindowViewModel
         if (eventArgs.PropertyName == nameof(MediaFormatViewModel.IsSelected))
         {
             RefreshMediaSelectionSummary();
+            QueueGoMediaSelection();
         }
     }
 
@@ -320,6 +338,12 @@ public partial class MainWindowViewModel
         {
             return;
         }
+        if (_desktopGo.HasMediaProjection)
+        {
+            // Go owns execution selection. Desktop quality controls only format/display Go projections.
+            ApplySelectionFromGoProjection();
+            return;
+        }
 
         MediaSelectionResult selection = MediaSelectionPolicy.Select(
             _currentMediaCatalog,
@@ -344,6 +368,307 @@ public partial class MainWindowViewModel
         }
 
         RefreshMediaSelectionSummary();
+    }
+
+    private void QueueGoMediaSelection()
+    {
+        if (_applyingGoMediaProjection || !_desktopGo.HasMediaProjection || string.IsNullOrWhiteSpace(_currentGoMediaCaptureId))
+        {
+            return;
+        }
+        _ = PublishGoMediaSelectionAsync();
+    }
+
+    private async Task PublishGoMediaSelectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_currentGoMediaCaptureId))
+        {
+            return;
+        }
+        try
+        {
+            await _desktopGo.SelectMediaAsync(
+                _currentGoMediaCaptureId,
+                SelectedMediaVideoFormat?.Id,
+                SelectedMediaAudioFormat?.Id,
+                MediaSubtitleFormats.FirstOrDefault(static format => format.IsSelected)?.Id).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException exception)
+        {
+            _dispatcher.Post(() => MediaSelectionSummary = $"Go rejected media selection: {exception.Message}");
+        }
+    }
+
+    private void ApplySelectionFromGoProjection()
+    {
+        if (string.IsNullOrWhiteSpace(_currentGoMediaCaptureId)
+            || !_goMediaSelections.TryGetValue(_currentGoMediaCaptureId, out var selection))
+        {
+            RefreshMediaSelectionSummary();
+            return;
+        }
+        _applyingGoMediaProjection = true;
+        try
+        {
+            SelectedMediaVideoFormat = MediaVideoFormats.FirstOrDefault(item => string.Equals(item.Id, selection.Video, StringComparison.Ordinal));
+            SelectedMediaAudioFormat = MediaAudioFormats.FirstOrDefault(item => string.Equals(item.Id, selection.Audio, StringComparison.Ordinal));
+            foreach (MediaFormatViewModel subtitle in MediaSubtitleFormats)
+            {
+                subtitle.IsSelected = string.Equals(subtitle.Id, selection.Subtitle, StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            _applyingGoMediaProjection = false;
+        }
+        RefreshMediaSelectionSummary();
+    }
+
+    private async Task<string> SubmitMediaCatalogToGoAsync(
+        MediaCatalog catalog,
+        MediaRequestMetadata metadata,
+        string? sourcePage,
+        string? browser,
+        string? sessionId = null)
+    {
+        string captureId = "desktop_" + Guid.NewGuid().ToString("N");
+        string fileName = SanitizeMediaFileName(catalog.Title) + ".mp4";
+        string kind = catalog.Kind switch
+        {
+            MediaKind.Hls => "HlsPlaylist",
+            MediaKind.Dash => "DashManifest",
+            MediaKind.DirectFile => "DirectFile",
+            MediaKind.ExternalProvider => "ExternalProvider",
+            _ => "Media"
+        };
+        string? mimeType = catalog.Kind switch
+        {
+            MediaKind.Hls => "application/vnd.apple.mpegurl",
+            MediaKind.Dash => "application/dash+xml",
+            _ => null
+        };
+        object captureRecord = new
+        {
+            id = captureId,
+            source_url = catalog.Source.AbsoluteUri,
+            page_url = sourcePage,
+            title = catalog.Title,
+            kind,
+            mime_type = mimeType,
+            container = catalog.Formats.FirstOrDefault()?.Container,
+            codecs = catalog.Formats.FirstOrDefault()?.Codecs,
+            duration_ms = catalog.Duration is TimeSpan duration ? (long?)duration.TotalMilliseconds : null,
+            file_name = fileName,
+            manifest_is_live = catalog.IsLive,
+            manifest_protected = catalog.Formats.Any(static format => format.IsEncrypted),
+            row_revision = 1L
+        };
+        object[] variants = catalog.Formats.Select(format =>
+        {
+            string id = captureId + ":" + format.Id;
+            _desktopGo.RegisterMediaVariant(id, new DesktopMediaRequestHandoff(
+                format.ManifestUri,
+                metadata.Headers,
+                metadata.Cookie,
+                metadata.Referer,
+                metadata.UserAgent));
+            string variantKind = format.StreamKind switch
+            {
+                MediaStreamKind.Muxed => "Primary",
+                MediaStreamKind.Video => "Video",
+                MediaStreamKind.Audio => "Audio",
+                MediaStreamKind.Subtitle => "Subtitle",
+                _ => "Primary"
+            };
+            return (object)new
+            {
+                id,
+                capture_id = captureId,
+                url = format.ManifestUri.AbsoluteUri,
+                kind = variantKind,
+                width = format.Width,
+                height = format.Height,
+                bitrate_bits_per_second = format.Bandwidth,
+                codecs = format.Codecs,
+                language = format.Language,
+                group_id = format.AudioGroupId ?? format.SubtitleGroupId
+            };
+        }).ToArray();
+        _desktopGo.RegisterMediaCapture(captureId, new DesktopMediaRequestHandoff(
+            catalog.Source,
+            metadata.Headers,
+            metadata.Cookie,
+            metadata.Referer,
+            metadata.UserAgent));
+
+        Uri pageUri = Uri.TryCreate(sourcePage, UriKind.Absolute, out Uri? parsedPage) ? parsedPage : catalog.Source;
+        string origin = pageUri.GetLeftPart(UriPartial.Authority);
+        object[] safeHeaders = (metadata.Headers ?? new Dictionary<string, string>())
+            .Where(static pair => !IsSensitiveCaptureHeader(pair.Key))
+            .Select(static pair => (object)new { name = pair.Key, value = pair.Value })
+            .ToArray();
+        string requestId = "media_" + Guid.NewGuid().ToString("N");
+        JsonElement payload = JsonSerializer.SerializeToElement(new
+        {
+            client_request_id = requestId,
+            capture_record = captureRecord,
+            variants,
+            envelope = new
+            {
+                version = 1,
+                request = new { url = catalog.Source.AbsoluteUri, method = "GET", headers = safeHeaders },
+                page = new
+                {
+                    page_url = pageUri.AbsoluteUri,
+                    frame_origin = origin,
+                    session_id = string.IsNullOrWhiteSpace(sessionId) ? "desktop-" + Guid.NewGuid().ToString("N") : sessionId,
+                    document_generation = Math.Max(1L, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                },
+                response = new
+                {
+                    status_code = 200,
+                    content_type = mimeType ?? string.Empty,
+                    observed_at = DateTimeOffset.UtcNow
+                },
+                media_hints = new[] { new { kind = "manifest", value = catalog.Kind.ToString().ToLowerInvariant() } },
+                credential_scope = new { origin = catalog.Source.GetLeftPart(UriPartial.Authority), path_prefix = "/", @ref = "desktop-handoff:" + captureId }
+            }
+        });
+        await _desktopGo.CaptureMediaAsync(payload, requestId).ConfigureAwait(false);
+        _dispatcher.Post(() => OperationMessage = $"Go media graph accepted {catalog.Formats.Count} variant(s) from {browser ?? "desktop"}.");
+        return captureId;
+    }
+
+    private static bool IsSensitiveCaptureHeader(string name)
+    {
+        string value = name.Trim().ToLowerInvariant();
+        return value is "authorization" or "cookie" or "proxy-authorization" or "x-api-key" or "api-key"
+            || value.Contains("token", StringComparison.Ordinal)
+            || value.EndsWith("-key", StringComparison.Ordinal);
+    }
+
+    private void OnDesktopGoMediaProjectionChanged(object? sender, DesktopGoMediaProjectionEventArgs eventArgs)
+    {
+        JsonElement projection = eventArgs.Projection.Clone();
+        if (_dispatcher.CheckAccess())
+        {
+            ApplyDesktopGoMediaProjection(projection);
+        }
+        else
+        {
+            _dispatcher.Post(() => ApplyDesktopGoMediaProjection(projection));
+        }
+    }
+
+    private void ApplyDesktopGoMediaProjection(JsonElement projection)
+    {
+        string? previousCapture = _currentGoMediaCaptureId;
+        _applyingGoMediaProjection = true;
+        try
+        {
+            _goMediaSelections.Clear();
+            if (projection.TryGetProperty("selections", out JsonElement selections) && selections.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement selection in selections.EnumerateArray())
+                {
+                    string captureId = selection.GetProperty("capture_id").GetString() ?? string.Empty;
+                    _goMediaSelections[captureId] = (
+                        selection.TryGetProperty("video_variant_id", out JsonElement video) ? video.GetString() : null,
+                        selection.TryGetProperty("audio_variant_id", out JsonElement audio) ? audio.GetString() : null,
+                        selection.TryGetProperty("subtitle_variant_id", out JsonElement subtitle) ? subtitle.GetString() : null);
+                }
+            }
+            Dictionary<string, List<JsonElement>> variantsByCapture = new(StringComparer.Ordinal);
+            if (projection.TryGetProperty("variants", out JsonElement variants) && variants.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement variant in variants.EnumerateArray())
+                {
+                    string captureId = variant.GetProperty("capture_id").GetString() ?? string.Empty;
+                    if (!variantsByCapture.TryGetValue(captureId, out List<JsonElement>? list))
+                    {
+                        list = [];
+                        variantsByCapture[captureId] = list;
+                    }
+                    list.Add(variant.Clone());
+                }
+            }
+
+            MediaInbox.Clear();
+            _goMediaCaptureIdsBySource.Clear();
+            if (projection.TryGetProperty("captures", out JsonElement captures) && captures.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement capture in captures.EnumerateArray())
+                {
+                    string captureId = capture.GetProperty("id").GetString() ?? string.Empty;
+                    if (!Uri.TryCreate(capture.GetProperty("source_url").GetString(), UriKind.Absolute, out Uri? source))
+                    {
+                        continue;
+                    }
+                    List<MediaFormat> formats = [];
+                    if (variantsByCapture.TryGetValue(captureId, out List<JsonElement>? projectedVariants))
+                    {
+                        foreach (JsonElement variant in projectedVariants)
+                        {
+                            if (!Uri.TryCreate(variant.GetProperty("url").GetString(), UriKind.Absolute, out Uri? url))
+                            {
+                                continue;
+                            }
+                            string variantKind = variant.GetProperty("kind").GetString() ?? "Primary";
+                            MediaStreamKind streamKind = variantKind.ToLowerInvariant() switch
+                            {
+                                "audio" => MediaStreamKind.Audio,
+                                "subtitle" => MediaStreamKind.Subtitle,
+                                "video" => MediaStreamKind.Video,
+                                _ => MediaStreamKind.Muxed
+                            };
+                            formats.Add(new MediaFormat(
+                                variant.GetProperty("id").GetString() ?? Guid.NewGuid().ToString("N"),
+                                streamKind,
+                                url,
+                                null,
+                                variant.TryGetProperty("codecs", out JsonElement codecs) ? codecs.GetString() : null,
+                                variant.TryGetProperty("bitrate_bits_per_second", out JsonElement bitrate) && bitrate.TryGetInt64(out long bitrateValue) ? bitrateValue : null,
+                                variant.TryGetProperty("width", out JsonElement width) && width.TryGetInt32(out int widthValue) ? widthValue : null,
+                                variant.TryGetProperty("height", out JsonElement height) && height.TryGetInt32(out int heightValue) ? heightValue : null,
+                                null,
+                                variant.TryGetProperty("language", out JsonElement language) ? language.GetString() : null,
+                                variantKind,
+                                false,
+                                capture.TryGetProperty("manifest_protected", out JsonElement protectedValue) && protectedValue.ValueKind == JsonValueKind.True,
+                                AudioGroupId: variant.TryGetProperty("group_id", out JsonElement group) ? group.GetString() : null));
+                        }
+                    }
+                    string kind = capture.GetProperty("kind").GetString() ?? string.Empty;
+                    MediaKind mediaKind = kind.Contains("hls", StringComparison.OrdinalIgnoreCase) ? MediaKind.Hls
+                        : kind.Contains("dash", StringComparison.OrdinalIgnoreCase) ? MediaKind.Dash
+                        : MediaKind.DirectFile;
+                    TimeSpan? duration = capture.TryGetProperty("duration_ms", out JsonElement durationElement)
+                        && durationElement.TryGetInt64(out long durationMs) && durationMs > 0
+                        ? TimeSpan.FromMilliseconds(durationMs)
+                        : null;
+                    MediaCatalog catalog = new(
+                        source,
+                        mediaKind,
+                        capture.TryGetProperty("title", out JsonElement title) ? title.GetString() ?? "Detected media" : "Detected media",
+                        capture.TryGetProperty("manifest_is_live", out JsonElement live) && live.ValueKind == JsonValueKind.True,
+                        formats,
+                        "Projected by the Go media graph.",
+                        "Go media graph",
+                        duration);
+                    _goMediaCaptureIdsBySource[source.AbsoluteUri] = captureId;
+                    AddMediaInboxEntry(catalog, MediaRequestMetadata.Empty, null, "Go", select: string.Equals(captureId, previousCapture, StringComparison.Ordinal));
+                }
+            }
+            if (SelectedMediaInboxItem is null && MediaInbox.Count > 0)
+            {
+                SelectedMediaInboxItem = MediaInbox[0];
+            }
+            ApplySelectionFromGoProjection();
+        }
+        finally
+        {
+            _applyingGoMediaProjection = false;
+        }
     }
 
     private void RefreshMediaSelectionSummary()

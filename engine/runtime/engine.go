@@ -62,6 +62,7 @@ type Engine struct {
 	authorityErr     error
 	androidUI        *androidUIState
 	androidMedia     *androidMediaState
+	desktopUI        *desktopUIState
 	workers          sync.WaitGroup
 	loops            sync.WaitGroup
 }
@@ -105,7 +106,7 @@ func New(config Config) *Engine {
 		commands: make(chan queuedCommand, commandBuffer),
 		events:   event.NewQueue(eventBuffer), broker: platform.NewBroker(platformBuffer),
 		handlers: make(map[string]Handler), seen: make(map[command.ID]struct{}), active: make(map[identity.OperationID]*activeOperation),
-		androidScheduler: androidhost.NewAndroidSchedulerHost(), androidAuthority: authority, authorityErr: authorityErr, androidUI: androidUI, androidMedia: androidMedia,
+		androidScheduler: androidhost.NewAndroidSchedulerHost(), androidAuthority: authority, authorityErr: authorityErr, androidUI: androidUI, androidMedia: androidMedia, desktopUI: newDesktopUIState(),
 	}
 	e.handlers["runtime.ping"] = pingHandler
 	e.handlers["runtime.platform_probe"] = platformProbeHandler
@@ -122,6 +123,13 @@ func New(config Config) *Engine {
 	e.handlers[DesktopSecretLookupKind] = e.desktopSecretLookupHandler
 	e.handlers[DesktopWakeupKind] = e.desktopWakeupHandler
 	e.handlers[DesktopWakeDueKind] = e.desktopWakeDueHandler
+	e.handlers[DesktopUICommandKind] = e.desktopUICommandHandler
+	e.handlers[DesktopUIObservationKind] = e.desktopUIObservationHandler
+	e.handlers[DesktopUISnapshotKind] = e.desktopUISnapshotHandler
+	e.handlers[DesktopMediaCaptureKind] = e.desktopMediaCaptureHandler
+	e.handlers[DesktopMediaSelectKind] = e.desktopMediaSelectHandler
+	e.handlers[DesktopMediaExecuteKind] = e.desktopMediaExecuteHandler
+	e.handlers[DesktopMediaSnapshotKind] = e.desktopMediaSnapshotHandler
 	for kind, handler := range config.Handlers {
 		if kind != "" && handler != nil {
 			e.handlers[kind] = handler

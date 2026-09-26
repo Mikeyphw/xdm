@@ -2514,6 +2514,9 @@ inputs = [
   "docs/xgo/**",
   "app/XDM/src/XDM.App/**",
   "app/XDM/src/XDM.Platform/**",
+  "app/XDM/src/XDM.DownloadEngine/**",
+  "app/XDM/src/XDM.BrowserIntegration/**",
+  "app/XDM/src/XDM.Media/**",
   "app/XDM/src/XDM.Core.Tests/**",
   "app/XDM/eng/**",
 ]
@@ -2562,6 +2565,13 @@ command = ["python3", "tools/xgo/audit_desktop.py", "--mode", "platform-services
 inputs = ["tools/xgo/audit_desktop.py", "engine/runtime/desktop_host.go", "engine/runtime/platform/broker.go", "app/XDM/src/XDM.Platform/DesktopGoPlatformDispatcher.cs", "app/XDM/src/XDM.Platform/DesktopGoEngineHost.cs"]
 outputs = [".devtool/reports/xgo/desktop/platform-services.json"]
 
+
+[targets.xgo_desktop.jobs.desktop_e2e]
+runner = "command"
+command = ["python3", "tools/xgo/audit_desktop.py", "--mode", "desktop-e2e", "--output", ".devtool/reports/xgo/desktop/e2e.json"]
+inputs = ["tools/xgo/audit_desktop.py", "engine/runtime/desktop_ui_media.go", "engine/runtime/platform/broker.go", "app/XDM/src/XDM.App/**", "app/XDM/src/XDM.Platform/**", "app/XDM/src/XDM.BrowserIntegration/**", "app/XDM/src/XDM.Media/**"]
+outputs = [".devtool/reports/xgo/desktop/e2e.json"]
+
 [targets.xgo_desktop.jobs.desktop_runtime_tests]
 runner = "command"
 command = ["go", "test", "./engine/runtime", "-run", "^TestDesktop"]
@@ -2575,7 +2585,8 @@ validate = [
   { id = "desktop_abi_harness", ref = "job:desktop_abi_harness", depends_on = ["desktop_engine_host"] },
   { id = "desktop_publication", ref = "job:desktop_publication", depends_on = ["desktop_abi_harness"] },
   { id = "desktop_platform_services", ref = "job:desktop_platform_services", depends_on = ["desktop_publication"] },
-  { id = "desktop_runtime_tests", ref = "job:desktop_runtime_tests", depends_on = ["desktop_platform_services"] },
+  { id = "desktop_e2e", ref = "job:desktop_e2e", depends_on = ["desktop_platform_services"] },
+  { id = "desktop_runtime_tests", ref = "job:desktop_runtime_tests", depends_on = ["desktop_e2e"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

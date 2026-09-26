@@ -285,7 +285,7 @@ public partial class MainWindowViewModel
     private async Task<(int Added, int Duplicates, int Failed, string Format, int Ignored)> ImportDownloadListCoreAsync(string path)
     {
         DownloadListImportResult result = await _downloadListTransferService.ImportAsync(path);
-        HashSet<string> knownIds = _applicationState.Current.Downloads
+        HashSet<string> knownIds = Downloads
             .Select(static item => item.Id)
             .ToHashSet(StringComparer.Ordinal);
         int added = 0;
@@ -298,7 +298,7 @@ public partial class MainWindowViewModel
                 : entry.DestinationDirectory;
             try
             {
-                string id = await _downloadManager.AddAsync(new DownloadRequest(
+                string id = await _desktopGo.AddDownloadAsync(new DownloadRequest(
                     entry.Source,
                     destination,
                     entry.FileName,

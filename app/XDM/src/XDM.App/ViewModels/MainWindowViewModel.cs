@@ -28,6 +28,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private static readonly string[] LineSeparators = ["\r\n", "\n"];
     private readonly IApplicationState _applicationState;
     private readonly IDownloadManager _downloadManager;
+    private readonly DesktopGoProjectionClient _desktopGo;
     private readonly IDownloadRecoveryCoordinator _downloadRecoveryCoordinator;
     private readonly IRecoveryService _recoveryService;
     private readonly ISettingsService _settingsService;
@@ -39,7 +40,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IBrowserIntegrationService _browserIntegrationService;
     private readonly IMediaProbeService _mediaProbeService;
     private readonly IMediaCatalogService _mediaCatalogService;
-    private readonly IMediaDownloadService _mediaDownloadService;
     private readonly IFfmpegService _ffmpegService;
     private readonly IYtDlpProvider _ytDlpProvider;
     private readonly IConversionService _conversionService;
@@ -63,6 +63,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IApplicationState applicationState,
         IPlatformInfo platformInfo,
         IDownloadManager downloadManager,
+        DesktopGoProjectionClient desktopGo,
         IDownloadRecoveryCoordinator downloadRecoveryCoordinator,
         IAria2Service aria2Service,
         ISettingsService settingsService,
@@ -77,7 +78,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IBrowserIntegrationService browserIntegrationService,
         IMediaProbeService mediaProbeService,
         IMediaCatalogService mediaCatalogService,
-        IMediaDownloadService mediaDownloadService,
         IFfmpegService ffmpegService,
         IYtDlpProvider ytDlpProvider,
         IConversionService conversionService,
@@ -98,6 +98,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         _applicationState = applicationState;
         _downloadManager = downloadManager;
+        _desktopGo = desktopGo;
         _downloadRecoveryCoordinator = downloadRecoveryCoordinator;
         _recoveryService = recoveryService;
         _aria2Service = aria2Service;
@@ -113,7 +114,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _browserIntegrationService = browserIntegrationService;
         _mediaProbeService = mediaProbeService;
         _mediaCatalogService = mediaCatalogService;
-        _mediaDownloadService = mediaDownloadService;
         _ffmpegService = ffmpegService;
         _ytDlpProvider = ytDlpProvider;
         _conversionService = conversionService;
@@ -160,7 +160,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             SettingsTransferStatus = OperationMessage;
         }
         ApplyAria2Snapshot(aria2Service.Current);
-        ApplySnapshot(applicationState.Current);
+        ApplyDesktopGoProjection(desktopGo.CurrentDownloads);
         ApplyQueueRuntime(downloadManager.QueueRuntime);
         ApplySchedulerRuntime(queueSchedulerRuntime.Current);
         ApplyTransferPolicy(transferPolicyRuntime.Current);
@@ -195,6 +195,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             SelectedSection = Sections.First(section => string.Equals(section.Id, "recovery", StringComparison.Ordinal));
         }
         applicationState.Changed += OnApplicationStateChanged;
+        desktopGo.DownloadProjectionChanged += OnDesktopGoDownloadProjectionChanged;
+        desktopGo.MediaProjectionChanged += OnDesktopGoMediaProjectionChanged;
         settingsService.Changed += OnSettingsChanged;
         localization.Changed += OnLocalizationChanged;
         downloadManager.QueueRuntimeChanged += OnQueueRuntimeChanged;
@@ -800,6 +802,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         RefreshMediaSelectionSummary();
+        QueueGoMediaSelection();
     }
 
     partial void OnConversionSourcePathChanged(string value)
@@ -916,7 +919,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     ExpectedSha256: EmptyToNull(ExpectedSha256),
                     ExpectedSha512: EmptyToNull(ExpectedSha512));
 
-                string downloadId = await _downloadManager.AddAsync(request);
+                string downloadId = await _desktopGo.AddDownloadAsync(request);
                 DownloadItemViewModel? existingDownload = Downloads.FirstOrDefault(item =>
                     string.Equals(item.Id, downloadId, StringComparison.Ordinal));
                 processedIdentities.Add(identity);
@@ -983,25 +986,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private Task PauseSelectedAsync()
         => SelectedDownload is null
             ? Task.CompletedTask
-            : _downloadManager.PauseAsync(SelectedDownload.Id);
+            : _desktopGo.ExecuteDownloadActionAsync("pause", SelectedDownload.Id);
 
     [RelayCommand]
     private Task ResumeSelectedAsync()
         => SelectedDownload is null
             ? Task.CompletedTask
-            : _downloadManager.ResumeAsync(SelectedDownload.Id);
+            : _desktopGo.ExecuteDownloadActionAsync("resume", SelectedDownload.Id);
 
     [RelayCommand]
     private Task CancelSelectedAsync()
         => SelectedDownload is null
             ? Task.CompletedTask
-            : _downloadManager.CancelAsync(SelectedDownload.Id);
+            : _desktopGo.ExecuteDownloadActionAsync("cancel", SelectedDownload.Id);
 
     [RelayCommand]
     private Task RetrySelectedAsync()
         => SelectedDownload is null
             ? Task.CompletedTask
-            : _downloadManager.RetryAsync(SelectedDownload.Id);
+            : _desktopGo.ExecuteDownloadActionAsync("retry", SelectedDownload.Id);
 
     [RelayCommand]
     private async Task VerifySelectedDownloadAsync()
@@ -1291,7 +1294,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         BulkOperationResult result = await BulkOperationExecutor.ExecuteAsync(
             GetActionTargets(),
             static item => item.CanPause,
-            item => _downloadManager.PauseAsync(item.Id));
+            item => _desktopGo.ExecuteDownloadActionAsync("pause", item.Id));
         OperationMessage = FormatBulkResult("Pause", result);
     }
 
@@ -1301,7 +1304,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         BulkOperationResult result = await BulkOperationExecutor.ExecuteAsync(
             GetActionTargets(),
             static item => item.CanResume,
-            item => _downloadManager.ResumeAsync(item.Id));
+            item => _desktopGo.ExecuteDownloadActionAsync("resume", item.Id));
         OperationMessage = FormatBulkResult("Resume", result);
     }
 
@@ -1311,7 +1314,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         BulkOperationResult result = await BulkOperationExecutor.ExecuteAsync(
             GetActionTargets(),
             static item => item.CanCancel,
-            item => _downloadManager.CancelAsync(item.Id));
+            item => _desktopGo.ExecuteDownloadActionAsync("cancel", item.Id));
         OperationMessage = FormatBulkResult("Cancel", result);
     }
 
@@ -1800,7 +1803,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            AddMediaInboxEntry(catalog, metadata, null, null, select: true);
+            await SubmitMediaCatalogToGoAsync(catalog, metadata, null, null).ConfigureAwait(false);
         }
         catch (HttpRequestException exception)
         {
@@ -1856,61 +1859,46 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        string[] subtitleIds = MediaSubtitleFormats
-            .Where(static format => format.IsSelected)
-            .Select(static format => format.Id)
-            .ToArray();
-        MediaDownloadRequest request = new(
-            source,
-            destination,
-            SelectedMediaVideoFormat?.Id,
-            SelectedMediaAudioFormat?.Id,
-            subtitleIds,
-            liveDuration,
-            _currentMediaMetadata,
-            MaximumBytes: ParseMediaMaximumBytes());
+        if (string.IsNullOrWhiteSpace(_currentGoMediaCaptureId))
+        {
+            MediaDownloadStatus = "The selected media item is not present in the Go media graph. Refresh it first.";
+            return;
+        }
+
         _mediaDownloadCancellation?.Dispose();
         _mediaDownloadCancellation = new CancellationTokenSource();
         MediaDownloadActive = true;
         MediaDownloadIndeterminate = true;
         MediaDownloadProgress = 0;
-        MediaDownloadStatus = "Preparing media download…";
-        Progress<MediaDownloadProgress> progress = new(OnMediaProgress);
+        MediaDownloadStatus = "Go is preparing the typed media execution request…";
         try
         {
-            MediaDownloadResult result = await _mediaDownloadService.DownloadAsync(
-                request,
-                progress,
-                _mediaDownloadCancellation.Token);
-            MediaDownloadStatus = $"Completed • {result.DownloadedFragments} fragment(s) • {LocaleFormatter.FormatBytes(result.DownloadedBytes, _localization.Culture)} • {result.DestinationPath}";
+            await _desktopGo.SelectMediaAsync(
+                _currentGoMediaCaptureId,
+                SelectedMediaVideoFormat?.Id,
+                SelectedMediaAudioFormat?.Id,
+                MediaSubtitleFormats.FirstOrDefault(static format => format.IsSelected)?.Id,
+                _mediaDownloadCancellation.Token).ConfigureAwait(false);
+            string resultPath = await _desktopGo.ExecuteMediaAsync(
+                _currentGoMediaCaptureId,
+                destination,
+                liveDuration is TimeSpan duration ? (long)duration.TotalMilliseconds : null,
+                ParseMediaMaximumBytes(),
+                _mediaDownloadCancellation.Token).ConfigureAwait(false);
+            long size = File.Exists(resultPath) ? new FileInfo(resultPath).Length : 0L;
+            MediaDownloadStatus = $"Completed via Go/FFmpeg • {LocaleFormatter.FormatBytes(size, _localization.Culture)} • {resultPath}";
             if (MediaPostConversionEnabled && MediaPostConversionPreset is not null)
             {
-                try
-                {
-                    string conversionDestination = ConversionDestinationPlanner.CreatePostDownloadDestination(result.DestinationPath, MediaPostConversionPreset);
-                    string jobId = _conversionQueueService.Enqueue(new ConversionRequest(
-                        result.DestinationPath,
-                        conversionDestination,
-                        MediaPostConversionPreset.Id));
-                    MediaDownloadStatus += $" • queued {MediaPostConversionPreset.Name} job {jobId[..8]}";
-                }
-                catch (ArgumentException exception)
-                {
-                    MediaDownloadStatus += $" • post-processing was not queued: {exception.Message}";
-                }
-                catch (InvalidOperationException exception)
-                {
-                    MediaDownloadStatus += $" • post-processing was not queued: {exception.Message}";
-                }
+                MediaDownloadStatus += " • post-conversion remains a separate desktop workflow";
             }
 
             MediaDownloadProgress = 1;
             MediaDownloadIndeterminate = false;
-            await _desktopNotifications.ShowAsync("Media download completed", Path.GetFileName(result.DestinationPath));
+            await _desktopNotifications.ShowAsync("Media download completed", Path.GetFileName(resultPath));
         }
         catch (OperationCanceledException)
         {
-            MediaDownloadStatus = "Media download cancelled. Checkpoints were preserved for resume.";
+            MediaDownloadStatus = "Media command wait was cancelled. The host tool may still complete its Go-authorized operation.";
         }
         catch (HttpRequestException exception)
         {
@@ -2174,6 +2162,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _destinationPreviewCancellation?.Dispose();
         _diagnosticsCancellation.Dispose();
         _applicationState.Changed -= OnApplicationStateChanged;
+        _desktopGo.DownloadProjectionChanged -= OnDesktopGoDownloadProjectionChanged;
+        _desktopGo.MediaProjectionChanged -= OnDesktopGoMediaProjectionChanged;
         _settingsService.Changed -= OnSettingsChanged;
         _localization.Changed -= OnLocalizationChanged;
         _downloadManager.QueueRuntimeChanged -= OnQueueRuntimeChanged;
@@ -2392,14 +2382,45 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void OnApplicationStateChanged(object? sender, ApplicationSnapshot snapshot)
     {
+        // XGO-79: legacy ApplicationState is an executor-fact source only.
+        // DesktopGoExecutionObserver reports it to Go; visible state is applied only from Go projections.
+    }
+
+    private void OnDesktopGoDownloadProjectionChanged(object? sender, DesktopGoDownloadProjectionEventArgs eventArgs)
+    {
         if (_dispatcher.CheckAccess())
         {
-            ApplySnapshot(snapshot);
+            ApplyDesktopGoProjection(eventArgs.Downloads);
         }
         else
         {
-            _dispatcher.Post(() => ApplySnapshot(snapshot));
+            _dispatcher.Post(() => ApplyDesktopGoProjection(eventArgs.Downloads));
         }
+    }
+
+    private void ApplyDesktopGoProjection(IReadOnlyList<DesktopGoDownloadProjection> projected)
+    {
+        DownloadSnapshot[] downloads = projected.Select(static item => new DownloadSnapshot(
+            item.Id,
+            item.FileName,
+            Uri.TryCreate(item.SourceUrl, UriKind.Absolute, out Uri? source) ? source : new Uri("https://invalid.local/"),
+            item.DestinationPath,
+            item.DownloadedBytes,
+            item.TotalBytes,
+            item.BytesPerSecond,
+            Enum.TryParse(item.State, true, out DownloadState state) ? state : DownloadState.Queued,
+            DateTimeOffset.FromUnixTimeMilliseconds(Math.Max(0, item.UpdatedAtEpochMs)),
+            item.ErrorMessage,
+            string.IsNullOrWhiteSpace(item.QueueId) ? "default" : item.QueueId,
+            item.CategoryId,
+            item.QueueOrder,
+            Math.Max(1, item.ConnectionCount),
+            Enum.TryParse(item.Priority, true, out DownloadPriority priority) ? priority : DownloadPriority.Normal,
+            BackendPreference: Enum.TryParse(item.BackendPreference, true, out DownloadBackendPreference preference) ? preference : DownloadBackendPreference.Automatic,
+            Backend: Enum.TryParse(item.Backend, true, out DownloadBackendKind backend) ? backend : DownloadBackendKind.Native,
+            AllowBackendFallback: item.AllowBackendFallback,
+            IsArchived: item.Archived)).ToArray();
+        ApplySnapshot(new ApplicationSnapshot(DateTimeOffset.UtcNow, true, downloads));
     }
 
     private void OnQueueRuntimeChanged(object? sender, QueueRuntimeSnapshot snapshot)
@@ -2503,17 +2524,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     return;
                 }
 
-                eventArgs.Accept($"media-{Guid.NewGuid():N}");
+                string captureId = await SubmitMediaCatalogToGoAsync(
+                    catalog,
+                    metadata,
+                    request.SourcePage,
+                    request.Browser,
+                    request.RequestId ?? request.BrowserRequestId).ConfigureAwait(false);
+                eventArgs.Accept(captureId);
                 _dispatcher.Post(() =>
-                {
-                    AddMediaInboxEntry(
-                        catalog,
-                        metadata,
-                        request.SourcePage,
-                        request.Browser,
-                        select: SelectedMediaInboxItem is null);
-                    OperationMessage = $"Added media from {request.Browser ?? "browser"} to the detection inbox.";
-                });
+                    OperationMessage = $"Go media graph accepted capture {captureId} from {request.Browser ?? "browser"}.");
             }
             catch (HttpRequestException exception)
             {
@@ -2567,7 +2586,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 RequestBody: request.GetRequestBody(),
                 RequestBodyContentType: request.RequestBodyContentType,
                 SourcePage: ParseOptionalHttpUri(request.SourcePage ?? request.Referer));
-            downloadId = await _downloadManager.AddAsync(downloadRequest).ConfigureAwait(false);
+            downloadId = await _desktopGo.AddDownloadAsync(downloadRequest).ConfigureAwait(false);
             eventArgs.Accept(downloadId);
         }
         catch (IOException exception)
@@ -3291,8 +3310,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         CurrentTitle = SelectedSection?.Title ?? _localization["nav_downloads"];
         CurrentSummary = SelectedSection?.Summary ?? string.Empty;
         RecoveryStatus = FormatRecoveryStatus();
-        CoreStatus = _applicationState.Current.CoreReady ? _localization["core_ready"] : _localization["core_starting"];
-        AggregateSpeed = LocaleFormatter.FormatRate(_applicationState.Current.AggregateBytesPerSecond, _localization.Culture);
+        CoreStatus = _desktopGo.HasDownloadProjection ? _localization["core_ready"] : _localization["core_starting"];
+        AggregateSpeed = LocaleFormatter.FormatRate(_desktopGo.CurrentDownloads.Sum(static item => item.BytesPerSecond), _localization.Culture);
         RefreshFilteredDownloads();
     }
 

@@ -211,7 +211,7 @@ public partial class MainWindowViewModel
                 : Aria2CustomFileName.Trim();
             if (source.Scheme is "http" or "https" or "ftp")
             {
-                string downloadId = await _downloadManager.AddAsync(new DownloadRequest(
+                string downloadId = await _desktopGo.AddDownloadAsync(new DownloadRequest(
                     source,
                     destination,
                     customFileName,

@@ -118,7 +118,17 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
                 : JsonSerializer.SerializeToElement(new { });
             if (kind == "platform.request")
             {
-                await DispatchPlatformRequestAsync(payload, cancellationToken).ConfigureAwait(false);
+                string platformKind = payload.TryGetProperty("kind", out JsonElement platformKindElement)
+                    ? platformKindElement.GetString() ?? string.Empty
+                    : string.Empty;
+                if (platformKind == "external_media_tool")
+                {
+                    _ = Task.Run(() => DispatchPlatformRequestAsync(payload, cancellationToken), CancellationToken.None);
+                }
+                else
+                {
+                    await DispatchPlatformRequestAsync(payload, cancellationToken).ConfigureAwait(false);
+                }
                 continue;
             }
             FrameReceived?.Invoke(this, new DesktopGoFrameEventArgs(kind, payload));
@@ -133,12 +143,17 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
         try
         {
             JsonElement payload = await _dispatcher.DispatchAsync(request, cancellationToken).ConfigureAwait(false);
+            bool accepted = !payload.TryGetProperty("ok", out JsonElement okElement) || okElement.ValueKind != JsonValueKind.False;
+            string? errorCode = accepted || !payload.TryGetProperty("error_code", out JsonElement errorElement)
+                ? null
+                : errorElement.GetString();
             envelope = new
             {
                 protocol = new { major = 1, minor = 0 },
                 request_id = requestId,
                 session,
-                ok = true,
+                ok = accepted,
+                error_code = errorCode,
                 payload
             };
         }

@@ -96,12 +96,20 @@ public partial class App : Application
             () => services.GetRequiredService<DesktopGoEngineHost>().StartAsync(),
             diagnostics);
         coreReady &= InitializeService(
+            "XGO-DESKTOP-PROJECTIONS",
+            () => services.GetRequiredService<DesktopGoProjectionClient>().InitializeAsync(),
+            diagnostics);
+        coreReady &= InitializeService(
             "XDM-STARTUP-TRANSFER-POLICY",
             () => services.GetRequiredService<ITransferPolicyRuntime>().InitializeAsync(),
             diagnostics);
         coreReady &= InitializeService(
             "XDM-STARTUP-DOWNLOADS",
             () => services.GetRequiredService<IDownloadManager>().InitializeAsync(),
+            diagnostics);
+        coreReady &= InitializeService(
+            "XGO-DESKTOP-EXECUTION-OBSERVATION",
+            () => services.GetRequiredService<DesktopGoExecutionObserver>().InitializeAsync(),
             diagnostics);
         coreReady &= InitializeService(
             "XDM-STARTUP-RECOVERY-COORDINATOR",
@@ -413,8 +421,12 @@ public partial class App : Application
         services.AddSingleton<IAntivirusScanner, AntivirusScanner>();
         services.AddSingleton<ITransferEnvironmentProbe, SystemTransferEnvironmentProbe>();
         services.AddSingleton<DesktopGoPublicationBroker>();
+        services.AddSingleton<DesktopGoDownloadExecutionBroker>();
+        services.AddSingleton<DesktopGoMediaBroker>();
         services.AddSingleton<DesktopGoPlatformDispatcher>();
         services.AddSingleton<DesktopGoEngineHost>();
+        services.AddSingleton<DesktopGoProjectionClient>();
+        services.AddSingleton<DesktopGoExecutionObserver>();
         services.AddSingleton<ITransferPolicyRuntime, TransferPolicyRuntime>();
         services.AddSingleton<DownloadChecksumWorkflowStore>();
         services.AddSingleton<FinalizationJournalStore>();

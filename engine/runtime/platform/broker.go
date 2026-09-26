@@ -30,12 +30,13 @@ const (
 	Publication            Kind = "publication"
 	ExternalMediaTool      Kind = "external_media_tool"
 	AndroidDownloadCommand Kind = "android_download_command"
+	DesktopDownloadCommand Kind = "desktop_download_command"
 	Wakeup                 Kind = "wakeup"
 )
 
 func (k Kind) Valid() bool {
 	switch k {
-	case SecretLookup, SystemProxy, NetworkPolicy, RuntimeConditions, Publication, ExternalMediaTool, AndroidDownloadCommand, Wakeup:
+	case SecretLookup, SystemProxy, NetworkPolicy, RuntimeConditions, Publication, ExternalMediaTool, AndroidDownloadCommand, DesktopDownloadCommand, Wakeup:
 		return true
 	default:
 		return false
