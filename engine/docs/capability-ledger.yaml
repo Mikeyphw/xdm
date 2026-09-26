@@ -1093,15 +1093,15 @@
     },
     {
       "area": "import",
-      "behavior": "Legacy imports are journaled, idempotent and restart-safe.",
-      "canonical_behavior": "Go import framework records source/version/hash/status and never requires permanent dual-write.",
+      "behavior": "Legacy imports are journaled, idempotent and restart-safe without permanent dual-write.",
+      "canonical_behavior": "Go import framework records source kind/version/hash/status, stages objects before final commit, rejects unsupported newer sources before mutation and supports duplicate imports, crash recovery and retry after failure for Android Room/Desktop JSON adapters.",
       "donor_strategy": "redesign",
       "donors": [
         "android_database",
         "desktop_download_manager"
       ],
       "id": "XGO-CAP-OPS-005",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-65",
       "test_id": "fixture:xgo-cap-ops-005"
     },

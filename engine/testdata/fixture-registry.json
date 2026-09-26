@@ -800,7 +800,7 @@
         "XGO-CAP-OPS-005"
       ],
       "category": "import",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_database",
         "desktop_download_manager"

@@ -2135,6 +2135,7 @@ inputs = [
   "engine/testdata/secrets/xgo-cap-ops-002.json",
   "engine/testdata/diagnostics/xgo-cap-ops-003.json",
   "engine/testdata/diagnostics/xgo-cap-ops-004.json",
+  "engine/testdata/import/xgo-cap-ops-005.json",
   "docs/xgo/**",
 ]
 outputs = [
@@ -2192,12 +2193,28 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/ops/diagnostics-stress.json"]
 
+
+[targets.xgo_ops.jobs.import_faults]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-ops-audit",
+  "--mode", "import_faults",
+  "--output", ".devtool/reports/xgo/ops/import-faults.json",
+]
+inputs = [
+  "engine/ops/**",
+  "engine/cmd/xgo-ops-audit/**",
+  "engine/testdata/import/xgo-cap-ops-005.json",
+]
+outputs = [".devtool/reports/xgo/ops/import-faults.json"]
+
 [targets.xgo_ops.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
   { id = "settings_audit", ref = "job:settings_audit", depends_on = ["go"] },
   { id = "secret_scan", ref = "job:secret_scan", depends_on = ["settings_audit"] },
   { id = "diagnostics_stress", ref = "job:diagnostics_stress", depends_on = ["secret_scan"] },
+  { id = "import_faults", ref = "job:import_faults", depends_on = ["diagnostics_stress"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

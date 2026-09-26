@@ -4,8 +4,8 @@
   ],
   "category": "import",
   "derivation": {
-    "behavior": "Legacy imports are journaled, idempotent and restart-safe.",
-    "canonical_behavior": "Go import framework records source/version/hash/status and never requires permanent dual-write.",
+    "behavior": "Legacy imports are journaled, idempotent and restart-safe without permanent dual-write.",
+    "canonical_behavior": "Go import framework records source kind/version/hash/status, stages objects before final commit, rejects unsupported newer sources before mutation and supports duplicate imports, crash recovery and retry after failure for Android Room/Desktop JSON adapters.",
     "strategy": "redesign"
   },
   "donor_ids": [
@@ -13,14 +13,93 @@
     "desktop_download_manager"
   ],
   "expected": {
+    "idempotency_key": "source_kind/version/source_hash",
     "invariants": [
-      "Go import framework records source/version/hash/status and never requires permanent dual-write."
-    ]
+      "Each import journal record includes source kind, source version, source hash, status and committed count.",
+      "The idempotency key is source kind plus version plus source hash.",
+      "Duplicate import returns the committed journal result without creating new authoritative objects.",
+      "Crash after staging leaves staged objects recoverable but does not mutate authoritative state before restart.",
+      "Malformed input and unsupported newer source versions do not create authoritative mutations.",
+      "A failed import can be retried and committed with the same idempotency key."
+    ],
+    "journal_fields": [
+      "source_kind",
+      "source_version",
+      "source_hash",
+      "status",
+      "staged_count",
+      "committed_count"
+    ],
+    "no_permanent_dual_write": true,
+    "unsupported_newer_source_mutates_authoritative_state": false
   },
   "fixture_id": "xgo-cap-ops-005",
   "input": {
+    "cases": [
+      {
+        "expected_imported_count": 1,
+        "expected_status": "committed",
+        "name": "success",
+        "source_kind": "android_room",
+        "version": 1
+      },
+      {
+        "expected_authoritative_count_delta": 0,
+        "expected_duplicate": true,
+        "name": "duplicate import",
+        "source_kind": "android_room",
+        "version": 1
+      },
+      {
+        "crash_after_stage": true,
+        "expected_authoritative_count_before_restart": 0,
+        "expected_stage_status": "staged",
+        "name": "crash mid-import",
+        "source_kind": "android_room",
+        "version": 1
+      },
+      {
+        "expected_recovered_stage": true,
+        "expected_status": "committed",
+        "name": "restart after staged crash",
+        "source_kind": "android_room",
+        "version": 1
+      },
+      {
+        "expected_error": "invalid legacy import source",
+        "expected_journal_record": false,
+        "name": "malformed input",
+        "source_kind": "android_room",
+        "version": 1
+      },
+      {
+        "expected_authoritative_mutation": false,
+        "expected_status": "failed",
+        "name": "partial source",
+        "source_kind": "android_room",
+        "version": 1
+      },
+      {
+        "expected_error": "unsupported legacy source version",
+        "expected_journal_record": false,
+        "name": "unsupported newer version",
+        "source_kind": "desktop_json",
+        "version": 2
+      },
+      {
+        "first_status": "failed",
+        "name": "retry after failure",
+        "second_status": "committed",
+        "source_kind": "desktop_json",
+        "version": 1
+      }
+    ],
     "representation": "language-neutral behavioral invariant",
-    "scenario": "Legacy imports are journaled, idempotent and restart-safe."
+    "scenario": "Idempotent Android Room/Desktop JSON import journal with crash/retry semantics.",
+    "source_kinds": [
+      "android_room",
+      "desktop_json"
+    ]
   },
   "schema_version": 1
 }

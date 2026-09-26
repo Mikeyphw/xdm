@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -31,6 +32,8 @@ func main() {
 		r, err = secretScan()
 	case "diagnostics_stress":
 		r, err = diagnosticsStress()
+	case "import_faults":
+		r, err = importFaults()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -139,6 +142,69 @@ func diagnosticsStress() (report, error) {
 		return report{}, fmt.Errorf("external log not bounded")
 	}
 	return report{Mode: "diagnostics_stress", Pass: true, Checks: []string{"retention stress", "health transitions", "correlation fields", "support snapshot secret scan", "external log truncation", "DB growth bound model"}}, nil
+}
+
+func importFaults() (report, error) {
+	store := ops.NewLegacyImportStore(func() time.Time { return time.Unix(200, 0) })
+	android, err := ops.NewLegacyImportSource(ops.ImportSourceAndroidRoom, 1, []byte(`{"downloads":[{"id":"a","url":"https://example.test/a?token=raw-token","file_name":"a.mp4"}]}`))
+	if err != nil {
+		return report{}, err
+	}
+	first, err := store.Import(context.Background(), android, ops.AndroidRoomImportAdapter)
+	if err != nil || first.Status != ops.ImportStatusCommitted || first.ImportedCount != 1 {
+		return report{}, fmt.Errorf("success import failed: result=%+v err=%w", first, err)
+	}
+	dupe, err := store.Import(context.Background(), android, ops.AndroidRoomImportAdapter)
+	if err != nil || !dupe.Duplicate || len(store.AuthoritativeObjects()) != 1 {
+		return report{}, fmt.Errorf("duplicate import was not idempotent: result=%+v err=%w", dupe, err)
+	}
+	crash, _ := ops.NewLegacyImportSource(ops.ImportSourceAndroidRoom, 1, []byte(`{"downloads":[{"id":"crash","url":"https://example.test/c","file_name":"c.mp4"}]}`))
+	if _, err := store.ImportWithOptions(context.Background(), crash, ops.AndroidRoomImportAdapter, ops.ImportOptions{CrashAfterStage: true}); !errors.Is(err, ops.ErrImportInterrupted) {
+		return report{}, fmt.Errorf("crash mid-import was not simulated: %w", err)
+	}
+	if record, ok := store.Record(crash.IdempotencyKey()); !ok || record.Status != ops.ImportStatusStaged {
+		return report{}, fmt.Errorf("crash import not staged: %+v ok=%v", record, ok)
+	}
+	recovered, err := store.Import(context.Background(), crash, func(context.Context, ops.LegacyImportSource) ([]ops.ImportedObject, error) {
+		return nil, fmt.Errorf("adapter should not run for staged recovery")
+	})
+	if err != nil || !recovered.RecoveredStage || recovered.Status != ops.ImportStatusCommitted {
+		return report{}, fmt.Errorf("staged recovery failed: result=%+v err=%w", recovered, err)
+	}
+	if _, err := ops.NewLegacyImportSource(ops.ImportSourceAndroidRoom, 1, []byte(`{"downloads":[`)); err == nil {
+		return report{}, fmt.Errorf("malformed input accepted")
+	}
+	partial, _ := ops.NewLegacyImportSource(ops.ImportSourceAndroidRoom, 1, []byte(`{"downloads":[{"id":"partial","file_name":"missing-url.mp4"}]}`))
+	if _, err := store.Import(context.Background(), partial, ops.AndroidRoomImportAdapter); err == nil {
+		return report{}, fmt.Errorf("partial source accepted")
+	}
+	if len(store.AuthoritativeObjects()) != 2 {
+		return report{}, fmt.Errorf("partial source mutated authoritative state")
+	}
+	newer, _ := ops.NewLegacyImportSource(ops.ImportSourceDesktopJSON, 2, []byte(`{"items":[{"id":"future","url":"https://example.test/f","file_name":"f.bin"}]}`))
+	if _, err := store.Import(context.Background(), newer, ops.DesktopJSONImportAdapter); !errors.Is(err, ops.ErrUnsupportedSourceVersion) {
+		return report{}, fmt.Errorf("unsupported newer version got %w", err)
+	}
+	if _, ok := store.Record(newer.IdempotencyKey()); ok {
+		return report{}, fmt.Errorf("unsupported newer version created a journal record")
+	}
+	retry, _ := ops.NewLegacyImportSource(ops.ImportSourceDesktopJSON, 1, []byte(`{"items":[{"id":"retry","url":"https://example.test/r","file_name":"r.bin"}]}`))
+	failOnce := true
+	adapter := func(ctx context.Context, source ops.LegacyImportSource) ([]ops.ImportedObject, error) {
+		if failOnce {
+			failOnce = false
+			return nil, ops.ErrImportFailed
+		}
+		return ops.DesktopJSONImportAdapter(ctx, source)
+	}
+	if _, err := store.Import(context.Background(), retry, adapter); err == nil {
+		return report{}, fmt.Errorf("first retry import unexpectedly succeeded")
+	}
+	retried, err := store.Import(context.Background(), retry, adapter)
+	if err != nil || retried.Status != ops.ImportStatusCommitted || retried.ImportedCount != 1 {
+		return report{}, fmt.Errorf("retry after failure failed: result=%+v err=%w", retried, err)
+	}
+	return report{Mode: "import_faults", Pass: true, Checks: []string{"success", "duplicate import", "crash mid-import", "malformed input", "partial source", "unsupported newer version", "retry after failure"}}, nil
 }
 
 func dir(path string) string {
