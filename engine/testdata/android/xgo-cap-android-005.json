@@ -15,13 +15,20 @@
   ],
   "expected": {
     "invariants": [
-      "Android importer maps supported legacy rows into versioned Go import package then stops authoritative Room writes."
+      "Room schema 25 is sampled into a versioned one-time import package.",
+      "The Go engine persists the committed Android authority snapshot outside Room.",
+      "Repeating identical import content is idempotent; changed Room content cannot overwrite committed Go authority.",
+      "Downloads, attempts, history, queues, schedules, recovery, captures, and variants are represented when supportable.",
+      "Live Room-to-Go projection mirrors stop after cutover and Go media selections are not dual-written."
     ]
   },
   "fixture_id": "xgo-cap-android-005",
   "input": {
     "representation": "language-neutral behavioral invariant",
-    "scenario": "Legacy Room engine state imports once into Go without dual-write."
+    "scenario": "Legacy Room engine state imports once into Go without dual-write.",
+    "room_schema_version": 25,
+    "package_version": 1,
+    "authority_store": "app-private Go snapshot"
   },
   "schema_version": 1
 }

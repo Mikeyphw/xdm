@@ -27,6 +27,7 @@ var (
 type Handler func(context.Context, *Invocation, command.Envelope) error
 
 type Config struct {
+	StatePath      string
 	CommandBuffer  int
 	EventBuffer    int
 	PlatformBuffer int
@@ -57,6 +58,8 @@ type Engine struct {
 	seen             map[command.ID]struct{}
 	active           map[identity.OperationID]*activeOperation
 	androidScheduler *androidhost.AndroidSchedulerHost
+	androidAuthority *androidAuthorityStore
+	authorityErr     error
 	androidUI        *androidUIState
 	androidMedia     *androidMediaState
 	workers          sync.WaitGroup
@@ -83,12 +86,26 @@ func New(config Config) *Engine {
 		platformBuffer = 32
 	}
 	rootCtx, cancel := context.WithCancel(context.Background())
+	authority, authorityErr := newAndroidAuthorityStore(config.StatePath)
+	if authority == nil {
+		authority, _ = newAndroidAuthorityStore("")
+	}
+	androidUI := newAndroidUIState()
+	androidMedia := newAndroidMediaState()
+	if authorityErr == nil && authority.imported() {
+		snapshot := authority.snapshot()
+		if err := androidUI.seed(snapshot.UI); err != nil {
+			authorityErr = err
+		} else if err := androidMedia.restorePersistent(snapshot.Media); err != nil {
+			authorityErr = err
+		}
+	}
 	e := &Engine{
 		rootCtx: rootCtx, rootCancel: cancel,
 		commands: make(chan queuedCommand, commandBuffer),
 		events:   event.NewQueue(eventBuffer), broker: platform.NewBroker(platformBuffer),
 		handlers: make(map[string]Handler), seen: make(map[command.ID]struct{}), active: make(map[identity.OperationID]*activeOperation),
-		androidScheduler: androidhost.NewAndroidSchedulerHost(), androidUI: newAndroidUIState(), androidMedia: newAndroidMediaState(),
+		androidScheduler: androidhost.NewAndroidSchedulerHost(), androidAuthority: authority, authorityErr: authorityErr, androidUI: androidUI, androidMedia: androidMedia,
 	}
 	e.handlers["runtime.ping"] = pingHandler
 	e.handlers["runtime.platform_probe"] = platformProbeHandler
@@ -99,6 +116,7 @@ func New(config Config) *Engine {
 	e.handlers[AndroidMediaCaptureKind] = e.androidMediaCaptureHandler
 	e.handlers[AndroidMediaSelectKind] = e.androidMediaSelectHandler
 	e.handlers[AndroidMediaExecuteKind] = e.androidMediaExecuteHandler
+	e.handlers[AndroidLegacyRoomImportKind] = e.androidLegacyRoomImportHandler
 	for kind, handler := range config.Handlers {
 		if kind != "" && handler != nil {
 			e.handlers[kind] = handler
@@ -108,6 +126,9 @@ func New(config Config) *Engine {
 }
 
 func (e *Engine) Start() error {
+	if e.authorityErr != nil {
+		return e.authorityErr
+	}
 	e.mu.Lock()
 	if e.stopped || e.stopping {
 		e.mu.Unlock()
@@ -122,6 +143,12 @@ func (e *Engine) Start() error {
 	e.mu.Unlock()
 	go e.commandLoop()
 	go e.platformLoop()
+	if e.androidAuthority.imported() {
+		uiPayload, _ := json.Marshal(e.androidUI.snapshot())
+		_, _ = e.emit(context.Background(), event.Frame{Class: event.Telemetry, Kind: "android.ui.projection", Payload: uiPayload, CoalesceKey: "android.ui.downloads"})
+		mediaPayload, _ := json.Marshal(e.androidMedia.projection())
+		_, _ = e.emit(context.Background(), event.Frame{Class: event.Telemetry, Kind: "android.media.projection", Payload: mediaPayload, CoalesceKey: "android.media.projection"})
+	}
 	return nil
 }
 

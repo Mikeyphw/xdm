@@ -46,8 +46,16 @@ func NewLegacyImportSource(kind ImportSourceKind, version int, raw []byte) (Lega
 	if !json.Valid(raw) {
 		return LegacyImportSource{}, fmt.Errorf("%w: malformed json", ErrInvalidImportSource)
 	}
-	sum := sha256.Sum256(raw)
-	source := LegacyImportSource{Kind: kind, Version: version, Hash: hex.EncodeToString(sum[:]), Raw: append([]byte(nil), raw...)}
+	var canonical any
+	if err := json.Unmarshal(raw, &canonical); err != nil {
+		return LegacyImportSource{}, fmt.Errorf("%w: malformed json", ErrInvalidImportSource)
+	}
+	canonicalRaw, err := json.Marshal(canonical)
+	if err != nil {
+		return LegacyImportSource{}, fmt.Errorf("%w: canonical json", ErrInvalidImportSource)
+	}
+	sum := sha256.Sum256(canonicalRaw)
+	source := LegacyImportSource{Kind: kind, Version: version, Hash: hex.EncodeToString(sum[:]), Raw: append([]byte(nil), canonicalRaw...)}
 	if strings.TrimSpace(string(kind)) == "" || version <= 0 {
 		return LegacyImportSource{}, fmt.Errorf("%w: kind/version", ErrInvalidImportSource)
 	}
@@ -248,10 +256,16 @@ func (s *LegacyImportStore) markFailed(key string, err error) {
 }
 
 type legacyDownloadRecord struct {
-	ID       string `json:"id"`
-	URL      string `json:"url"`
-	FileName string `json:"file_name"`
-	State    string `json:"state,omitempty"`
+	ID        string `json:"id"`
+	URL       string `json:"url,omitempty"`
+	SourceURL string `json:"source_url,omitempty"`
+	FileName  string `json:"file_name"`
+	State     string `json:"state,omitempty"`
+}
+
+type legacyGenericRecord struct {
+	ID      string         `json:"id"`
+	Payload map[string]any `json:"payload,omitempty"`
 }
 
 func AndroidRoomImportAdapter(_ context.Context, source LegacyImportSource) ([]ImportedObject, error) {
@@ -259,12 +273,48 @@ func AndroidRoomImportAdapter(_ context.Context, source LegacyImportSource) ([]I
 		return nil, fmt.Errorf("%w: adapter kind", ErrInvalidImportSource)
 	}
 	var doc struct {
-		Downloads []legacyDownloadRecord `json:"downloads"`
+		Downloads   []legacyDownloadRecord `json:"downloads"`
+		Attempts    []legacyGenericRecord  `json:"attempts"`
+		Checkpoints []legacyGenericRecord  `json:"checkpoints"`
+		History     []legacyGenericRecord  `json:"history"`
+		Queues      []legacyGenericRecord  `json:"queues"`
+		Schedules   []legacyGenericRecord  `json:"schedules"`
+		Recovery    []legacyGenericRecord  `json:"recovery"`
+		Media       []legacyGenericRecord  `json:"media"`
 	}
 	if err := json.Unmarshal(source.Raw, &doc); err != nil {
 		return nil, fmt.Errorf("%w: android json", ErrInvalidImportSource)
 	}
-	return importDownloadRecords(source.Kind, doc.Downloads)
+	out, err := importDownloadRecords(source.Kind, doc.Downloads)
+	if err != nil && len(doc.Downloads) > 0 {
+		return nil, err
+	}
+	appendGeneric := func(kind string, records []legacyGenericRecord) error {
+		for _, record := range records {
+			id := strings.TrimSpace(record.ID)
+			if id == "" {
+				return fmt.Errorf("%w: %s record id", ErrImportFailed, kind)
+			}
+			canonical := fmt.Sprintf("%s:%x", kind, sha256.Sum256([]byte(string(source.Kind)+"\x00"+kind+"\x00"+id)))
+			out = append(out, ImportedObject{Kind: kind, LegacyID: id, CanonicalID: canonical, Payload: record.Payload})
+		}
+		return nil
+	}
+	for _, item := range []struct {
+		kind    string
+		records []legacyGenericRecord
+	}{
+		{"attempt", doc.Attempts}, {"checkpoint", doc.Checkpoints}, {"history", doc.History},
+		{"queue", doc.Queues}, {"schedule", doc.Schedules}, {"recovery", doc.Recovery}, {"media", doc.Media},
+	} {
+		if err := appendGeneric(item.kind, item.records); err != nil {
+			return nil, err
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: no supported Android Room records", ErrImportFailed)
+	}
+	return out, nil
 }
 
 func DesktopJSONImportAdapter(_ context.Context, source LegacyImportSource) ([]ImportedObject, error) {
@@ -286,11 +336,15 @@ func importDownloadRecords(kind ImportSourceKind, records []legacyDownloadRecord
 	}
 	out := make([]ImportedObject, 0, len(records))
 	for _, r := range records {
-		if strings.TrimSpace(r.ID) == "" || strings.TrimSpace(r.URL) == "" || strings.TrimSpace(r.FileName) == "" {
+		url := strings.TrimSpace(r.URL)
+		if url == "" {
+			url = strings.TrimSpace(r.SourceURL)
+		}
+		if strings.TrimSpace(r.ID) == "" || url == "" || strings.TrimSpace(r.FileName) == "" {
 			return nil, fmt.Errorf("%w: partial source record", ErrImportFailed)
 		}
 		canonical := fmt.Sprintf("download:%x", sha256.Sum256([]byte(string(kind)+"\x00"+r.ID)))
-		out = append(out, ImportedObject{Kind: "download", LegacyID: r.ID, CanonicalID: canonical, Payload: map[string]any{"url": SafeURL(r.URL), "file_name": r.FileName, "state": r.State}})
+		out = append(out, ImportedObject{Kind: "download", LegacyID: r.ID, CanonicalID: canonical, Payload: map[string]any{"url": SafeURL(url), "file_name": r.FileName, "state": r.State}})
 	}
 	return out, nil
 }

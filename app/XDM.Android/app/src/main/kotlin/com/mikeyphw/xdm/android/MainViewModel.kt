@@ -4511,8 +4511,6 @@ class MainViewModel(
                     )
                     return@launch
                 }
-                // Keep only transitional UI preferences here; the Go projection is the selection authority.
-                mediaResolverSelectionStore.save(record.id, selection)
                 val execution = androidMediaUiClient.execute(record.id)
                 if (!execution.ok) {
                     publishMediaIntakeFeedback(
@@ -4552,7 +4550,6 @@ class MainViewModel(
             return
         }
         mediaOutputAdmissionsInFlight.value = mediaOutputAdmissionClaims.toSet()
-        mediaResolverSelectionStore.save(record.id, selection)
         viewModelScope.launch(Dispatchers.IO) {
             try {
             val now = System.currentTimeMillis()
@@ -5036,19 +5033,13 @@ class MainViewModel(
                 )
                 return@launch
             }
-            // Transitional persistence only. Compose reads the Go projection above, not this store/Room.
-            mediaResolverSelectionStore.save(record.id, next)
-            val selected = repository.variantsForMediaCapture(record.id).firstOrNull { it.id == variantId }
-            if (selected != null) repository.selectMediaVariant(record.id, selected)
         }
     }
 
     fun updateMediaTrackSelection(record: MediaCaptureRecord, selection: MediaTrackSelection) {
         viewModelScope.launch(Dispatchers.IO) {
             val result = androidMediaUiClient.select(record.id, selection)
-            if (result.ok) {
-                mediaResolverSelectionStore.save(record.id, selection)
-            } else {
+            if (!result.ok) {
                 publishMediaIntakeFeedback(
                     MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not select tracks", result.message ?: result.errorCode ?: "Go rejected this media selection."),
                     navigateToMedia = false,

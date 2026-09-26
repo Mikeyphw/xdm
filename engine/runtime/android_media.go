@@ -110,6 +110,54 @@ func newAndroidMediaState() *androidMediaState {
 	}
 }
 
+func (s *androidMediaState) persistentSnapshot() androidMediaPersistentSnapshot {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ids := make([]string, 0, len(s.captures))
+	for id := range s.captures {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	input := androidMediaSyncInput{Revision: max64(1, s.mirrorRevision), Captures: make([]androidMediaCaptureInput, 0, len(ids))}
+	for _, id := range ids {
+		state := s.captures[id]
+		raws := make([]json.RawMessage, len(state.rawVariants))
+		for i := range state.rawVariants {
+			raws[i] = append(json.RawMessage(nil), state.rawVariants[i]...)
+		}
+		input.Captures = append(input.Captures, androidMediaCaptureInput{CaptureRecord: append(json.RawMessage(nil), state.rawCapture...), Variants: raws, Envelope: state.envelope})
+	}
+	selections := make(map[string]androidMediaSelection, len(s.selections))
+	for id, selection := range s.selections {
+		selections[id] = selection
+	}
+	return androidMediaPersistentSnapshot{Sync: input, Selections: selections}
+}
+
+func (s *androidMediaState) restorePersistent(snapshot androidMediaPersistentSnapshot) error {
+	if snapshot.Sync.Revision == 0 {
+		snapshot.Sync.Revision = 1
+	}
+	if len(snapshot.Sync.Captures) > 0 {
+		if _, _, err := s.replaceLegacy(snapshot.Sync); err != nil {
+			return err
+		}
+	}
+	for captureID, selection := range snapshot.Selections {
+		if _, err := s.selectCapture(captureID, selection); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func max64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func decodeAndroidMediaCapture(input androidMediaCaptureInput) (*androidMediaCaptureState, error) {
 	if len(input.CaptureRecord) == 0 {
 		return nil, errors.New("android media capture record is missing")
@@ -447,6 +495,12 @@ type androidMediaProjection struct {
 	Selections []androidMediaSelectionProjection `json:"selections"`
 }
 
+func (s *androidMediaState) projection() androidMediaProjection {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.projectionLocked()
+}
+
 func (s *androidMediaState) projectionLocked() androidMediaProjection {
 	p := androidMediaProjection{Revision: s.revision, Captures: []json.RawMessage{}, Variants: []json.RawMessage{}, Selections: []androidMediaSelectionProjection{}}
 	ids := make([]string, 0, len(s.captures))
@@ -485,6 +539,9 @@ func emitAndroidMediaResult(inv *Invocation, requestID, action string, ok bool, 
 }
 
 func (e *Engine) androidMediaSyncHandler(ctx context.Context, inv *Invocation, env command.Envelope) error {
+	if e.androidAuthority.imported() {
+		return errors.New("legacy Android Room media mirror is disabled after authoritative import")
+	}
 	var input androidMediaSyncInput
 	if err := json.Unmarshal(env.Payload, &input); err != nil {
 		return err
@@ -509,6 +566,9 @@ func (e *Engine) androidMediaCaptureHandler(ctx context.Context, inv *Invocation
 		_ = emitAndroidMediaResult(inv, input.ClientRequestID, "capture", false, map[string]any{"error_code": "invalid_capture"})
 		return err
 	}
+	if err := e.androidAuthority.saveMedia(e.androidMedia.persistentSnapshot()); err != nil {
+		return err
+	}
 	if err := emitAndroidMediaProjection(inv, projection); err != nil {
 		return err
 	}
@@ -526,6 +586,9 @@ func (e *Engine) androidMediaSelectHandler(ctx context.Context, inv *Invocation,
 	projection, err := e.androidMedia.selectCapture(input.CaptureID, input.Selection)
 	if err != nil {
 		_ = emitAndroidMediaResult(inv, input.ClientRequestID, "select", false, map[string]any{"error_code": "invalid_selection"})
+		return err
+	}
+	if err := e.androidAuthority.saveMedia(e.androidMedia.persistentSnapshot()); err != nil {
 		return err
 	}
 	if err := emitAndroidMediaProjection(inv, projection); err != nil {

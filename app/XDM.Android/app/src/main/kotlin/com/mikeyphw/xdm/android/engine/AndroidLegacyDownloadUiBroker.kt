@@ -9,13 +9,12 @@ import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceCoordinator
 import com.mikeyphw.xdm.android.termux.TermuxMediaPipelineManager
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
-import kotlinx.coroutines.flow.collectLatest
 import org.json.JSONObject
 
 /**
- * Temporary XGO-72 compatibility broker. UI never mutates Room/transfer runtime directly:
- * commands cross Go first, then Go requests this narrow legacy host operation. XGO-74 removes
- * this adapter after one-time Room import makes Go persistence authoritative.
+ * Compatibility execution broker. UI never mutates Room/transfer runtime directly: commands
+ * cross Go first, then Go requests this narrow host operation. XGO-74 removed its live Room
+ * projection role; XGO-75 removes/reduces the remaining legacy execution side effects.
  */
 class AndroidLegacyDownloadUiBroker(
     private val repository: DownloadRepository,
@@ -24,14 +23,6 @@ class AndroidLegacyDownloadUiBroker(
     private val nativeHls: NativeHlsMediaManager,
     private val termuxMedia: TermuxMediaPipelineManager,
 ) {
-    suspend fun mirrorIntoGo(authority: AndroidEngineProcessAuthority) {
-        var revision = 0L
-        repository.downloads.collectLatest { downloads ->
-            revision = maxOf(revision + 1L, downloads.maxOfOrNull { it.rowRevision } ?: 1L)
-            authority.syncLegacyDownloadProjection(revision, downloads)
-        }
-    }
-
     suspend fun execute(payload: JSONObject): JSONObject = when (payload.optString("action")) {
         "add" -> add(payload)
         "pause" -> mutate(payload, "paused") { id ->

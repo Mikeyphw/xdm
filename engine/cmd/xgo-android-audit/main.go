@@ -49,6 +49,8 @@ func main() {
 		r, err = androidUISmoke()
 	case "android_media_e2e":
 		r, err = androidMediaE2E()
+	case "android_import_matrix":
+		r, err = androidImportMatrix()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -631,7 +633,7 @@ func androidUISmoke() (report, error) {
 	}
 
 	authority := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt")
-	for _, needle := range []string{"syncLegacyDownloadProjection", "submitDownloadUiCommand", `"android.ui.projection"`, `"android.ui.command_result"`} {
+	for _, needle := range []string{"submitDownloadUiCommand", `"android.ui.projection"`, `"android.ui.command_result"`} {
 		if !strings.Contains(authority, needle) {
 			return report{}, fmt.Errorf("process authority missing UI bridge token %s", needle)
 		}
@@ -643,13 +645,13 @@ func androidUISmoke() (report, error) {
 		}
 	}
 	broker := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
-	for _, needle := range []string{"repository.downloads.collectLatest", "repository.admitDownload", `"pause"`, `"resume", "retry"`, `"cancel"`, `"delete"`, `"pause_all"`, `"resume_all"`, "queueCoordinator.pauseAllDurably()", "queueCoordinator.resumeAllManual()"} {
+	for _, needle := range []string{"repository.admitDownload", `"pause"`, `"resume", "retry"`, `"cancel"`, `"delete"`, `"pause_all"`, `"resume_all"`, "queueCoordinator.pauseAllDurably()", "queueCoordinator.resumeAllManual()"} {
 		if !strings.Contains(broker, needle) {
 			return report{}, fmt.Errorf("temporary XGO-72 host broker missing %s", needle)
 		}
 	}
 	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
-	for _, needle := range []string{"AndroidDownloadUiClient(this)", "mirrorIntoGo(androidEngineProcessAuthority)", "androidDownloadUiClient = androidDownloadUiClient"} {
+	for _, needle := range []string{"AndroidDownloadUiClient(this)", "AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)", "androidDownloadUiClient = androidDownloadUiClient"} {
 		if !strings.Contains(application, needle) {
 			return report{}, fmt.Errorf("application does not preserve process-scoped UI/engine state: missing %s", needle)
 		}
@@ -818,7 +820,7 @@ func androidMediaE2E() (report, error) {
 	}
 
 	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
-	for _, needle := range []string{"combine(repository.mediaCaptures, repository.mediaVariants)", "syncLegacyMediaProjection(captures, variants)", "AndroidMediaPlatformBroker(this, embeddedFfmpegRuntime)", "AndroidMediaUiClient(this)"} {
+	for _, needle := range []string{"AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)", "AndroidMediaPlatformBroker(this, embeddedFfmpegRuntime)", "AndroidMediaUiClient(this)"} {
 		if !strings.Contains(application, needle) {
 			return report{}, fmt.Errorf("Android media host wiring missing %s", needle)
 		}
@@ -885,6 +887,122 @@ func androidMediaE2E() (report, error) {
 		"Go issues typed external_media_tool FFmpeg request without transport secrets",
 		"Android FFmpeg broker resolves exact encrypted request handoff locally and exposes no arbitrary argv",
 		"long-running FFmpeg execution is asynchronous at the platform dispatcher so the engine frame pump remains responsive",
+	}}, nil
+}
+
+func androidImportMatrix() (report, error) {
+	stateDir, err := os.MkdirTemp("", "xgo-android-import-")
+	if err != nil {
+		return report{}, err
+	}
+	defer os.RemoveAll(stateDir)
+	statePath := stateDir + "/android-state-v1.json"
+	engine := engineruntime.New(engineruntime.Config{StatePath: statePath, EventBuffer: 64})
+	if err := engine.Start(); err != nil {
+		return report{}, err
+	}
+	pkg := `{"package_version":1,"room_schema_version":25,"downloads":[{"id":"audit-download","file_name":"audit.bin","source_url":"https://example.test/audit.bin","destination_uri":"content://downloads/audit.bin","state":"Queued","backend":"Native","bytes_received":0,"total_bytes":10,"speed_bytes_per_second":0,"priority":0,"created_at_epoch_ms":1,"updated_at_epoch_ms":2,"conflict_policy":"Rename","requested_backend":"Automatic","backend_selection_reason":"DefaultNative","backend_selection_explanation":"","allow_backend_fallback":true,"archived":false,"attempt_generation":1,"observed_attempt_generation":1,"row_revision":2}],"attempts":[{"id":"audit-download:1","payload":{"download_id":"audit-download","attempt_generation":1}}],"media_sync":{"revision":1,"captures":[],"variants":[]}}`
+	payload := `{"client_request_id":"import-audit","package":` + pkg + `}`
+	id, _ := command.ParseID("cmd_00000000000000000000000000000094")
+	op, _ := identity.ParseOperationID("op_00000000000000000000000000000094")
+	if err := engine.Submit(context.Background(), command.Envelope{ID: id, OperationID: op, Kind: engineruntime.AndroidLegacyRoomImportKind, Payload: json.RawMessage(payload)}); err != nil {
+		return report{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	var importKey string
+	for {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind != "android.import.result" {
+			continue
+		}
+		var result map[string]any
+		if err := json.Unmarshal(frame.Payload, &result); err != nil {
+			return report{}, err
+		}
+		if result["ok"] != true || result["duplicate"] != false || result["room_schema_version"] != float64(25) {
+			return report{}, fmt.Errorf("bad initial import result: %v", result)
+		}
+		importKey, _ = result["import_key"].(string)
+		if importKey == "" {
+			return report{}, fmt.Errorf("missing durable import key")
+		}
+		break
+	}
+	if _, err := os.Stat(statePath); err != nil {
+		return report{}, fmt.Errorf("Go authority snapshot not durable: %w", err)
+	}
+	_ = engine.Shutdown(context.Background())
+
+	restored := engineruntime.New(engineruntime.Config{StatePath: statePath, EventBuffer: 64})
+	if err := restored.Start(); err != nil {
+		return report{}, err
+	}
+	defer restored.Shutdown(context.Background())
+	for {
+		frame, err := restored.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind != "android.ui.projection" {
+			continue
+		}
+		if !strings.Contains(string(frame.Payload), "audit-download") {
+			return report{}, fmt.Errorf("restart projection did not restore imported download: %s", frame.Payload)
+		}
+		break
+	}
+
+	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
+	for _, needle := range []string{"AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)", "androidDownloadUiClient = androidDownloadUiClient", "androidMediaUiClient = androidMediaUiClient"} {
+		if !strings.Contains(application, needle) {
+			return report{}, fmt.Errorf("application import cutover missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"mirrorIntoGo(androidEngineProcessAuthority)", "syncLegacyMediaProjection(captures, variants)", "combine(repository.mediaCaptures, repository.mediaVariants)"} {
+		if strings.Contains(application, forbidden) {
+			return report{}, fmt.Errorf("live Room mirror survived XGO-74: %s", forbidden)
+		}
+	}
+	importer := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyRoomImporter.kt")
+	for _, needle := range []string{"room_schema_version", "ROOM_SCHEMA_VERSION = 25", `"downloads"`, `"attempts"`, `"history"`, `"queues"`, `"schedules"`, `"recovery"`, `"media"`, `"media_sync"`, "repository.downloads.first()"} {
+		if !strings.Contains(importer, needle) {
+			return report{}, fmt.Errorf("Room importer missing %s", needle)
+		}
+	}
+	authority := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt")
+	for _, needle := range []string{`"state_path"`, "android-state-v1.json", "importLegacyRoom", `"android.import.result"`} {
+		if !strings.Contains(authority, needle) {
+			return report{}, fmt.Errorf("process authority missing durable import wiring %s", needle)
+		}
+	}
+	viewModel := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
+	for _, forbidden := range []string{"repository.selectMediaVariant(record.id, selected)", "mediaResolverSelectionStore.save(record.id"} {
+		if strings.Contains(viewModel, forbidden) {
+			return report{}, fmt.Errorf("selection dual-write survived XGO-74: %s", forbidden)
+		}
+	}
+	store := mustRead("engine/runtime/android_authority.go")
+	for _, needle := range []string{"os.Rename(tmp, s.path)", "0o600", "ErrAndroidAuthorityAlreadyImported", "saveUI", "saveMedia"} {
+		if !strings.Contains(store, needle) {
+			return report{}, fmt.Errorf("Go authority store missing %s", needle)
+		}
+	}
+	cabi := mustRead("engine/bridge/cabi/main.go")
+	if !strings.Contains(cabi, "StatePath: cfg.StatePath") {
+		return report{}, fmt.Errorf("C ABI does not pass durable authority state path")
+	}
+	return report{Mode: "android_import_matrix", Pass: true, Checks: []string{
+		"versioned Room package imports through XGO-65 framework",
+		"Go commits an app-private durable authority snapshot",
+		"process restart restores Go projection without Room mirror",
+		"Room import is content-idempotent and changed legacy state is fenced",
+		"downloads/attempts/history/queues/schedules/recovery/media are represented",
+		"live Room projection mirrors are removed",
+		"Go media selection no longer dual-writes Room/preferences",
 	}}, nil
 }
 

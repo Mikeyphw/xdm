@@ -35,6 +35,7 @@ import com.mikeyphw.xdm.android.engine.AndroidEngineProcessAuthority
 import com.mikeyphw.xdm.android.engine.AndroidDownloadUiClient
 import com.mikeyphw.xdm.android.engine.AndroidDownloadUiPlatformBrokerProvider
 import com.mikeyphw.xdm.android.engine.AndroidLegacyDownloadUiBroker
+import com.mikeyphw.xdm.android.engine.AndroidLegacyRoomImporter
 import com.mikeyphw.xdm.android.engine.AndroidMediaPlatformBroker
 import com.mikeyphw.xdm.android.engine.AndroidMediaPlatformBrokerProvider
 import com.mikeyphw.xdm.android.engine.AndroidMediaUiClient
@@ -68,7 +69,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 
 class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, AndroidDownloadUiPlatformBrokerProvider, AndroidMediaPlatformBrokerProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
     lateinit var container: AppContainer
@@ -246,15 +246,9 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val androidDownloadUiClient = AndroidDownloadUiClient(this)
         val androidMediaUiClient = AndroidMediaUiClient(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            androidDownloadUiPlatformBroker.mirrorIntoGo(androidEngineProcessAuthority)
-        }
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            combine(repository.mediaCaptures, repository.mediaVariants) { captures, variants -> captures to variants }
-                .collectLatest { (captures, variants) ->
-                    // Transitional XGO-73 mirror only. XGO-74 replaces this Room source with the
-                    // one-time import package; Compose already reads the Go projection.
-                    androidEngineProcessAuthority.syncLegacyMediaProjection(captures, variants)
-                }
+            // XGO-74: Room is sampled once per process only to seed/confirm the idempotent legacy
+            // import. Go persists the authoritative snapshot; live Room projection mirrors are gone.
+            AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)
         }
         // Queue admission remains durably closed until migration and ownership recovery both finish.
         queueIntelligenceCoordinator.installStartupRecoveryHold()

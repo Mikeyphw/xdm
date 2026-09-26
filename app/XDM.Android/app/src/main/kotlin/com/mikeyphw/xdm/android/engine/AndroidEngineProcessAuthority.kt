@@ -1,13 +1,11 @@
 package com.mikeyphw.xdm.android.engine
 
 import android.content.Context
-import com.mikeyphw.xdm.android.model.Download
-import com.mikeyphw.xdm.android.model.MediaCaptureRecord
-import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.network.AndroidNetworkPolicyBroker
 import com.mikeyphw.xdm.android.scheduler.AndroidEngineWakeDisposition
 import com.mikeyphw.xdm.android.scheduler.AndroidEngineWakeRequest
 import com.mikeyphw.xdm.android.scheduler.AndroidEngineWakeResult
+import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -43,8 +41,8 @@ class AndroidEngineProcessAuthority(context: Context) {
     private val mediaProjection = MutableStateFlow(AndroidMediaUiProjection())
     private val pendingUiCommands = ConcurrentHashMap<String, CompletableDeferred<AndroidDownloadUiCommandResult>>()
     private val pendingMediaCommands = ConcurrentHashMap<String, CompletableDeferred<AndroidMediaUiCommandResult>>()
+    private val pendingLegacyImports = ConcurrentHashMap<String, CompletableDeferred<AndroidLegacyRoomImportResult>>()
     private val uiCommandSequence = AtomicLong(1L)
-    private val mediaMirrorSequence = AtomicLong(1L)
     private val acceptedWakeEvents = ConcurrentHashMap.newKeySet<String>()
     private var bridge: AndroidGoEngineBridge? = null
     private var framePump: Job? = null
@@ -58,7 +56,13 @@ class AndroidEngineProcessAuthority(context: Context) {
     @Synchronized
     fun ensureSingleEngine(reason: ProcessRestartRecovery): String {
         engineIdentity?.let { return it }
-        val nextBridge = AndroidGoEngineBridge().also { it.create(ByteArray(0)) }
+        val statePath = File(appContext.filesDir, "xgo/authoritative/android-state-v1.json").absolutePath
+        val createConfig = JSONObject()
+            .put("protocol", JSONObject().put("major", 1).put("minor", 0))
+            .put("state_path", statePath)
+            .toString()
+            .toByteArray(Charsets.UTF_8)
+        val nextBridge = AndroidGoEngineBridge().also { it.create(createConfig) }
         val nextIdentity = "android-go-engine-${System.currentTimeMillis()}"
         bridge = nextBridge
         engineIdentity = nextIdentity
@@ -92,23 +96,22 @@ class AndroidEngineProcessAuthority(context: Context) {
     @Synchronized
     fun currentIdentity(): String? = engineIdentity
 
-    fun syncLegacyDownloadProjection(revision: Long, downloads: List<Download>) {
+    suspend fun importLegacyRoom(packageJson: JSONObject): AndroidLegacyRoomImportResult {
+        val requestId = "room-import-${uiCommandSequence.getAndIncrement()}"
+        val deferred = CompletableDeferred<AndroidLegacyRoomImportResult>()
+        check(pendingLegacyImports.putIfAbsent(requestId, deferred) == null) { "duplicate Android Room import request id" }
         val currentBridge = synchronized(this) {
-            ensureSingleEngine(ProcessRestartRecovery.PlatformWake)
+            ensureSingleEngine(ProcessRestartRecovery.ProcessRestart)
             bridge
-        } ?: return
-        val payload = AndroidDownloadUiWire.projectionJson(revision, downloads)
-        runCatching { currentBridge.command(uiCommand("android.ui.sync_downloads", payload, "projection:$revision")) }
-    }
-
-    fun syncLegacyMediaProjection(captures: List<MediaCaptureRecord>, variants: List<MediaVariant>) {
-        val revision = mediaMirrorSequence.getAndIncrement()
-        val currentBridge = synchronized(this) {
-            ensureSingleEngine(ProcessRestartRecovery.PlatformWake)
-            bridge
-        } ?: return
-        val payload = AndroidMediaUiWire.syncPayload(revision, captures, variants)
-        runCatching { currentBridge.command(uiCommand("android.media.sync_legacy", payload, "media-mirror:$revision")) }
+        } ?: return AndroidLegacyRoomImportResult(requestId, false, "failed", false, 0, 0, errorCode = "engine_disconnected")
+        return try {
+            val payload = JSONObject().put("client_request_id", requestId).put("package", packageJson)
+            currentBridge.command(uiCommand("android.import_legacy_room", payload, "room-import:$requestId"))
+            withTimeout(IMPORT_TIMEOUT_MS) { deferred.await() }
+        } catch (error: Throwable) {
+            pendingLegacyImports.remove(requestId)
+            AndroidLegacyRoomImportResult(requestId, false, "failed", false, 0, 0, errorCode = "engine_disconnected", message = error.message)
+        }
     }
 
     suspend fun submitMediaUiCommand(kind: String, payload: JSONObject): AndroidMediaUiCommandResult {
@@ -217,6 +220,11 @@ class AndroidEngineProcessAuthority(context: Context) {
                 pendingMediaCommands.remove(result.requestId)?.complete(result)
                 true
             }
+            "android.import.result" -> {
+                val result = runCatching { AndroidLegacyRoomImportWire.result(payload) }.getOrNull() ?: return true
+                pendingLegacyImports.remove(result.requestId)?.complete(result)
+                true
+            }
             else -> false
         }
     }
@@ -258,5 +266,6 @@ class AndroidEngineProcessAuthority(context: Context) {
         const val FRAME_POLL_TIMEOUT_MS = 250
         const val FRAME_IDLE_BACKOFF_MS = 25L
         const val UI_COMMAND_TIMEOUT_MS = 10_000L
+        const val IMPORT_TIMEOUT_MS = 30_000L
     }
 }

@@ -107,3 +107,27 @@ func TestLegacyImportMalformedPartialUnsupportedAndRetry(t *testing.T) {
 		t.Fatalf("retry after failure failed: %+v", result)
 	}
 }
+
+func TestLegacyImportCanonicalHashAndRichAndroidRoomPackage(t *testing.T) {
+	a := testSource(t, ImportSourceAndroidRoom, 1, `{"downloads":[{"id":"a","source_url":"https://example.test/a","file_name":"a.bin"}],"queues":[{"id":"q1","payload":{"enabled":true,"name":"Main"}}],"media":[{"id":"capture:c1","payload":{"record_type":"capture"}}]}`)
+	b := testSource(t, ImportSourceAndroidRoom, 1, `{ "media" : [ { "payload" : { "record_type" : "capture" }, "id" : "capture:c1" } ], "queues" : [ { "payload" : { "name" : "Main", "enabled" : true }, "id" : "q1" } ], "downloads" : [ { "file_name" : "a.bin", "source_url" : "https://example.test/a", "id" : "a" } ] }`)
+	if a.IdempotencyKey() != b.IdempotencyKey() {
+		t.Fatalf("canonical-equivalent Android import packages have different keys: %s != %s", a.IdempotencyKey(), b.IdempotencyKey())
+	}
+	objects, err := AndroidRoomImportAdapter(context.Background(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(objects) != 3 {
+		t.Fatalf("rich Android package imported %d objects, want 3", len(objects))
+	}
+	kinds := map[string]bool{}
+	for _, object := range objects {
+		kinds[object.Kind] = true
+	}
+	for _, kind := range []string{"download", "queue", "media"} {
+		if !kinds[kind] {
+			t.Fatalf("rich Android package missing %s object", kind)
+		}
+	}
+}

@@ -83,6 +83,90 @@ func (s *androidUIState) replace(next AndroidUIProjection) (AndroidUIProjection,
 	return next, true
 }
 
+func (s *androidUIState) seed(projection AndroidUIProjection) error {
+	if err := validateAndroidUIProjection(projection); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	projection.Downloads = append([]AndroidUIDownload(nil), projection.Downloads...)
+	s.projection = projection
+	return nil
+}
+
+func (s *androidUIState) snapshot() AndroidUIProjection {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := s.projection
+	out.Downloads = append([]AndroidUIDownload(nil), s.projection.Downloads...)
+	return out
+}
+
+func (s *androidUIState) applyCommand(cmd AndroidUICommand, status string) (AndroidUIProjection, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	next := s.projection
+	next.Downloads = append([]AndroidUIDownload(nil), s.projection.Downloads...)
+	changed := false
+	find := func(id string) int {
+		for i := range next.Downloads {
+			if next.Downloads[i].ID == id {
+				return i
+			}
+		}
+		return -1
+	}
+	switch cmd.Action {
+	case "add":
+		if status == "created" && cmd.Download != nil && find(cmd.Download.ID) < 0 {
+			next.Downloads = append(next.Downloads, *cmd.Download)
+			changed = true
+		}
+	case "pause":
+		if i := find(cmd.DownloadID); i >= 0 {
+			next.Downloads[i].State = "Paused"
+			changed = true
+		}
+	case "resume", "retry":
+		if i := find(cmd.DownloadID); i >= 0 {
+			next.Downloads[i].State = "Queued"
+			changed = true
+		}
+	case "cancel":
+		if i := find(cmd.DownloadID); i >= 0 {
+			next.Downloads[i].State = "Cancelled"
+			changed = true
+		}
+	case "delete":
+		if i := find(cmd.DownloadID); i >= 0 {
+			next.Downloads = append(next.Downloads[:i], next.Downloads[i+1:]...)
+			changed = true
+		}
+	case "pause_all":
+		for i := range next.Downloads {
+			switch next.Downloads[i].State {
+			case "Completed", "Failed", "Cancelled", "RecoveryRequired":
+				continue
+			}
+			next.Downloads[i].State = "Paused"
+			changed = true
+		}
+	case "resume_all":
+		for i := range next.Downloads {
+			switch next.Downloads[i].State {
+			case "Paused", "WaitingForNetwork", "WaitingForPower":
+				next.Downloads[i].State = "Queued"
+				changed = true
+			}
+		}
+	}
+	if changed {
+		next.Revision++
+		s.projection = next
+	}
+	return next, changed
+}
+
 func validateAndroidUIProjection(p AndroidUIProjection) error {
 	seen := make(map[string]struct{}, len(p.Downloads))
 	for _, d := range p.Downloads {
@@ -118,6 +202,9 @@ func validateAndroidUICommand(c AndroidUICommand) error {
 }
 
 func (e *Engine) androidUISyncHandler(ctx context.Context, inv *Invocation, env command.Envelope) error {
+	if e.androidAuthority.imported() {
+		return errors.New("legacy Android Room download mirror is disabled after authoritative import")
+	}
 	var projection AndroidUIProjection
 	if err := json.Unmarshal(env.Payload, &projection); err != nil {
 		return fmt.Errorf("decode android UI projection: %w", err)
@@ -153,11 +240,26 @@ func (e *Engine) androidUICommandHandler(ctx context.Context, inv *Invocation, e
 	if reply.ErrorCode != "" {
 		result["error_code"] = reply.ErrorCode
 	}
+	status := ""
 	if len(reply.Payload) > 0 {
 		var extra map[string]any
 		if json.Unmarshal(reply.Payload, &extra) == nil {
 			for k, v := range extra {
 				result[k] = v
+			}
+			if value, ok := extra["status"].(string); ok {
+				status = value
+			}
+		}
+	}
+	if err == nil && reply.OK {
+		if projection, changed := e.androidUI.applyCommand(cmd, status); changed {
+			if persistErr := e.androidAuthority.saveUI(projection); persistErr != nil {
+				return persistErr
+			}
+			projected, _ := json.Marshal(projection)
+			if _, persistErr := inv.Emit(event.Telemetry, "android.ui.projection", projected, "android.ui.downloads"); persistErr != nil {
+				return persistErr
 			}
 		}
 	}

@@ -108,10 +108,11 @@ func xdm_engine_create(config *C.uint8_t, configLen C.size_t, outHandle *C.uint6
 	if outHandle == nil {
 		return C.XDM_E_INVALID
 	}
-	if _, err := v1.DecodeCreateConfig(bytesFromC(config, configLen)); err != nil {
+	cfg, err := v1.DecodeCreateConfig(bytesFromC(config, configLen))
+	if err != nil {
 		return status(err)
 	}
-	e := engineruntime.New(engineruntime.Config{})
+	e := engineruntime.New(engineruntime.Config{StatePath: cfg.StatePath})
 	if err := e.Start(); err != nil {
 		return status(err)
 	}

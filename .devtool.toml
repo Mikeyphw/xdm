@@ -2429,6 +2429,28 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/android/android-media-e2e.json"]
 
+[targets.xgo_android.jobs.android_import_matrix]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_import_matrix",
+  "--output", ".devtool/reports/xgo/android/android-import-matrix.json",
+]
+inputs = [
+  "engine/ops/**",
+  "engine/runtime/**",
+  "engine/api/v1/**",
+  "engine/bridge/cabi/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyRoomImporter.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
+  "app/XDM.Android/persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt",
+  "engine/testdata/android/xgo-cap-android-005.json",
+]
+outputs = [".devtool/reports/xgo/android/android-import-matrix.json"]
+
 [targets.xgo_android.jobs.android_host_runtime_tests]
 runner = "command"
 command = ["go", "test", "./engine/androidhost", "./engine/runtime"]
@@ -2449,7 +2471,8 @@ validate = [
   { id = "android_scheduler_authority", ref = "job:android_scheduler_authority", depends_on = ["android_network_security"] },
   { id = "android_ui_smoke", ref = "job:android_ui_smoke", depends_on = ["android_scheduler_authority"] },
   { id = "android_media_e2e", ref = "job:android_media_e2e", depends_on = ["android_ui_smoke"] },
-  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_media_e2e"] },
+  { id = "android_import_matrix", ref = "job:android_import_matrix", depends_on = ["android_media_e2e"] },
+  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_import_matrix"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
