@@ -2406,6 +2406,29 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/android/android-ui-smoke.json"]
 
+
+[targets.xgo_android.jobs.android_media_e2e]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_media_e2e",
+  "--output", ".devtool/reports/xgo/android/android-media-e2e.json",
+]
+inputs = [
+  "engine/media/**",
+  "engine/runtime/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidMediaUiClient.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidMediaUiProtocol.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidMediaPlatformBroker.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineService.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidPlatformRequestDispatcher.kt",
+]
+outputs = [".devtool/reports/xgo/android/android-media-e2e.json"]
+
 [targets.xgo_android.jobs.android_host_runtime_tests]
 runner = "command"
 command = ["go", "test", "./engine/androidhost", "./engine/runtime"]
@@ -2425,7 +2448,8 @@ validate = [
   { id = "android_network_security", ref = "job:android_network_security", depends_on = ["android_publication_faults"] },
   { id = "android_scheduler_authority", ref = "job:android_scheduler_authority", depends_on = ["android_network_security"] },
   { id = "android_ui_smoke", ref = "job:android_ui_smoke", depends_on = ["android_scheduler_authority"] },
-  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_ui_smoke"] },
+  { id = "android_media_e2e", ref = "job:android_media_e2e", depends_on = ["android_ui_smoke"] },
+  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_media_e2e"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

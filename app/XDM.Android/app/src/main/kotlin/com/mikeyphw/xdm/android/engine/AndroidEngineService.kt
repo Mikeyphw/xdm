@@ -36,7 +36,9 @@ class AndroidEngineService : Service() {
 
     fun projections(): StateFlow<AndroidEngineProjection> = authority.projections()
     fun downloadProjections(): StateFlow<AndroidDownloadUiProjection> = authority.downloadProjections()
+    fun mediaProjections(): StateFlow<AndroidMediaUiProjection> = authority.mediaProjections()
     suspend fun submitDownloadUiCommand(payload: JSONObject): AndroidDownloadUiCommandResult = authority.submitDownloadUiCommand(payload)
+    suspend fun submitMediaUiCommand(kind: String, payload: JSONObject): AndroidMediaUiCommandResult = authority.submitMediaUiCommand(kind, payload)
 
     @Synchronized
     fun ensureSingleEngine(reason: ProcessRestartRecovery): String = authority.ensureSingleEngine(reason).also {

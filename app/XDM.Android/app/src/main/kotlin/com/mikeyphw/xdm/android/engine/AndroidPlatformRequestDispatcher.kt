@@ -4,13 +4,20 @@ import com.mikeyphw.xdm.android.network.AndroidNetworkPolicyBroker
 import com.mikeyphw.xdm.android.network.AndroidSecretRef
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** Handles the XGO-70 platform requests that require Android OS facts or secure storage. */
 class AndroidPlatformRequestDispatcher(
     private val bridge: AndroidGoEngineBridge,
     private val network: AndroidNetworkPolicyBroker,
     private val downloadUiBroker: () -> AndroidLegacyDownloadUiBroker?,
+    private val mediaBroker: () -> AndroidMediaPlatformBroker?,
 ) {
+    private val mediaToolScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     suspend fun dispatch(frameBytes: ByteArray): Boolean {
         val envelope = runCatching { JSONObject(String(frameBytes, Charsets.UTF_8)) }.getOrNull() ?: return false
         if (envelope.optString("kind") != "platform.request") return false
@@ -19,6 +26,20 @@ class AndroidPlatformRequestDispatcher(
         val session = request.optLong("session", 0L)
         if (requestId <= 0L || session <= 0L) return false
         val payload = request.optJSONObject("payload") ?: JSONObject()
+        if (request.optString("kind") == "external_media_tool") {
+            val broker = mediaBroker() ?: run {
+                bridge.platformReply(errorReply(requestId, session, "media_broker_unavailable").toString().toByteArray(Charsets.UTF_8))
+                return true
+            }
+            // FFmpeg may run for minutes. Keep the JNI frame pump free while the typed host
+            // operation executes; the correlated platform reply still completes the waiting Go op.
+            mediaToolScope.launch {
+                val reply = runCatching { mediaToolReply(requestId, session, payload, broker) }
+                    .getOrElse { errorReply(requestId, session, "media_tool_failed", it.message ?: "Android media tool failed") }
+                runCatching { bridge.platformReply(reply.toString().toByteArray(Charsets.UTF_8)) }
+            }
+            return true
+        }
         val reply = when (request.optString("kind")) {
             "runtime_conditions" -> successReply(requestId, session, runtimeConditionsJson())
             "network_policy" -> networkPolicyReply(requestId, session, payload)
@@ -92,6 +113,23 @@ class AndroidPlatformRequestDispatcher(
                 .put("ok", false)
                 .put("payload", result)
                 .put("error_code", result.optString("error_code", "ui_command_rejected"))
+        }
+    }
+
+
+    private suspend fun mediaToolReply(requestId: Long, session: Long, payload: JSONObject, broker: AndroidMediaPlatformBroker): JSONObject {
+        val result = runCatching { broker.execute(payload) }
+            .getOrElse { return errorReply(requestId, session, "media_tool_failed", it.message ?: "Android media tool failed") }
+        return if (result.optBoolean("ok", false)) {
+            successReply(requestId, session, result)
+        } else {
+            JSONObject()
+                .put("protocol", protocol())
+                .put("request_id", requestId)
+                .put("session", session)
+                .put("ok", false)
+                .put("payload", result)
+                .put("error_code", result.optString("error_code", "media_tool_rejected"))
         }
     }
 

@@ -35,6 +35,9 @@ import com.mikeyphw.xdm.android.engine.AndroidEngineProcessAuthority
 import com.mikeyphw.xdm.android.engine.AndroidDownloadUiClient
 import com.mikeyphw.xdm.android.engine.AndroidDownloadUiPlatformBrokerProvider
 import com.mikeyphw.xdm.android.engine.AndroidLegacyDownloadUiBroker
+import com.mikeyphw.xdm.android.engine.AndroidMediaPlatformBroker
+import com.mikeyphw.xdm.android.engine.AndroidMediaPlatformBrokerProvider
+import com.mikeyphw.xdm.android.engine.AndroidMediaUiClient
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
@@ -65,8 +68,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, AndroidDownloadUiPlatformBrokerProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, AndroidDownloadUiPlatformBrokerProvider, AndroidMediaPlatformBrokerProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
     lateinit var container: AppContainer
         private set
 
@@ -74,9 +78,13 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         private set
 
     private lateinit var androidDownloadUiPlatformBroker: AndroidLegacyDownloadUiBroker
+    private lateinit var androidMediaPlatformBroker: AndroidMediaPlatformBroker
 
     override fun androidDownloadUiPlatformBrokerOrNull(): AndroidLegacyDownloadUiBroker? =
         if (::androidDownloadUiPlatformBroker.isInitialized) androidDownloadUiPlatformBroker else null
+
+    override fun androidMediaPlatformBrokerOrNull(): AndroidMediaPlatformBroker? =
+        if (::androidMediaPlatformBroker.isInitialized) androidMediaPlatformBroker else null
 
     override val androidGoEngineHost: AndroidGoEngineHost = AndroidGoEngineHost { request ->
         androidEngineProcessAuthority.wake(request)
@@ -146,6 +154,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         val recoveryStore = RoomRecoveryWorkflowStore(database)
         val destinationWriter = AndroidDestinationWriter(this)
         val embeddedFfmpegRuntime = EmbeddedFfmpegRuntime(this)
+        androidMediaPlatformBroker = AndroidMediaPlatformBroker(this, embeddedFfmpegRuntime)
         val embeddedFfmpegMediaManager = EmbeddedFfmpegMediaManager(
             repository = repository,
             destinationWriter = destinationWriter,
@@ -235,14 +244,24 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             termuxMedia = termuxMediaPipelineManager,
         )
         val androidDownloadUiClient = AndroidDownloadUiClient(this)
+        val androidMediaUiClient = AndroidMediaUiClient(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             androidDownloadUiPlatformBroker.mirrorIntoGo(androidEngineProcessAuthority)
+        }
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            combine(repository.mediaCaptures, repository.mediaVariants) { captures, variants -> captures to variants }
+                .collectLatest { (captures, variants) ->
+                    // Transitional XGO-73 mirror only. XGO-74 replaces this Room source with the
+                    // one-time import package; Compose already reads the Go projection.
+                    androidEngineProcessAuthority.syncLegacyMediaProjection(captures, variants)
+                }
         }
         // Queue admission remains durably closed until migration and ownership recovery both finish.
         queueIntelligenceCoordinator.installStartupRecoveryHold()
         container = AppContainer(
             repository = repository,
             androidDownloadUiClient = androidDownloadUiClient,
+            androidMediaUiClient = androidMediaUiClient,
             preferences = preferences,
             ownershipStore = ownershipStore,
             backendSelectionPolicy = BackendSelectionPolicy(),
@@ -383,6 +402,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
 data class AppContainer(
     val repository: DownloadRepository,
     val androidDownloadUiClient: AndroidDownloadUiClient,
+    val androidMediaUiClient: AndroidMediaUiClient,
     val preferences: UserPreferencesStore,
     val ownershipStore: BackendOwnershipStore,
     val backendSelectionPolicy: BackendSelectionPolicy,

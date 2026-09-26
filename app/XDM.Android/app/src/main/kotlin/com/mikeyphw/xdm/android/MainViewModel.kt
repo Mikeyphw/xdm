@@ -139,6 +139,7 @@ import com.mikeyphw.xdm.android.model.SettingsExchangeImportResult
 import com.mikeyphw.xdm.android.model.SettingsExchangeSnapshot
 import com.mikeyphw.xdm.android.model.SavedSearch
 import com.mikeyphw.xdm.android.engine.AndroidDownloadUiClient
+import com.mikeyphw.xdm.android.engine.AndroidMediaUiClient
 import com.mikeyphw.xdm.android.engine.AndroidEngineUiConnection
 import com.mikeyphw.xdm.android.persistence.DownloadRepository
 import com.mikeyphw.xdm.android.persistence.MediaDownloadAdmissionResult
@@ -397,6 +398,7 @@ data class MainUiState(
 class MainViewModel(
     private val repository: DownloadRepository,
     private val androidDownloadUiClient: AndroidDownloadUiClient,
+    private val androidMediaUiClient: AndroidMediaUiClient,
     private val preferences: UserPreferencesStore,
     private val backendSelectionPolicy: BackendSelectionPolicy,
     private val transferRuntime: TransferExecutionRuntime,
@@ -600,8 +602,12 @@ class MainViewModel(
         val automation: List<AutomationCommandRecord>,
     )
 
-    private val mediaSnapshot = combine(repository.mediaCaptures, repository.mediaObservationEvidence, repository.mediaVariants, repository.mediaOutputs) { captures, observations, variants, outputs ->
-        MediaRepositorySnapshot(captures, observations, variants, outputs)
+    /**
+     * XGO-73: the media inbox and selection surface consume the Go-owned MediaGraph projection.
+     * Room observations/outputs remain transitional evidence until XGO-74 imports durable state.
+     */
+    private val mediaSnapshot = combine(androidMediaUiClient.projection, repository.mediaObservationEvidence, repository.mediaOutputs) { projection, observations, outputs ->
+        MediaRepositorySnapshot(projection.captures, observations, projection.variants, outputs)
     }
 
     private val mediaAutomationSnapshot = combine(mediaSnapshot, repository.automationCommands) { media, automation ->
@@ -772,7 +778,10 @@ class MainViewModel(
         val mediaOutputAdmissionsInFlight: Set<String>,
     )
 
-    private val reviewUiBase = combine(externalAddDraft, mediaResolverSelectionStore.selections, operationalActivityStore.snapshot) { draft, selections, activity ->
+    private val goMediaSelections = androidMediaUiClient.projection
+        .map { it.selections }
+
+    private val reviewUiBase = combine(externalAddDraft, goMediaSelections, operationalActivityStore.snapshot) { draft, selections, activity ->
         Triple(draft, selections, activity)
     }
 
@@ -4473,10 +4482,68 @@ class MainViewModel(
         }
     }
 
+    private fun isGoAdaptiveMedia(record: MediaCaptureRecord): Boolean {
+        val mime = record.mimeType.orEmpty().lowercase()
+        val url = record.sourceUrl.substringBefore('?').lowercase()
+        return record.kind == MediaSourceKind.HlsPlaylist ||
+            record.kind == MediaSourceKind.DashManifest ||
+            mime.contains("mpegurl") || mime.contains("dash+xml") ||
+            url.endsWith(".m3u8") || url.endsWith(".mpd")
+    }
+
+    /** XGO-73: adaptive media execution authority is Go; Kotlin only submits the selected graph ids. */
+    private fun downloadAdaptiveMediaViaGo(record: MediaCaptureRecord, selection: MediaTrackSelection) {
+        if (!mediaOutputAdmissionClaims.add(record.id)) {
+            publishMediaIntakeFeedback(
+                MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Already starting media", "This capture already has a Go media execution submission in progress."),
+                navigateToMedia = false,
+            )
+            return
+        }
+        mediaOutputAdmissionsInFlight.value = mediaOutputAdmissionClaims.toSet()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val selected = androidMediaUiClient.select(record.id, selection)
+                if (!selected.ok) {
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not select media", selected.message ?: selected.errorCode ?: "Go rejected the selected media tracks."),
+                        navigateToMedia = false,
+                    )
+                    return@launch
+                }
+                // Keep only transitional UI preferences here; the Go projection is the selection authority.
+                mediaResolverSelectionStore.save(record.id, selection)
+                val execution = androidMediaUiClient.execute(record.id)
+                if (!execution.ok) {
+                    publishMediaIntakeFeedback(
+                        MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not start adaptive media", execution.message ?: execution.errorCode ?: "Go could not submit the typed FFmpeg operation."),
+                        navigateToMedia = false,
+                    )
+                    return@launch
+                }
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(
+                        MediaIntakeFeedbackKind.Found,
+                        "Adaptive media submitted",
+                        "The selected HLS/DASH graph was submitted to Go; Android will execute only the typed FFmpeg request returned by the engine.",
+                    ),
+                    navigateToMedia = false,
+                )
+            } finally {
+                mediaOutputAdmissionClaims.remove(record.id)
+                mediaOutputAdmissionsInFlight.value = mediaOutputAdmissionClaims.toSet()
+            }
+        }
+    }
+
     fun downloadMediaCapture(record: MediaCaptureRecord,
         selection: MediaTrackSelection = MediaTrackSelection(videoVariantId = record.selectedVariantId),
         admissionMode: MediaOutputAdmissionMode = MediaOutputAdmissionMode.Primary,
     ) {
+        if (isGoAdaptiveMedia(record)) {
+            downloadAdaptiveMediaViaGo(record, selection)
+            return
+        }
         if (!mediaOutputAdmissionClaims.add(record.id)) {
             publishMediaIntakeFeedback(
                 MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Working, "Already adding media", "This capture already has an output admission in progress."),
@@ -4957,17 +5024,37 @@ class MainViewModel(
     }
 
     fun selectMediaVariant(record: MediaCaptureRecord, variantId: String) {
-        val current = mediaResolverSelectionStore.selections.value[record.id] ?: MediaTrackSelection(videoVariantId = record.selectedVariantId)
-        mediaResolverSelectionStore.save(record.id, current.copy(videoVariantId = variantId))
+        val current = androidMediaUiClient.projection.value.selections[record.id]
+            ?: MediaTrackSelection(videoVariantId = record.selectedVariantId)
+        val next = current.copy(videoVariantId = variantId)
         viewModelScope.launch(Dispatchers.IO) {
-            val variants = repository.variantsForMediaCapture(record.id)
-            val selected = variants.firstOrNull { it.id == variantId } ?: return@launch
-            repository.selectMediaVariant(record.id, selected)
+            val result = androidMediaUiClient.select(record.id, next)
+            if (!result.ok) {
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not select media", result.message ?: result.errorCode ?: "Go rejected this media variant."),
+                    navigateToMedia = false,
+                )
+                return@launch
+            }
+            // Transitional persistence only. Compose reads the Go projection above, not this store/Room.
+            mediaResolverSelectionStore.save(record.id, next)
+            val selected = repository.variantsForMediaCapture(record.id).firstOrNull { it.id == variantId }
+            if (selected != null) repository.selectMediaVariant(record.id, selected)
         }
     }
 
     fun updateMediaTrackSelection(record: MediaCaptureRecord, selection: MediaTrackSelection) {
-        mediaResolverSelectionStore.save(record.id, selection)
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = androidMediaUiClient.select(record.id, selection)
+            if (result.ok) {
+                mediaResolverSelectionStore.save(record.id, selection)
+            } else {
+                publishMediaIntakeFeedback(
+                    MediaIntakeFeedbackUi(MediaIntakeFeedbackKind.Failed, "Could not select tracks", result.message ?: result.errorCode ?: "Go rejected this media selection."),
+                    navigateToMedia = false,
+                )
+            }
+        }
     }
 
     fun cancelEmbeddedFfmpegOutput(output: MediaOutputRecord) {
@@ -5402,6 +5489,7 @@ class MainViewModel(
         override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(
             container.repository,
             container.androidDownloadUiClient,
+            container.androidMediaUiClient,
             container.preferences,
             container.backendSelectionPolicy,
             container.transferRuntime,

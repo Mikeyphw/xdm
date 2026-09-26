@@ -2,6 +2,8 @@ package com.mikeyphw.xdm.android.engine
 
 import android.content.Context
 import com.mikeyphw.xdm.android.model.Download
+import com.mikeyphw.xdm.android.model.MediaCaptureRecord
+import com.mikeyphw.xdm.android.model.MediaVariant
 import com.mikeyphw.xdm.android.network.AndroidNetworkPolicyBroker
 import com.mikeyphw.xdm.android.scheduler.AndroidEngineWakeDisposition
 import com.mikeyphw.xdm.android.scheduler.AndroidEngineWakeRequest
@@ -38,8 +40,11 @@ class AndroidEngineProcessAuthority(context: Context) {
     private val state = MutableStateFlow<AndroidEngineProjection>(AndroidEngineProjection.Stopped)
     private val outboundFrames = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
     private val downloadProjection = MutableStateFlow(AndroidDownloadUiProjection())
+    private val mediaProjection = MutableStateFlow(AndroidMediaUiProjection())
     private val pendingUiCommands = ConcurrentHashMap<String, CompletableDeferred<AndroidDownloadUiCommandResult>>()
+    private val pendingMediaCommands = ConcurrentHashMap<String, CompletableDeferred<AndroidMediaUiCommandResult>>()
     private val uiCommandSequence = AtomicLong(1L)
+    private val mediaMirrorSequence = AtomicLong(1L)
     private val acceptedWakeEvents = ConcurrentHashMap.newKeySet<String>()
     private var bridge: AndroidGoEngineBridge? = null
     private var framePump: Job? = null
@@ -47,6 +52,7 @@ class AndroidEngineProcessAuthority(context: Context) {
 
     fun projections(): StateFlow<AndroidEngineProjection> = state.asStateFlow()
     fun downloadProjections(): StateFlow<AndroidDownloadUiProjection> = downloadProjection.asStateFlow()
+    fun mediaProjections(): StateFlow<AndroidMediaUiProjection> = mediaProjection.asStateFlow()
     fun frames(): SharedFlow<ByteArray> = outboundFrames.asSharedFlow()
 
     @Synchronized
@@ -95,6 +101,54 @@ class AndroidEngineProcessAuthority(context: Context) {
         runCatching { currentBridge.command(uiCommand("android.ui.sync_downloads", payload, "projection:$revision")) }
     }
 
+    fun syncLegacyMediaProjection(captures: List<MediaCaptureRecord>, variants: List<MediaVariant>) {
+        val revision = mediaMirrorSequence.getAndIncrement()
+        val currentBridge = synchronized(this) {
+            ensureSingleEngine(ProcessRestartRecovery.PlatformWake)
+            bridge
+        } ?: return
+        val payload = AndroidMediaUiWire.syncPayload(revision, captures, variants)
+        runCatching { currentBridge.command(uiCommand("android.media.sync_legacy", payload, "media-mirror:$revision")) }
+    }
+
+    suspend fun submitMediaUiCommand(kind: String, payload: JSONObject): AndroidMediaUiCommandResult {
+        require(kind in setOf("android.media.capture", "android.media.select", "android.media.execute")) { "unsupported Android media command kind" }
+        val requestId = payload.optString("client_request_id").takeIf(String::isNotBlank)
+            ?: "media-ui-${uiCommandSequence.getAndIncrement()}"
+        val commandPayload = JSONObject(payload.toString()).put("client_request_id", requestId)
+        val action = when (kind) {
+            "android.media.capture" -> "capture"
+            "android.media.select" -> "select"
+            else -> "execute"
+        }
+        val currentBridge = synchronized(this) {
+            ensureSingleEngine(ProcessRestartRecovery.Bind)
+            bridge
+        } ?: return AndroidMediaUiCommandResult(requestId, action, false, errorCode = "engine_disconnected", message = "Go engine is unavailable")
+
+        // FFmpeg execution may outlive an Activity/UI correlation window. Submission success means
+        // the command reached the single Go engine; final tool completion returns later through the
+        // correlated platform request without blocking the caller or the JNI frame pump.
+        if (kind == "android.media.execute") {
+            return runCatching {
+                currentBridge.command(uiCommand(kind, commandPayload, "media-ui:$requestId"))
+                AndroidMediaUiCommandResult(requestId, action, true, status = "submitted_to_go", captureId = commandPayload.optString("capture_id"))
+            }.getOrElse { error ->
+                AndroidMediaUiCommandResult(requestId, action, false, errorCode = "engine_disconnected", message = error.message ?: "Go media command failed")
+            }
+        }
+
+        val deferred = CompletableDeferred<AndroidMediaUiCommandResult>()
+        check(pendingMediaCommands.putIfAbsent(requestId, deferred) == null) { "duplicate Android media UI request id" }
+        return try {
+            currentBridge.command(uiCommand(kind, commandPayload, "media-ui:$requestId"))
+            withTimeout(UI_COMMAND_TIMEOUT_MS) { deferred.await() }
+        } catch (error: Throwable) {
+            pendingMediaCommands.remove(requestId)
+            AndroidMediaUiCommandResult(requestId, action, false, errorCode = "engine_disconnected", message = error.message ?: "Go media command failed")
+        }
+    }
+
     suspend fun submitDownloadUiCommand(payload: JSONObject): AndroidDownloadUiCommandResult {
         val requestId = payload.optString("client_request_id").takeIf(String::isNotBlank)
             ?: "ui-${uiCommandSequence.getAndIncrement()}"
@@ -123,7 +177,9 @@ class AndroidEngineProcessAuthority(context: Context) {
         val dispatcher = AndroidPlatformRequestDispatcher(
             currentBridge,
             AndroidNetworkPolicyBroker(appContext),
-        ) { (appContext as? AndroidDownloadUiPlatformBrokerProvider)?.androidDownloadUiPlatformBrokerOrNull() }
+            { (appContext as? AndroidDownloadUiPlatformBrokerProvider)?.androidDownloadUiPlatformBrokerOrNull() },
+            { (appContext as? AndroidMediaPlatformBrokerProvider)?.androidMediaPlatformBrokerOrNull() },
+        )
         framePump = scope.launch {
             while (isActive) {
                 val frame = runCatching { currentBridge.nextFrame(FRAME_POLL_TIMEOUT_MS) }.getOrNull()
@@ -149,6 +205,16 @@ class AndroidEngineProcessAuthority(context: Context) {
             "android.ui.command_result" -> {
                 val result = runCatching { AndroidDownloadUiWire.result(payload) }.getOrNull() ?: return true
                 pendingUiCommands.remove(result.requestId)?.complete(result)
+                true
+            }
+            "android.media.projection" -> {
+                runCatching { AndroidMediaUiWire.projection(payload) }
+                    .onSuccess { mediaProjection.value = it }
+                true
+            }
+            "android.media.command_result" -> {
+                val result = runCatching { AndroidMediaUiWire.result(payload) }.getOrNull() ?: return true
+                pendingMediaCommands.remove(result.requestId)?.complete(result)
                 true
             }
             else -> false

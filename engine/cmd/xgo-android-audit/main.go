@@ -47,6 +47,8 @@ func main() {
 		r, err = androidSchedulerAuthority()
 	case "android_ui_smoke":
 		r, err = androidUISmoke()
+	case "android_media_e2e":
+		r, err = androidMediaE2E()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -674,6 +676,215 @@ func androidUISmoke() (report, error) {
 		"temporary Room/runtime bridge is behind Go platform requests",
 		"connection loss keeps last projection and rebinds",
 		"activity recreation reuses process-scoped client and single engine authority",
+	}}, nil
+}
+
+func androidMediaE2E() (report, error) {
+	engine := engineruntime.New(engineruntime.Config{EventBuffer: 64, PlatformBuffer: 8})
+	if err := engine.Start(); err != nil {
+		return report{}, err
+	}
+	defer engine.Shutdown(context.Background())
+
+	makeEnvelope := func(token, kind, payload string) (command.Envelope, error) {
+		id, err := command.ParseID("cmd_" + token)
+		if err != nil {
+			return command.Envelope{}, err
+		}
+		op, err := identity.ParseOperationID("op_" + token)
+		if err != nil {
+			return command.Envelope{}, err
+		}
+		return command.Envelope{ID: id, OperationID: op, Kind: kind, Payload: json.RawMessage(payload)}, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	capturePayload := `{
+      "client_request_id":"media-audit-capture",
+      "capture_record":{"id":"cap-audit","source_url":"https://media.test/master.m3u8","page_url":"https://media.test/watch","title":"Audit","kind":"HlsPlaylist","mime_type":"application/vnd.apple.mpegurl","container":"mpegts","codecs":"avc1","duration_ms":120000,"file_name":"audit.mp4","selected_variant_id":"var-audit","manifest_is_live":false,"manifest_protected":false,"logical_media_id":"logical-audit","row_revision":7},
+      "variants":[{"id":"var-audit","capture_id":"cap-audit","url":"https://cdn.media.test/v1.m3u8","kind":"Video","mime_type":"application/vnd.apple.mpegurl","width":1920,"height":1080,"bitrate_bits_per_second":4000000,"codecs":"avc1"}],
+      "envelope":{"version":1,"request":{"url":"https://media.test/master.m3u8","method":"GET","headers":[{"name":"Accept","value":"application/vnd.apple.mpegurl"}]},"page":{"page_url":"https://media.test/watch","session_id":"audit-session","document_generation":7},"credential_scope":{"ref":"capture:cap-audit"}}
+    }`
+	captureEnv, err := makeEnvelope("00000000000000000000000000000084", engineruntime.AndroidMediaCaptureKind, capturePayload)
+	if err != nil {
+		return report{}, err
+	}
+	if err := engine.Submit(context.Background(), captureEnv); err != nil {
+		return report{}, err
+	}
+	seenProjection := false
+	seenCaptureResult := false
+	for !seenProjection || !seenCaptureResult {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		switch frame.Kind {
+		case "android.media.projection":
+			var projected map[string]any
+			if err := json.Unmarshal(frame.Payload, &projected); err != nil {
+				return report{}, err
+			}
+			captures, _ := projected["captures"].([]any)
+			variants, _ := projected["variants"].([]any)
+			if len(captures) != 1 || len(variants) != 1 {
+				return report{}, fmt.Errorf("bad Android media projection: %s", frame.Payload)
+			}
+			seenProjection = true
+		case "android.media.command_result":
+			var result map[string]any
+			if err := json.Unmarshal(frame.Payload, &result); err != nil {
+				return report{}, err
+			}
+			if result["client_request_id"] == "media-audit-capture" && result["ok"] == true && result["status"] == "graph_updated" {
+				seenCaptureResult = true
+			}
+		}
+	}
+
+	selectEnv, err := makeEnvelope("00000000000000000000000000000085", engineruntime.AndroidMediaSelectKind, `{"client_request_id":"media-audit-select","capture_id":"cap-audit","selection":{"video_variant_id":"var-audit"}}`)
+	if err != nil {
+		return report{}, err
+	}
+	if err := engine.Submit(context.Background(), selectEnv); err != nil {
+		return report{}, err
+	}
+	for {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind == "android.media.command_result" && strings.Contains(string(frame.Payload), "media-audit-select") {
+			break
+		}
+	}
+
+	executeEnv, err := makeEnvelope("00000000000000000000000000000086", engineruntime.AndroidMediaExecuteKind, `{"client_request_id":"media-audit-execute","capture_id":"cap-audit"}`)
+	if err != nil {
+		return report{}, err
+	}
+	if err := engine.Submit(context.Background(), executeEnv); err != nil {
+		return report{}, err
+	}
+	var request platform.Request
+	for {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind != "platform.request" {
+			continue
+		}
+		if err := json.Unmarshal(frame.Payload, &request); err != nil {
+			return report{}, err
+		}
+		break
+	}
+	if request.Kind != platform.ExternalMediaTool {
+		return report{}, fmt.Errorf("adaptive execution did not use external_media_tool: %s", request.Kind)
+	}
+	var tool map[string]any
+	if err := json.Unmarshal(request.Payload, &tool); err != nil {
+		return report{}, err
+	}
+	if tool["tool"] != "ffmpeg" || tool["operation"] != "finalize_adaptive" || tool["protocol"] != "hls" || tool["capture_id"] != "cap-audit" || tool["variant_id"] != "var-audit" {
+		return report{}, fmt.Errorf("bad typed media tool request: %v", tool)
+	}
+	for _, forbidden := range []string{"source_url", "headers", "cookie", "authorization"} {
+		if _, leaked := tool[forbidden]; leaked {
+			return report{}, fmt.Errorf("typed media tool request leaked %s: %v", forbidden, tool)
+		}
+	}
+	if err := engine.PlatformReply(platform.Reply{RequestID: request.ID, Session: request.Session, OK: true, Payload: json.RawMessage(`{"ok":true,"output_path":"/data/user/0/app/files/xgo-media-broker/cap-audit/audit.mp4","exit_code":0}`)}); err != nil {
+		return report{}, err
+	}
+	for {
+		frame, err := engine.NextFrame(ctx)
+		if err != nil {
+			return report{}, err
+		}
+		if frame.Kind != "android.media.command_result" {
+			continue
+		}
+		var result map[string]any
+		if err := json.Unmarshal(frame.Payload, &result); err != nil {
+			return report{}, err
+		}
+		if result["client_request_id"] != "media-audit-execute" || result["ok"] != true || result["status"] != "started_via_go" {
+			return report{}, fmt.Errorf("bad adaptive execution result: %v", result)
+		}
+		break
+	}
+
+	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
+	for _, needle := range []string{"combine(repository.mediaCaptures, repository.mediaVariants)", "syncLegacyMediaProjection(captures, variants)", "AndroidMediaPlatformBroker(this, embeddedFfmpegRuntime)", "AndroidMediaUiClient(this)"} {
+		if !strings.Contains(application, needle) {
+			return report{}, fmt.Errorf("Android media host wiring missing %s", needle)
+		}
+	}
+	wire := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidMediaUiProtocol.kt")
+	for _, needle := range []string{"captureEnvelope(record, sessionId, documentGeneration, headers)", "credential_scope", "isSensitiveHeaderName", `name.contains("token")`, `name.endsWith("-key")`} {
+		if !strings.Contains(wire, needle) {
+			return report{}, fmt.Errorf("CaptureEnvelope translation/sanitization missing %s", needle)
+		}
+	}
+	runtimeSource := mustRead("engine/runtime/android_media.go")
+	for _, needle := range []string{"media.NewCaptureEnvelope", "media.NewMediaGraph", "graph.Ingest", "PlatformRequest(ctx, platform.ExternalMediaTool", `"tool":         "ffmpeg"`} {
+		if !strings.Contains(runtimeSource, needle) {
+			return report{}, fmt.Errorf("Go media authority missing %s", needle)
+		}
+	}
+
+	viewModel := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
+	for _, needle := range []string{"combine(androidMediaUiClient.projection, repository.mediaObservationEvidence, repository.mediaOutputs)", "MediaRepositorySnapshot(projection.captures, observations, projection.variants, outputs)", "private val goMediaSelections = androidMediaUiClient.projection"} {
+		if !strings.Contains(viewModel, needle) {
+			return report{}, fmt.Errorf("Media inbox is not Go-projection driven: missing %s", needle)
+		}
+	}
+	downloadSection, err := sourceSection(viewModel, "    fun downloadMediaCapture(", "    fun selectMediaVariant(")
+	if err != nil {
+		return report{}, err
+	}
+	goBranch := strings.Index(downloadSection, "if (isGoAdaptiveMedia(record))")
+	legacyPlanner := strings.Index(downloadSection, "mediaExecutionPlanner.queueSpec")
+	if goBranch < 0 || legacyPlanner < 0 || goBranch > legacyPlanner || !strings.Contains(downloadSection[goBranch:legacyPlanner], "downloadAdaptiveMediaViaGo(record, selection)") || !strings.Contains(downloadSection[goBranch:legacyPlanner], "return") {
+		return report{}, fmt.Errorf("HLS/DASH does not short-circuit to Go before legacy Kotlin media planning")
+	}
+	selectSection, err := sourceSection(viewModel, "    fun selectMediaVariant(", "    fun updateMediaTrackSelection(")
+	if err != nil {
+		return report{}, err
+	}
+	if !strings.Contains(selectSection, "androidMediaUiClient.select") {
+		return report{}, fmt.Errorf("media selection does not cross Go")
+	}
+
+	broker := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidMediaPlatformBroker.kt")
+	for _, needle := range []string{"request_kind", `payload.optString("tool") != "ffmpeg"`, "MediaRequestHandoffStore::forVariant", "FfmpegOperation.FinalizeAdaptive", "FfmpegOperation.RecordStream"} {
+		if !strings.Contains(broker, needle) {
+			return report{}, fmt.Errorf("typed FFmpeg platform broker missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"Runtime.getRuntime().exec", "ProcessBuilder(", `payload.optJSONArray("argv")`, `payload.getJSONArray("argv")`} {
+		if strings.Contains(broker, forbidden) {
+			return report{}, fmt.Errorf("FFmpeg broker exposes forbidden generic process path %s", forbidden)
+		}
+	}
+	dispatcher := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidPlatformRequestDispatcher.kt")
+	for _, needle := range []string{`request.optString("kind") == "external_media_tool"`, "mediaToolScope.launch", "mediaToolReply(requestId, session, payload, broker)"} {
+		if !strings.Contains(dispatcher, needle) {
+			return report{}, fmt.Errorf("external media tool dispatcher missing %s", needle)
+		}
+	}
+
+	return report{Mode: "android_media_e2e", Pass: true, Checks: []string{
+		"Extension/WebView persisted capture is translated into a sanitized CaptureEnvelope",
+		"Go MediaGraph owns capture/variant identity and selection projection",
+		"Media inbox/ViewModel consumes Go captures, variants and selections",
+		"HLS/DASH short-circuits to Go before legacy Kotlin media planning",
+		"Go issues typed external_media_tool FFmpeg request without transport secrets",
+		"Android FFmpeg broker resolves exact encrypted request handoff locally and exposes no arbitrary argv",
+		"long-running FFmpeg execution is asynchronous at the platform dispatcher so the engine frame pump remains responsive",
 	}}, nil
 }
 
