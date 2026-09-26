@@ -2320,12 +2320,30 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/android/engine-service-instrumentation.json"]
 
+
+[targets.xgo_android.jobs.android_publication_faults]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_publication_faults",
+  "--output", ".devtool/reports/xgo/android/android-publication-faults.json",
+]
+inputs = [
+  "engine/androidhost/**",
+  "engine/domain/publication/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/publication/AndroidPublicationBroker.kt",
+  "engine/testdata/android/xgo-cap-android-003.json",
+]
+outputs = [".devtool/reports/xgo/android/android-publication-faults.json"]
+
 [targets.xgo_android.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
   { id = "android_engine_build", ref = "job:android_engine_build", depends_on = ["bootstrap_contract"] },
   { id = "jni_bridge_instrumentation", ref = "job:jni_bridge_instrumentation", depends_on = ["android_engine_build"] },
   { id = "engine_service_instrumentation", ref = "job:engine_service_instrumentation", depends_on = ["jni_bridge_instrumentation"] },
+  { id = "android_publication_faults", ref = "job:android_publication_faults", depends_on = ["engine_service_instrumentation"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

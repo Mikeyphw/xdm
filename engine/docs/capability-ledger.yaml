@@ -1142,7 +1142,7 @@
         "android_publication_safety"
       ],
       "id": "XGO-CAP-ANDROID-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-69",
       "test_id": "fixture:xgo-cap-android-003"
     },

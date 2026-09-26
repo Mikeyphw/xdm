@@ -13,14 +13,39 @@
     "android_publication_safety"
   ],
   "expected": {
+    "collision_policy_maps_to_engine_result": true,
+    "destination_kinds": [
+      "document_tree",
+      "mediastore"
+    ],
+    "failure_mappings": [
+      "permission_lost",
+      "insufficient_space",
+      "collision",
+      "provider_write_failed"
+    ],
     "invariants": [
-      "Android publication receipt survives process loss and prevents duplicate provider commit."
+      "Android publication receipt survives process loss and prevents duplicate provider commit.",
+      "SAF document-tree destinations require a persistable permission grant before provider writes.",
+      "MediaStore-like destinations do not mutate engine state directly; they reply through the publication platform receipt.",
+      "Ambiguous provider success is reconciled by inspecting the durable receipt/provider idempotency key before any retry."
     ],
     "reconcile_receipt": true,
-    "republish": false
+    "republish": false,
+    "stage_before_commit": true
   },
   "fixture_id": "xgo-cap-android-003",
   "input": {
+    "collision_policy": "fail",
+    "destination": {
+      "display_name": "movie.mp4",
+      "kind": "document_tree",
+      "mime_type": "video/mp4",
+      "permission_id": "tree-downloads",
+      "relative_path": "Videos",
+      "tree_uri": "content://tree/downloads"
+    },
+    "idempotency_key": "android-pub:fixture",
     "platform": "android",
     "process_killed": true,
     "publication_state": "PLATFORM_COMMITTED",
