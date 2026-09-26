@@ -746,7 +746,7 @@
         "XGO-CAP-OPS-001"
       ],
       "category": "settings",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "desktop_bandwidth_profile",
         "desktop_proxy_settings",
@@ -760,7 +760,7 @@
         "XGO-CAP-OPS-002"
       ],
       "category": "secrets",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_request_security_guard",
         "desktop_download_request"
@@ -773,7 +773,7 @@
         "XGO-CAP-OPS-003"
       ],
       "category": "diagnostics",
-      "detailed": false,
+      "detailed": true,
       "donor_ids": [
         "android_completion_verification",
         "android_media_dispatcher",

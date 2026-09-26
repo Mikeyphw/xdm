@@ -2117,47 +2117,87 @@ validate = [
   { id = "ffmpeg_execution_lab", ref = "job:ffmpeg_execution_lab", depends_on = ["ffmpeg_plan_goldens"] },
 ]
 
-# Bootstrap target for future roadmap ownership. The command runner is intentional
-# until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
+# XGO-62..64 activate operational settings, secret redaction, diagnostics, retention, health, and support snapshot ownership on the native Go runner.
 [targets.xgo_ops]
-runner = "command"
+runner = "go"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
+  "go.work",
+  "engine/ops/**",
+  "engine/cmd/xgo-ops-audit/**",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/settings/xgo-cap-ops-001.json",
+  "engine/testdata/secrets/xgo-cap-ops-002.json",
+  "engine/testdata/diagnostics/xgo-cap-ops-003.json",
+  "engine/testdata/diagnostics/xgo-cap-ops-004.json",
   "docs/xgo/**",
 ]
 outputs = [
+  ".devtool/build/go/**",
   ".devtool/reports/xgo/ops/**",
 ]
 
-[targets.xgo_ops.jobs.bootstrap_contract]
+[targets.xgo_ops.go]
+packages = [
+  "./engine/ops",
+]
+build_targets = ["./engine/cmd/xgo-ops-audit"]
+vet = true
+
+[targets.xgo_ops.jobs.settings_audit]
 runner = "command"
 command = [
-  "python3",
-  "tools/xgo/audit_topology.py",
-  "target-ready",
-  "--config",
-  ".devtool.toml",
-  "--target",
-  "xgo_ops",
-  "--output",
-  ".devtool/reports/xgo/ops/bootstrap.json",
+  "go", "run", "./engine/cmd/xgo-ops-audit",
+  "--mode", "settings_audit",
+  "--output", ".devtool/reports/xgo/ops/settings-audit.json",
 ]
 inputs = [
-  ".devtool.toml",
-  "tools/xgo/audit_topology.py",
+  "engine/ops/**",
+  "engine/cmd/xgo-ops-audit/**",
+  "engine/testdata/settings/xgo-cap-ops-001.json",
 ]
-outputs = [
-  ".devtool/reports/xgo/ops/bootstrap.json",
+outputs = [".devtool/reports/xgo/ops/settings-audit.json"]
+
+[targets.xgo_ops.jobs.secret_scan]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-ops-audit",
+  "--mode", "secret_scan",
+  "--output", ".devtool/reports/xgo/ops/secret-scan.json",
 ]
+inputs = [
+  "engine/ops/**",
+  "engine/cmd/xgo-ops-audit/**",
+  "engine/testdata/secrets/xgo-cap-ops-002.json",
+]
+outputs = [".devtool/reports/xgo/ops/secret-scan.json"]
+
+[targets.xgo_ops.jobs.diagnostics_stress]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-ops-audit",
+  "--mode", "diagnostics_stress",
+  "--output", ".devtool/reports/xgo/ops/diagnostics-stress.json",
+]
+inputs = [
+  "engine/ops/**",
+  "engine/cmd/xgo-ops-audit/**",
+  "engine/testdata/diagnostics/xgo-cap-ops-003.json",
+  "engine/testdata/diagnostics/xgo-cap-ops-004.json",
+]
+outputs = [".devtool/reports/xgo/ops/diagnostics-stress.json"]
 
 [targets.xgo_ops.workflows]
 validate = [
-  { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "go", ref = "runner:go#validate", depends_on = [] },
+  { id = "settings_audit", ref = "job:settings_audit", depends_on = ["go"] },
+  { id = "secret_scan", ref = "job:secret_scan", depends_on = ["settings_audit"] },
+  { id = "diagnostics_stress", ref = "job:diagnostics_stress", depends_on = ["secret_scan"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

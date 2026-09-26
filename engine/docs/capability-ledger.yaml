@@ -1036,7 +1036,7 @@
     {
       "area": "settings",
       "behavior": "Shared engine settings are separated from host/UI preferences.",
-      "canonical_behavior": "Go settings schema owns retry/connections/backend/bandwidth/queue/network/media/retention only.",
+      "canonical_behavior": "Go settings schema owns retry, connection, backend, bandwidth, queue, network/security, media and retention policy while Android/Desktop host and presentation-only settings remain explicitly classified outside authoritative engine state.",
       "donor_strategy": "merged",
       "donors": [
         "desktop_bandwidth_profile",
@@ -1044,28 +1044,28 @@
         "android_queue_intelligence"
       ],
       "id": "XGO-CAP-OPS-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-62",
       "test_id": "fixture:xgo-cap-ops-001"
     },
     {
       "area": "secrets",
       "behavior": "Persistent engine state stores secret references instead of ordinary plaintext credentials where possible.",
-      "canonical_behavior": "Go resolves SecretRef via platform broker and redacts before persistence/export.",
+      "canonical_behavior": "Go resolves canonical SecretRef values through a bounded broker and structurally redacts headers, cookies, signed query values, request bodies, proxy credentials, diagnostics and support snapshots before persistence/export.",
       "donor_strategy": "redesign",
       "donors": [
         "android_request_security_guard",
         "desktop_download_request"
       ],
       "id": "XGO-CAP-OPS-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-63",
       "test_id": "fixture:xgo-cap-ops-002"
     },
     {
       "area": "diagnostics",
       "behavior": "Structured diagnostics correlate operation/download/attempt/subsystem/stage.",
-      "canonical_behavior": "Go emits bounded structured diagnostic events with typed failure and safe context.",
+      "canonical_behavior": "Go emits bounded diagnostic events with timestamp, subsystem, operation/download/attempt correlation, stage, severity, failure category and safe context.",
       "donor_strategy": "android_led",
       "donors": [
         "android_completion_verification",
@@ -1073,21 +1073,21 @@
         "desktop_download_manager"
       ],
       "id": "XGO-CAP-OPS-003",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-64",
       "test_id": "fixture:xgo-cap-ops-003"
     },
     {
       "area": "diagnostics",
       "behavior": "Verbose diagnostics remain bounded and structurally redacted.",
-      "canonical_behavior": "Go applies redaction before persistence/export and enforces count/byte/age limits.",
+      "canonical_behavior": "Go applies redaction before persistence/export, truncates external process logs and enforces age/count/byte retention limits for diagnostics and support snapshots.",
       "donor_strategy": "android_led",
       "donors": [
         "android_media_security",
         "desktop_browser_security_test"
       ],
       "id": "XGO-CAP-OPS-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-64",
       "test_id": "fixture:xgo-cap-ops-004"
     },
