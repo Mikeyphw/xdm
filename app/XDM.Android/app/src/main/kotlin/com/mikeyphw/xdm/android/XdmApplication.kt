@@ -20,21 +20,24 @@ import com.mikeyphw.xdm.android.scheduler.MediaRequestHandoffStore
 import com.mikeyphw.xdm.android.scheduler.FileBackedQueueSchedulingRecoveryStore
 import com.mikeyphw.xdm.android.scheduler.QueueSchedulingRecoveryCoordinator
 import com.mikeyphw.xdm.android.scheduler.QueueSchedulingRecoveryProvider
-import com.mikeyphw.xdm.android.scheduler.SchedulerRecoveryLeaseCoordinator
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStopReasonRecorder
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceProvider
 import com.mikeyphw.xdm.android.scheduler.QueueIntelligenceWorker
 import com.mikeyphw.xdm.android.scheduler.AndroidCompletedArtifactReader
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
-import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
 import com.mikeyphw.xdm.android.scheduler.TransferNotifications
 import com.mikeyphw.xdm.android.scheduler.TransferRuntimeProvider
 import com.mikeyphw.xdm.android.scheduler.AndroidGoEngineHost
 import com.mikeyphw.xdm.android.scheduler.AndroidGoEngineHostProvider
+import com.mikeyphw.xdm.android.scheduler.AndroidGoDownloadCommand
+import com.mikeyphw.xdm.android.scheduler.AndroidGoDownloadCommandHost
+import com.mikeyphw.xdm.android.scheduler.AndroidGoDownloadCommandHostProvider
+import com.mikeyphw.xdm.android.scheduler.AndroidGoDownloadCommandResult
 import com.mikeyphw.xdm.android.engine.AndroidEngineProcessAuthority
 import com.mikeyphw.xdm.android.engine.AndroidDownloadUiClient
-import com.mikeyphw.xdm.android.engine.AndroidDownloadUiPlatformBrokerProvider
-import com.mikeyphw.xdm.android.engine.AndroidLegacyDownloadUiBroker
+import com.mikeyphw.xdm.android.engine.AndroidDownloadUiWire
+import com.mikeyphw.xdm.android.engine.AndroidDownloadExecutionBrokerProvider
+import com.mikeyphw.xdm.android.engine.AndroidDownloadExecutionBroker
 import com.mikeyphw.xdm.android.engine.AndroidLegacyRoomImporter
 import com.mikeyphw.xdm.android.engine.AndroidMediaPlatformBroker
 import com.mikeyphw.xdm.android.engine.AndroidMediaPlatformBrokerProvider
@@ -45,6 +48,7 @@ import com.mikeyphw.xdm.android.model.DebugEventRecorder
 import com.mikeyphw.xdm.android.model.DebugRecorderProvider
 import com.mikeyphw.xdm.android.model.RollingJsonlDebugEventRecorder
 import java.io.File
+import java.util.UUID
 import com.mikeyphw.xdm.android.media.BrowserHandoffMediaCoordinator
 import com.mikeyphw.xdm.android.media.BrowserCaptureSessionRegistry
 import com.mikeyphw.xdm.android.media.ffmpeg.EmbeddedFfmpegRuntime
@@ -70,24 +74,38 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, AndroidDownloadUiPlatformBrokerProvider, AndroidMediaPlatformBrokerProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, AndroidGoDownloadCommandHostProvider, AndroidDownloadExecutionBrokerProvider, AndroidMediaPlatformBrokerProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
     lateinit var container: AppContainer
         private set
 
     lateinit var androidEngineProcessAuthority: AndroidEngineProcessAuthority
         private set
 
-    private lateinit var androidDownloadUiPlatformBroker: AndroidLegacyDownloadUiBroker
+    private lateinit var androidDownloadExecutionBroker: AndroidDownloadExecutionBroker
     private lateinit var androidMediaPlatformBroker: AndroidMediaPlatformBroker
 
-    override fun androidDownloadUiPlatformBrokerOrNull(): AndroidLegacyDownloadUiBroker? =
-        if (::androidDownloadUiPlatformBroker.isInitialized) androidDownloadUiPlatformBroker else null
+    override fun androidDownloadExecutionBrokerOrNull(): AndroidDownloadExecutionBroker? =
+        if (::androidDownloadExecutionBroker.isInitialized) androidDownloadExecutionBroker else null
 
     override fun androidMediaPlatformBrokerOrNull(): AndroidMediaPlatformBroker? =
         if (::androidMediaPlatformBroker.isInitialized) androidMediaPlatformBroker else null
 
     override val androidGoEngineHost: AndroidGoEngineHost = AndroidGoEngineHost { request ->
         androidEngineProcessAuthority.wake(request)
+    }
+
+    override val androidGoDownloadCommandHost: AndroidGoDownloadCommandHost = AndroidGoDownloadCommandHost { command ->
+        val reply = androidEngineProcessAuthority.submitDownloadUiCommand(
+            AndroidDownloadUiWire.command(
+                requestId = "android-host-${UUID.randomUUID()}",
+                action = command.action,
+                downloadId = command.downloadId,
+            ),
+        )
+        AndroidGoDownloadCommandResult(
+            accepted = reply.ok,
+            detail = reply.message ?: reply.errorCode ?: reply.status ?: "Go download command completed",
+        )
     }
 
     override lateinit var transferRuntime: TransferExecutionRuntime
@@ -228,18 +246,14 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             ensureChannels()
             reconcilePendingTerminalNotifications()
         }
-        val executionStarter = TransferExecutionStarter(this)
         queueIntelligenceCoordinator = QueueIntelligenceCoordinator(
             context = this,
             repository = repository,
-            executionStarter = executionStarter,
-            destinationWriter = destinationWriter,
-            phase4Coordinator = queueSchedulingRecoveryCoordinator,
         )
-        androidDownloadUiPlatformBroker = AndroidLegacyDownloadUiBroker(
+        androidDownloadExecutionBroker = AndroidDownloadExecutionBroker(
+            context = this,
             repository = repository,
             transferRuntime = transferRuntime,
-            queueCoordinator = queueIntelligenceCoordinator,
             nativeHls = nativeHlsMediaManager,
             termuxMedia = termuxMediaPipelineManager,
         )
@@ -250,8 +264,6 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             // import. Go persists the authoritative snapshot; live Room projection mirrors are gone.
             AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)
         }
-        // Queue admission remains durably closed until migration and ownership recovery both finish.
-        queueIntelligenceCoordinator.installStartupRecoveryHold()
         container = AppContainer(
             repository = repository,
             androidDownloadUiClient = androidDownloadUiClient,
@@ -260,7 +272,6 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             ownershipStore = ownershipStore,
             backendSelectionPolicy = BackendSelectionPolicy(),
             transferRuntime = transferRuntime,
-            executionStarter = executionStarter,
             queueIntelligenceCoordinator = queueIntelligenceCoordinator,
             queueSchedulingRecoveryCoordinator = queueSchedulingRecoveryCoordinator,
             destinationWriter = destinationWriter,
@@ -291,41 +302,11 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
         }
         QueueIntelligenceWorker.schedule(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            // XAR09: process-independent lease prevents app startup, boot restore, and package
-            // restore from running the same ownership recovery concurrently.
-            val recoveryLeaseCoordinator = SchedulerRecoveryLeaseCoordinator(this@XdmApplication)
-            val recoveryLease = recoveryLeaseCoordinator.tryAcquire("application-startup")
-            // Each phase is isolated so one failure cannot silently suppress later reconciliation.
-            // Admission stays fail-closed only for migration/runtime/native-HLS recovery failures;
-            // condition-monitor startup failure must not keep the durable hold once transfer recovery is safe.
+            // XGO-75: Android performs platform-data migration and starts monitors, but Go owns
+            // transfer recovery/admission decisions. No Kotlin startup hold or ownership scan may
+            // authorize work after the one-time Room -> Go cutover.
             val migration = runCatching { sensitivePersistenceMigrator.migrateIfNeeded() }
-            if (migration.isSuccess) {
-                postProcessingAutomationManager.startAutomaticProcessing()
-            }
-            val recovery = if (recoveryLease != null) {
-                transferRuntime.recoverForStartup()
-            } else {
-                TransferExecutionRuntime.RuntimeStartupRecovery(
-                    scanSucceeded = false,
-                    ownershipSucceeded = false,
-                    interruptedSucceeded = false,
-                    restoredCount = 0,
-                    reconciledCount = 0,
-                )
-            }
-            // Native HLS waits for canonical publication-journal recovery so a destination that
-            // committed just before process death is adopted instead of remuxed/published twice.
-            val nativeHlsRecovery: Result<Int> = if (recoveryLease != null) {
-                // Retained validator marker: runCatching { nativeHlsMediaManager.recoverInterruptedJobs() }
-                runCatching {
-                    nativeHlsMediaManager.recoverInterruptedJobs()
-                    0
-                }
-            } else {
-                Result.failure(IllegalStateException("Startup recovery lease is held by another owner."))
-            }
-            val monitor = runCatching { queueConditionMonitor.start() }
-            val monitorStarted = monitor.isSuccess
+            if (migration.isSuccess) postProcessingAutomationManager.startAutomaticProcessing()
             migration.exceptionOrNull()?.let { error ->
                 problemReporter.report(
                     area = com.mikeyphw.xdm.android.model.DebugArea.Persistence,
@@ -335,16 +316,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                     dedupeKey = "startup-sensitive-persistence-migration",
                 )
             }
-            if (!recovery.admissionSafe) {
-                problemReporter.report(
-                    area = com.mikeyphw.xdm.android.model.DebugArea.Scheduler,
-                    title = "Download recovery needs attention",
-                    summary = "XDM kept new transfer admission paused because startup recovery did not complete safely.",
-                    suggestedAction = "Open Recovery and Diagnostics & support before starting new downloads.",
-                    dedupeKey = "startup-transfer-recovery",
-                )
-            }
-            monitor.exceptionOrNull()?.let { error ->
+            runCatching { queueConditionMonitor.start() }.exceptionOrNull()?.let { error ->
                 problemReporter.report(
                     area = com.mikeyphw.xdm.android.model.DebugArea.Scheduler,
                     title = "Queue condition monitoring failed",
@@ -353,24 +325,10 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
                     dedupeKey = "startup-queue-condition-monitor",
                 )
             }
-            nativeHlsRecovery.exceptionOrNull()?.let { error ->
-                problemReporter.report(
-                    area = com.mikeyphw.xdm.android.model.DebugArea.Scheduler,
-                    title = "Native HLS recovery needs attention",
-                    summary = error.message ?: error::class.java.simpleName,
-                    suggestedAction = "Open Recovery and Diagnostics & support before retrying the media download.",
-                    dedupeKey = "startup-native-hls-recovery",
-                )
-            }
-            if (migration.isSuccess && recovery.admissionSafe && nativeHlsRecovery.isSuccess) {
-                queueIntelligenceCoordinator.clearStartupRecoveryHold()
-                QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
-            }
-            recoveryLease?.let { recoveryLeaseCoordinator.release(it, "startup-recovery-finished") }
+            QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)
         }
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             transferRuntime.terminalEvents.collectLatest { event ->
-                queueIntelligenceCoordinator.recordTerminalEvent(event)
                 postProcessingAutomationManager.handleTransferTerminalEvent(event)
                 if (event.state == com.mikeyphw.xdm.android.model.DownloadState.Failed ||
                     event.state == com.mikeyphw.xdm.android.model.DownloadState.RecoveryRequired
@@ -401,7 +359,6 @@ data class AppContainer(
     val ownershipStore: BackendOwnershipStore,
     val backendSelectionPolicy: BackendSelectionPolicy,
     val transferRuntime: TransferExecutionRuntime,
-    val executionStarter: TransferExecutionStarter,
     val queueIntelligenceCoordinator: QueueIntelligenceCoordinator,
     val queueSchedulingRecoveryCoordinator: QueueSchedulingRecoveryCoordinator,
     val destinationWriter: AndroidDestinationWriter,

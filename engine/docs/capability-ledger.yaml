@@ -1185,9 +1185,24 @@
         "android_download_dao"
       ],
       "id": "XGO-CAP-ANDROID-005",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-74",
       "test_id": "fixture:xgo-cap-android-005"
+    },
+    {
+      "area": "android",
+      "behavior": "Superseded Kotlin transfer/media/scheduler/persistence authority is absent from Android entry points.",
+      "canonical_behavior": "Android notification, service, ViewModel, scheduler and persistence ingress surfaces submit commands or facts to Go; Kotlin retains only narrow platform side effects and compatibility metadata helpers.",
+      "donor_strategy": "redesign",
+      "donors": [
+        "android_queue_coordinator",
+        "android_startup_recovery",
+        "android_entities"
+      ],
+      "id": "XGO-CAP-ANDROID-007",
+      "status": "IMPLEMENTED",
+      "target_overlay": "XGO-75",
+      "test_id": "fixture:xgo-cap-android-007"
     },
     {
       "area": "desktop",

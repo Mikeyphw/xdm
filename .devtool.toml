@@ -2399,7 +2399,7 @@ inputs = [
   "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
   "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadUiClient.kt",
   "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadUiProtocol.kt",
-  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt",
   "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
   "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineService.kt",
   "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidPlatformRequestDispatcher.kt",
@@ -2451,6 +2451,29 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/android/android-import-matrix.json"]
 
+
+[targets.xgo_android.jobs.android_legacy_authority_scan]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_legacy_authority_scan",
+  "--output", ".devtool/reports/xgo/android/android-legacy-authority-scan.json",
+]
+inputs = [
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/AndroidSchedulerHost.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+  "engine/testdata/android/xgo-cap-android-007.json",
+]
+outputs = [".devtool/reports/xgo/android/android-legacy-authority-scan.json"]
+
 [targets.xgo_android.jobs.android_host_runtime_tests]
 runner = "command"
 command = ["go", "test", "./engine/androidhost", "./engine/runtime"]
@@ -2472,7 +2495,8 @@ validate = [
   { id = "android_ui_smoke", ref = "job:android_ui_smoke", depends_on = ["android_scheduler_authority"] },
   { id = "android_media_e2e", ref = "job:android_media_e2e", depends_on = ["android_ui_smoke"] },
   { id = "android_import_matrix", ref = "job:android_import_matrix", depends_on = ["android_media_e2e"] },
-  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_import_matrix"] },
+  { id = "android_legacy_authority_scan", ref = "job:android_legacy_authority_scan", depends_on = ["android_import_matrix"] },
+  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_legacy_authority_scan"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

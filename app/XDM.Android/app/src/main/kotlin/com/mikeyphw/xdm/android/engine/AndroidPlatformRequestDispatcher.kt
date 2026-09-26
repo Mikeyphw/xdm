@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 class AndroidPlatformRequestDispatcher(
     private val bridge: AndroidGoEngineBridge,
     private val network: AndroidNetworkPolicyBroker,
-    private val downloadUiBroker: () -> AndroidLegacyDownloadUiBroker?,
+    private val downloadUiBroker: () -> AndroidDownloadExecutionBroker?,
     private val mediaBroker: () -> AndroidMediaPlatformBroker?,
 ) {
     private val mediaToolScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

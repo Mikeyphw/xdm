@@ -51,6 +51,8 @@ func main() {
 		r, err = androidMediaE2E()
 	case "android_import_matrix":
 		r, err = androidImportMatrix()
+	case "android_legacy_authority_scan":
+		r, err = androidLegacyAuthorityScan()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -644,10 +646,15 @@ func androidUISmoke() (report, error) {
 			return report{}, fmt.Errorf("engine service missing UI binder token %s", needle)
 		}
 	}
-	broker := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
-	for _, needle := range []string{"repository.admitDownload", `"pause"`, `"resume", "retry"`, `"cancel"`, `"delete"`, `"pause_all"`, `"resume_all"`, "queueCoordinator.pauseAllDurably()", "queueCoordinator.resumeAllManual()"} {
+	broker := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt")
+	for _, needle := range []string{"repository.admitDownload", `"pause"`, `"resume", "retry"`, `"cancel"`, `"delete"`, `"pause_all"`, `"resume_all"`, "QueueIntelligenceWorker.enqueueManual", "transferRuntime.pause"} {
 		if !strings.Contains(broker, needle) {
-			return report{}, fmt.Errorf("temporary XGO-72 host broker missing %s", needle)
+			return report{}, fmt.Errorf("XGO-75 execution broker missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"QueueIntelligenceCoordinator", "queueCoordinator.requestStart", "pauseAllDurably", "resumeAllManual"} {
+		if strings.Contains(broker, forbidden) {
+			return report{}, fmt.Errorf("XGO-75 execution broker retained scheduler authority %s", forbidden)
 		}
 	}
 	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
@@ -675,7 +682,7 @@ func androidUISmoke() (report, error) {
 		"Go download projection round-trip",
 		"add/pause/resume/cancel/retry/delete cross Go commands",
 		"ViewModel download list is Go projection without Kotlin progress rewrite",
-		"temporary Room/runtime bridge is behind Go platform requests",
+		"narrow Android execution broker is behind Go platform requests",
 		"connection loss keeps last projection and rebinds",
 		"activity recreation reuses process-scoped client and single engine authority",
 	}}, nil
@@ -1003,6 +1010,110 @@ func androidImportMatrix() (report, error) {
 		"downloads/attempts/history/queues/schedules/recovery/media are represented",
 		"live Room projection mirrors are removed",
 		"Go media selection no longer dual-writes Room/preferences",
+	}}, nil
+}
+
+func androidLegacyAuthorityScan() (report, error) {
+	oldBroker := "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt"
+	if _, err := os.Stat(oldBroker); err == nil || !os.IsNotExist(err) {
+		return report{}, fmt.Errorf("superseded XGO-72 broker still exists: %s", oldBroker)
+	}
+
+	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
+	for _, needle := range []string{"AndroidGoDownloadCommandHostProvider", "AndroidDownloadExecutionBroker", "AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)", "QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)"} {
+		if !strings.Contains(application, needle) {
+			return report{}, fmt.Errorf("application cutover missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"TransferExecutionStarter(this)", "installStartupRecoveryHold()", "clearStartupRecoveryHold()", "transferRuntime.recoverForStartup()", "SchedulerRecoveryLeaseCoordinator", "queueIntelligenceCoordinator.recordTerminalEvent(event)", "AndroidLegacyDownloadUiBroker"} {
+		if strings.Contains(application, forbidden) {
+			return report{}, fmt.Errorf("application retained superseded Kotlin authority %s", forbidden)
+		}
+	}
+
+	receiver := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt")
+	for _, needle := range []string{"AndroidGoDownloadCommands.submit", `"pause_all"`, `"resume_all"`, `"pause"`, `"cancel"`, `"resume"`, `"retry"`} {
+		if !strings.Contains(receiver, needle) {
+			return report{}, fmt.Errorf("notification action receiver missing Go command path %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"TransferRuntimeProvider", "QueueIntelligenceProvider", "QueueSchedulingRecoveryProvider", "runtime.pause", "runtime.cancel", "queue.requestStart", "queue.pauseAllDurably", "queue.resumeAllManual"} {
+		if strings.Contains(receiver, forbidden) {
+			return report{}, fmt.Errorf("notification action receiver retained Kotlin authority %s", forbidden)
+		}
+	}
+
+	fgs := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt")
+	controls, err := sourceSection(fgs, "TransferNotifications.ACTION_PAUSE_ALL", "        return START_NOT_STICKY")
+	if err != nil {
+		return report{}, err
+	}
+	if !strings.Contains(controls, "submitGoCommand") {
+		return report{}, fmt.Errorf("foreground-service controls do not submit Go commands")
+	}
+	for _, forbidden := range []string{"queueIntelligence", "runtime.pause", "runtime.cancel", "pauseAllDurably", "resumeAllManual", "requestStart("} {
+		if strings.Contains(controls, forbidden) {
+			return report{}, fmt.Errorf("foreground-service controls retained Kotlin authority %s", forbidden)
+		}
+	}
+
+	coordinator := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt")
+	for _, needle := range []string{"AndroidGoDownloadCommands.submit", "AndroidSchedulerHost.wake", "compatibility facade", "eligibleDownloads = emptyList()"} {
+		if !strings.Contains(coordinator, needle) {
+			return report{}, fmt.Errorf("queue compatibility facade missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"QueueIntelligencePlanner", "QueueRetryLedger", "QueueDecisionLedger", "AndroidQueueConditionsReader", "DurableQueueAdmissionGate", "executionStarter.start", "claimQueueSlotAtomically", "QueuePolicyCodec.resolve", "retryLedger.observeFailure"} {
+		if strings.Contains(coordinator, forbidden) {
+			return report{}, fmt.Errorf("queue coordinator retained policy/execution authority %s", forbidden)
+		}
+	}
+
+	broker := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt")
+	for _, needle := range []string{"class AndroidDownloadExecutionBroker", "QueueIntelligenceWorker.enqueueManual", "TransferSystemIdRegistry(appContext).retire", "repository.admitDownload"} {
+		if !strings.Contains(broker, needle) {
+			return report{}, fmt.Errorf("execution broker missing narrow adapter behavior %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"QueueIntelligenceCoordinator", "queueCoordinator", "QueueIntelligencePlanner", "QueueRetryLedger", "pauseAllDurably", "resumeAllManual", "requestStart("} {
+		if strings.Contains(broker, forbidden) {
+			return report{}, fmt.Errorf("execution broker retained policy authority %s", forbidden)
+		}
+	}
+
+	worker := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt")
+	for _, needle := range []string{"fun enqueueManual", "AndroidSchedulerHost.wake", "enqueueUniqueWork"} {
+		if !strings.Contains(worker, needle) {
+			return report{}, fmt.Errorf("wake-only worker missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"QueueSchedulingRecoveryProvider", "requestImmediateReevaluation(", "evaluateAndClaim(", "runtime.execute("} {
+		if strings.Contains(worker, forbidden) {
+			return report{}, fmt.Errorf("worker retained legacy scheduler authority/ledger side effect %s", forbidden)
+		}
+	}
+
+	viewModel := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
+	for _, forbidden := range []string{"queueIntelligenceCoordinator.requestStart(", "queueIntelligenceCoordinator.pauseAllDurably(", "queueIntelligenceCoordinator.resumeAllManual(", "transferRuntime.pauseAll()"} {
+		if strings.Contains(viewModel, forbidden) {
+			return report{}, fmt.Errorf("ViewModel retained legacy transfer authority %s", forbidden)
+		}
+	}
+	for _, needle := range []string{`androidDownloadUiClient.command(action = "pause_all")`, `androidDownloadUiClient.command(action = "resume_all")`, `androidDownloadUiClient.command(action = "cancel"`, `androidDownloadUiClient.command(action = "resume"`} {
+		if !strings.Contains(viewModel, needle) {
+			return report{}, fmt.Errorf("ViewModel Go command cutover missing %s", needle)
+		}
+	}
+
+	return report{Mode: "android_legacy_authority_scan", Pass: true, Checks: []string{
+		"superseded AndroidLegacyDownloadUiBroker deleted",
+		"notification and foreground-service controls route through Go",
+		"application startup no longer performs Kotlin transfer ownership recovery",
+		"queue coordinator reduced to compatibility/status facade",
+		"execution broker performs only Go-authorized Android side effects",
+		"WorkManager remains wake-only without legacy recovery-ledger mutation",
+		"ViewModel no longer calls Kotlin start/pause-all/resume-all authority",
+		"one-time Room import remains the only legacy persistence ingress",
 	}}, nil
 }
 

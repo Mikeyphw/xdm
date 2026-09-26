@@ -180,7 +180,7 @@ class AndroidEngineProcessAuthority(context: Context) {
         val dispatcher = AndroidPlatformRequestDispatcher(
             currentBridge,
             AndroidNetworkPolicyBroker(appContext),
-            { (appContext as? AndroidDownloadUiPlatformBrokerProvider)?.androidDownloadUiPlatformBrokerOrNull() },
+            { (appContext as? AndroidDownloadExecutionBrokerProvider)?.androidDownloadExecutionBrokerOrNull() },
             { (appContext as? AndroidMediaPlatformBrokerProvider)?.androidMediaPlatformBrokerOrNull() },
         )
         framePump = scope.launch {

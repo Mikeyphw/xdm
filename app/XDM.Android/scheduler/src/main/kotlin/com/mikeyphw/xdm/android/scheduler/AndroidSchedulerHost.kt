@@ -45,6 +45,39 @@ interface AndroidGoEngineHostProvider {
     val androidGoEngineHost: AndroidGoEngineHost
 }
 
+/**
+ * XGO-75 command boundary used by Android notification/service compatibility surfaces.
+ *
+ * These surfaces are not allowed to mutate the legacy queue/runtime directly. They submit
+ * the same download command that Compose uses; Go owns the state transition and may request
+ * narrow Android side effects through the platform broker afterwards.
+ */
+data class AndroidGoDownloadCommand(
+    val action: String,
+    val downloadId: String? = null,
+)
+
+data class AndroidGoDownloadCommandResult(
+    val accepted: Boolean,
+    val detail: String,
+)
+
+fun interface AndroidGoDownloadCommandHost {
+    suspend fun submit(command: AndroidGoDownloadCommand): AndroidGoDownloadCommandResult
+}
+
+interface AndroidGoDownloadCommandHostProvider {
+    val androidGoDownloadCommandHost: AndroidGoDownloadCommandHost
+}
+
+object AndroidGoDownloadCommands {
+    suspend fun submit(context: Context, action: String, downloadId: String? = null): AndroidGoDownloadCommandResult {
+        val host = (context.applicationContext as? AndroidGoDownloadCommandHostProvider)?.androidGoDownloadCommandHost
+            ?: return AndroidGoDownloadCommandResult(false, "Go download command host provider is not ready")
+        return host.submit(AndroidGoDownloadCommand(action = action, downloadId = downloadId))
+    }
+}
+
 object AndroidSchedulerHost {
     fun wake(context: Context, request: AndroidEngineWakeRequest): AndroidEngineWakeResult {
         val host = (context.applicationContext as? AndroidGoEngineHostProvider)?.androidGoEngineHost

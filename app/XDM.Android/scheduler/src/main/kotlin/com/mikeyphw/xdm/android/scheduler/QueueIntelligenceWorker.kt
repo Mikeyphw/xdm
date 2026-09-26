@@ -42,6 +42,7 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         private const val PERIODIC_WORK = "xdm-queue-intelligence-periodic"
         private const val IMMEDIATE_WORK = "xdm-queue-intelligence-now"
         private const val CLAIMED_PREFIX = "xdm-transfer-claimed-"
+        private const val MANUAL_PREFIX = "xdm-transfer-manual-"
         private const val RETRY_PREFIX = "xdm-transfer-retry-"
         private const val PRECISION_WAKEUP_TAG = "xdm-scheduler-precision-wakeup"
         private const val INPUT_DOWNLOAD_ID = "download_id"
@@ -59,14 +60,30 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         }
 
         fun enqueueImmediate(context: Context) {
-            (context.applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
-                ?.requestImmediateReevaluation("go-engine-host-wake", IMMEDIATE_WORK, System.currentTimeMillis())
             val eventId = "condition:${System.currentTimeMillis()}"
             val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>()
                 .setInputData(wakeData(eventId = eventId, reason = AndroidEngineWakeReason.CONDITION_CHANGED))
                 .addTag(IMMEDIATE_WORK)
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(IMMEDIATE_WORK, ExistingWorkPolicy.KEEP, request)
+        }
+
+
+        /** User action already accepted by Go; Android only schedules a correlated engine wake. */
+        fun enqueueManual(context: Context, downloadId: String) {
+            val eventId = "manual:$downloadId:${System.currentTimeMillis()}"
+            val workName = MANUAL_PREFIX + downloadId
+            val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>()
+                .setInputData(
+                    wakeData(
+                        eventId = eventId,
+                        reason = AndroidEngineWakeReason.MANUAL_RECONCILE,
+                        downloadId = downloadId,
+                    ),
+                )
+                .addTag(workName)
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(workName, ExistingWorkPolicy.REPLACE, request)
         }
 
         /** Compatibility entry point: the old durable claim token is now identity only, never authorization. */

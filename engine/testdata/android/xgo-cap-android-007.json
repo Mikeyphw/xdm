@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-android-007",
+  "capability_ids": [
+    "XGO-CAP-ANDROID-007"
+  ],
+  "category": "android",
+  "donor_ids": [
+    "android_queue_coordinator",
+    "android_startup_recovery",
+    "android_entities"
+  ],
+  "derivation": {
+    "behavior": "Superseded Kotlin transfer/media/scheduler/persistence authority is absent from Android entry points.",
+    "canonical_behavior": "Android notification, service, ViewModel, scheduler and persistence ingress surfaces submit commands or facts to Go; Kotlin retains only narrow platform side effects and compatibility metadata helpers.",
+    "strategy": "redesign"
+  },
+  "input": {
+    "authoritative_entry_points": [
+      "XdmApplication",
+      "MainViewModel",
+      "TransferActionReceiver",
+      "TransferForegroundService",
+      "QueueIntelligenceWorker"
+    ],
+    "deleted_path": "AndroidLegacyDownloadUiBroker",
+    "replacement_adapter": "AndroidDownloadExecutionBroker",
+    "persistence_ingress": "AndroidLegacyRoomImporter.importOnce"
+  },
+  "expected": {
+    "notification_controls_cross_go": true,
+    "foreground_controls_cross_go": true,
+    "viewmodel_start_pause_resume_cross_go": true,
+    "startup_kotlin_ownership_recovery_absent": true,
+    "queue_coordinator_policy_absent": true,
+    "execution_broker_policy_absent": true,
+    "legacy_room_live_mirror_absent": true,
+    "invariants": [
+      "Android UI and notification surfaces cannot directly decide queue eligibility, retry policy, or transfer starts.",
+      "WorkManager, FGS, UIDT and boot/package primitives only host or wake Go scheduling authority.",
+      "The Android execution broker performs side effects only after a Go command and does not own scheduler/media policy.",
+      "Legacy Room remains a one-time import source rather than a parallel authoritative state writer."
+    ]
+  }
+}

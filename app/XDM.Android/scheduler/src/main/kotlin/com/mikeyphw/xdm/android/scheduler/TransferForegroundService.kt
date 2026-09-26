@@ -18,7 +18,6 @@ import kotlinx.coroutines.launch
 class TransferForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var runtime: TransferExecutionRuntime
-    private lateinit var queueIntelligence: QueueIntelligenceCoordinator
     private lateinit var notifications: TransferNotifications
     private lateinit var systemIds: TransferSystemIdRegistry
     private var summaryJob: Job? = null
@@ -27,7 +26,6 @@ class TransferForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         runtime = (application as TransferRuntimeProvider).transferRuntime
-        queueIntelligence = (application as QueueIntelligenceProvider).queueIntelligenceCoordinator
         notifications = TransferNotifications(this)
         systemIds = TransferSystemIdRegistry(this)
         if (!startForeground()) {
@@ -83,26 +81,20 @@ class TransferForegroundService : Service() {
                 )
                 if (result.disposition == AndroidEngineWakeDisposition.FAILED) stopSelf(startId)
             }
-            TransferNotifications.ACTION_PAUSE_ALL -> scope.launch { queueIntelligence.pauseAllDurably(); runtime.pauseAll() }
-            TransferNotifications.ACTION_RESUME_ALL -> scope.launch {
-                notificationCoordinator()?.recordNotificationControlCommand(com.mikeyphw.xdm.android.model.QueueControlCommand.ResumeAll, null)
-                queueIntelligence.resumeAllManual()
-            }
-            TransferNotifications.ACTION_CANCEL -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch {
-                notificationCoordinator()?.recordNotificationControlCommand(com.mikeyphw.xdm.android.model.QueueControlCommand.CancelOne, id)
-                runtime.cancel(id)
-            } }
-            TransferNotifications.ACTION_PAUSE -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch {
-                notificationCoordinator()?.recordNotificationControlCommand(com.mikeyphw.xdm.android.model.QueueControlCommand.PauseOne, id)
-                runtime.pause(id)
-            } }
-            TransferNotifications.ACTION_RESUME, TransferNotifications.ACTION_RETRY -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id -> scope.launch {
-                val command = if (intent.action == TransferNotifications.ACTION_RETRY) com.mikeyphw.xdm.android.model.QueueControlCommand.RetryOne else com.mikeyphw.xdm.android.model.QueueControlCommand.ResumeOne
-                notificationCoordinator()?.recordNotificationControlCommand(command, id)
-                queueIntelligence.requestStart(id, userVisible = true, manual = true)
-            } }
+            TransferNotifications.ACTION_PAUSE_ALL -> submitGoCommand("pause_all")
+            TransferNotifications.ACTION_RESUME_ALL -> submitGoCommand("resume_all")
+            TransferNotifications.ACTION_CANCEL -> submitGoCommand("cancel", intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID))
+            TransferNotifications.ACTION_PAUSE -> submitGoCommand("pause", intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID))
+            TransferNotifications.ACTION_RESUME -> submitGoCommand("resume", intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID))
+            TransferNotifications.ACTION_RETRY -> submitGoCommand("retry", intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID))
         }
         return START_NOT_STICKY
+    }
+
+    private fun submitGoCommand(action: String, downloadId: String? = null) {
+        scope.launch(Dispatchers.IO) {
+            AndroidGoDownloadCommands.submit(this@TransferForegroundService, action, downloadId)
+        }
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
@@ -118,9 +110,6 @@ class TransferForegroundService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun notificationCoordinator(): QueueSchedulingRecoveryCoordinator? =
-        (application as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
 
     @SuppressLint("InlinedApi")
     private fun startForeground(): Boolean = runCatching {

@@ -560,7 +560,7 @@ class MainViewModel(
 
     /**
      * XGO-72: download presentation is sourced from the Go-emitted projection, not Room.
-     * The temporary Room -> Go mirror lives in AndroidLegacyDownloadUiBroker and is removed by XGO-74.
+     * XGO-74 replaced the live Room mirror with a one-shot import; Go projections are authoritative.
      */
     private val semanticDownloads = androidDownloadUiClient.projection
         .map { it.downloads }
@@ -2341,11 +2341,10 @@ class MainViewModel(
         // evidence for the existing attempt. If preparation fails, the old attempt remains intact.
         val (message, replacementId) = createFreshRedownload(current, startImmediately = false)
         if (replacementId == null) return message
-        if (databaseNativeHlsOwnership(current.id)) runCatching { nativeHlsMediaManager.cancel(current.id) }
-        else runCatching { transferRuntime.cancel(current.id) }
+        androidDownloadUiClient.command(action = "cancel", downloadId = current.id)
         repository.deleteBackendTask(current.id)
         repository.deleteFinalizationForDownload(current.id)
-        queueIntelligenceCoordinator.requestStart(replacementId, userVisible = true, manual = true)
+        androidDownloadUiClient.command(action = "resume", downloadId = replacementId)
         return message
     }
 
@@ -2435,7 +2434,7 @@ class MainViewModel(
         }
         val clonedPostProcessingJobs = repository.clonePostProcessingJobsForRedownload(current.id, newId, now)
         if (startImmediately) {
-            queueIntelligenceCoordinator.requestStart(newId, userVisible = true, manual = true)
+            androidDownloadUiClient.command(action = "resume", downloadId = newId)
         }
         return "Created a fresh download generation with the original destination, queue, conflict policy, backend preference, checksums, request session, tags, global post-processing rules, and $clonedPostProcessingJobs explicit post-processing job/rule record(s)." to newId
     }
@@ -2848,7 +2847,7 @@ class MainViewModel(
                     )
                 ) {
                     repository.deleteRecovery(record.id)
-                    queueIntelligenceCoordinator.requestStart(downloadId, userVisible = true, manual = true)
+                    androidDownloadUiClient.command(action = "resume", downloadId = downloadId)
                 }
             }
 
@@ -3012,24 +3011,23 @@ class MainViewModel(
             AutomationCommandAction.PromptAddDownload -> openExternalAddDraft(command, draft, "External download awaiting Add Download confirmation")
             AutomationCommandAction.EnqueueDownload -> executeEnqueueCommand(command, draft, now)
             AutomationCommandAction.PauseAll -> {
-                queueIntelligenceCoordinator.pauseAllDurably()
-                transferRuntime.pauseAll()
+                val result = androidDownloadUiClient.command(action = "pause_all")
                 repository.saveAutomationCommand(
                     command.copy(
-                        status = AutomationCommandStatus.Applied,
-                        resultMessage = "Pause all requested",
-                        rejectionReason = AutomationRejectionReason.None,
+                        status = if (result.ok) AutomationCommandStatus.Applied else AutomationCommandStatus.Failed,
+                        resultMessage = result.message ?: if (result.ok) "Pause all submitted to Go" else "Pause all was rejected by Go",
+                        rejectionReason = if (result.ok) AutomationRejectionReason.None else AutomationRejectionReason.BackendUnavailable,
                         updatedAtEpochMs = System.currentTimeMillis(),
                     ),
                 )
             }
             AutomationCommandAction.ResumeAll -> {
-                val resumed = queueIntelligenceCoordinator.resumeAllManual()
+                val result = androidDownloadUiClient.command(action = "resume_all")
                 repository.saveAutomationCommand(
                     command.copy(
-                        status = AutomationCommandStatus.Applied,
-                        resultMessage = "Resume requested for $resumed download(s)",
-                        rejectionReason = AutomationRejectionReason.None,
+                        status = if (result.ok) AutomationCommandStatus.Applied else AutomationCommandStatus.Failed,
+                        resultMessage = result.message ?: if (result.ok) "Resume all submitted to Go" else "Resume all was rejected by Go",
+                        rejectionReason = if (result.ok) AutomationRejectionReason.None else AutomationRejectionReason.BackendUnavailable,
                         updatedAtEpochMs = System.currentTimeMillis(),
                     ),
                 )
@@ -3570,7 +3568,7 @@ class MainViewModel(
         if (!repository.saveAutomationCommand(command.copy(status = AutomationCommandStatus.Applied, resultMessage = "Queued download", downloadId = durableDownload.id, updatedAtEpochMs = System.currentTimeMillis()))) {
             return
         }
-        queueIntelligenceCoordinator.requestStart(durableDownload.id, userVisible = true, manual = true)
+        androidDownloadUiClient.command(action = "resume", downloadId = durableDownload.id)
         navigate(AppRoute.Downloads)
     }
 
@@ -4932,7 +4930,7 @@ class MainViewModel(
                 result = "committed",
                 safeDetails = mapOf("captureId" to record.id, "downloadId" to download.id, "state" to download.state.name),
             )
-            queueIntelligenceCoordinator.requestStart(download.id, userVisible = true, manual = true)
+            androidDownloadUiClient.command(action = "resume", downloadId = download.id)
             navigate(AppRoute.Downloads)
             } finally {
                 mediaOutputAdmissionClaims.remove(record.id)
