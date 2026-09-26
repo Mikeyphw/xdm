@@ -73,16 +73,24 @@ for validator in (
 
 # Devtool no longer schedules the native installers in both build and package phases. Packaging
 # correctness is expressed by Gradle dependencies, so standalone assemble/package remains safe.
-def array_block(name: str) -> str:
-    match = re.search(rf"(?ms)^{re.escape(name)}\s*=\s*\[(.*?)^\]", devtool)
+def section_between(start: str, end: str) -> str:
+    if start not in devtool:
+        return ""
+    tail = devtool.split(start, 1)[1]
+    return tail.split(end, 1)[0] if end in tail else tail
+
+def array_block(source: str, name: str) -> str:
+    match = re.search(rf"(?ms)^{re.escape(name)}\s*=\s*\[(.*?)^\]", source)
     return match.group(1) if match else ""
 
-build_block = array_block("build")
-package_block = array_block("package")
+xdm_task_section = section_between("[targets.xdm_android.tasks]", "[targets.xdm_android.artifacts]")
+validation_phase_section = section_between("[validation.phases]", "[env]")
+build_block = array_block(xdm_task_section, "build")
+package_block = array_block(validation_phase_section, "package")
 need('assembleDebug' in build_block, "Devtool build phase no longer assembles debug APK")
 need(re.search(r'"clean"\s*,\s*"assembleDebug"', build_block) is not None, "Devtool build phase must clean stale outputs immediately before assembleDebug")
 need('clean' not in package_block, "Devtool package phase must not repeat clean during Android-test/APK attestation work")
-need(':app:lintDebug' in array_block("lint") and '"lintDebug"' not in array_block("lint"), "Devtool still invokes the root lintDebug aggregate instead of the app-scoped lint gate")
+need(':app:lintDebug' in array_block(validation_phase_section, "lint") and '"lintDebug"' not in array_block(validation_phase_section, "lint"), "Devtool still invokes the root lintDebug aggregate instead of the app-scoped lint gate")
 need('installOfficialAria2Runtime' not in build_block + package_block, "Devtool still schedules aria2 installer redundantly across split phases")
 need('installPinnedFfmpegRuntime' not in build_block + package_block, "Devtool still schedules FFmpeg installer redundantly across split phases")
 need(':app:assembleDebugAndroidTest' in package_block and ':app:verifyFfmpegDebugApkRuntime' in package_block,

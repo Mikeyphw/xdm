@@ -96,13 +96,24 @@ view_model = require(
     "selectedRecoveryDownloadId = download.id",
     "selectedRecoveryAction = action.name",
 )
-ui_broker = require(
-    "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt",
-    "queueCoordinator.requestStart",
+execution_broker = require(
+    "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt",
+    "suspend fun execute(payload: JSONObject)",
+    '"resume", "retry" -> mutate',
+    '"cancel" -> mutate',
     "repository.deleteDownloadEntryIfTerminal",
     "termuxMedia.prepareDownloadGraphDeletion",
     "nativeHls.cancel(id)",
     "transferRuntime.cancel(id)",
+    "QueueIntelligenceWorker.enqueueManual",
+)
+reject(
+    "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt",
+    "queueCoordinator.requestStart",
+    "QueueIntelligencePlanner",
+    "QueueRetryLedger",
+    "reserveSlotAtomically",
+    "executionStarter.start",
 )
 row = require(
     "app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",

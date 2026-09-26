@@ -57,7 +57,7 @@ require('dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")' not in app_gradl
 for needle in ["XDM_ARIA2_ARCHIVE_SHA256", "--require-trusted-digest", "trustedAria2ArchiveSha256"]:
     require(needle in aria_gradle or needle in aria_install, f"aria2 trusted-digest contract missing {needle}")
 require("expected_hash" in aria_install and "cached_download_path(manifest, cache_dir, expected_hash)" in aria_install, "aria2 cache identity is not bound to the trusted digest")
-require("verifyAria2ReleaseRuntime" in aria_gradle and "Direct release packaging requires XDM_ARIA2_ARCHIVE_SHA256" in aria_gradle, "direct release packaging is not fail-closed on a trusted aria2 digest")
+require("verifyAria2ReleaseRuntime" in aria_gradle and "--require-trusted-archive-digest" in aria_gradle and "trustedAria2ArchiveSha256" in aria_gradle, "direct release packaging is not fail-closed on a trusted aria2 digest")
 require('tasks.matching { it.name == "preReleaseBuild" }' in aria_gradle and "dependsOn(verifyAria2ReleaseRuntime)" in aria_gradle, "preReleaseBuild does not enforce strict aria2 provenance")
 
 # S01-04: stable verifier reads the active root workflow.

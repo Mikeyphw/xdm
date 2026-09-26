@@ -68,6 +68,32 @@ class TopologyAuditTests(unittest.TestCase):
         with self.assertRaises(TopologyError):
             audit(config, None)
 
+
+    def test_cross_target_validate_may_use_primary_runner_fallback(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
+        config = root/".devtool.toml"
+        make_config(config)
+        text = config.read_text()
+        text += "\n[targets.xdm_android]\nrunner = \"android\"\nroot = \"app/XDM.Android\"\nexecution_environment = \"native-termux\"\n"
+        old = '[targets.xgo_gate_android.workflows]\nvalidate = [{ id = "child", ref = "target:xgo_foundation#validate", depends_on = [] }]'
+        new = '[targets.xgo_gate_android.workflows]\nvalidate = [{ id = "child", ref = "target:xgo_foundation#validate", depends_on = [] }, { id = "android_full_seal", ref = "target:xdm_android#validate", depends_on = ["child"] }]'
+        config.write_text(text.replace(old, new))
+        report = audit(config, None, only_target="xgo_gate_android")
+        self.assertEqual(report["inspected"]["xgo_gate_android"]["validate_node_count"], 2)
+
+
+    def test_android_gate_allows_curated_local_sanity_jobs(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
+        config = root/".devtool.toml"
+        make_config(config)
+        text = config.read_text()
+        text += "\n[targets.xdm_android]\nrunner = \"android\"\nroot = \"app/XDM.Android\"\nexecution_environment = \"native-termux\"\n"
+        old = '[targets.xgo_gate_android.workflows]\nvalidate = [{ id = "child", ref = "target:xgo_foundation#validate", depends_on = [] }]'
+        jobs = '[targets.xgo_gate_android.jobs.gofmt_check]\nrunner = "command"\ncommand = ["true"]\n[targets.xgo_gate_android.workflows]\nvalidate = [{ id = "gofmt_check", ref = "job:gofmt_check", depends_on = [] }, { id = "android", ref = "target:xgo_android#validate", depends_on = ["gofmt_check"] }, { id = "android_full_seal", ref = "target:xdm_android#validate", depends_on = ["android"] }]'
+        config.write_text(text.replace(old, jobs))
+        report = audit(config, None, only_target="xgo_gate_android")
+        self.assertEqual(report["inspected"]["xgo_gate_android"]["validate_node_count"], 3)
+
     def test_cycle_rejected(self) -> None:
         root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
         config = root/".devtool.toml"

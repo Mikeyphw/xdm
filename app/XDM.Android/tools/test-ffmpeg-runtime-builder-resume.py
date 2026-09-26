@@ -28,6 +28,7 @@ with tempfile.TemporaryDirectory(prefix="xdm-ffmpeg-builder-test-") as raw:
     root = Path(raw)
     prefix = root / "openssl-prefix"
     toolchain_identity = {"backend": "test-toolchain", "sysrootOwner": "test", "tools": {}}
+    compiler_identity = {"cc": "test-clang", "version": "test", "fingerprint": "c" * 64}
     config = installer.openssl_configuration_payload(manifest, prefix, toolchain_identity)
 
     assert config["target"] == "android-arm64"
@@ -57,8 +58,9 @@ with tempfile.TemporaryDirectory(prefix="xdm-ffmpeg-builder-test-") as raw:
     assert installer.quiet_make_prefix(False) == ["make", "-s"]
     assert installer.quiet_make_prefix(True) == ["make"]
 
-    ffmpeg_config = installer.ffmpeg_configuration_payload(["./configure", "--enable-openssl"], manifest, toolchain_identity)
+    ffmpeg_config = installer.ffmpeg_configuration_payload(["./configure", "--enable-openssl"], manifest, toolchain_identity, compiler_identity)
     assert ffmpeg_config["configure"][-1] == "--enable-openssl"
+    assert ffmpeg_config["compilerIdentity"] == compiler_identity
     ff_marker = root / ".ffmpeg-configured.json"
     installer.atomic_json(ff_marker, ffmpeg_config)
     assert installer.marker_matches(ff_marker, ffmpeg_config)

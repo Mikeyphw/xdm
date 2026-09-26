@@ -31,7 +31,7 @@ notifications = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/schedul
 terminal_policy = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TerminalNotificationActionPolicy.kt")
 receiver = read("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt")
 view_model = read("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
-ui_broker = read("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
+execution_broker = read("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt")
 application = read("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
 contract = read("app/src/test/kotlin/com/mikeyphw/xdm/android/BugHuntPhase4QueueSchedulingStateMachinesContractTest.kt")
 doc = read("docs/audits/BUG-HUNT-REMEDIATION-PHASE-4.md")
@@ -81,21 +81,29 @@ for needle, label in [
     require(coordinator + notifications + application, needle, label)
 
 
-require(queue_coordinator, "reserveSlotAtomically", "queue admission uses atomic reservation planner")
-require(queue_coordinator, "recordQueueReservation(audit)", "accepted queue reservation audit is persisted")
-require(queue_coordinator, "deleteQueueSafely", "queue deletion anti-dangling runtime path")
-require(foreground_service, "queueIntelligence.pauseAllDurably(); runtime.pauseAll()", "foreground Pause All durable hold ordering")
+# XGO-75 removes Kotlin queue admission/retry/execution authority while retaining
+# historical queue data models and metadata-only maintenance surfaces.
+require(queue_coordinator, "AndroidGoDownloadCommands.submit", "queue compatibility facade submits user intent to Go")
+require(queue_coordinator, "AndroidSchedulerHost.wake(", "queue reconcile only wakes Go")
+require(queue_coordinator, "deleteQueueSafely", "queue deletion anti-dangling metadata path remains")
+for forbidden, label in [
+    ("QueueIntelligencePlanner", "Kotlin queue ranking planner"),
+    ("QueueRetryLedger", "Kotlin retry authority"),
+    ("reserveSlotAtomically", "Kotlin slot claiming"),
+    ("executionStarter.start(", "Kotlin execution start"),
+]:
+    reject(queue_coordinator, forbidden, label)
+require(foreground_service, 'submitGoCommand("pause_all")', "foreground Pause All crosses Go command authority")
 require(worker, "AndroidSchedulerHost.wake(", "WorkManager hosts/wakes Go scheduler authority")
 require(worker, "ExistingWorkPolicy.KEEP", "WorkManager duplicate wake suppression")
 reject(worker, "coordinator.evaluateAndClaim()", "WorkManager Kotlin eligibility authority after XGO-71")
 reject(worker, "runtime.execute(", "WorkManager Kotlin execution authority after XGO-71")
 reject(worker, "runtime.pauseOwned(", "WorkManager exact-owner mutation after XGO-71")
-require(receiver, "pauseAllDurably()", "broadcast Pause All durable hold ordering")
+require(receiver, 'TransferNotifications.ACTION_PAUSE_ALL -> "pause_all"', "broadcast Pause All maps to Go command")
+require(receiver, "AndroidGoDownloadCommands.submit(", "broadcast actions cross Go command authority")
 require(view_model, 'action = "pause_all"', "UI Pause All crosses Go command boundary")
-require(ui_broker, "queueCoordinator.pauseAllDurably()", "Go-routed Pause All retains durable admission hold")
-require(ui_broker, "transferRuntime.pauseAll()", "Go-routed Pause All reaches legacy runtime behind host broker")
-if ui_broker.index("queueCoordinator.pauseAllDurably()") > ui_broker.index("transferRuntime.pauseAll()"):
-    raise AssertionError("Go-routed Pause All must persist the durable hold before pausing runtime owners")
+require(execution_broker, "transferRuntime.pauseAll()", "Go-routed Pause All reaches the narrow Android execution adapter")
+require(execution_broker, "nativeHls.pauseAll()", "Go-routed Pause All reaches native HLS platform owner through the narrow adapter")
 require(view_model, "deleteQueueSafely(queue.id)", "UI queue delete goes through anti-dangling plan")
 require(notifications, "notificationPermissionState()", "notification permission denial runtime wiring")
 require(notifications, "recordTerminalNotification(record)", "terminal idempotency runtime dispatch gate")

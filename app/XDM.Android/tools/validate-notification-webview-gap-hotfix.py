@@ -48,17 +48,17 @@ media_inbox=text('media/src/main/kotlin/com/mikeyphw/xdm/android/media/MediaInbo
 gate=text('tools/run-final-release-gate.sh')
 manifest=json.loads(text('PROJECT_MANIFEST.json') or '{}')
 
-for src, token, label in [
-    (uidt,'runtime.liveSummaryFor(downloadId','UIDT exact transfer summary'),
-    (worker,'withLiveForeground','WorkManager live foreground'),
-    (worker,'runtime.liveProgress.collectLatest','WorkManager progress stream'),
-    (notifications,'NotificationUpdateThrottle','notification throttle contract carry-forward'),
-]:
-    # Throttle lives in owners, not TransferNotifications; allow any owner below.
-    if label == 'notification throttle contract carry-forward':
-        if 'NotificationUpdateThrottle' not in worker + uidt + text('scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt'):
-            errors.append('notification throttle missing from execution owners')
-    else: need(src,token,label)
+# XGO-71/XGO-75 turn WorkManager and UIDT into Go-host adapters. Historical
+# live-progress ownership is therefore checked at the remaining FGS presentation owner,
+# while worker/UIDT are required to stay wake-only.
+need(uidt, 'AndroidSchedulerHost.wake(', 'UIDT Go-engine wake boundary')
+need(uidt, 'AndroidEngineWakeReason.USER_INITIATED_DATA_TRANSFER', 'UIDT typed Go wake reason')
+need(worker, 'AndroidSchedulerHost.wake(', 'WorkManager Go-engine wake boundary')
+need(worker, 'AndroidEngineWakeReason.RETRY_DEADLINE', 'WorkManager typed retry wake reason')
+if 'runtime.execute(' in worker or 'runtime.liveProgress.collectLatest' in worker:
+    errors.append('WorkManager regained direct transfer/progress ownership after XGO-75')
+if 'NotificationUpdateThrottle' not in fgs:
+    errors.append('notification throttle missing from foreground presentation owner')
 need(notifications,'val isSingle = summary.activeCount == 1','single-vs-aggregate action truth')
 need(notifications,'"Pause all"','aggregate pause action')
 need(notifications,'"Resume all"','aggregate resume action')
@@ -68,8 +68,9 @@ need(notifications,'canPostChannel(channelFor(state))','channel-specific termina
 need(recovery,'pendingTerminalNotifications()','pending terminal reconciliation')
 need(recovery,'if (existing != null) return@synchronized false','atomic file terminal reservation')
 need(recovery,'recordNotificationControlCommand','durable notification controls')
-for action in ['PauseOne','ResumeOne','CancelOne','RetryOne']:
-    need(receiver, f'QueueControlCommand.{action}', f'durable {action}')
+for action in ['pause','resume','cancel','retry']:
+    need(receiver, f'-> "{action}"', f'Go-routed {action} notification action')
+need(receiver, 'AndroidGoDownloadCommands.submit(', 'notification controls cross Go command authority')
 need(permission,'KEY_DENIED_ONCE','durable notification denial history')
 need(main,'ACTION_APP_NOTIFICATION_SETTINGS','notification settings route')
 need(main,'reconcilePendingTerminalNotifications()','reconcile after settings return')
@@ -110,13 +111,13 @@ need(add_surface,'effectiveFileName','effective server/link filename')
 need(add_surface,'effectiveFileName,','effective filename submitted to download admission')
 need(preflight,'DownloadFileNameSuggestionSource.ServerContentDisposition','Content-Disposition source classification')
 need(uidt,'JOB_END_NOTIFICATION_POLICY_REMOVE','UIDT active notification removal policy')
-need(uidt,'JOB_END_NOTIFICATION_POLICY_DETACH','UIDT terminal notification retention policy')
+need(uidt,'No Kotlin transfer owner exists to pause','UIDT wake-only ownership after XGO-75')
 need(notifications,'.setOnlyAlertOnce(true)','idempotent terminal repost alert policy')
 need(notifications,'.setGroup(GROUP_TERMINAL)','terminal group policy')
 need(terminal_policy,'QueueControlCommand.ReviewRecovery','shared truthful terminal recovery action')
 need(recovery,'TerminalNotificationActionPolicy.actionsFor','terminal actions rehydrated after restart')
 need(fgs,'runCatching','foreground notification delivery isolation')
-need(worker,'.onSuccess {','worker terminal dispatch mark only after notify succeeds')
+need(fgs,'.onSuccess {','foreground terminal dispatch mark only after notify succeeds')
 need(gate,'validate-notification-webview-gap-hotfix.py','canonical gate wiring')
 
 need(strings,'name="media_locator_no_external_browser"','external-browser fallback resource')

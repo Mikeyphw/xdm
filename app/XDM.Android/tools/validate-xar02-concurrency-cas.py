@@ -231,7 +231,11 @@ def run_repository_contracts() -> None:
     require_text("repo", "findOutputById(record.id)")
     require_text("repo", "current.attemptGeneration != record.observedAttemptGeneration")
     require_text("capture_dao", "findOutputById")
-    require_text("queue", "transitionDownloadStateIfCurrent")
+    queue_source = read("queue")
+    require("AndroidGoDownloadCommands.submit" in queue_source and "AndroidSchedulerHost.wake(" in queue_source,
+            "XGO-75 queue compatibility facade must route scheduling intent through Go")
+    for forbidden in ("QueueIntelligencePlanner", "QueueRetryLedger", "reserveSlotAtomically", "executionStarter.start("):
+        require(forbidden not in queue_source, f"XGO-75 queue facade retains superseded authority: {forbidden}")
     require_text("viewmodel", "private val uiMutationConcurrency = UiMutationConcurrencyCoordinator()")
     require_text("ui_cas", "nextDestinationIntent")
     require_text("ui_cas", "isCurrentDestinationIntent")

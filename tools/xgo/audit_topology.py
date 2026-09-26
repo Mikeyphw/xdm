@@ -136,7 +136,21 @@ def audit(config_path: Path, output: Path | None, only_target: str = "") -> dict
                     raise TopologyError(f"{name}: workflow references unknown target {child}")
                 if workflow != "validate":
                     raise TopologyError(f"{name}: XGO cross-target refs must use #validate, got #{workflow}")
-                _steps(child, targets[child])
+                child_target = targets[child]
+                child_workflows = child_target.get("workflows") if isinstance(child_target, dict) else None
+                if isinstance(child_workflows, dict) and workflow in child_workflows:
+                    _steps(child, child_target)
+                else:
+                    # Devtool MP05 permits target:<name>#<action> to fall back to the
+                    # target's primary runner action when no named workflow exists.
+                    # GATE-10 uses that supported contract for xdm_android#validate so
+                    # the Android runner's native validation planner executes inside
+                    # the same DAG rather than through a recursive Devtool process.
+                    runner = str(child_target.get("runner") or "").strip() if isinstance(child_target, dict) else ""
+                    if not runner:
+                        raise TopologyError(
+                            f"{name}: target {child} has neither workflow {workflow!r} nor a primary runner fallback"
+                        )
         inspected[name] = {
             "runner": str(target.get("runner") or ""),
             "root": str(target.get("root") or ""),
@@ -144,11 +158,42 @@ def audit(config_path: Path, output: Path | None, only_target: str = "") -> dict
             "validate_node_count": len(validate),
         }
 
-    # Gate target workflows must cross target boundaries, never reach into a foreign job.
+    # Gate targets normally compose target workflows. GATE-10 is intentionally a lean
+    # final integration seal: it may use target-local curated sanity/integrity jobs
+    # before crossing into xgo_android#validate and the native Android runner seal.
+    # This avoids recursively replaying every already-closed subsystem milestone.
+    gate10_local_jobs = {
+        "gofmt_check",
+        "go_engine_test",
+        "go_engine_vet",
+        "platform_broker_matrix",
+        "abi_harness",
+        "capability_ledger_audit",
+        "fixture_lint",
+        "fixture_secret_scan",
+        "devtool_topology_audit",
+    }
     for name in GATE_TARGETS:
-        for step in _steps(name, targets[name]):
-            if JOB_REF_RE.fullmatch(step["ref"]):
-                raise TopologyError(f"{name}: gate workflow must compose target workflows, not target-local jobs")
+        steps = _steps(name, targets[name])
+        for step in steps:
+            jm = JOB_REF_RE.fullmatch(step["ref"])
+            if not jm:
+                continue
+            if name == "xgo_gate_android" and jm.group(1) in gate10_local_jobs:
+                continue
+            raise TopologyError(f"{name}: gate workflow must compose target workflows, not target-local jobs")
+    gate10_steps = _steps("xgo_gate_android", targets["xgo_gate_android"])
+    gate10_refs = [step["ref"] for step in gate10_steps]
+    gate10_has_curated_jobs = any(
+        (m := JOB_REF_RE.fullmatch(step["ref"])) and m.group(1) in gate10_local_jobs
+        for step in gate10_steps
+    )
+    if gate10_has_curated_jobs:
+        required_gate10_tail = ["target:xgo_android#validate", "target:xdm_android#validate"]
+        if gate10_refs[-2:] != required_gate10_tail:
+            raise TopologyError(
+                "xgo_gate_android: lean gate must end with xgo_android#validate then xdm_android#validate"
+            )
 
     report = {
         "schema_version": 1,

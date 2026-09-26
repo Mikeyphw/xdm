@@ -117,7 +117,10 @@ def main() -> None:
     vm_source=read('app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt')
     must(vm_source,'val privateScopes = emptySet<String>()','direct browser capture private scopes must be durable string authorities')
     app_source=read('app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt')
-    must(app_source,'val nativeHlsRecovery: Result<Int>','native HLS startup recovery Result type')
+    must(app_source,'AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)','XGO-74 one-time Room import authority')
+    must(app_source,'Go owns','XGO-75 startup recovery authority marker')
+    if 'val nativeHlsRecovery: Result<Int>' in app_source:
+        raise SystemExit('XGO-75 application startup still owns native HLS recovery directly')
     termux=read('app/src/main/kotlin/com/mikeyphw/xdm/android/termux/TermuxMediaPipelineManager.kt')
     must(termux,'check(repository.saveMediaCaptureWithVariants(refreshedCapture, variants, resolvedAt))','Termux variant persistence CAS check retained')
     must(termux, '''            true

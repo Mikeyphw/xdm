@@ -77,8 +77,9 @@ def main() -> int:
     require('Saved in Android shared storage' in labels, 'Content URI label must be human')
     require('Android stores shared files with access-safe content links instead of raw paths.' in labels, 'Content URI hint must explain scoped storage')
 
-    for symbol in ['fun cancelDownload', 'fun redownloadPreserving', 'fun moveDownloadInQueue', 'fun deleteSavedFile', 'transferRuntime.cancel', 'repository.reprioritizeDownloads(reprioritized)']:
+    for symbol in ['fun cancelDownload', 'fun redownloadPreserving', 'fun moveDownloadInQueue', 'fun deleteSavedFile', 'androidDownloadUiClient.command(action = "cancel"', 'repository.reprioritizeDownloads(reprioritized)']:
         require(symbol in vm, f'MainViewModel missing {symbol}')
+    require('transferRuntime.cancel' not in vm, 'MainViewModel must not directly cancel the transfer runtime after Go authority cutover')
     for symbol in ['viewModel::cancelDownload', 'viewModel::redownload', 'viewModel::moveDownloadInQueue', 'viewModel::deleteSavedFile']:
         require(symbol in app, f'XdmApp missing {symbol}')
 

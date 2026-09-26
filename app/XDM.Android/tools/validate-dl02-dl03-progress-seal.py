@@ -45,7 +45,7 @@ need('Task speed must not reset to an attempt-local baseline.' in bug_hunt_phase
 need('verifyPersistedSegment(paths.partial, segment)' in remediation_contract and 'NativeCheckpointIntegrity.verify(path, segment, ::sha256Range)' in remediation_contract, 'remediation resume contract was not carried forward to incremental integrity proofs')
 need('Native checkpoint range has no byte digest' not in remediation_contract, 'stale whole-prefix checkpoint assertion remains in remediation contract')
 need('VerificationProgressThrottle()' in verify and 'minIntervalMillis: Long = 350L' in throttle and 'minBytesDelta: Long = 4L * 1024L * 1024L' in throttle, 'verification durable throttle missing')
-need('semanticDownloads = repository.downloads.distinctUntilChangedBy' in main and 'private val durableUiState' in main and 'liveTransferUi' in main, 'broad UI invalidation split missing')
+need('private val semanticDownloads = androidDownloadUiClient.projection' in main and 'distinctUntilChangedBy' in main and 'private val durableUiState' in main and 'liveTransferUi' in main, 'broad UI invalidation split missing')
 need('artifactInspectionKeys' in screen and 'resumeInspectionKeys' in screen and 'LaunchedEffect(completedInspectionInputs, resumeInspectionInputs)' in screen, 'artifact inspection semantic cache missing')
 need('thenByDescending { it.updatedAtEpochMs }' not in workspace, 'workspace ordering still depends on updatedAt')
 active_block=experience.split('DownloadDashboardBucket.Active ->',1)[1].split('\n',1)[0]

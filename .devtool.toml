@@ -194,8 +194,6 @@ restore = ["help"]
 
 build = [
   "clean",
-  ":media-ffmpeg:installPinnedFfmpegRuntime",
-  ":transfer-aria2:installOfficialAria2Runtime",
   "assembleDebug",
 ]
 
@@ -292,13 +290,13 @@ TZ = ""
 [validation]
 android_safe = false
 
-max_workers = 2
-cpu_limit = 2
+max_workers = 1
+cpu_limit = 1
 
 split_gradle = true
 parallel = false
 
-no_daemon = false
+no_daemon = true
 stop_daemon_after_phase = true
 low_priority = true
 
@@ -2820,22 +2818,160 @@ inputs = [
   ".devtool.toml",
   "engine/**",
   "tools/xgo/**",
+  "app/XDM.Android/**",
 ]
 outputs = [
   ".devtool/reports/xgo/gates/android/**",
 ]
 
+[targets.xgo_gate_android.jobs.gofmt_check]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/check_go_format.py",
+  "engine",
+  "--output",
+  ".devtool/reports/xgo/gates/android/gofmt-audit.json",
+]
+inputs = ["engine/**", "tools/xgo/check_go_format.py"]
+outputs = [".devtool/reports/xgo/gates/android/gofmt-audit.json"]
+
+[targets.xgo_gate_android.jobs.go_engine_test]
+runner = "command"
+command = ["go", "test", "./engine/..."]
+inputs = ["go.work", "engine/**"]
+metadata = { read_only = true }
+
+[targets.xgo_gate_android.jobs.go_engine_vet]
+runner = "command"
+command = ["go", "vet", "./engine/..."]
+inputs = ["go.work", "engine/**"]
+metadata = { read_only = true }
+
+[targets.xgo_gate_android.jobs.platform_broker_matrix]
+runner = "command"
+command = [
+  "go",
+  "run",
+  "./engine/cmd/xgo-runtime-audit",
+  "--mode",
+  "platform",
+  "--output",
+  ".devtool/reports/xgo/gates/android/platform-broker-matrix.json",
+]
+inputs = [
+  "go.work",
+  "engine/go.mod",
+  "engine/runtime/platform/**",
+  "engine/cmd/xgo-runtime-audit/**",
+]
+outputs = [".devtool/reports/xgo/gates/android/platform-broker-matrix.json"]
+
+[targets.xgo_gate_android.jobs.abi_harness]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/run_abi_harness.py",
+  "--output",
+  ".devtool/reports/xgo/gates/android/abi-harness.json",
+]
+inputs = [
+  "go.work",
+  "engine/go.mod",
+  "engine/runtime/**",
+  "engine/api/v1/**",
+  "engine/bridge/cabi/**",
+  "tools/xgo/run_abi_harness.py",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/android/abi-harness.json",
+  ".devtool/build/xgo/abi/**",
+]
+
+[targets.xgo_gate_android.jobs.capability_ledger_audit]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_foundation.py",
+  "ledger",
+  "--map",
+  "engine/docs/donor-map.yaml",
+  "--ledger",
+  "engine/docs/capability-ledger.yaml",
+  "--output",
+  ".devtool/reports/xgo/gates/android/capability-ledger-audit.json",
+]
+inputs = [
+  "tools/xgo/audit_foundation.py",
+  "engine/docs/donor-map.yaml",
+  "engine/docs/capability-ledger.yaml",
+]
+outputs = [".devtool/reports/xgo/gates/android/capability-ledger-audit.json"]
+
+[targets.xgo_gate_android.jobs.fixture_lint]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_fixtures.py",
+  "lint",
+  "--ledger",
+  "engine/docs/capability-ledger.yaml",
+  "--map",
+  "engine/docs/donor-map.yaml",
+  "--registry",
+  "engine/testdata/fixture-registry.json",
+  "--output",
+  ".devtool/reports/xgo/gates/android/fixture-lint.json",
+]
+inputs = [
+  "tools/xgo/audit_fixtures.py",
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/**",
+]
+outputs = [".devtool/reports/xgo/gates/android/fixture-lint.json"]
+
+[targets.xgo_gate_android.jobs.fixture_secret_scan]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_fixtures.py",
+  "secret-scan",
+  "--registry",
+  "engine/testdata/fixture-registry.json",
+  "--output",
+  ".devtool/reports/xgo/gates/android/fixture-secret-scan.json",
+]
+inputs = ["tools/xgo/audit_fixtures.py", "engine/testdata/**"]
+outputs = [".devtool/reports/xgo/gates/android/fixture-secret-scan.json"]
+
+[targets.xgo_gate_android.jobs.devtool_topology_audit]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_topology.py",
+  "audit",
+  "--config",
+  ".devtool.toml",
+  "--output",
+  ".devtool/reports/xgo/gates/android/devtool-topology.json",
+]
+inputs = [".devtool.toml", "tools/xgo/audit_topology.py"]
+outputs = [".devtool/reports/xgo/gates/android/devtool-topology.json"]
+
 [targets.xgo_gate_android.workflows]
 validate = [
-  { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
-  { id = "store", ref = "target:xgo_store#validate", depends_on = ["foundation"] },
-  { id = "security", ref = "target:xgo_security#validate", depends_on = ["store"] },
-  { id = "transfer", ref = "target:xgo_transfer#validate", depends_on = ["security"] },
-  { id = "backends", ref = "target:xgo_backends#validate", depends_on = ["transfer"] },
-  { id = "scheduler", ref = "target:xgo_scheduler#validate", depends_on = ["backends"] },
-  { id = "media", ref = "target:xgo_media#validate", depends_on = ["scheduler"] },
-  { id = "ops", ref = "target:xgo_ops#validate", depends_on = ["media"] },
-  { id = "android", ref = "target:xgo_android#validate", depends_on = ["ops"] }
+  { id = "gofmt_check", ref = "job:gofmt_check", depends_on = [] },
+  { id = "go_engine_test", ref = "job:go_engine_test", depends_on = ["gofmt_check"] },
+  { id = "go_engine_vet", ref = "job:go_engine_vet", depends_on = ["go_engine_test"] },
+  { id = "platform_broker_matrix", ref = "job:platform_broker_matrix", depends_on = ["go_engine_vet"] },
+  { id = "abi_harness", ref = "job:abi_harness", depends_on = ["platform_broker_matrix"] },
+  { id = "capability_ledger_audit", ref = "job:capability_ledger_audit", depends_on = ["abi_harness"] },
+  { id = "fixture_lint", ref = "job:fixture_lint", depends_on = ["capability_ledger_audit"] },
+  { id = "fixture_secret_scan", ref = "job:fixture_secret_scan", depends_on = ["fixture_lint"] },
+  { id = "devtool_topology_audit", ref = "job:devtool_topology_audit", depends_on = ["fixture_secret_scan"] },
+  { id = "android", ref = "target:xgo_android#validate", depends_on = ["devtool_topology_audit"] },
+  { id = "android_full_seal", ref = "target:xdm_android#validate", depends_on = ["android"] },
 ]
 
 [targets.xgo_gate_cross_host]

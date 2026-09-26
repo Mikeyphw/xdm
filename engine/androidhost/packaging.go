@@ -73,10 +73,10 @@ type MetadataManifest struct {
 }
 
 type SharedLibraryPlan struct {
-	ABIs       []AndroidABI       `json:"abis"`
-	Artifacts  []BuildArtifact    `json:"artifacts"`
-	Manifest   MetadataManifest   `json:"manifest"`
-	NoDesktopC bool               `json:"no_desktop_libc_assumptions"`
+	ABIs       []AndroidABI     `json:"abis"`
+	Artifacts  []BuildArtifact  `json:"artifacts"`
+	Manifest   MetadataManifest `json:"manifest"`
+	NoDesktopC bool             `json:"no_desktop_libc_assumptions"`
 }
 
 func NewSharedLibraryPlan(sourceRevision, goVersion string) (SharedLibraryPlan, error) {

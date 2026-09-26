@@ -57,27 +57,30 @@ def source_contracts() -> None:
         if forbidden in restore:
             fail(f"XGO-71 restore worker retains superseded Kotlin recovery authority: {forbidden}")
 
-    require(
+    application = require(
         "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
-        "SchedulerRecoveryLeaseCoordinator",
-        "tryAcquire(\"application-startup\")",
-        "nativeHlsRecovery: Result<Int>",
-        "monitor.isSuccess",
-        "migration.isSuccess && recovery.admissionSafe && nativeHlsRecovery.isSuccess",
-        "recoveryLeaseCoordinator.release",
         "AndroidEngineProcessAuthority",
         "AndroidGoEngineHostProvider",
+        "AndroidLegacyRoomImporter(repository).importOnce(androidEngineProcessAuthority)",
+        "Go owns",
+        "QueueIntelligenceWorker.schedule(this)",
     )
+    for forbidden in ("tryAcquire(\"application-startup\")", "nativeHlsRecovery: Result<Int>", "recoverForStartup()"):
+        if forbidden in application:
+            fail(f"XGO-75 application startup retains superseded Kotlin recovery authority: {forbidden}")
 
     coordinator = require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
-        "consumeImmediateReevaluations(now)",
-        "schedulePrecisionWakeup",
+        "AndroidGoDownloadCommands.submit",
+        "AndroidSchedulerHost.wake(",
         "releaseFailedExecutionOwner",
         "retireAndroidSystemId",
         "QueueIntelligenceWorker.enqueueImmediate(appContext)",
         "AndroidEngineWakeReason.MANUAL_RECONCILE",
     )
+    for forbidden in ("QueueIntelligencePlanner", "QueueRetryLedger", "reserveSlotAtomically", "schedulePrecisionWakeup"):
+        if forbidden in coordinator:
+            fail(f"XGO-75 queue facade retains superseded scheduler authority: {forbidden}")
     reconcile = coordinator.split("suspend fun reconcile(", 1)[1].split("suspend fun evaluateAndClaim(", 1)[0]
     for forbidden in ("evaluateAndClaim(", "executionStarter.start("):
         if forbidden in reconcile:

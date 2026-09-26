@@ -29,7 +29,7 @@ screen=require("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/Downlo
 if "text = queueIntelligence.message" in screen: errors.append("Downloads still exposes raw queueIntelligence.message")
 row=require("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadRow.kt",
     "val rowStatus = DownloadsWorkspacePlanner.rowStatus(download, truth)",
-    "val destination = destinationUiLabel(download.destinationUri)",
+    "val destination = destinationCardLabel(download)",
     "DownloadActionIcon.Resume -> Icons.Rounded.Download", "XdmProgressLine(")
 planner=require("core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/DownloadActionPlanner.kt",
     "Resume,", "DownloadActionIcon.Resume")

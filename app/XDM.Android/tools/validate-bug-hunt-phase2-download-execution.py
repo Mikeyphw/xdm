@@ -43,17 +43,25 @@ for needle, label in [
 ]:
     require(runtime, needle, label)
 
+# XGO-71/XGO-75 supersede Kotlin transfer ownership at Android scheduling surfaces.
+# These components now host/wake Go or submit a Go command; the historical exact-owner
+# pause semantics remain covered inside TransferExecutionRuntime for the narrow execution broker.
 for text, needle, label in [
-    (worker, "if (isStopped) pauseAndRecordStop()", "WorkManager stop handling"),
-    (worker, "runtime.pauseOwned(downloadId, queueClaimToken)", "WorkManager pauses only exact owned claims"),
-    (worker, "recordSystemStop", "WorkManager records durable stop reason"),
-    (job, "runtime.requestPauseOwnedAsync(downloadId, queueClaimToken)", "UIDT pauses only exact owned claim"),
-    (job, "params.stopReason", "UIDT records platform stop reason"),
-    (service, "runtime.summary.value.activeCount == 0", "foreground self-stop waits for no active transfers"),
-    (service, "runtime.pauseOwned(downloadId, queueClaimToken)", "foreground timeout pauses exact owned claims"),
-    (service, "queueIntelligence.pauseAllDurably(); runtime.pauseAll()", "explicit user Pause All persists hold before broad pause"),
+    (worker, "AndroidSchedulerHost.wake(", "WorkManager wakes the single Go engine"),
+    (worker, "AndroidEngineWakeReason.RETRY_DEADLINE", "WorkManager preserves the Go retry deadline wake reason"),
+    (job, "AndroidSchedulerHost.wake(", "UIDT wakes the single Go engine"),
+    (job, "AndroidEngineWakeReason.USER_INITIATED_DATA_TRANSFER", "UIDT carries typed Go wake reason"),
+    (service, 'submitGoCommand("pause_all")', "foreground Pause All crosses Go command authority"),
+    (service, 'submitGoCommand("resume_all")', "foreground Resume All crosses Go command authority"),
+    (service, "AndroidSchedulerHost.wake(", "foreground service start only hosts/wakes Go"),
 ]:
     require(text, needle, label)
+for text, needle, label in [
+    (worker, "runtime.execute(", "WorkManager direct transfer execution"),
+    (worker, "evaluateAndClaim(", "WorkManager Kotlin queue admission"),
+    (job, "runtime.execute(", "UIDT direct transfer execution"),
+]:
+    reject(text, needle, label)
 
 for needle, label in [
     ("newTransferRequestBuilder", "shared request builder"),
