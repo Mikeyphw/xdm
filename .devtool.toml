@@ -2337,6 +2337,61 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/android/android-publication-faults.json"]
 
+[targets.xgo_android.jobs.android_network_security]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_network_security",
+  "--output", ".devtool/reports/xgo/android/android-network-security.json",
+]
+inputs = [
+  "engine/androidhost/**",
+  "engine/ops/**",
+  "engine/scheduler/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/network/AndroidNetworkPolicyBroker.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidPlatformRequestDispatcher.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/MediaRequestHandoffStore.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/SecureRequestEnvelopeStore.kt",
+  "engine/testdata/android/xgo-cap-android-006.json",
+]
+outputs = [".devtool/reports/xgo/android/android-network-security.json"]
+
+[targets.xgo_android.jobs.android_scheduler_authority]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_scheduler_authority",
+  "--output", ".devtool/reports/xgo/android/android-scheduler-authority.json",
+]
+inputs = [
+  "engine/androidhost/**",
+  "engine/scheduler/**",
+  "engine/runtime/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/AndroidSchedulerHost.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferRestoreWorker.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferBootReceiver.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
+  "engine/testdata/android/xgo-cap-android-004.json",
+]
+outputs = [".devtool/reports/xgo/android/android-scheduler-authority.json"]
+
+[targets.xgo_android.jobs.android_host_runtime_tests]
+runner = "command"
+command = ["go", "test", "./engine/androidhost", "./engine/runtime"]
+inputs = [
+  "engine/androidhost/**",
+  "engine/runtime/**",
+]
+metadata = { read_only = true }
+
 [targets.xgo_android.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
@@ -2344,6 +2399,9 @@ validate = [
   { id = "jni_bridge_instrumentation", ref = "job:jni_bridge_instrumentation", depends_on = ["android_engine_build"] },
   { id = "engine_service_instrumentation", ref = "job:engine_service_instrumentation", depends_on = ["jni_bridge_instrumentation"] },
   { id = "android_publication_faults", ref = "job:android_publication_faults", depends_on = ["engine_service_instrumentation"] },
+  { id = "android_network_security", ref = "job:android_network_security", depends_on = ["android_publication_faults"] },
+  { id = "android_scheduler_authority", ref = "job:android_scheduler_authority", depends_on = ["android_network_security"] },
+  { id = "android_host_runtime_tests", ref = "job:android_host_runtime_tests", depends_on = ["android_scheduler_authority"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

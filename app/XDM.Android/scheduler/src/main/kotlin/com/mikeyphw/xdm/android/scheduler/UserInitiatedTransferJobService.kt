@@ -5,142 +5,45 @@ import android.app.job.JobParameters
 import android.app.job.JobService
 import android.os.Build
 import androidx.annotation.RequiresApi
-import com.mikeyphw.xdm.android.model.DownloadState
-import com.mikeyphw.xdm.android.model.SystemExecutionOwner
-import com.mikeyphw.xdm.android.model.SystemStopReasonRecord
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
+/** XGO-71 UIDT adapter: the job keeps Android execution legal, while Go owns all scheduler policy. */
 @SuppressLint("SpecifyJobSchedulerIdRange")
 @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 class UserInitiatedTransferJobService : JobService() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val jobs = java.util.concurrent.ConcurrentHashMap<Int, Job>()
-
     override fun onStartJob(params: JobParameters): Boolean {
         val downloadId = params.extras.getString(TransferNotifications.EXTRA_DOWNLOAD_ID) ?: return false
         val queueClaimToken = params.extras.getLong(TransferExecutionStarter.EXTRA_QUEUE_CLAIM_TOKEN, 0L)
-        val runtime = (application as TransferRuntimeProvider).transferRuntime
-        val queue = (application as QueueIntelligenceProvider).queueIntelligenceCoordinator
-        val notifications = TransferNotifications(this)
         val notificationId = TransferSystemIdRegistry(this).idFor(downloadId)
-        jobs[params.jobId] = scope.launch {
-            var updater: Job? = null
-            var terminalState: DownloadState? = null
-            try {
-                when (queue.authorizeClaimedExecution(downloadId, queueClaimToken)) {
-                    ClaimedExecutionAuthorization.TemporarilyHeld -> {
-                        jobFinished(params, true)
-                        return@launch
-                    }
-                    ClaimedExecutionAuthorization.Stale -> {
-                        jobFinished(params, false)
-                        return@launch
-                    }
-                    ClaimedExecutionAuthorization.Ready -> Unit
-                }
-                val initial = runtime.findDownload(downloadId)
-                // XAR09: initial UIDT notification happens only after the durable queue claim is authorized.
-                val initialNotificationSet = runCatching {
-                    setNotification(
-                        params,
-                        notificationId,
-                        notifications.active(runtime.liveSummaryFor(downloadId, initial?.fileName ?: "Download"), downloadId),
-                        JOB_END_NOTIFICATION_POLICY_REMOVE,
-                    )
-                }.isSuccess
-                if (!initialNotificationSet) {
-                    queue.releaseFailedExecutionOwner(downloadId, queueClaimToken, "UIDT notification setup failed after authorization; durable claim released.")
-                    jobFinished(params, true)
-                    return@launch
-                }
-                val throttle = NotificationUpdateThrottle()
-                updater = launch {
-                    runtime.liveProgress.collectLatest {
-                        if (throttle.shouldPublish()) {
-                            val exact = runtime.liveSummaryFor(downloadId, initial?.fileName ?: "Download")
-                            runCatching { setNotification(params, notificationId, notifications.active(exact, downloadId), JOB_END_NOTIFICATION_POLICY_REMOVE) }
-                        }
-                    }
-                }
-                val state = runtime.execute(downloadId, queueClaimToken)
-                terminalState = state
-                updater.cancel()
-                val result = runtime.findDownload(downloadId)
-                val requestIdentity = result?.let { runtime.terminalRequestIdentity(it, state) }.orEmpty()
-                notifications.terminalIfFirst(
-                    downloadId = downloadId,
-                    fileName = result?.fileName ?: "Download",
-                    state = state,
-                    message = result?.errorMessage,
-                    destinationUri = result?.let { download ->
-                        if (state == DownloadState.Completed && download.completedArtifactGeneration == download.attemptGeneration) {
-                            download.completedArtifactUri
-                        } else {
-                            download.destinationUri
-                        }
-                    },
-                    mimeType = result?.mimeType,
-                    attemptGeneration = result?.attemptGeneration ?: 0L,
-                    requestIdentity = requestIdentity,
-                )?.let { terminal ->
-                    runCatching {
-                        setNotification(params, notificationId, terminal, JOB_END_NOTIFICATION_POLICY_DETACH)
-                    }.onSuccess {
-                        notifications.markTerminalDispatched(downloadId, result?.attemptGeneration ?: 0L, state, requestIdentity)
-                    }
-                }
-                val reschedule = state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)
-                jobFinished(params, reschedule)
-            } catch (error: Throwable) {
-                queue.releaseFailedExecutionOwner(downloadId, queueClaimToken, "UIDT coroutine failed before completion: ${error.message ?: error::class.java.simpleName}")
-                jobFinished(params, true)
-            } finally {
-                updater?.cancel()
-                AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
-                jobs.remove(params.jobId)
-            }
+        runCatching {
+            setNotification(
+                params,
+                notificationId,
+                TransferNotifications(this).active(
+                    ActiveTransferSummary(activeCount = 1, primaryDownloadId = downloadId, primaryFileName = "Preparing download"),
+                    downloadId,
+                ),
+                JOB_END_NOTIFICATION_POLICY_REMOVE,
+            )
+        }.onFailure {
+            jobFinished(params, true)
+            return false
         }
-        return true
+
+        val result = AndroidSchedulerHost.wake(
+            this,
+            AndroidEngineWakeRequest(
+                eventId = "uidt:$downloadId:$queueClaimToken:${params.jobId}",
+                downloadId = downloadId,
+                reason = AndroidEngineWakeReason.USER_INITIATED_DATA_TRANSFER,
+                userInitiated = true,
+            ),
+        )
+        jobFinished(params, result.disposition == AndroidEngineWakeDisposition.RETRYABLE)
+        return false
     }
 
     override fun onStopJob(params: JobParameters): Boolean {
-        val downloadId = params.extras.getString(TransferNotifications.EXTRA_DOWNLOAD_ID)
-        jobs.remove(params.jobId)?.cancel()
-        if (downloadId != null) {
-            val runtime = (application as TransferRuntimeProvider).transferRuntime
-            val queueClaimToken = params.extras.getLong(TransferExecutionStarter.EXTRA_QUEUE_CLAIM_TOKEN, 0L)
-            val jobStopReason = params.stopReason
-            // onStopJob may arrive after a replacement owner has been claimed. Serialize teardown
-            // against that queue-claim token so an old UIDT callback cannot pause newer work.
-            val attemptGeneration = runtime.activeAttemptGenerationOwned(downloadId, queueClaimToken) ?: 0L
-            val record = (application as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator?.recordSystemStop(
-                downloadId = downloadId,
-                attemptGeneration = attemptGeneration,
-                owner = SystemExecutionOwner.UserInitiatedJob,
-                stopReason = jobStopReason,
-                nowEpochMs = System.currentTimeMillis(),
-            ) ?: SystemStopReasonRecord(
-                downloadId = downloadId,
-                attemptGeneration = attemptGeneration,
-                owner = SystemExecutionOwner.UserInitiatedJob,
-                jobParametersStopReason = jobStopReason,
-                occurredAtEpochMs = System.currentTimeMillis(),
-                message = "User-initiated job stopped; only its exact queue claim may pause backend ownership.",
-            )
-            TransferExecutionStopReasonRecorder.record(record)
-            runtime.requestPauseOwnedAsync(downloadId, queueClaimToken)
-        }
+        // Android may re-deliver the platform opportunity. No Kotlin transfer owner exists to pause.
         return true
-    }
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
     }
 }

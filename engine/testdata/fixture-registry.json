@@ -1,6 +1,6 @@
 {
   "description": "Language-neutral behavior fixtures derived from the XGO capability ledger and pinned Android/Desktop donor evidence.",
-  "fixture_count": 96,
+  "fixture_count": 97,
   "fixtures": [
     {
       "capability_ids": [
@@ -49,6 +49,19 @@
       ],
       "fixture_id": "xgo-cap-android-003",
       "path": "engine/testdata/android/xgo-cap-android-003.json"
+    },
+    {
+      "capability_ids": [
+        "XGO-CAP-ANDROID-006"
+      ],
+      "category": "android",
+      "detailed": true,
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_queue_coordinator"
+      ],
+      "fixture_id": "xgo-cap-android-006",
+      "path": "engine/testdata/android/xgo-cap-android-006.json"
     },
     {
       "capability_ids": [

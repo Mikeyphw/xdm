@@ -6,11 +6,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TransferNotificationPolicyContractTest {
-    @Test fun userInitiatedJobsReportPausedAsPausedInsteadOfFailed() {
+    @Test fun userInitiatedJobsHostGoWithoutOwningTransferCompletion() {
         val service = File(androidRoot(), "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt").readText()
-        assertTrue(service.contains("notifications.terminalIfFirst("))
-        assertFalse(service.contains("val completed = state == DownloadState.Completed"))
-        assertTrue(service.contains("state in setOf(DownloadState.WaitingForNetwork, DownloadState.WaitingForPower)"))
+        assertTrue(service.contains("AndroidSchedulerHost.wake("))
+        assertTrue(service.contains("AndroidEngineWakeReason.USER_INITIATED_DATA_TRANSFER"))
+        assertFalse(service.contains("runtime.execute("))
+        assertFalse(service.contains("authorizeClaimedExecution("))
+        assertFalse(service.contains("notifications.terminalIfFirst("))
     }
 
     @Test fun terminalNotificationsHavePausedAndSanitizedFailureCopy() {

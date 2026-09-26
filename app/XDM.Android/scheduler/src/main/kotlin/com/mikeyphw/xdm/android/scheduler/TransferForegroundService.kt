@@ -12,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -24,7 +23,6 @@ class TransferForegroundService : Service() {
     private lateinit var systemIds: TransferSystemIdRegistry
     private var summaryJob: Job? = null
     private var terminalJob: Job? = null
-    private val ownedClaims = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     override fun onCreate() {
         super.onCreate()
@@ -73,29 +71,17 @@ class TransferForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> intent.getStringExtra(TransferNotifications.EXTRA_DOWNLOAD_ID)?.let { id ->
-                val queueClaimToken = intent.getLongExtra(TransferExecutionStarter.EXTRA_QUEUE_CLAIM_TOKEN, Long.MIN_VALUE)
-                // Component delivery may race with Pause All or startup recovery. Re-prove the
-                // durable claim before any backend side effect instead of trusting the old Intent.
-                scope.launch {
-                    when (queueIntelligence.authorizeClaimedExecution(id, queueClaimToken)) {
-                        ClaimedExecutionAuthorization.Ready -> {
-                            ownedClaims[id] = queueClaimToken
-                            try {
-                                runtime.execute(id, queueClaimToken)
-                            } catch (error: Throwable) {
-                                queueIntelligence.releaseFailedExecutionOwner(id, queueClaimToken, "Foreground service execution failed before completion: ${error.message ?: error::class.java.simpleName}")
-                            } finally {
-                                ownedClaims.remove(id, queueClaimToken)
-                                AndroidExecutionClaimRegistry.release(id, queueClaimToken)
-                            }
-                        }
-                        ClaimedExecutionAuthorization.TemporarilyHeld ->
-                            QueueIntelligenceWorker.enqueueClaimed(this@TransferForegroundService, id, queueClaimToken)
-                        ClaimedExecutionAuthorization.Stale -> Unit
-                    }
-                    delay(250)
-                    if (runtime.summary.value.activeCount == 0) stopSelf(startId)
-                }
+                val queueClaimToken = intent.getLongExtra(TransferExecutionStarter.EXTRA_QUEUE_CLAIM_TOKEN, 0L)
+                val result = AndroidSchedulerHost.wake(
+                    this,
+                    AndroidEngineWakeRequest(
+                        eventId = "fgs:$id:$queueClaimToken:$startId",
+                        downloadId = id,
+                        reason = AndroidEngineWakeReason.FOREGROUND_SERVICE,
+                        requiresForeground = true,
+                    ),
+                )
+                if (result.disposition == AndroidEngineWakeDisposition.FAILED) stopSelf(startId)
             }
             TransferNotifications.ACTION_PAUSE_ALL -> scope.launch { queueIntelligence.pauseAllDurably(); runtime.pauseAll() }
             TransferNotifications.ACTION_RESUME_ALL -> scope.launch {
@@ -120,22 +106,10 @@ class TransferForegroundService : Service() {
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            scope.launch {
-                ownedClaims.toMap().forEach { (downloadId, queueClaimToken) ->
-                    runtime.pauseOwned(downloadId, queueClaimToken)
-                    ownedClaims.remove(downloadId, queueClaimToken)
-                    AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
-                }
-                stopSelf(startId)
-            }
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) stopSelf(startId)
     }
 
     override fun onDestroy() {
-        if (::runtime.isInitialized) ownedClaims.toMap().forEach { (downloadId, queueClaimToken) ->
-            runtime.requestPauseOwnedAsync(downloadId, queueClaimToken)
-        }
         summaryJob?.cancel()
         terminalJob?.cancel()
         scope.cancel()

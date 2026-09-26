@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/subhra74/xdm/engine/androidhost"
 	"github.com/subhra74/xdm/engine/domain/identity"
 	"github.com/subhra74/xdm/engine/domain/publication"
+	"github.com/subhra74/xdm/engine/ops"
+	"github.com/subhra74/xdm/engine/scheduler"
 )
 
 type report struct {
@@ -34,6 +38,10 @@ func main() {
 		r, err = engineServiceInstrumentation()
 	case "android_publication_faults":
 		r, err = androidPublicationFaults()
+	case "android_network_security":
+		r, err = androidNetworkSecurity()
+	case "android_scheduler_authority":
+		r, err = androidSchedulerAuthority()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -236,6 +244,244 @@ func androidPublicationFaults() (report, error) {
 		}
 	}
 	return report{Mode: "android_publication_faults", Pass: true, Checks: []string{"document tree destination", "MediaStore destination", "persistable permission handling", "available space query", "stage-to-provider commit", "durable idempotent receipt after restart", "ambiguous crash receipt reconciliation", "collision policy mapping", "storage failure mapping"}}, nil
+}
+
+func androidNetworkSecurity() (report, error) {
+	policy := androidhost.AndroidNetworkSecurityPolicy{
+		GlobalCleartextAllowed: false,
+		HostCleartextAllowed:   map[string]bool{"media.test": true, "blocked.test": false},
+		CertificateStore:       "android_network_security_config",
+		TrustUserCAs:           true,
+	}
+	allowed, err := policy.Cleartext("https://media.test/video.mp4")
+	if err != nil || !allowed.Allowed || allowed.Source != "host_override" {
+		return report{}, fmt.Errorf("cleartext allow failed: %+v %w", allowed, err)
+	}
+	if _, err := policy.Cleartext("blocked.test"); !errors.Is(err, androidhost.ErrCleartextDenied) {
+		return report{}, fmt.Errorf("cleartext deny not mapped: %w", err)
+	}
+	tls, err := policy.TLSPlan()
+	if err != nil || tls.CertificateStore != "android_network_security_config" || len(tls.TestRequirements) == 0 {
+		return report{}, fmt.Errorf("bad TLS integration plan: %+v %w", tls, err)
+	}
+	ref := ops.SecretRef{ID: "cookie", Scope: "https://media.test", Generation: 1}
+	store := androidhost.NewAndroidSecureSecretStore(map[ops.SecretRef]string{ref: "raw-cookie-secret"})
+	resolution, value, err := androidhost.ResolveAndroidSecret(context.Background(), store, ref)
+	if err != nil || value == "" || !resolution.Resolved || strings.Contains(resolution.SafeLog, "raw-cookie-secret") {
+		return report{}, fmt.Errorf("bad secret resolution: res=%+v value=%q err=%w", resolution, value, err)
+	}
+	runtimeSnapshot, err := (androidhost.AndroidRuntimeConditions{ObservedAt: time.Unix(1000, 0), Online: true, Metered: false, WiFi: true, Charging: true, BatteryPercent: 88, StorageFreeBytes: 1 << 30, PowerSource: scheduler.PowerUSB}).ToSchedulerRuntime()
+	if err != nil || !runtimeSnapshot.Online || runtimeSnapshot.Metered || !runtimeSnapshot.WiFi || !runtimeSnapshot.Charging {
+		return report{}, fmt.Errorf("bad Android runtime conditions: %+v %w", runtimeSnapshot, err)
+	}
+	manual, err := (androidhost.AndroidProxyConfig{Mode: androidhost.ProxyManual, Host: "proxy.test", Port: 8080, NoProxy: []string{"b.test", "a.test"}}).Decision()
+	if err != nil || manual.ProxyURL != "http://proxy.test:8080" || len(manual.BypassList) != 2 || manual.BypassList[0] != "a.test" {
+		return report{}, fmt.Errorf("bad manual proxy decision: %+v %w", manual, err)
+	}
+	pac, err := (androidhost.AndroidProxyConfig{Mode: androidhost.ProxyPAC, PACURL: "https://proxy.test/proxy.pac"}).Decision()
+	if err != nil || pac.PACURL == "" {
+		return report{}, fmt.Errorf("bad PAC decision: %+v %w", pac, err)
+	}
+
+	broker := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/network/AndroidNetworkPolicyBroker.kt")
+	for _, needle := range []string{
+		"NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted",
+		"ConnectivityManager::class.java)?.defaultProxy",
+		"pacFileUrl",
+		"AndroidMediaRequestCredentialSource",
+		"MediaRequestHandoffStore.forDownload",
+		"KeyStore.getInstance(\"AndroidCAStore\")",
+		"StatFs(context.filesDir.absolutePath).availableBytes",
+		"logcatMustNotContainSecrets",
+	} {
+		if !strings.Contains(broker, needle) {
+			return report{}, fmt.Errorf("Android network broker missing production API %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"ProxyInfo? = null", "AndroidNetworkSecurityConfigReply(host, allowed = false)", "println(", "Log.d(", "Log.i(", "Log.v("} {
+		if strings.Contains(broker, forbidden) {
+			return report{}, fmt.Errorf("Android network broker contains placeholder/leaky token %s", forbidden)
+		}
+	}
+
+	dispatcher := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidPlatformRequestDispatcher.kt")
+	for _, needle := range []string{"platform.request", "runtime_conditions", "network_policy", "system_proxy", "secret_lookup", "bridge.platformReply", "resolved.value"} {
+		if !strings.Contains(dispatcher, needle) {
+			return report{}, fmt.Errorf("platform dispatcher missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"println(", "Log.d(", "Log.i(", "Log.v(", "safeLog + value", "value + safeLog"} {
+		if strings.Contains(dispatcher, forbidden) {
+			return report{}, fmt.Errorf("platform dispatcher contains raw-secret logging risk %s", forbidden)
+		}
+	}
+
+	authority := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt")
+	for _, needle := range []string{"AndroidPlatformRequestDispatcher", "nextFrame(FRAME_POLL_TIMEOUT_MS)", "dispatcher.dispatch(frame)"} {
+		if !strings.Contains(authority, needle) {
+			return report{}, fmt.Errorf("process authority does not pump platform requests: missing %s", needle)
+		}
+	}
+	secureStore := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/SecureRequestEnvelopeStore.kt")
+	for _, needle := range []string{"AndroidKeyStore", "AES/GCM/NoPadding"} {
+		if !strings.Contains(secureStore, needle) {
+			return report{}, fmt.Errorf("secure request store missing %s", needle)
+		}
+	}
+	return report{Mode: "android_network_security", Pass: true, Checks: []string{
+		"real Android NetworkSecurityPolicy cleartext API",
+		"AndroidKeyStore-backed current credential SecretRef lookup",
+		"runtime metered/Wi-Fi/charging/battery/storage facts",
+		"real ConnectivityManager system proxy/PAC facts",
+		"AndroidCAStore + network-security-config TLS integration",
+		"platform.request frame pump replies to Go",
+		"secret values excluded from Android log/support surfaces",
+	}}, nil
+}
+
+func androidSchedulerAuthority() (report, error) {
+	dl := "dl_00000000000000000000000000000071"
+	now := time.Unix(1000, 0)
+	runtimeSnapshot := scheduler.RuntimeSnapshot{ObservedAtUnixMS: now.UnixMilli(), Online: true, Metered: false, WiFi: true, Charging: true, BatteryPercent: 95, StorageFreeBytes: 1 << 30, PowerSource: scheduler.PowerAC}
+	host := androidhost.NewAndroidSchedulerHost()
+	future, err := host.PlanExecutionOpportunity(androidhost.AndroidExecutionRequest{DownloadID: dl, EventID: "retry-due", Now: now, RetryDueAt: now.Add(time.Minute), Runtime: runtimeSnapshot})
+	if err != nil {
+		return report{}, err
+	}
+	if future.Wake || future.Primitive != androidhost.PrimitiveWorkManager || future.DelayUntil.IsZero() || !future.EnginePolicyAuthoritative {
+		return report{}, fmt.Errorf("bad future retry wake: %+v", future)
+	}
+	fgs, err := host.PlanExecutionOpportunity(androidhost.AndroidExecutionRequest{DownloadID: dl, EventID: "fgs", Now: now, RequiresForeground: true, Runtime: runtimeSnapshot})
+	if err != nil || !fgs.Wake || fgs.Primitive != androidhost.PrimitiveForegroundService {
+		return report{}, fmt.Errorf("bad FGS wake: %+v %w", fgs, err)
+	}
+	uidt, err := host.PlanExecutionOpportunity(androidhost.AndroidExecutionRequest{DownloadID: dl, EventID: "uidt", Now: now, UserInitiated: true, Runtime: runtimeSnapshot})
+	if err != nil || !uidt.Wake || uidt.Primitive != androidhost.PrimitiveUserInitiatedData {
+		return report{}, fmt.Errorf("bad UIDT wake: %+v %w", uidt, err)
+	}
+	dup, err := host.PlanExecutionOpportunity(androidhost.AndroidExecutionRequest{DownloadID: dl, EventID: "uidt", Now: now, UserInitiated: true, Runtime: runtimeSnapshot})
+	if err != nil || !dup.DuplicateSuppressed || dup.Wake {
+		return report{}, fmt.Errorf("duplicate worker not suppressed: %+v %w", dup, err)
+	}
+	blockedRuntime := runtimeSnapshot
+	blockedRuntime.WiFi = false
+	blocked, err := host.PlanExecutionOpportunity(androidhost.AndroidExecutionRequest{DownloadID: dl, EventID: "wifi", Now: now, Runtime: blockedRuntime, Conditions: scheduler.ConditionPolicy{RequireWiFi: true}})
+	if err != nil || blocked.Wake || len(blocked.Holds) != 1 || blocked.Holds[0] != scheduler.HoldWiFiUnavailable {
+		return report{}, fmt.Errorf("runtime conditions not forwarded to Go: %+v %w", blocked, err)
+	}
+	boot, err := host.PlanExecutionOpportunity(androidhost.AndroidExecutionRequest{EventID: "boot", Now: now, AfterBootRestore: true, Runtime: runtimeSnapshot})
+	if err != nil || !boot.Wake || boot.Primitive != androidhost.PrimitiveBootReceiver {
+		return report{}, fmt.Errorf("bad boot restore wake: %+v %w", boot, err)
+	}
+
+	worker := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt")
+	for _, needle := range []string{"AndroidSchedulerHost.wake", "enqueueUniquePeriodicWork", "enqueueUniqueWork", "engine_retry_due_at_epoch_ms", "Schedule only the absolute deadline already supplied by Go"} {
+		if !strings.Contains(worker, needle) {
+			return report{}, fmt.Errorf("WorkManager host adapter missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"evaluateAndClaim(", "runtime.execute(", "authorizeClaimedExecution(", "QueueRetryLedger", "QueueIntelligenceCoordinator"} {
+		if strings.Contains(worker, forbidden) {
+			return report{}, fmt.Errorf("WorkManager retained Kotlin scheduler authority token %s", forbidden)
+		}
+	}
+
+	restore := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferRestoreWorker.kt")
+	for _, needle := range []string{"AndroidSchedulerHost.wake", "BOOT_OR_PACKAGE_RESTART", "afterBootOrPackageRestart = true"} {
+		if !strings.Contains(restore, needle) {
+			return report{}, fmt.Errorf("boot/package restore host missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"recoverForStartup(", "installStartupRecoveryHold(", "clearStartupRecoveryHold(", "QueueIntelligenceProvider"} {
+		if strings.Contains(restore, forbidden) {
+			return report{}, fmt.Errorf("restore worker retained Kotlin recovery authority token %s", forbidden)
+		}
+	}
+	bootReceiver := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferBootReceiver.kt")
+	if strings.Contains(bootReceiver, ".then(") || strings.Contains(bootReceiver, "RESTORE_QUEUE_WORK_NAME") {
+		return report{}, fmt.Errorf("boot receiver still chains a Kotlin queue evaluation worker")
+	}
+
+	fgsSource := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt")
+	fgsStart, err := sourceSection(fgsSource, "ACTION_START ->", "TransferNotifications.ACTION_PAUSE_ALL")
+	if err != nil {
+		return report{}, err
+	}
+	if !strings.Contains(fgsStart, "AndroidSchedulerHost.wake") || !strings.Contains(fgsStart, "FOREGROUND_SERVICE") {
+		return report{}, fmt.Errorf("FGS ACTION_START does not host Go")
+	}
+	for _, forbidden := range []string{"runtime.execute(", "authorizeClaimedExecution(", "releaseFailedExecutionOwner("} {
+		if strings.Contains(fgsStart, forbidden) {
+			return report{}, fmt.Errorf("FGS ACTION_START retained execution authority %s", forbidden)
+		}
+	}
+
+	uidtSource := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt")
+	for _, needle := range []string{"AndroidSchedulerHost.wake", "USER_INITIATED_DATA_TRANSFER", "userInitiated = true"} {
+		if !strings.Contains(uidtSource, needle) {
+			return report{}, fmt.Errorf("UIDT adapter missing %s", needle)
+		}
+	}
+	for _, forbidden := range []string{"runtime.execute(", "authorizeClaimedExecution(", "QueueIntelligenceProvider", "TransferRuntimeProvider"} {
+		if strings.Contains(uidtSource, forbidden) {
+			return report{}, fmt.Errorf("UIDT retained Kotlin execution authority %s", forbidden)
+		}
+	}
+
+	coordinator := mustRead("app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt")
+	reconcile, err := sourceSection(coordinator, "suspend fun reconcile()", "fun recordTerminalEvent")
+	if err != nil {
+		return report{}, err
+	}
+	if !strings.Contains(reconcile, "AndroidSchedulerHost.wake") || strings.Contains(reconcile, "evaluateAndClaim(") || strings.Contains(reconcile, "executionStarter.start(") {
+		return report{}, fmt.Errorf("automatic reconcile path still owns Kotlin queue eligibility/execution")
+	}
+
+	application := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
+	for _, needle := range []string{"AndroidGoEngineHostProvider", "AndroidEngineProcessAuthority", "androidEngineProcessAuthority.wake(request)"} {
+		if !strings.Contains(application, needle) {
+			return report{}, fmt.Errorf("application does not expose single Go engine host: missing %s", needle)
+		}
+	}
+	authority := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt")
+	for _, needle := range []string{"ConcurrentHashMap.newKeySet", "android.scheduler_wake", "nextFrame(FRAME_POLL_TIMEOUT_MS)", "AndroidPlatformRequestDispatcher"} {
+		if !strings.Contains(authority, needle) {
+			return report{}, fmt.Errorf("process engine authority missing %s", needle)
+		}
+	}
+	goHost := mustRead("engine/androidhost/scheduler_host.go")
+	for _, needle := range []string{"sync.Mutex", "DuplicateSuppressed", "EnginePolicyAuthoritative"} {
+		if !strings.Contains(goHost, needle) {
+			return report{}, fmt.Errorf("Go scheduler host missing duplicate/authority fence %s", needle)
+		}
+	}
+	runtimeSource := mustRead("engine/runtime/engine.go")
+	for _, needle := range []string{"e.handlers[\"android.scheduler_wake\"]", "PlatformRequest(ctx, platform.RuntimeConditions", "android.scheduler.decision"} {
+		if !strings.Contains(runtimeSource, needle) {
+			return report{}, fmt.Errorf("runtime scheduler wake path missing %s", needle)
+		}
+	}
+	return report{Mode: "android_scheduler_authority", Pass: true, Checks: []string{
+		"WorkManager is wake-only and uses unique work",
+		"FGS/UIDT are host primitives and do not execute transfers",
+		"Go-provided retry deadline is preserved without Kotlin backoff policy",
+		"boot/package restart restores Go before scheduler recovery",
+		"runtime conditions round-trip through the Go platform broker",
+		"process + Go duplicate fences suppress repeated host events",
+		"automatic reconcile path no longer calls Kotlin evaluateAndClaim",
+	}}, nil
+}
+
+func sourceSection(source, startNeedle, endNeedle string) (string, error) {
+	start := strings.Index(source, startNeedle)
+	if start < 0 {
+		return "", fmt.Errorf("source section missing start %q", startNeedle)
+	}
+	end := strings.Index(source[start+len(startNeedle):], endNeedle)
+	if end < 0 {
+		return "", fmt.Errorf("source section missing end %q", endNeedle)
+	}
+	return source[start : start+len(startNeedle)+end], nil
 }
 
 func mustRead(path string) string {

@@ -4,27 +4,21 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 
-/** Boot/package-replacement recovery uses the same ownership-first runtime pipeline as app startup. */
+/** Boot/package replacement restores the Go engine first; Go alone decides recovery/runnable work. */
 class TransferRestoreWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
-    override suspend fun doWork(): Result {
-        val runtime = (applicationContext as? TransferRuntimeProvider)?.transferRuntime ?: return Result.retry()
-        val queue = (applicationContext as? QueueIntelligenceProvider)?.queueIntelligenceCoordinator ?: return Result.retry()
-        val leaseCoordinator = SchedulerRecoveryLeaseCoordinator(applicationContext)
-        val lease = leaseCoordinator.tryAcquire("restore-worker") ?: return Result.retry()
-        try {
-            // Boot/package restore may run long after normal app startup. Take the same durable gate
-            // explicitly so no queue start races ownership reconciliation.
-            queue.installStartupRecoveryHold()
-            val recovery = runtime.recoverForStartup()
-            if (recovery.admissionSafe) {
-                TransferNotifications(applicationContext).notifyRestored(recovery.restoredCount)
-                queue.clearStartupRecoveryHold()
-                QueueIntelligenceWorker.enqueueImmediate(applicationContext)
-                return Result.success()
-            }
-            return Result.retry()
-        } finally {
-            leaseCoordinator.release(lease, "restore-worker-finished")
+    override suspend fun doWork(): Result = AndroidSchedulerHost.wake(
+        applicationContext,
+        AndroidEngineWakeRequest(
+            eventId = "restore:$id",
+            reason = AndroidEngineWakeReason.BOOT_OR_PACKAGE_RESTART,
+            afterBootOrPackageRestart = true,
+        ),
+    ).let { result ->
+        when (result.disposition) {
+            AndroidEngineWakeDisposition.ACCEPTED,
+            AndroidEngineWakeDisposition.DUPLICATE -> Result.success()
+            AndroidEngineWakeDisposition.RETRYABLE -> Result.retry()
+            AndroidEngineWakeDisposition.FAILED -> Result.failure()
         }
     }
 }

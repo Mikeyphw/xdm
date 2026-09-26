@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"time"
 
+	"github.com/subhra74/xdm/engine/androidhost"
 	"github.com/subhra74/xdm/engine/domain/failure"
 	"github.com/subhra74/xdm/engine/domain/identity"
 	"github.com/subhra74/xdm/engine/runtime/command"
@@ -42,20 +44,21 @@ type queuedCommand struct {
 }
 
 type Engine struct {
-	mu         sync.Mutex
-	started    bool
-	stopping   bool
-	stopped    bool
-	rootCtx    context.Context
-	rootCancel context.CancelFunc
-	commands   chan queuedCommand
-	events     *event.Queue
-	broker     *platform.Broker
-	handlers   map[string]Handler
-	seen       map[command.ID]struct{}
-	active     map[identity.OperationID]*activeOperation
-	workers    sync.WaitGroup
-	loops      sync.WaitGroup
+	mu               sync.Mutex
+	started          bool
+	stopping         bool
+	stopped          bool
+	rootCtx          context.Context
+	rootCancel       context.CancelFunc
+	commands         chan queuedCommand
+	events           *event.Queue
+	broker           *platform.Broker
+	handlers         map[string]Handler
+	seen             map[command.ID]struct{}
+	active           map[identity.OperationID]*activeOperation
+	androidScheduler *androidhost.AndroidSchedulerHost
+	workers          sync.WaitGroup
+	loops            sync.WaitGroup
 }
 
 type Invocation struct {
@@ -83,9 +86,11 @@ func New(config Config) *Engine {
 		commands: make(chan queuedCommand, commandBuffer),
 		events:   event.NewQueue(eventBuffer), broker: platform.NewBroker(platformBuffer),
 		handlers: make(map[string]Handler), seen: make(map[command.ID]struct{}), active: make(map[identity.OperationID]*activeOperation),
+		androidScheduler: androidhost.NewAndroidSchedulerHost(),
 	}
 	e.handlers["runtime.ping"] = pingHandler
 	e.handlers["runtime.platform_probe"] = platformProbeHandler
+	e.handlers["android.scheduler_wake"] = e.androidSchedulerWakeHandler
 	for kind, handler := range config.Handlers {
 		if kind != "" && handler != nil {
 			e.handlers[kind] = handler
@@ -321,6 +326,64 @@ func pingHandler(ctx context.Context, inv *Invocation, env command.Envelope) err
 		payload = json.RawMessage(`{}`)
 	}
 	_, err := inv.Emit(event.Operational, "runtime.pong", payload, "")
+	return err
+}
+
+func (e *Engine) androidSchedulerWakeHandler(ctx context.Context, inv *Invocation, env command.Envelope) error {
+	var wake androidhost.AndroidSchedulerWakeCommand
+	if err := json.Unmarshal(env.Payload, &wake); err != nil {
+		return err
+	}
+	if wake.EventID == "" {
+		return androidhost.ErrInvalidWakeRequest
+	}
+	requestPayload, _ := json.Marshal(map[string]any{
+		"event_id":    wake.EventID,
+		"download_id": wake.DownloadID,
+		"reason":      wake.Reason,
+	})
+	reply, err := inv.PlatformRequest(ctx, platform.RuntimeConditions, platform.Refs{}, requestPayload)
+	if err != nil {
+		return err
+	}
+	if !reply.OK {
+		if reply.ErrorCode == "" {
+			return errors.New("android runtime conditions unavailable")
+		}
+		return errors.New("android runtime conditions unavailable: " + reply.ErrorCode)
+	}
+	var conditions androidhost.AndroidRuntimeConditions
+	if err := json.Unmarshal(reply.Payload, &conditions); err != nil {
+		return err
+	}
+	runtimeSnapshot, err := conditions.ToSchedulerRuntime()
+	if err != nil {
+		return err
+	}
+	var retryDue time.Time
+	if wake.EngineRetryDueAtEpochMS > 0 {
+		retryDue = time.UnixMilli(wake.EngineRetryDueAtEpochMS).UTC()
+	}
+	decision, err := e.androidScheduler.PlanExecutionOpportunity(androidhost.AndroidExecutionRequest{
+		DownloadID:         wake.DownloadID,
+		EventID:            wake.EventID,
+		Reason:             wake.Reason,
+		Now:                time.Now().UTC(),
+		RetryDueAt:         retryDue,
+		RequiresForeground: wake.RequiresForeground,
+		UserInitiated:      wake.UserInitiated,
+		AfterBootRestore:   wake.AfterBootOrPackageRestart,
+		Runtime:            runtimeSnapshot,
+		Conditions:         wake.Conditions,
+	})
+	if err != nil {
+		return err
+	}
+	payload, err := json.Marshal(decision)
+	if err != nil {
+		return err
+	}
+	_, err = inv.Emit(event.Durable, "android.scheduler.decision", payload, "")
 	return err
 }
 

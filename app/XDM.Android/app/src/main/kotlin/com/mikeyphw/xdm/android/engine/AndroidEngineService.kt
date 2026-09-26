@@ -4,21 +4,20 @@ import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.mikeyphw.xdm.android.XdmApplication
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Single Android process authority for the Go engine lifecycle.
- *
- * Activity recreation and repeated start/bind calls reconnect to the same bridge.
- * Host-only escalations are exposed as requests for Android UI/notification code.
+ * Binder/service facade over the process-wide Go engine authority.
+ * Activity recreation, duplicate starts and scheduler host components reconnect
+ * to one AndroidEngineProcessAuthority instead of creating component-local engines.
  */
 class AndroidEngineService : Service() {
     private val binder = EngineBinder()
-    private val state = MutableStateFlow(AndroidEngineProjection.Stopped)
-    private var bridge: AndroidGoEngineBridge? = null
     private var engineIdentity: String? = null
+
+    private val authority: AndroidEngineProcessAuthority
+        get() = (application as XdmApplication).androidEngineProcessAuthority
 
     inner class EngineBinder : Binder() {
         fun service(): AndroidEngineService = this@AndroidEngineService
@@ -34,28 +33,18 @@ class AndroidEngineService : Service() {
         return START_STICKY
     }
 
-    fun projections(): StateFlow<AndroidEngineProjection> = state.asStateFlow()
+    fun projections(): StateFlow<AndroidEngineProjection> = authority.projections()
 
     @Synchronized
-    fun ensureSingleEngine(reason: ProcessRestartRecovery): String {
-        engineIdentity?.let { return it }
-        val nextIdentity = "android-go-engine-${System.currentTimeMillis()}"
-        val nextBridge = AndroidGoEngineBridge()
-        nextBridge.create(ByteArray(0))
-        bridge = nextBridge
-        engineIdentity = nextIdentity
-        state.value = AndroidEngineProjection.Running(nextIdentity, reason.name)
-        return nextIdentity
+    fun ensureSingleEngine(reason: ProcessRestartRecovery): String = authority.ensureSingleEngine(reason).also {
+        engineIdentity = it
     }
 
     fun requestForegroundEscalation(reason: String): AndroidHostRequest =
-        AndroidHostRequest.ForegroundEscalation(reason = reason, engineIdentity = engineIdentity)
+        AndroidHostRequest.ForegroundEscalation(reason = reason, engineIdentity = engineIdentity ?: authority.currentIdentity())
 
     override fun onDestroy() {
-        bridge?.close()
-        bridge = null
-        engineIdentity = null
-        state.value = AndroidEngineProjection.Stopped
+        // The service is a host primitive, not the engine lifetime owner. The process authority stays alive.
         super.onDestroy()
     }
 }
@@ -73,4 +62,5 @@ enum class ProcessRestartRecovery {
     Bind,
     StartCommand,
     ProcessRestart,
+    PlatformWake,
 }

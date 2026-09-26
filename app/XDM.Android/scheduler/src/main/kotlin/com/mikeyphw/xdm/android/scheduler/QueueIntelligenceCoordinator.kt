@@ -296,14 +296,25 @@ class QueueIntelligenceCoordinator(
     }
 
     suspend fun reconcile(): QueueIntelligenceSummary {
-        val outcome = evaluateAndClaim()
-        outcome.eligibleDownloads.forEach { download ->
-            val launch = executionStarter.start(download.id, download.totalBytes, userVisible = false, queueClaimToken = download.updatedAtEpochMs)
-            if (!launch.accepted) {
-                releaseFailedExecutionOwner(download.id, download.updatedAtEpochMs, "Queue policy: Android execution owner could not be scheduled.")
-            }
-        }
-        return outcome.summary
+        val now = System.currentTimeMillis()
+        val result = AndroidSchedulerHost.wake(
+            appContext,
+            AndroidEngineWakeRequest(
+                eventId = "reconcile:$now",
+                reason = AndroidEngineWakeReason.MANUAL_RECONCILE,
+            ),
+        )
+        val summary = _status.value.copy(
+            evaluatedAtEpochMs = now,
+            message = when (result.disposition) {
+                AndroidEngineWakeDisposition.ACCEPTED -> "Go engine accepted the queue reconciliation wake and owns eligibility decisions."
+                AndroidEngineWakeDisposition.DUPLICATE -> "A duplicate reconciliation wake was suppressed by the Go engine host boundary."
+                AndroidEngineWakeDisposition.RETRYABLE -> "Go engine host is temporarily unavailable; Android will retry the wake without evaluating the queue."
+                AndroidEngineWakeDisposition.FAILED -> "Go engine rejected the reconciliation wake; Android did not evaluate or start queued transfers."
+            },
+        )
+        _status.value = summary
+        return summary
     }
 
     fun recordTerminalEvent(event: TransferTerminalEvent) {

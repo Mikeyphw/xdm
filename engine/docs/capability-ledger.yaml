@@ -1148,15 +1148,29 @@
     },
     {
       "area": "android",
+      "behavior": "Android supplies network security, credential, runtime condition and proxy facts to Go.",
+      "canonical_behavior": "Android host answers cleartext, TLS, secure-secret, network-condition and proxy/PAC platform requests without leaking secrets or re-owning engine network policy.",
+      "donor_strategy": "merged",
+      "donors": [
+        "android_request_security_guard",
+        "android_queue_coordinator"
+      ],
+      "id": "XGO-CAP-ANDROID-006",
+      "status": "IMPLEMENTED",
+      "target_overlay": "XGO-70",
+      "test_id": "fixture:xgo-cap-android-006"
+    },
+    {
+      "area": "android",
       "behavior": "WorkManager/FGS/UIDT provide execution opportunity but not scheduler policy.",
-      "canonical_behavior": "Android wakes/hosts Go; retry/eligibility decisions are not duplicated in Kotlin.",
+      "canonical_behavior": "Android wakes/hosts Go, forwards runtime conditions and retry deadlines, suppresses duplicate workers, and never duplicates retry/queue eligibility decisions in Kotlin.",
       "donor_strategy": "redesign",
       "donors": [
         "android_queue_coordinator",
         "android_startup_recovery"
       ],
       "id": "XGO-CAP-ANDROID-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-71",
       "test_id": "fixture:xgo-cap-android-004"
     },

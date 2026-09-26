@@ -37,6 +37,8 @@ def coverage() -> None:
     checks.append("21/21 S09 coverage")
 
 def source_contracts() -> None:
+    # Historical recovery primitives remain covered where they still own durable state,
+    # but XGO-71 supersedes Kotlin execution admission with a narrow Android -> Go host boundary.
     require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/SchedulerRecoveryLeaseCoordinator.kt",
         "class SchedulerRecoveryLeaseCoordinator",
@@ -45,14 +47,16 @@ def source_contracts() -> None:
         "release(lease",
         "activeLeaseToken",
     )
-    require(
+    restore = require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferRestoreWorker.kt",
-        "SchedulerRecoveryLeaseCoordinator",
-        "tryAcquire(\"restore-worker\")",
-        "if (recovery.admissionSafe)",
-        "notifyRestored(recovery.restoredCount)",
-        "leaseCoordinator.release",
+        "AndroidSchedulerHost.wake(",
+        "AndroidEngineWakeReason.BOOT_OR_PACKAGE_RESTART",
+        "afterBootOrPackageRestart = true",
     )
+    for forbidden in ("recoverForStartup(", "SchedulerRecoveryLeaseCoordinator", "notifyRestored("):
+        if forbidden in restore:
+            fail(f"XGO-71 restore worker retains superseded Kotlin recovery authority: {forbidden}")
+
     require(
         "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
         "SchedulerRecoveryLeaseCoordinator",
@@ -61,15 +65,24 @@ def source_contracts() -> None:
         "monitor.isSuccess",
         "migration.isSuccess && recovery.admissionSafe && nativeHlsRecovery.isSuccess",
         "recoveryLeaseCoordinator.release",
+        "AndroidEngineProcessAuthority",
+        "AndroidGoEngineHostProvider",
     )
-    require(
+
+    coordinator = require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
         "consumeImmediateReevaluations(now)",
         "schedulePrecisionWakeup",
         "releaseFailedExecutionOwner",
         "retireAndroidSystemId",
         "QueueIntelligenceWorker.enqueueImmediate(appContext)",
+        "AndroidEngineWakeReason.MANUAL_RECONCILE",
     )
+    reconcile = coordinator.split("suspend fun reconcile(", 1)[1].split("suspend fun evaluateAndClaim(", 1)[0]
+    for forbidden in ("evaluateAndClaim(", "executionStarter.start("):
+        if forbidden in reconcile:
+            fail(f"XGO-71 automatic reconcile retains Kotlin scheduler authority: {forbidden}")
+
     require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueSchedulingRecoveryCoordinator.kt",
         "consumeImmediateReevaluation",
@@ -79,29 +92,39 @@ def source_contracts() -> None:
         "record.key.requestIdentity",
         "pendingImmediateReevaluationsLocked",
     )
-    require(
+
+    worker = require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt",
-        "releaseFailedExecutionOwner",
-        "requestIdentity = event.requestIdentity",
-        "markTerminalDispatched(event.downloadId, event.attemptGeneration, event.state, event.requestIdentity)",
-        "schedulePrecisionWakeup",
+        "AndroidSchedulerHost.wake(",
+        "AndroidEngineWakeReason.RETRY_DEADLINE",
+        "engineRetryDueAtEpochMs",
+        "enqueueUniqueWork",
         "PRECISION_WAKEUP_TAG",
     )
-    require(
+    for forbidden in ("runtime.execute(", "evaluateAndClaim(", "releaseFailedExecutionOwner"):
+        if forbidden in worker:
+            fail(f"XGO-71 WorkManager adapter retains Kotlin execution authority: {forbidden}")
+
+    uidt = require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt",
-        "initial UIDT notification happens only after the durable queue claim is authorized",
         "setNotification(",
-        "releaseFailedExecutionOwner(downloadId, queueClaimToken",
-        "requestIdentity = requestIdentity",
-        "markTerminalDispatched(downloadId, result?.attemptGeneration ?: 0L, state, requestIdentity)",
+        "AndroidSchedulerHost.wake(",
+        "AndroidEngineWakeReason.USER_INITIATED_DATA_TRANSFER",
     )
-    require(
+    if "runtime.execute(" in uidt or "releaseFailedExecutionOwner(" in uidt:
+        fail("XGO-71 UIDT adapter retains Kotlin transfer ownership")
+
+    fgs = require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
         "if (!startForeground())",
         "private fun startForeground(): Boolean",
-        "releaseFailedExecutionOwner(id, queueClaimToken",
+        "AndroidEngineWakeReason.FOREGROUND_SERVICE",
         "requestIdentity = event.requestIdentity",
     )
+    action_start = fgs.split("ACTION_START ->", 1)[1].split("TransferNotifications.ACTION_PAUSE_ALL", 1)[0]
+    if "runtime.execute(" in action_start or "releaseFailedExecutionOwner(" in action_start:
+        fail("XGO-71 FGS ACTION_START retains Kotlin execution authority")
+
     require(
         "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferExecutionRuntime.kt",
         "resetStopIntentForNewExecution",
@@ -132,6 +155,8 @@ def source_contracts() -> None:
     require(
         "scheduler/src/test/kotlin/com/mikeyphw/xdm/android/scheduler/Xar09SchedulerRecoveryContractTest.kt",
         "xar09NamesEverySchedulerRecoveryBoundary",
+        "xgo71BootAndPackageRestoreWakeGoInsteadOfRunningKotlinRecovery",
+        "xgo71PlatformOwnersOnlyWakeTheSingleGoEngine",
         "terminalNotificationsAreFencedByRequestIdentity",
         "retryLedgerIdentityIncludesRequestAndBackend",
     )

@@ -1,26 +1,52 @@
 {
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-android-004",
   "capability_ids": [
     "XGO-CAP-ANDROID-004"
   ],
   "category": "android",
-  "derivation": {
-    "behavior": "WorkManager/FGS/UIDT provide execution opportunity but not scheduler policy.",
-    "canonical_behavior": "Android wakes/hosts Go; retry/eligibility decisions are not duplicated in Kotlin.",
-    "strategy": "redesign"
-  },
   "donor_ids": [
     "android_queue_coordinator",
     "android_startup_recovery"
   ],
-  "expected": {
-    "invariants": [
-      "Android wakes/hosts Go; retry/eligibility decisions are not duplicated in Kotlin."
-    ]
+  "derivation": {
+    "behavior": "WorkManager/FGS/UIDT provide execution opportunity but not scheduler policy.",
+    "canonical_behavior": "Android wakes/hosts Go, forwards runtime conditions and retry deadlines, suppresses duplicate workers, and never duplicates retry/queue eligibility decisions in Kotlin.",
+    "strategy": "redesign"
   },
-  "fixture_id": "xgo-cap-android-004",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "WorkManager/FGS/UIDT provide execution opportunity but not scheduler policy."
+    "event_id": "uidt-worker-1",
+    "download_id": "dl_00000000000000000000000000000071",
+    "runtime_conditions": {
+      "online": true,
+      "metered": false,
+      "wifi": true,
+      "charging": true
+    },
+    "engine_retry_due_at": "engine-owned",
+    "android_primitives": [
+      "workmanager",
+      "foreground_service",
+      "user_initiated_data_transfer",
+      "boot_receiver"
+    ],
+    "runtime_round_trip": "android.scheduler_wake -> platform.runtime_conditions -> android.scheduler.decision"
   },
-  "schema_version": 1
+  "expected": {
+    "engine_policy_authoritative": true,
+    "duplicate_workers_suppressed": true,
+    "conditions_forwarded": true,
+    "retry_deadline_preserved": true,
+    "boot_restore_delegates_to_go": true,
+    "old_kotlin_policy_absent": true,
+    "invariants": [
+      "Android primitives wake and keep the host alive; they do not select retry/backoff/queue eligibility.",
+      "Duplicate WorkManager or start events cannot create duplicate engine attempts.",
+      "Boot/package restart restores the Go engine before scheduler recovery decisions are made.",
+      "Runtime condition snapshots are forwarded to the Go scheduler for authoritative eligibility."
+    ],
+    "workmanager_wake_only": true,
+    "fgs_uidt_host_only": true,
+    "go_runtime_handler_registered": true
+  }
 }

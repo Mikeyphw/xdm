@@ -27,27 +27,30 @@ class Xar09SchedulerRecoveryContractTest {
     }
 
     @Test
-    fun startupBootAndPackageRestoreShareARecoveryLease() {
-        val lease = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/SchedulerRecoveryLeaseCoordinator.kt")
+    fun xgo71BootAndPackageRestoreWakeGoInsteadOfRunningKotlinRecovery() {
         val app = source("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
         val restore = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferRestoreWorker.kt")
-        assertTrue(lease.contains("tryAcquire"))
-        assertTrue(app.contains("tryAcquire(\"application-startup\")"))
-        assertTrue(restore.contains("tryAcquire(\"restore-worker\")"))
-        assertTrue(restore.indexOf("if (recovery.admissionSafe)") < restore.indexOf("notifyRestored"))
+        assertTrue(app.contains("AndroidEngineProcessAuthority"))
+        assertTrue(restore.contains("AndroidSchedulerHost.wake("))
+        assertTrue(restore.contains("AndroidEngineWakeReason.BOOT_OR_PACKAGE_RESTART"))
+        assertTrue(restore.contains("afterBootOrPackageRestart = true"))
+        assertTrue(!restore.contains("recoverForStartup("))
     }
 
     @Test
-    fun executionOwnerFailuresReleaseClaimsAndWakeQueue() {
+    fun xgo71PlatformOwnersOnlyWakeTheSingleGoEngine() {
         val coordinator = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt")
         val worker = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt")
         val uidt = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt")
         val fgs = source("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt")
-        assertTrue(coordinator.contains("releaseFailedExecutionOwner"))
-        assertTrue(coordinator.contains("recordImmediateReevaluation(\"execution-owner-release\""))
-        assertTrue(worker.contains("releaseFailedExecutionOwner"))
-        assertTrue(uidt.contains("releaseFailedExecutionOwner(downloadId, queueClaimToken"))
-        assertTrue(fgs.contains("releaseFailedExecutionOwner(id, queueClaimToken"))
+        val fgsStart = fgs.substringAfter("ACTION_START ->").substringBefore("TransferNotifications.ACTION_PAUSE_ALL")
+        assertTrue(coordinator.contains("AndroidEngineWakeReason.MANUAL_RECONCILE"))
+        assertTrue(worker.contains("AndroidSchedulerHost.wake("))
+        assertTrue(uidt.contains("AndroidSchedulerHost.wake("))
+        assertTrue(fgsStart.contains("AndroidSchedulerHost.wake("))
+        assertTrue(!worker.contains("runtime.execute("))
+        assertTrue(!uidt.contains("runtime.execute("))
+        assertTrue(!fgsStart.contains("runtime.execute("))
     }
 
     @Test

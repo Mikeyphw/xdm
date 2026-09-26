@@ -1,211 +1,41 @@
 package com.mikeyphw.xdm.android.scheduler
 
-import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.ServiceInfo
-import android.os.Build
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
-import androidx.work.ForegroundInfo
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.mikeyphw.xdm.android.model.DownloadState
-import com.mikeyphw.xdm.android.model.SystemExecutionOwner
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-/** WorkManager-owned foreground execution for automatic work and legal FGS fallback. */
+/**
+ * XGO-71 WorkManager adapter.
+ *
+ * This worker does not evaluate the queue and never executes a transfer. It only
+ * wakes the single Go engine. Retry deadlines accepted here are supplied by Go;
+ * Kotlin performs no retry/backoff calculation.
+ */
 class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
-    private val ownedClaims = java.util.concurrent.ConcurrentHashMap<String, Long>()
     override suspend fun doWork(): Result {
-        val queueProvider = applicationContext as? QueueIntelligenceProvider ?: return Result.failure()
-        val runtimeProvider = applicationContext as? TransferRuntimeProvider ?: return Result.failure()
-        val coordinator = queueProvider.queueIntelligenceCoordinator
-        val runtime = runtimeProvider.transferRuntime
-        val claimedDownloadId = inputData.getString(INPUT_CLAIMED_DOWNLOAD_ID)
-        val queueClaimToken = inputData.getLong(INPUT_QUEUE_CLAIM_TOKEN, Long.MIN_VALUE)
-        return try {
-            if (!claimedDownloadId.isNullOrBlank()) {
-                when (coordinator.authorizeClaimedExecution(claimedDownloadId, queueClaimToken)) {
-                    ClaimedExecutionAuthorization.TemporarilyHeld -> return Result.retry()
-                    ClaimedExecutionAuthorization.Stale -> return Result.success()
-                    ClaimedExecutionAuthorization.Ready -> Unit
-                }
-                val download = runtime.findDownload(claimedDownloadId) ?: return Result.success()
-                try {
-                    withLiveForeground(runtime, download.id, download.fileName) {
-                        executeAndNotify(download.id, download.fileName, queueClaimToken, coordinator, runtime)
-                    }
-                } catch (error: Throwable) {
-                    coordinator.releaseFailedExecutionOwner(
-                        download.id,
-                        queueClaimToken,
-                        "WorkManager foreground setup or execution failed before a legal owner could run: ${error.message ?: error::class.java.simpleName}",
-                    )
-                    return Result.retry()
-                }
-                return Result.success()
-            }
-            repeat(MAX_DRAIN_ROUNDS) {
-                val outcome = coordinator.evaluateAndClaim()
-                if (outcome.eligibleDownloads.isEmpty()) return Result.success()
-                withLiveForeground(runtime, exactDownloadId = null, fallbackFileName = null, initialActiveCount = outcome.eligibleDownloads.size) {
-                    coroutineScope {
-                        outcome.eligibleDownloads.map { download ->
-                            async {
-                                when (coordinator.authorizeClaimedExecution(download.id, download.updatedAtEpochMs)) {
-                                    ClaimedExecutionAuthorization.Ready ->
-                                        executeAndNotify(download.id, download.fileName, download.updatedAtEpochMs, coordinator, runtime)
-                                    ClaimedExecutionAuthorization.TemporarilyHeld,
-                                    ClaimedExecutionAuthorization.Stale -> Unit
-                                }
-                            }
-                        }.awaitAll()
-                    }
-                }
-            }
-            Result.retry()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Throwable) {
-            withContext(NonCancellable + Dispatchers.IO) {
-                ownedClaims.forEach { (downloadId, token) ->
-                    coordinator.releaseFailedExecutionOwner(downloadId, token, "WorkManager execution owner failed before completion; durable claim released for retry.")
-                }
-                ownedClaims.clear()
-            }
-            Result.retry()
-        } finally {
-            if (isStopped) pauseAndRecordStop()
-        }
-    }
-
-    private suspend fun executeAndNotify(
-        downloadId: String,
-        fallbackName: String,
-        queueClaimToken: Long,
-        coordinator: QueueIntelligenceCoordinator,
-        runtime: TransferExecutionRuntime,
-    ) {
-        ownedClaims[downloadId] = queueClaimToken
-        val state = try {
-            runtime.execute(downloadId, queueClaimToken)
-        } finally {
-            if (!isStopped) {
-                ownedClaims.remove(downloadId, queueClaimToken)
-                AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
-            }
-        }
-        val current = runtime.findDownload(downloadId)
-        val event = TransferTerminalEvent(
-            downloadId = downloadId,
-            fileName = current?.fileName ?: fallbackName,
-            state = state,
-            message = current?.errorMessage,
-            destinationUri = current?.let { download ->
-                if (state == DownloadState.Completed && download.completedArtifactGeneration == download.attemptGeneration) {
-                    download.completedArtifactUri
-                } else {
-                    download.destinationUri
-                }
-            },
-            mimeType = current?.mimeType,
-            attemptGeneration = current?.attemptGeneration ?: 0L,
-            requestIdentity = current?.let { runtime.terminalRequestIdentity(it, state) }.orEmpty(),
-        )
-        coordinator.recordTerminalEvent(event)
-        TransferNotifications(applicationContext).terminalIfFirst(
-            downloadId = event.downloadId,
-            fileName = event.fileName,
-            state = event.state,
-            message = event.message,
-            destinationUri = event.destinationUri,
-            mimeType = event.mimeType,
-            attemptGeneration = event.attemptGeneration,
-            requestIdentity = event.requestIdentity,
-        )?.let { notification ->
-            runCatching {
-                applicationContext.getSystemService(NotificationManager::class.java)
-                    .notify(TransferSystemIdRegistry(applicationContext).idFor(downloadId), notification)
-            }.onSuccess {
-                TransferNotifications(applicationContext).markTerminalDispatched(event.downloadId, event.attemptGeneration, event.state, event.requestIdentity)
-            }
-        }
-    }
-
-    private suspend fun pauseAndRecordStop() = withContext(NonCancellable + Dispatchers.IO) {
-        val runtime = (applicationContext as? TransferRuntimeProvider)?.transferRuntime ?: return@withContext
-        val phase4 = (applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
-        val stopReason = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) getStopReason() else null
-        val claimed = inputData.getString(INPUT_CLAIMED_DOWNLOAD_ID)
-        val claimedToken = inputData.getLong(INPUT_QUEUE_CLAIM_TOKEN, Long.MIN_VALUE)
-        val owned = if (claimed != null && claimedToken > 0L) mapOf(claimed to claimedToken) else ownedClaims.toMap()
-        owned.forEach { (downloadId, queueClaimToken) ->
-            val durableGeneration = runtime.activeAttemptGenerationOwned(downloadId, queueClaimToken) ?: 0L
-            phase4?.recordSystemStop(
+        val downloadId = inputData.getString(INPUT_DOWNLOAD_ID)
+        val retryDueAt = inputData.getLong(INPUT_ENGINE_RETRY_DUE_AT, Long.MIN_VALUE).takeIf { it > 0L }
+        val reason = inputData.getString(INPUT_WAKE_REASON)
+            ?.let { raw -> runCatching { AndroidEngineWakeReason.valueOf(raw) }.getOrNull() }
+            ?: AndroidEngineWakeReason.PERIODIC_WORK
+        val eventId = inputData.getString(INPUT_EVENT_ID)
+            ?: "periodic:${id}:${System.currentTimeMillis() / PERIODIC_INTERVAL_MS}"
+        return AndroidSchedulerHost.wake(
+            applicationContext,
+            AndroidEngineWakeRequest(
+                eventId = eventId,
                 downloadId = downloadId,
-                attemptGeneration = durableGeneration,
-                owner = SystemExecutionOwner.WorkManager,
-                stopReason = stopReason,
-                nowEpochMs = System.currentTimeMillis(),
-            )?.also(TransferExecutionStopReasonRecorder::record)
-            runtime.pauseOwned(downloadId, queueClaimToken)
-            AndroidExecutionClaimRegistry.release(downloadId, queueClaimToken)
-        }
-        owned.keys.forEach(ownedClaims::remove)
-    }
-
-    private suspend fun <T> withLiveForeground(
-        runtime: TransferExecutionRuntime,
-        exactDownloadId: String?,
-        fallbackFileName: String?,
-        initialActiveCount: Int = 1,
-        block: suspend () -> T,
-    ): T = coroutineScope {
-        val notifications = TransferNotifications(applicationContext)
-        val initial = if (exactDownloadId != null) {
-            runtime.liveSummaryFor(exactDownloadId, fallbackFileName).let { summary ->
-                if (summary.activeCount == 0) summary.copy(activeCount = 1, primaryDownloadId = exactDownloadId, primaryFileName = fallbackFileName) else summary
-            }
-        } else {
-            runtime.summary.value.let { summary -> if (summary.activeCount == 0) summary.copy(activeCount = initialActiveCount) else summary }
-        }
-        setForeground(createForegroundInfo(initial, exactDownloadId))
-        val throttle = NotificationUpdateThrottle()
-        val updater = launch {
-            if (exactDownloadId != null) {
-                runtime.liveProgress.collectLatest {
-                    if (throttle.shouldPublish()) setForeground(createForegroundInfo(runtime.liveSummaryFor(exactDownloadId, fallbackFileName), exactDownloadId))
-                }
-            } else {
-                runtime.summary.collectLatest { summary ->
-                    if (throttle.shouldPublish(summary.activeCount == 0)) setForeground(createForegroundInfo(summary, null))
-                }
-            }
-        }
-        try {
-            block()
-        } finally {
-            updater.cancel()
-        }
-    }
-
-    private fun createForegroundInfo(summary: ActiveTransferSummary, exactDownloadId: String?): ForegroundInfo {
-        val notification = TransferNotifications(applicationContext).active(summary, exactDownloadId)
-        val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
-        return ForegroundInfo(FOREGROUND_NOTIFICATION_ID, notification, serviceType)
+                reason = reason,
+                engineRetryDueAtEpochMs = retryDueAt,
+            ),
+        ).toWorkResult()
     }
 
     companion object {
@@ -214,32 +44,42 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         private const val CLAIMED_PREFIX = "xdm-transfer-claimed-"
         private const val RETRY_PREFIX = "xdm-transfer-retry-"
         private const val PRECISION_WAKEUP_TAG = "xdm-scheduler-precision-wakeup"
-        private const val INPUT_CLAIMED_DOWNLOAD_ID = "claimed_download_id"
-        private const val INPUT_QUEUE_CLAIM_TOKEN = "queue_claim_token"
-        private const val FOREGROUND_NOTIFICATION_ID = 4608
-        private const val MAX_DRAIN_ROUNDS = 64
+        private const val INPUT_DOWNLOAD_ID = "download_id"
+        private const val INPUT_EVENT_ID = "engine_event_id"
+        private const val INPUT_WAKE_REASON = "engine_wake_reason"
+        private const val INPUT_ENGINE_RETRY_DUE_AT = "engine_retry_due_at_epoch_ms"
+        private const val PERIODIC_INTERVAL_MS = 15L * 60L * 1000L
 
         fun schedule(context: Context) {
-            val request = PeriodicWorkRequestBuilder<QueueIntelligenceWorker>(15, TimeUnit.MINUTES).addTag(PERIODIC_WORK).build()
+            val request = PeriodicWorkRequestBuilder<QueueIntelligenceWorker>(15, TimeUnit.MINUTES)
+                .setInputData(wakeData(reason = AndroidEngineWakeReason.PERIODIC_WORK))
+                .addTag(PERIODIC_WORK)
+                .build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
         }
 
         fun enqueueImmediate(context: Context) {
             (context.applicationContext as? QueueSchedulingRecoveryProvider)?.queueSchedulingRecoveryCoordinator
-                ?.requestImmediateReevaluation("queue-intelligence-worker", IMMEDIATE_WORK, System.currentTimeMillis())
-            val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>().addTag(IMMEDIATE_WORK).build()
+                ?.requestImmediateReevaluation("go-engine-host-wake", IMMEDIATE_WORK, System.currentTimeMillis())
+            val eventId = "condition:${System.currentTimeMillis()}"
+            val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>()
+                .setInputData(wakeData(eventId = eventId, reason = AndroidEngineWakeReason.CONDITION_CHANGED))
+                .addTag(IMMEDIATE_WORK)
+                .build()
             WorkManager.getInstance(context).enqueueUniqueWork(IMMEDIATE_WORK, ExistingWorkPolicy.KEEP, request)
         }
 
+        /** Compatibility entry point: the old durable claim token is now identity only, never authorization. */
         fun enqueueClaimed(context: Context, downloadId: String, queueClaimToken: Long) {
-            require(queueClaimToken > 0L) { "Claimed WorkManager execution requires a durable queue claim token" }
+            require(queueClaimToken > 0L) { "execution opportunity requires a positive durable generation token" }
             val workName = claimedWorkName(downloadId, queueClaimToken)
             val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>()
                 .setInputData(
-                    Data.Builder()
-                        .putString(INPUT_CLAIMED_DOWNLOAD_ID, downloadId)
-                        .putLong(INPUT_QUEUE_CLAIM_TOKEN, queueClaimToken)
-                        .build(),
+                    wakeData(
+                        eventId = "claim:$downloadId:$queueClaimToken",
+                        reason = AndroidEngineWakeReason.CLAIMED_EXECUTION_OPPORTUNITY,
+                        downloadId = downloadId,
+                    ),
                 )
                 .addTag(workName)
                 .build()
@@ -249,10 +89,19 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         internal fun claimedWorkName(downloadId: String, queueClaimToken: Long): String =
             "$CLAIMED_PREFIX$downloadId-c$queueClaimToken"
 
+        /** Schedule only the absolute deadline already supplied by Go. */
         fun scheduleRetry(context: Context, downloadId: String, retryAtEpochMs: Long) {
             val delay = (retryAtEpochMs - System.currentTimeMillis()).coerceAtLeast(0L)
             val request = OneTimeWorkRequestBuilder<QueueIntelligenceWorker>()
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                .setInputData(
+                    wakeData(
+                        eventId = "retry:$downloadId:$retryAtEpochMs",
+                        reason = AndroidEngineWakeReason.RETRY_DEADLINE,
+                        downloadId = downloadId,
+                        retryDueAtEpochMs = retryAtEpochMs,
+                    ),
+                )
                 .addTag(RETRY_PREFIX + downloadId)
                 .addTag(PRECISION_WAKEUP_TAG)
                 .build()
@@ -266,5 +115,24 @@ class QueueIntelligenceWorker(appContext: Context, params: WorkerParameters) : C
         fun cancelRetry(context: Context, downloadId: String) {
             WorkManager.getInstance(context).cancelUniqueWork(RETRY_PREFIX + downloadId)
         }
+
+        private fun wakeData(
+            eventId: String? = null,
+            reason: AndroidEngineWakeReason,
+            downloadId: String? = null,
+            retryDueAtEpochMs: Long? = null,
+        ): Data = Data.Builder().apply {
+            eventId?.let { putString(INPUT_EVENT_ID, it) }
+            putString(INPUT_WAKE_REASON, reason.name)
+            downloadId?.let { putString(INPUT_DOWNLOAD_ID, it) }
+            retryDueAtEpochMs?.let { putLong(INPUT_ENGINE_RETRY_DUE_AT, it) }
+        }.build()
     }
+}
+
+private fun AndroidEngineWakeResult.toWorkResult(): androidx.work.ListenableWorker.Result = when (disposition) {
+    AndroidEngineWakeDisposition.ACCEPTED,
+    AndroidEngineWakeDisposition.DUPLICATE -> androidx.work.ListenableWorker.Result.success()
+    AndroidEngineWakeDisposition.RETRYABLE -> androidx.work.ListenableWorker.Result.retry()
+    AndroidEngineWakeDisposition.FAILED -> androidx.work.ListenableWorker.Result.failure()
 }

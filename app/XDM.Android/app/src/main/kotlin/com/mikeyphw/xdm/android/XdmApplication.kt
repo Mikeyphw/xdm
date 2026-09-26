@@ -29,6 +29,9 @@ import com.mikeyphw.xdm.android.scheduler.TransferExecutionRuntime
 import com.mikeyphw.xdm.android.scheduler.TransferExecutionStarter
 import com.mikeyphw.xdm.android.scheduler.TransferNotifications
 import com.mikeyphw.xdm.android.scheduler.TransferRuntimeProvider
+import com.mikeyphw.xdm.android.scheduler.AndroidGoEngineHost
+import com.mikeyphw.xdm.android.scheduler.AndroidGoEngineHostProvider
+import com.mikeyphw.xdm.android.engine.AndroidEngineProcessAuthority
 import com.mikeyphw.xdm.android.transfer.BackendOwnershipStore
 import com.mikeyphw.xdm.android.transfer.BackendSelectionPolicy
 import com.mikeyphw.xdm.android.model.DebugEventRecorder
@@ -60,9 +63,16 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 
-class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
+class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligenceProvider, QueueSchedulingRecoveryProvider, AndroidGoEngineHostProvider, DebugRecorderProvider, ProblemReporterProvider, TermuxResultRouterProvider {
     lateinit var container: AppContainer
         private set
+
+    lateinit var androidEngineProcessAuthority: AndroidEngineProcessAuthority
+        private set
+
+    override val androidGoEngineHost: AndroidGoEngineHost = AndroidGoEngineHost { request ->
+        androidEngineProcessAuthority.wake(request)
+    }
 
     override lateinit var transferRuntime: TransferExecutionRuntime
         private set
@@ -135,6 +145,7 @@ class XdmApplication : Application(), TransferRuntimeProvider, QueueIntelligence
             debugRecorder = debugEventRecorder,
         )
         MediaRequestHandoffStore.initialize(AndroidSecureRequestEnvelopeStore(this))
+        androidEngineProcessAuthority = AndroidEngineProcessAuthority(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { MediaRequestHandoffStore.sweepExpired() }
         val nativeHlsMediaManager = NativeHlsMediaManager(this, database, repository, destinationWriter, embeddedFfmpegRuntime)
         val sensitivePersistenceMigrator = SensitivePersistenceMigrator(this, repository)

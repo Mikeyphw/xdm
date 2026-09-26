@@ -171,3 +171,60 @@ func TestPlatformRequestFlowsThroughEventStream(t *testing.T) {
 		t.Fatalf("completion: %s", done.Kind)
 	}
 }
+
+func TestAndroidSchedulerWakeRequestsRuntimeConditionsBeforeDecision(t *testing.T) {
+	e := New(Config{EventBuffer: 16, PlatformBuffer: 4})
+	if err := e.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer e.Shutdown(context.Background())
+
+	payload := `{"event_id":"wm:fixture-71","download_id":"dl_00000000000000000000000000000071","reason":"work_manager","conditions":{"require_online":true,"require_wifi":true}}`
+	wake := cmd(t, "00000000000000000000000000000071", "00000000000000000000000000000071", "android.scheduler_wake", payload)
+	if err := e.Submit(context.Background(), wake); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	platformFrame, err := e.NextFrame(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if platformFrame.Kind != "platform.request" {
+		t.Fatalf("first frame kind=%s", platformFrame.Kind)
+	}
+	var req platform.Request
+	if err := json.Unmarshal(platformFrame.Payload, &req); err != nil {
+		t.Fatal(err)
+	}
+	if req.Kind != platform.RuntimeConditions {
+		t.Fatalf("platform kind=%s", req.Kind)
+	}
+	conditions := json.RawMessage(`{"observed_at":"2026-09-26T03:00:00Z","online":true,"metered":false,"wifi":true,"charging":true,"battery_percent":90,"storage_free_bytes":1073741824,"power_source":"ac"}`)
+	if err := e.PlatformReply(platform.Reply{RequestID: req.ID, Session: req.Session, OK: true, Payload: conditions}); err != nil {
+		t.Fatal(err)
+	}
+
+	decisionFrame, err := e.NextFrame(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decisionFrame.Kind != "android.scheduler.decision" {
+		t.Fatalf("decision kind=%s", decisionFrame.Kind)
+	}
+	var decision map[string]any
+	if err := json.Unmarshal(decisionFrame.Payload, &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision["engine_policy_authoritative"] != true || decision["wake"] != true {
+		t.Fatalf("bad decision: %s", decisionFrame.Payload)
+	}
+	completed, err := e.NextFrame(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed.Kind != "command.completed" {
+		t.Fatalf("completion kind=%s", completed.Kind)
+	}
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "fixture_id": "xgo-cap-android-006",
+  "capability_ids": [
+    "XGO-CAP-ANDROID-006"
+  ],
+  "category": "android",
+  "donor_ids": [
+    "android_request_security_guard",
+    "android_queue_coordinator"
+  ],
+  "derivation": {
+    "behavior": "Android supplies network security, credential, runtime condition and proxy facts to Go.",
+    "canonical_behavior": "Android host answers cleartext, TLS, secure-secret, network-condition and proxy/PAC platform requests without leaking secrets or re-owning engine network policy.",
+    "strategy": "merged"
+  },
+  "input": {
+    "host": "media.test",
+    "cleartext_policy": "host_override_allow",
+    "secret_ref": {
+      "id": "media-request/download/dl_00000000000000000000000000000070/header/Cookie",
+      "scope": "https://media.test",
+      "generation": 1
+    },
+    "runtime_conditions": {
+      "online": true,
+      "metered": false,
+      "wifi": true,
+      "charging": true,
+      "battery_percent": 88,
+      "storage_free_bytes": 1073741824
+    },
+    "proxy_modes": [
+      "none",
+      "manual",
+      "pac"
+    ],
+    "tls": "android_network_security_config",
+    "credential_source": "AndroidKeyStore-backed MediaRequestHandoffStore"
+  },
+  "expected": {
+    "cleartext_allow_deny": true,
+    "secure_secret_lookup": true,
+    "safe_logs": true,
+    "runtime_condition_forwarding": true,
+    "proxy_pac_reply": true,
+    "tls_device_test_documented": true,
+    "invariants": [
+      "Cleartext decisions come from Android network-security-config or platform policy and are returned as typed replies to Go.",
+      "Secret values are resolved by Android secure storage/current credential sources and only SecretRef metadata appears in logs/support bundles.",
+      "Metered, Wi-Fi, charging, battery, storage and proxy/PAC facts are host facts; Go remains the execution-policy owner.",
+      "TLS integration uses Android CA/network-security-config behavior and validates failure paths without logging certificate or credential material."
+    ],
+    "platform_frame_dispatch_connected": true,
+    "real_android_proxy_api": true
+  }
+}
