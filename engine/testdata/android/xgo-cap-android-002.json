@@ -13,13 +13,19 @@
     "android_queue_coordinator"
   ],
   "expected": {
+    "activity_recreate_reuses_engine": true,
+    "duplicate_start_reuses_engine": true,
+    "foreground_escalation_is_host_request": true,
     "invariants": [
       "Android UI/services bind to one engine instance and recovery runs after process restart."
-    ]
+    ],
+    "process_restart_runs_recovery": true,
+    "service_authority": true,
+    "single_engine": true
   },
   "fixture_id": "xgo-cap-android-002",
   "input": {
-    "representation": "language-neutral behavioral invariant",
+    "representation": "Android EngineService lifecycle contract",
     "scenario": "One EngineService owns the Go engine across UI recreation/process lifecycle."
   },
   "schema_version": 1

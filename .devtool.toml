@@ -2270,9 +2270,62 @@ outputs = [
   ".devtool/reports/xgo/android/bootstrap.json",
 ]
 
+
+[targets.xgo_android.jobs.android_engine_build]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "android_engine_build",
+  "--output", ".devtool/reports/xgo/android/android-engine-build.json",
+]
+inputs = [
+  "engine/androidhost/**",
+  "engine/bridge/cabi/**",
+  "engine/cmd/xgo-android-audit/**",
+  "tools/xgo/build_android_xdmcore.py",
+  "app/XDM.Android/app/src/main/cpp/xdm_core.h",
+  "app/XDM.Android/app/src/main/assets/xdmcore/manifest.json",
+  "engine/testdata/android/xgo-cap-android-001.json",
+]
+outputs = [".devtool/reports/xgo/android/android-engine-build.json"]
+
+[targets.xgo_android.jobs.jni_bridge_instrumentation]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "jni_bridge_instrumentation",
+  "--output", ".devtool/reports/xgo/android/jni-bridge-instrumentation.json",
+]
+inputs = [
+  "engine/androidhost/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidGoEngineBridge.kt",
+  "engine/testdata/android/xgo-cap-android-001.json",
+]
+outputs = [".devtool/reports/xgo/android/jni-bridge-instrumentation.json"]
+
+[targets.xgo_android.jobs.engine_service_instrumentation]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-android-audit",
+  "--mode", "engine_service_instrumentation",
+  "--output", ".devtool/reports/xgo/android/engine-service-instrumentation.json",
+]
+inputs = [
+  "engine/androidhost/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineService.kt",
+  "app/XDM.Android/app/src/main/AndroidManifest.xml",
+  "engine/testdata/android/xgo-cap-android-002.json",
+]
+outputs = [".devtool/reports/xgo/android/engine-service-instrumentation.json"]
+
 [targets.xgo_android.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "android_engine_build", ref = "job:android_engine_build", depends_on = ["bootstrap_contract"] },
+  { id = "jni_bridge_instrumentation", ref = "job:jni_bridge_instrumentation", depends_on = ["android_engine_build"] },
+  { id = "engine_service_instrumentation", ref = "job:engine_service_instrumentation", depends_on = ["jni_bridge_instrumentation"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional

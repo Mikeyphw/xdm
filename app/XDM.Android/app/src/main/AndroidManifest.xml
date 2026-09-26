@@ -23,6 +23,10 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.XDMAndroid">
 
+        <service
+            android:name=".engine.AndroidEngineService"
+            android:exported="false" />
+
         <provider
             android:name="com.mikeyphw.xdm.android.ui.debug.DebugCenterFileProvider"
             android:authorities="${applicationId}.debugcenter.fileprovider"

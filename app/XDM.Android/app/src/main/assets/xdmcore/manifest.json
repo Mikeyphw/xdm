@@ -1,0 +1,24 @@
+{
+  "abi_version": "xgo.android.abi.v1",
+  "go_version": "recorded-at-build-time",
+  "library_name": "libxdmcore.so",
+  "packaging": {
+    "header_path": "app/src/main/cpp/xdm_core.h",
+    "jni_libs_path": "app/src/main/jniLibs/arm64-v8a/libxdmcore.so"
+  },
+  "required_symbols": [
+    "xdm_buffer_free",
+    "xdm_engine_command",
+    "xdm_engine_create",
+    "xdm_engine_metadata",
+    "xdm_engine_next_frame",
+    "xdm_engine_platform_reply",
+    "xdm_engine_shutdown"
+  ],
+  "schema_version": 1,
+  "source_revision": "recorded-at-build-time",
+  "supported_abis": [
+    "arm64-v8a"
+  ],
+  "wire_api_version": "xgo.api.v1"
+}

@@ -1114,7 +1114,7 @@
         "android_download_models"
       ],
       "id": "XGO-CAP-ANDROID-001",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-66",
       "test_id": "fixture:xgo-cap-android-001"
     },
@@ -1128,7 +1128,7 @@
         "android_queue_coordinator"
       ],
       "id": "XGO-CAP-ANDROID-002",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-68",
       "test_id": "fixture:xgo-cap-android-002"
     },

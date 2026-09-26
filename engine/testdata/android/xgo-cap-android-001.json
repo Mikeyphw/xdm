@@ -12,14 +12,37 @@
     "android_download_models"
   ],
   "expected": {
+    "bridge_invariants": [
+      "one native buffer ownership rule",
+      "protocol messages are versioned",
+      "domain errors remain protocol messages",
+      "bridge exceptions are narrow",
+      "no transfer/media/scheduler decisions in Kotlin bridge"
+    ],
+    "build_each_supported_abi": [
+      "arm64-v8a"
+    ],
+    "header": "xdm_core.h",
     "invariants": [
       "Android host owns ABI lifecycle only; domain decisions remain in Go."
+    ],
+    "library": "libxdmcore.so",
+    "metadata_manifest": true,
+    "required_symbols_only": [
+      "xdm_buffer_free",
+      "xdm_engine_command",
+      "xdm_engine_create",
+      "xdm_engine_metadata",
+      "xdm_engine_next_frame",
+      "xdm_engine_platform_reply",
+      "xdm_engine_shutdown"
     ]
   },
   "fixture_id": "xgo-cap-android-001",
   "input": {
-    "representation": "language-neutral behavioral invariant",
-    "scenario": "Android packages the Go core as versioned shared library and narrow JNI bridge."
+    "representation": "Android shared library and JNI bridge contract",
+    "scenario": "Android packages the Go core as versioned shared library and narrow JNI bridge.",
+    "source": "engine/bridge/cabi"
   },
   "schema_version": 1
 }
