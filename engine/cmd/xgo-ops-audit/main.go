@@ -34,6 +34,8 @@ func main() {
 		r, err = diagnosticsStress()
 	case "import_faults":
 		r, err = importFaults()
+	case "ops_gate_suite":
+		r, err = opsGateSuite()
 	default:
 		err = fmt.Errorf("unknown mode %q", *mode)
 	}
@@ -205,6 +207,66 @@ func importFaults() (report, error) {
 		return report{}, fmt.Errorf("retry after failure failed: result=%+v err=%w", retried, err)
 	}
 	return report{Mode: "import_faults", Pass: true, Checks: []string{"success", "duplicate import", "crash mid-import", "malformed input", "partial source", "unsupported newer version", "retry after failure"}}, nil
+}
+
+func opsGateSuite() (report, error) {
+	settings := ops.DefaultEngineSettings()
+	settings.Retention.EventsMaxCount = 16
+	settings.Retention.EventsMaxBytes = 64 * 1024
+	settings.Retention.EventsMaxAgeDays = 1
+	settings.Retention.ExternalLogMaxBytes = 48
+	now := time.Unix(300, 0)
+	store, err := ops.NewDiagnosticStore(settings.Retention, func() time.Time { return now })
+	if err != nil {
+		return report{}, err
+	}
+	secretContexts := []map[string]any{
+		{"url": "https://example.test/db?signature=abc&token=raw-token", "headers": map[string]string{"Authorization": "Bearer abc", "Cookie": "sid=super-secret"}},
+		{"database_event": map[string]any{"proxyCredential": "password=abc", "body": "token=raw-token"}},
+		{"support": []any{"https://cdn.test/frag.ts?sig=abc", map[string]any{"secret": "super-secret"}}},
+	}
+	for i, ctx := range secretContexts {
+		if err := store.Add(ops.DiagnosticEvent{Timestamp: now.Add(time.Duration(i) * time.Second), Subsystem: "ops", OperationID: "gate-09", DownloadID: "dl", AttemptID: fmt.Sprintf("att-%d", i), Stage: "gate", Severity: ops.SeverityWarn, FailureCategory: "secret-scan", SafeContext: ctx}); err != nil {
+			return report{}, err
+		}
+	}
+	health, err := ops.NewHealthReport(now, map[string]ops.HealthState{"db": ops.HealthOK, "native": ops.HealthOK, "aria2": ops.HealthOK, "media": ops.HealthOK, "storage": ops.HealthOK, "browser": ops.HealthOK, "scheduler": ops.HealthOK, "recovery": ops.HealthOK})
+	if err != nil {
+		return report{}, err
+	}
+	snap, err := ops.BuildSupportSnapshot(now, settings, health, store.Events(), map[string]string{"db": "token=raw-token", "events": "signature=abc", "support": "authorization=Bearer abc password=abc"})
+	if err != nil {
+		return report{}, err
+	}
+	if err := snap.SecretScan(); err != nil {
+		return report{}, err
+	}
+	encoded, _ := json.Marshal(snap)
+	lower := strings.ToLower(string(encoded))
+	for _, needle := range []string{"raw-token", "super-secret", "password=abc", "signature=abc", "bearer abc"} {
+		if strings.Contains(lower, needle) {
+			return report{}, fmt.Errorf("gate support snapshot leaked %s", needle)
+		}
+	}
+	importStore := ops.NewLegacyImportStore(func() time.Time { return now })
+	source, err := ops.NewLegacyImportSource(ops.ImportSourceDesktopJSON, 1, []byte(`{"items":[{"id":"gate","url":"https://example.test/gate?token=raw-token","file_name":"gate.bin"}]}`))
+	if err != nil {
+		return report{}, err
+	}
+	if _, err := importStore.ImportWithOptions(context.Background(), source, ops.DesktopJSONImportAdapter, ops.ImportOptions{CrashAfterStage: true}); !errors.Is(err, ops.ErrImportInterrupted) {
+		return report{}, fmt.Errorf("gate crash import did not interrupt: %w", err)
+	}
+	recovered, err := importStore.Import(context.Background(), source, func(context.Context, ops.LegacyImportSource) ([]ops.ImportedObject, error) {
+		return nil, fmt.Errorf("adapter should not run during gate staged recovery")
+	})
+	if err != nil || !recovered.RecoveredStage || recovered.Status != ops.ImportStatusCommitted {
+		return report{}, fmt.Errorf("gate staged recovery failed: result=%+v err=%w", recovered, err)
+	}
+	dupe, err := importStore.Import(context.Background(), source, ops.DesktopJSONImportAdapter)
+	if err != nil || !dupe.Duplicate || len(importStore.AuthoritativeObjects()) != 1 {
+		return report{}, fmt.Errorf("gate duplicate import was not idempotent: result=%+v err=%w", dupe, err)
+	}
+	return report{Mode: "ops_gate_suite", Pass: true, Checks: []string{"secret scanner across diagnostic DB events", "secret scanner across support snapshot", "retention configuration bound", "import crash recovery", "import duplicate idempotency"}}, nil
 }
 
 func dir(path string) string {

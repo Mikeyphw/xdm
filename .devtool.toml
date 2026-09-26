@@ -2208,6 +2208,20 @@ inputs = [
 ]
 outputs = [".devtool/reports/xgo/ops/import-faults.json"]
 
+[targets.xgo_ops.jobs.ops_gate_suite]
+runner = "command"
+command = [
+  "go", "run", "./engine/cmd/xgo-ops-audit",
+  "--mode", "ops_gate_suite",
+  "--output", ".devtool/reports/xgo/ops/ops-gate-suite.json",
+]
+inputs = [
+  "engine/ops/**",
+  "engine/cmd/xgo-ops-audit/**",
+  "engine/testdata/import/xgo-cap-ops-005.json",
+]
+outputs = [".devtool/reports/xgo/ops/ops-gate-suite.json"]
+
 [targets.xgo_ops.workflows]
 validate = [
   { id = "go", ref = "runner:go#validate", depends_on = [] },
@@ -2215,6 +2229,7 @@ validate = [
   { id = "secret_scan", ref = "job:secret_scan", depends_on = ["settings_audit"] },
   { id = "diagnostics_stress", ref = "job:diagnostics_stress", depends_on = ["secret_scan"] },
   { id = "import_faults", ref = "job:import_faults", depends_on = ["diagnostics_stress"] },
+  { id = "ops_gate_suite", ref = "job:ops_gate_suite", depends_on = ["import_faults"] },
 ]
 
 # Bootstrap target for future roadmap ownership. The command runner is intentional
@@ -2564,7 +2579,12 @@ outputs = [
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
   { id = "store", ref = "target:xgo_store#validate", depends_on = ["foundation"] },
-  { id = "ops", ref = "target:xgo_ops#validate", depends_on = ["store"] }
+  { id = "security", ref = "target:xgo_security#validate", depends_on = ["store"] },
+  { id = "transfer", ref = "target:xgo_transfer#validate", depends_on = ["security"] },
+  { id = "backends", ref = "target:xgo_backends#validate", depends_on = ["transfer"] },
+  { id = "scheduler", ref = "target:xgo_scheduler#validate", depends_on = ["backends"] },
+  { id = "media", ref = "target:xgo_media#validate", depends_on = ["scheduler"] },
+  { id = "ops", ref = "target:xgo_ops#validate", depends_on = ["media"] }
 ]
 
 [targets.xgo_gate_android]
