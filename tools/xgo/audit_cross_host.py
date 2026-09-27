@@ -59,7 +59,7 @@ def main() -> int:
             "android reads xdmcore metadata")
 
     # Desktop rejects every incompatible component of the canonical metadata tuple.
-    for needle in ["engine_version", "schema_version", "abi_major", 'GetProperty("protocol")', 'GetProperty("major")', 'GetProperty("minor")']:
+    for needle in ["engine_version", "schema_version", "abi_major", 'GetProperty("protocol")', 'GetProperty("major")', 'GetProperty("minor")', 'GetProperty("provenance")', 'GetProperty("git_revision")', 'GetProperty("build_mode")']:
         require(needle in desktop, f"desktop validates metadata field {needle}")
     for needle in [
         f'ExpectedEngineVersion = "{metadata["engine_version"]}"',
@@ -74,6 +74,16 @@ def main() -> int:
     # process-wide engine identity.
     require("validateEngineMetadata(nextBridge.metadata())" in android_authority,
             "android validates xdmcore metadata before engine publication")
+    require('"compatibility"' in android_authority and '.put("schema_version", EXPECTED_SCHEMA_VERSION)' in android_authority,
+            "android sends compatibility expectation during engine create")
+    require("compatibility = new" in desktop and "schema_version = ExpectedSchemaVersion" in desktop,
+            "desktop sends compatibility expectation during engine create")
+    require('getJSONObject("provenance")' in android_authority and 'optString("git_revision")' in android_authority and 'optString("build_mode")' in android_authority,
+            "android validates runtime build provenance")
+    require('optString("target_arch") == "arm64"' in android_authority,
+            "android rejects wrong native target architecture")
+    require('RuntimeInformation.ProcessArchitecture switch' in desktop and 'Architecture.X64 => "amd64"' in desktop and 'Architecture.Arm64 => "arm64"' in desktop,
+            "desktop rejects wrong native target architecture")
     for needle in [
         f'EXPECTED_ENGINE_VERSION = "{metadata["engine_version"]}"',
         f"EXPECTED_PROTOCOL_MAJOR = {metadata['protocol_major']}",
@@ -84,8 +94,10 @@ def main() -> int:
         require(needle in android_authority, f"android expectation matches canonical metadata: {needle}")
 
     # Android package metadata must still identify the same wire API generation.
-    require('WireAPIVersion    = "xgo.api.v1"' in packaging,
+    require('WireAPIVersion      = "xgo.api.v1"' in packaging,
             "android package manifest remains on xgo.api.v1")
+    require('ProvenanceName      = "xdmcore-provenance.json"' in packaging,
+            "android package contract exposes provenance file")
     require(metadata["protocol_major"] == 1,
             "canonical protocol major remains compatible with xgo.api.v1 package manifest")
 

@@ -2789,6 +2789,35 @@ outputs = [
   ".devtool/reports/xgo/seal/performance-budget.json",
 ]
 
+[targets.xgo_seal.jobs.abi_provenance_audit]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "abi-provenance",
+  "--output",
+  ".devtool/reports/xgo/seal/abi-provenance.json",
+]
+inputs = [
+  "engine/api/v1/**",
+  "engine/androidhost/**",
+  "engine/bridge/cabi/**",
+  "engine/cmd/xgo-provenance/**",
+  "engine/store/sqlite/schema.go",
+  "app/XDM.Android/app/src/main/assets/xdmcore/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt",
+  "app/XDM/src/XDM.Platform/DesktopGoEngineHost.cs",
+  "app/XDM/eng/build-xgo-native.sh",
+  "app/XDM/eng/build-xgo-native.ps1",
+  "tools/xgo/audit_cross_host.py",
+  "tools/xgo/build_android_xdmcore.py",
+  "tools/xgo/run_abi_harness.py",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/abi-provenance.json",
+]
+
 [targets.xgo_seal.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
@@ -2798,6 +2827,7 @@ validate = [
   { id = "adversarial_matrix", ref = "job:adversarial_matrix", depends_on = ["full_crash_matrix"] },
   { id = "fuzz_campaign", ref = "job:fuzz_campaign", depends_on = ["adversarial_matrix"] },
   { id = "performance_budget", ref = "job:performance_budget", depends_on = ["fuzz_campaign"] },
+  { id = "abi_provenance_audit", ref = "job:abi_provenance_audit", depends_on = ["performance_budget"] },
 ]
 
 [targets.xgo_gate_spec]

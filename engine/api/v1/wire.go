@@ -17,13 +17,17 @@ const (
 	ProtocolMajor = 1
 	ProtocolMinor = 0
 	ABIMajor      = 1
-	SchemaVersion = 0
+	SchemaVersion = 1
 	EngineVersion = "0.1.0-dev"
 )
 
 var (
-	ErrMalformedMessage = errors.New("malformed wire message")
-	ErrProtocolMismatch = errors.New("wire protocol major mismatch")
+	ErrMalformedMessage      = errors.New("malformed wire message")
+	ErrProtocolMismatch      = errors.New("wire protocol major mismatch")
+	ErrCompatibilityMismatch = errors.New("engine compatibility mismatch")
+	ErrEngineVersionMismatch = errors.New("engine version mismatch")
+	ErrABIMismatch           = errors.New("ABI major mismatch")
+	ErrSchemaMismatch        = errors.New("schema version mismatch")
 )
 
 type Protocol struct {
@@ -42,10 +46,34 @@ func (p Protocol) Validate() error {
 	return nil
 }
 
+type CompatibilityExpectation struct {
+	EngineVersion string `json:"engine_version"`
+	ABIMajor      int    `json:"abi_major"`
+	SchemaVersion int    `json:"schema_version"`
+}
+
+func CurrentCompatibilityExpectation() CompatibilityExpectation {
+	return CompatibilityExpectation{EngineVersion: EngineVersion, ABIMajor: ABIMajor, SchemaVersion: SchemaVersion}
+}
+
+func (c CompatibilityExpectation) Validate() error {
+	if c.EngineVersion != EngineVersion {
+		return fmt.Errorf("%w: %w: host=%q engine=%q", ErrCompatibilityMismatch, ErrEngineVersionMismatch, c.EngineVersion, EngineVersion)
+	}
+	if c.ABIMajor != ABIMajor {
+		return fmt.Errorf("%w: %w: host=%d engine=%d", ErrCompatibilityMismatch, ErrABIMismatch, c.ABIMajor, ABIMajor)
+	}
+	if c.SchemaVersion != SchemaVersion {
+		return fmt.Errorf("%w: %w: host=%d engine=%d", ErrCompatibilityMismatch, ErrSchemaMismatch, c.SchemaVersion, SchemaVersion)
+	}
+	return nil
+}
+
 type CreateConfig struct {
-	Protocol     Protocol `json:"protocol"`
-	StatePath    string   `json:"state_path,omitempty"`
-	HostPlatform string   `json:"host_platform,omitempty"`
+	Protocol      Protocol                  `json:"protocol"`
+	Compatibility *CompatibilityExpectation `json:"compatibility,omitempty"`
+	StatePath     string                    `json:"state_path,omitempty"`
+	HostPlatform  string                    `json:"host_platform,omitempty"`
 }
 
 type CommandEnvelope struct {
@@ -77,14 +105,21 @@ type PlatformReplyEnvelope struct {
 }
 
 type Metadata struct {
-	EngineVersion string   `json:"engine_version"`
-	Protocol      Protocol `json:"protocol"`
-	ABIMajor      int      `json:"abi_major"`
-	SchemaVersion int      `json:"schema_version"`
+	EngineVersion string          `json:"engine_version"`
+	Protocol      Protocol        `json:"protocol"`
+	ABIMajor      int             `json:"abi_major"`
+	SchemaVersion int             `json:"schema_version"`
+	Provenance    BuildProvenance `json:"provenance"`
 }
 
 func CurrentMetadata() Metadata {
-	return Metadata{EngineVersion: EngineVersion, Protocol: CurrentProtocol(), ABIMajor: ABIMajor, SchemaVersion: SchemaVersion}
+	return Metadata{
+		EngineVersion: EngineVersion,
+		Protocol:      CurrentProtocol(),
+		ABIMajor:      ABIMajor,
+		SchemaVersion: SchemaVersion,
+		Provenance:    CurrentBuildProvenance(),
+	}
 }
 
 func decodeStrict(data []byte, out any) error {
@@ -116,6 +151,11 @@ func DecodeCreateConfig(data []byte) (CreateConfig, error) {
 	}
 	if err := cfg.Protocol.Validate(); err != nil {
 		return CreateConfig{}, err
+	}
+	if cfg.Compatibility != nil {
+		if err := cfg.Compatibility.Validate(); err != nil {
+			return CreateConfig{}, err
+		}
 	}
 	return cfg, nil
 }

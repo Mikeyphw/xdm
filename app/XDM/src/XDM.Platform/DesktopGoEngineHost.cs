@@ -17,7 +17,7 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
     private const int ExpectedProtocolMajor = 1;
     private const int ExpectedProtocolMinor = 0;
     private const int ExpectedAbiMajor = 1;
-    private const int ExpectedSchemaVersion = 0;
+    private const int ExpectedSchemaVersion = 1;
     private readonly DesktopGoPlatformDispatcher _dispatcher;
     private readonly string _statePath;
     private CancellationTokenSource? _pumpCancellation;
@@ -50,6 +50,12 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
         byte[] config = JsonSerializer.SerializeToUtf8Bytes(new
         {
             protocol = new { major = 1, minor = 0 },
+            compatibility = new
+            {
+                engine_version = ExpectedEngineVersion,
+                abi_major = ExpectedAbiMajor,
+                schema_version = ExpectedSchemaVersion
+            },
             state_path = _statePath,
             host_platform = "desktop"
         });
@@ -226,14 +232,32 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
         int protocolMinor = protocol.GetProperty("minor").GetInt32();
         int abiMajor = root.GetProperty("abi_major").GetInt32();
         int schemaVersion = root.GetProperty("schema_version").GetInt32();
+        JsonElement provenance = root.GetProperty("provenance");
+        string goVersion = provenance.GetProperty("go_version").GetString() ?? string.Empty;
+        string gitRevision = provenance.GetProperty("git_revision").GetString() ?? string.Empty;
+        string targetOs = provenance.GetProperty("target_os").GetString() ?? string.Empty;
+        string targetArch = provenance.GetProperty("target_arch").GetString() ?? string.Empty;
+        string buildMode = provenance.GetProperty("build_mode").GetString() ?? string.Empty;
+        string expectedTargetOs = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows" : "linux";
+        string expectedTargetArch = RuntimeInformation.ProcessArchitecture switch
+        {
+            Architecture.X64 => "amd64",
+            Architecture.Arm64 => "arm64",
+            _ => throw new InvalidOperationException($"Unsupported desktop process architecture {RuntimeInformation.ProcessArchitecture} for xdmcore.")
+        };
         if (!string.Equals(engineVersion, ExpectedEngineVersion, StringComparison.Ordinal)
             || protocolMajor != ExpectedProtocolMajor
             || protocolMinor != ExpectedProtocolMinor
             || abiMajor != ExpectedAbiMajor
-            || schemaVersion != ExpectedSchemaVersion)
+            || schemaVersion != ExpectedSchemaVersion
+            || !goVersion.StartsWith("go", StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(gitRevision)
+            || !string.Equals(targetOs, expectedTargetOs, StringComparison.Ordinal)
+            || !string.Equals(targetArch, expectedTargetArch, StringComparison.Ordinal)
+            || !string.Equals(buildMode, "c-shared", StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"Unsupported xdmcore metadata: engine={engineVersion}, protocol={protocolMajor}.{protocolMinor}, abi={abiMajor}, schema={schemaVersion}.");
+                $"Unsupported xdmcore metadata: engine={engineVersion}, protocol={protocolMajor}.{protocolMinor}, abi={abiMajor}, schema={schemaVersion}, go={goVersion}, revision={gitRevision}, target={targetOs}/{targetArch}, build_mode={buildMode}.");
         }
     }
 

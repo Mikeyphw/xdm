@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "engine_version": "0.1.0-dev",
+  "protocol": {
+    "major": 1,
+    "minor": 0
+  },
+  "abi_major": 1,
+  "engine_schema_version": 1,
+  "build": {
+    "go_version": "go-recorded-at-build-time",
+    "git_revision": "recorded-at-build-time",
+    "git_modified": false,
+    "target_os": "android",
+    "target_arch": "arm64",
+    "build_mode": "c-shared"
+  }
+}

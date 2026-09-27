@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -945,6 +946,173 @@ def performance_budget(args: argparse.Namespace) -> dict[str, Any]:
     _write(args.output, report)
     return report
 
+
+def _source_const(path: Path, name: str) -> str:
+    source = path.read_text(encoding="utf-8")
+    match = re.search(rf"(?m)^\s*(?:const\s+)?{re.escape(name)}\s*=\s*(\"[^\"]*\"|-?\d+)\s*$", source)
+    if not match:
+        raise SealAuditError(f"constant {name} not found in {path}")
+    raw = match.group(1)
+    return json.loads(raw) if raw.startswith('"') else raw
+
+
+def abi_provenance(args: argparse.Namespace) -> dict[str, Any]:
+    repo_root = Path.cwd().resolve()
+    wire = repo_root / "engine/api/v1/wire.go"
+    store_schema = repo_root / "engine/store/sqlite/schema.go"
+    packaging = repo_root / "engine/androidhost/packaging.go"
+    android_manifest = repo_root / "app/XDM.Android/app/src/main/assets/xdmcore/manifest.json"
+    android_provenance = repo_root / "app/XDM.Android/app/src/main/assets/xdmcore/xdmcore-provenance.json"
+    desktop_host = (repo_root / "app/XDM/src/XDM.Platform/DesktopGoEngineHost.cs").read_text(encoding="utf-8")
+    android_host = (repo_root / "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidEngineProcessAuthority.kt").read_text(encoding="utf-8")
+    build_sh = (repo_root / "app/XDM/eng/build-xgo-native.sh").read_text(encoding="utf-8")
+    build_ps = (repo_root / "app/XDM/eng/build-xgo-native.ps1").read_text(encoding="utf-8")
+
+    canonical = {
+        "engine_version": str(_source_const(wire, "EngineVersion")),
+        "protocol_major": int(_source_const(wire, "ProtocolMajor")),
+        "protocol_minor": int(_source_const(wire, "ProtocolMinor")),
+        "abi_major": int(_source_const(wire, "ABIMajor")),
+        "schema_version": int(_source_const(wire, "SchemaVersion")),
+    }
+    store_version = int(_source_const(store_schema, "CurrentSchemaVersion"))
+    if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", canonical["engine_version"]):
+        raise SealAuditError("engine version is not semantic")
+    if canonical["schema_version"] != store_version:
+        raise SealAuditError(
+            f"runtime schema metadata {canonical['schema_version']} does not match authoritative store schema {store_version}"
+        )
+
+    manifest = _load(android_manifest)
+    packaged = _load(android_provenance)
+    if manifest.get("engine_version") != canonical["engine_version"] or manifest.get("engine_schema_version") != canonical["schema_version"]:
+        raise SealAuditError("Android manifest compatibility tuple drifted")
+    if manifest.get("protocol") != {"major": canonical["protocol_major"], "minor": canonical["protocol_minor"]}:
+        raise SealAuditError("Android manifest protocol drifted")
+    if manifest.get("provenance_name") != "xdmcore-provenance.json" or manifest.get("build_mode") != "c-shared":
+        raise SealAuditError("Android manifest does not expose canonical native provenance")
+    if packaged.get("engine_version") != canonical["engine_version"] or packaged.get("engine_schema_version") != canonical["schema_version"]:
+        raise SealAuditError("Android packaged provenance compatibility tuple drifted")
+    packaged_build = packaged.get("build") or {}
+    for field in ("go_version", "git_revision", "target_os", "target_arch", "build_mode"):
+        if not str(packaged_build.get(field) or "").strip():
+            raise SealAuditError(f"Android packaged provenance is missing {field}")
+    if packaged_build.get("target_os") != "android" or packaged_build.get("build_mode") != "c-shared":
+        raise SealAuditError("Android packaged provenance target/build mode drifted")
+
+    host_checks = {
+        "desktop_create_compatibility": "compatibility = new" in desktop_host and "schema_version = ExpectedSchemaVersion" in desktop_host,
+        "desktop_runtime_provenance": 'GetProperty("provenance")' in desktop_host and 'GetProperty("git_revision")' in desktop_host and '"c-shared"' in desktop_host,
+        "android_create_compatibility": '"compatibility"' in android_host and '.put("schema_version", EXPECTED_SCHEMA_VERSION)' in android_host,
+        "android_runtime_provenance": 'getJSONObject("provenance")' in android_host and 'optString("git_revision")' in android_host and 'optString("build_mode")' in android_host,
+    }
+    failed_hosts = sorted(name for name, passed in host_checks.items() if not passed)
+    if failed_hosts:
+        raise SealAuditError(f"host compatibility/provenance checks missing: {failed_hosts}")
+
+    required_build_tokens = [
+        "xdmcore-provenance.json",
+        "BuildRevision",
+        "BuildModified",
+        "BuildMode=c-shared",
+        "xgo-provenance",
+    ]
+    for label, source in (("unix", build_sh), ("windows", build_ps)):
+        missing = [token for token in required_build_tokens if token not in source]
+        if missing:
+            raise SealAuditError(f"{label} native build does not seal provenance tokens: {missing}")
+
+    commands: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="xgo-seal-provenance-") as tmp:
+        temp = Path(tmp)
+        commands.append(_run(["go", "test", "./engine/api/v1", "./engine/androidhost", "-count=1"]))
+
+        abi_report = temp / "abi-harness.json"
+        commands.append(_run(["python3", "tools/xgo/run_abi_harness.py", "--output", str(abi_report)]))
+        abi = _load(abi_report)
+        required_symbols = [
+            "xdm_engine_create", "xdm_engine_command", "xdm_engine_next_frame", "xdm_engine_platform_reply",
+            "xdm_engine_metadata", "xdm_engine_shutdown", "xdm_buffer_free",
+        ]
+        if abi.get("status") != "pass":
+            raise SealAuditError("ABI harness failed")
+        observed_symbols = abi.get("symbols") or []
+        if observed_symbols and observed_symbols != required_symbols:
+            raise SealAuditError(f"ABI symbol inventory drifted: {observed_symbols}")
+
+        cross_report = temp / "cross-host.json"
+        commands.append(_run(["python3", "tools/xgo/audit_cross_host.py", "--output", str(cross_report)]))
+        cross = _load(cross_report)
+        if cross.get("status") != "pass" or cross.get("canonical") != canonical:
+            raise SealAuditError("cross-host compatibility metadata audit failed")
+
+        revision = _git(repo_root, "rev-parse", "HEAD")
+        go_version = subprocess.check_output(["go", "env", "GOVERSION"], text=True).strip()
+        android_plan = temp / "android-plan.json"
+        commands.append(_run([
+            "python3", "tools/xgo/build_android_xdmcore.py",
+            "--go-version", go_version,
+            "--source-revision", revision,
+            "--source-modified", "false",
+            "--output", str(android_plan),
+        ]))
+        plan = _load(android_plan)
+        if plan.get("engine_version") != canonical["engine_version"] or plan.get("engine_schema_version") != canonical["schema_version"]:
+            raise SealAuditError("Android native build plan provenance drifted")
+        if plan.get("build_mode") != "c-shared" or plan.get("source_revision") != revision:
+            raise SealAuditError("Android native build plan did not bind revision/build mode")
+
+        generated: list[dict[str, Any]] = []
+        for goos, goarch in (("android", "arm64"), ("linux", "amd64"), ("windows", "amd64")):
+            path = temp / f"provenance-{goos}-{goarch}.json"
+            command = [
+                "go", "run", "./engine/cmd/xgo-provenance",
+                "--revision", revision,
+                "--modified=false",
+                "--go-version", go_version,
+                "--goos", goos,
+                "--goarch", goarch,
+                "--build-mode", "c-shared",
+                "--output", str(path),
+            ]
+            commands.append(_run(command))
+            document = _load(path)
+            build = document.get("build") or {}
+            if document.get("engine_version") != canonical["engine_version"] or document.get("engine_schema_version") != canonical["schema_version"]:
+                raise SealAuditError(f"generated {goos}/{goarch} provenance compatibility tuple drifted")
+            if build.get("git_revision") != revision or build.get("go_version") != go_version or build.get("target_os") != goos or build.get("target_arch") != goarch or build.get("build_mode") != "c-shared":
+                raise SealAuditError(f"generated {goos}/{goarch} provenance fields drifted")
+            generated.append({"target_os": goos, "target_arch": goarch, "build_mode": build.get("build_mode")})
+
+    report = {
+        "schema_version": 1,
+        "status": "pass",
+        "canonical": canonical,
+        "authoritative_store_schema_version": store_version,
+        "go_toolchain": go_version,
+        "git_revision": revision,
+        "host_compatibility_checks": host_checks,
+        "android_packaging": {
+            "manifest_schema_version": manifest.get("schema_version"),
+            "provenance_name": manifest.get("provenance_name"),
+            "target_os": packaged_build.get("target_os"),
+            "target_arch": packaged_build.get("target_arch"),
+            "build_mode": packaged_build.get("build_mode"),
+        },
+        "generated_provenance_targets": generated,
+        "abi_symbols": required_symbols,
+        "negative_compatibility_tests": [
+            "wrong protocol major rejected at create/decode",
+            "wrong engine semantic version rejected at create/decode",
+            "wrong ABI major rejected at create/decode",
+            "wrong schema migration expectation rejected at create/decode",
+        ],
+        "commands": commands,
+    }
+    _write(args.output, report)
+    return report
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="XGO Wave 12 seal audits")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -976,6 +1144,9 @@ def main() -> int:
     perf.add_argument("--budget", type=Path, default=Path("engine/testdata/seal/performance-budget.json"))
     perf.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/performance-budget.json"))
 
+    provenance = sub.add_parser("abi-provenance", help="seal ABI, compatibility and build provenance metadata")
+    provenance.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/abi-provenance.json"))
+
     args = parser.parse_args()
     try:
         if args.command == "differential":
@@ -988,8 +1159,10 @@ def main() -> int:
             report = adversarial_matrix(args)
         elif args.command == "fuzz-campaign":
             report = fuzz_campaign(args)
-        else:
+        elif args.command == "performance-budget":
             report = performance_budget(args)
+        else:
+            report = abi_provenance(args)
     except SealAuditError as exc:
         print(f"XGO seal audit FAILED: {exc}", file=sys.stderr)
         return 1

@@ -178,7 +178,12 @@ public sealed class DesktopGoHostTests
         Assert.Contains("ExpectedProtocolMajor = 1", host, StringComparison.Ordinal);
         Assert.Contains("ExpectedProtocolMinor = 0", host, StringComparison.Ordinal);
         Assert.Contains("ExpectedAbiMajor = 1", host, StringComparison.Ordinal);
-        Assert.Contains("ExpectedSchemaVersion = 0", host, StringComparison.Ordinal);
+        Assert.Contains("ExpectedSchemaVersion = 1", host, StringComparison.Ordinal);
+        Assert.Contains("compatibility = new", host, StringComparison.Ordinal);
+        Assert.Contains("provenance.GetProperty(\"go_version\")", host, StringComparison.Ordinal);
+        Assert.Contains("provenance.GetProperty(\"git_revision\")", host, StringComparison.Ordinal);
+        Assert.Contains("provenance.GetProperty(\"target_os\")", host, StringComparison.Ordinal);
+        Assert.Contains("buildMode, \"c-shared\"", host, StringComparison.Ordinal);
         Assert.DoesNotContain("IDownloadManager", host, StringComparison.Ordinal);
     }
 

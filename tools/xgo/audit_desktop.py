@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, json
+import argparse, json, re
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -17,6 +17,11 @@ def forbid(text:str, needles:list[str], label:str, checks:list[str]):
     found=[n for n in needles if n in text]
     if found: raise SystemExit(f'{label}: forbidden {found}')
     checks.extend(f'{label}:forbid:{n}' for n in needles)
+
+def require_regex(text:str, patterns:list[str], label:str, checks:list[str]):
+    missing=[pattern for pattern in patterns if re.search(pattern,text,re.MULTILINE) is None]
+    if missing: raise SystemExit(f'{label}: missing regex {missing}')
+    checks.extend(f'{label}:regex:{pattern}' for pattern in patterns)
 
 def main()->int:
     ap=argparse.ArgumentParser()
@@ -88,7 +93,7 @@ def main()->int:
         forbid(observer,['IApplicationState','ApplicationSnapshot'],'legacy-observation',checks)
         require(go_import,['DesktopLegacyImportKind','ops.ImportSourceDesktopJSON','ops.DesktopJSONImportAdapter','legacy_changed_after_cutover','desktop.import.result'],'go-desktop-import',checks)
         require(go_authority,['desktopAuthoritySnapshotVersion','ImportKey','saveUI','os.Rename'],'go-desktop-authority',checks)
-        require(wire,['HostPlatform string','host_platform'],'abi-host-discriminator',checks)
+        require_regex(wire,[r'HostPlatform\s+string\s+`json:"host_platform,omitempty"`'],'abi-host-discriminator',checks)
         require(cabi,['HostPlatform: cfg.HostPlatform'],'cabi-host-discriminator',checks)
         require(host,['host_platform = "desktop"'],'desktop-host-discriminator',checks)
         require(android_host,['.put("host_platform", "android")'],'android-host-discriminator',checks)

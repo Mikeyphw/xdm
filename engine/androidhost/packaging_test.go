@@ -1,9 +1,12 @@
 package androidhost
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSharedLibraryPlan(t *testing.T) {
-	plan, err := NewSharedLibraryPlan("abc123", "go1.23.0")
+	plan, err := NewSharedLibraryPlan("abc123", "go1.23.0", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,6 +21,18 @@ func TestSharedLibraryPlan(t *testing.T) {
 	}
 	if plan.Manifest.MetadataSHA256 == "" {
 		t.Fatalf("metadata hash missing")
+	}
+	if plan.Manifest.EngineVersion != EngineVersion || plan.Manifest.EngineSchemaVersion != EngineSchemaVersion || plan.Manifest.BuildMode != "c-shared" || !plan.Manifest.SourceModified {
+		t.Fatalf("provenance compatibility tuple missing: %+v", plan.Manifest)
+	}
+	if plan.Artifacts[0].ProvenanceOutput != "app/XDM.Android/app/src/main/assets/xdmcore/xdmcore-provenance.json" {
+		t.Fatalf("wrong provenance output: %s", plan.Artifacts[0].ProvenanceOutput)
+	}
+	joined := strings.Join(plan.Artifacts[0].Command, " ")
+	for _, token := range []string{"BuildRevision=abc123", "BuildModified=true", "BuildMode=c-shared"} {
+		if !strings.Contains(joined, token) {
+			t.Fatalf("build plan missing provenance linker token %q: %s", token, joined)
+		}
 	}
 }
 

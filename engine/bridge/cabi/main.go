@@ -92,7 +92,7 @@ func status(err error) C.int {
 	switch {
 	case err == nil:
 		return C.XDM_OK
-	case errors.Is(err, v1.ErrProtocolMismatch):
+	case errors.Is(err, v1.ErrProtocolMismatch), errors.Is(err, v1.ErrCompatibilityMismatch):
 		return C.XDM_E_PROTOCOL
 	case errors.Is(err, context.DeadlineExceeded):
 		return C.XDM_E_TIMEOUT

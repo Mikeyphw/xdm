@@ -11,12 +11,18 @@ import (
 )
 
 const (
-	LibraryName       = "libxdmcore.so"
-	HeaderName        = "xdm_core.h"
-	MetadataName      = "xdmcore-manifest.json"
-	CurrentABIVersion = "xgo.android.abi.v1"
-	WireAPIVersion    = "xgo.api.v1"
-	SchemaVersion     = 1
+	LibraryName         = "libxdmcore.so"
+	HeaderName          = "xdm_core.h"
+	MetadataName        = "xdmcore-manifest.json"
+	ProvenanceName      = "xdmcore-provenance.json"
+	CurrentABIVersion   = "xgo.android.abi.v1"
+	WireAPIVersion      = "xgo.api.v1"
+	SchemaVersion       = 1
+	EngineVersion       = "0.1.0-dev"
+	ProtocolMajor       = 1
+	ProtocolMinor       = 0
+	EngineSchemaVersion = 1
+	NativeBuildMode     = "c-shared"
 )
 
 type AndroidABI struct {
@@ -50,26 +56,34 @@ func RequiredSymbols() []string {
 }
 
 type BuildArtifact struct {
-	ABI          string   `json:"abi"`
-	GOOS         string   `json:"goos"`
-	GOARCH       string   `json:"goarch"`
-	MinAPI       int      `json:"min_api"`
-	CC           string   `json:"cc"`
-	Output       string   `json:"output"`
-	HeaderOutput string   `json:"header_output"`
-	Command      []string `json:"command"`
+	ABI              string   `json:"abi"`
+	GOOS             string   `json:"goos"`
+	GOARCH           string   `json:"goarch"`
+	MinAPI           int      `json:"min_api"`
+	CC               string   `json:"cc"`
+	Output           string   `json:"output"`
+	HeaderOutput     string   `json:"header_output"`
+	ProvenanceOutput string   `json:"provenance_output"`
+	Command          []string `json:"command"`
 }
 
 type MetadataManifest struct {
-	SchemaVersion   int      `json:"schema_version"`
-	LibraryName     string   `json:"library_name"`
-	ABIVersion      string   `json:"abi_version"`
-	WireAPIVersion  string   `json:"wire_api_version"`
-	GoVersion       string   `json:"go_version"`
-	SourceRevision  string   `json:"source_revision"`
-	SupportedABIs   []string `json:"supported_abis"`
-	RequiredSymbols []string `json:"required_symbols"`
-	MetadataSHA256  string   `json:"metadata_sha256"`
+	SchemaVersion       int      `json:"schema_version"`
+	LibraryName         string   `json:"library_name"`
+	ProvenanceName      string   `json:"provenance_name"`
+	ABIVersion          string   `json:"abi_version"`
+	WireAPIVersion      string   `json:"wire_api_version"`
+	EngineVersion       string   `json:"engine_version"`
+	ProtocolMajor       int      `json:"protocol_major"`
+	ProtocolMinor       int      `json:"protocol_minor"`
+	EngineSchemaVersion int      `json:"engine_schema_version"`
+	BuildMode           string   `json:"build_mode"`
+	GoVersion           string   `json:"go_version"`
+	SourceRevision      string   `json:"source_revision"`
+	SourceModified      bool     `json:"source_modified"`
+	SupportedABIs       []string `json:"supported_abis"`
+	RequiredSymbols     []string `json:"required_symbols"`
+	MetadataSHA256      string   `json:"metadata_sha256"`
 }
 
 type SharedLibraryPlan struct {
@@ -79,12 +93,16 @@ type SharedLibraryPlan struct {
 	NoDesktopC bool             `json:"no_desktop_libc_assumptions"`
 }
 
-func NewSharedLibraryPlan(sourceRevision, goVersion string) (SharedLibraryPlan, error) {
+func NewSharedLibraryPlan(sourceRevision, goVersion string, sourceModified ...bool) (SharedLibraryPlan, error) {
 	if strings.TrimSpace(sourceRevision) == "" {
 		return SharedLibraryPlan{}, fmt.Errorf("source revision is required")
 	}
 	if !strings.HasPrefix(goVersion, "go") {
 		return SharedLibraryPlan{}, fmt.Errorf("go version must be recorded in Go's canonical form")
+	}
+	modified := false
+	if len(sourceModified) > 0 {
+		modified = sourceModified[0]
 	}
 	abis := RequiredABIs()
 	artifacts := make([]BuildArtifact, 0, len(abis))
@@ -99,14 +117,24 @@ func NewSharedLibraryPlan(sourceRevision, goVersion string) (SharedLibraryPlan, 
 		abiNames = append(abiNames, abi.Name)
 		out := filepath.ToSlash(filepath.Join("app", "XDM.Android", "app", "src", "main", "jniLibs", abi.Name, LibraryName))
 		head := filepath.ToSlash(filepath.Join("app", "XDM.Android", "app", "src", "main", "cpp", HeaderName))
-		cmd := []string{"env", "GOOS=android", "GOARCH=" + abi.GOARCH, "CGO_ENABLED=1", "CC=" + abi.CCTriple, "go", "build", "-trimpath", "-buildmode=c-shared", "-o", out, "./engine/bridge/cabi"}
-		artifacts = append(artifacts, BuildArtifact{ABI: abi.Name, GOOS: "android", GOARCH: abi.GOARCH, MinAPI: abi.MinAPI, CC: abi.CCTriple, Output: out, HeaderOutput: head, Command: cmd})
+		provenance := filepath.ToSlash(filepath.Join("app", "XDM.Android", "app", "src", "main", "assets", "xdmcore", ProvenanceName))
+		ldflags := fmt.Sprintf(
+			"-X github.com/subhra74/xdm/engine/api/v1.BuildRevision=%s -X github.com/subhra74/xdm/engine/api/v1.BuildModified=%t -X github.com/subhra74/xdm/engine/api/v1.BuildMode=%s",
+			sourceRevision, modified, NativeBuildMode,
+		)
+		cmd := []string{"env", "GOOS=android", "GOARCH=" + abi.GOARCH, "CGO_ENABLED=1", "CC=" + abi.CCTriple, "go", "build", "-trimpath", "-buildmode=c-shared", "-ldflags", ldflags, "-o", out, "./engine/bridge/cabi"}
+		artifacts = append(artifacts, BuildArtifact{ABI: abi.Name, GOOS: "android", GOARCH: abi.GOARCH, MinAPI: abi.MinAPI, CC: abi.CCTriple, Output: out, HeaderOutput: head, ProvenanceOutput: provenance, Command: cmd})
 	}
 	if len(artifacts) == 0 {
 		return SharedLibraryPlan{}, fmt.Errorf("no Android ABIs enabled")
 	}
 	symbols := RequiredSymbols()
-	manifest := MetadataManifest{SchemaVersion: SchemaVersion, LibraryName: LibraryName, ABIVersion: CurrentABIVersion, WireAPIVersion: WireAPIVersion, GoVersion: goVersion, SourceRevision: sourceRevision, SupportedABIs: abiNames, RequiredSymbols: symbols}
+	manifest := MetadataManifest{
+		SchemaVersion: SchemaVersion, LibraryName: LibraryName, ProvenanceName: ProvenanceName,
+		ABIVersion: CurrentABIVersion, WireAPIVersion: WireAPIVersion, EngineVersion: EngineVersion,
+		ProtocolMajor: ProtocolMajor, ProtocolMinor: ProtocolMinor, EngineSchemaVersion: EngineSchemaVersion, BuildMode: NativeBuildMode,
+		GoVersion: goVersion, SourceRevision: sourceRevision, SourceModified: modified, SupportedABIs: abiNames, RequiredSymbols: symbols,
+	}
 	data, _ := json.Marshal(manifest)
 	sum := sha256.Sum256(data)
 	manifest.MetadataSHA256 = hex.EncodeToString(sum[:])
@@ -114,8 +142,10 @@ func NewSharedLibraryPlan(sourceRevision, goVersion string) (SharedLibraryPlan, 
 }
 
 func (p SharedLibraryPlan) Validate() error {
-	if p.Manifest.SchemaVersion != SchemaVersion || p.Manifest.ABIVersion != CurrentABIVersion || p.Manifest.WireAPIVersion != WireAPIVersion {
-		return fmt.Errorf("manifest versions are not canonical")
+	if p.Manifest.SchemaVersion != SchemaVersion || p.Manifest.ABIVersion != CurrentABIVersion || p.Manifest.WireAPIVersion != WireAPIVersion ||
+		p.Manifest.EngineVersion != EngineVersion || p.Manifest.ProtocolMajor != ProtocolMajor || p.Manifest.ProtocolMinor != ProtocolMinor ||
+		p.Manifest.EngineSchemaVersion != EngineSchemaVersion || p.Manifest.BuildMode != NativeBuildMode || p.Manifest.ProvenanceName != ProvenanceName {
+		return fmt.Errorf("manifest versions/provenance contract are not canonical")
 	}
 	if len(p.Artifacts) == 0 {
 		return fmt.Errorf("missing artifacts")
@@ -128,7 +158,15 @@ func (p SharedLibraryPlan) Validate() error {
 		if artifact.HeaderOutput != "app/XDM.Android/app/src/main/cpp/"+HeaderName {
 			return fmt.Errorf("unexpected header path %s", artifact.HeaderOutput)
 		}
+		if artifact.ProvenanceOutput != "app/XDM.Android/app/src/main/assets/xdmcore/"+ProvenanceName {
+			return fmt.Errorf("unexpected provenance path %s", artifact.ProvenanceOutput)
+		}
 		joined := strings.Join(artifact.Command, " ")
+		for _, required := range []string{"-buildmode=c-shared", "BuildRevision=" + p.Manifest.SourceRevision, fmt.Sprintf("BuildModified=%t", p.Manifest.SourceModified), "BuildMode=" + NativeBuildMode} {
+			if !strings.Contains(joined, required) {
+				return fmt.Errorf("Android build command missing provenance linker token %q", required)
+			}
+		}
 		for _, forbidden := range []string{"GOOS=linux", "glibc", "musl", "-static"} {
 			if strings.Contains(joined, forbidden) {
 				return fmt.Errorf("desktop libc/toolchain assumption %q in build command", forbidden)

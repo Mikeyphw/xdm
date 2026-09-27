@@ -59,6 +59,13 @@ class AndroidEngineProcessAuthority(context: Context) {
         val statePath = File(appContext.filesDir, "xgo/authoritative/android-state-v1.json").absolutePath
         val createConfig = JSONObject()
             .put("protocol", JSONObject().put("major", 1).put("minor", 0))
+            .put(
+                "compatibility",
+                JSONObject()
+                    .put("engine_version", EXPECTED_ENGINE_VERSION)
+                    .put("abi_major", EXPECTED_ABI_MAJOR)
+                    .put("schema_version", EXPECTED_SCHEMA_VERSION),
+            )
             .put("state_path", statePath)
             .put("host_platform", "android")
             .toString()
@@ -191,6 +198,12 @@ class AndroidEngineProcessAuthority(context: Context) {
         require(protocol.optInt("minor", -1) == EXPECTED_PROTOCOL_MINOR) { "xdmcore protocol minor mismatch" }
         require(metadata.optInt("abi_major", -1) == EXPECTED_ABI_MAJOR) { "xdmcore ABI major mismatch" }
         require(metadata.optInt("schema_version", -1) == EXPECTED_SCHEMA_VERSION) { "xdmcore schema version mismatch" }
+        val provenance = metadata.getJSONObject("provenance")
+        require(provenance.optString("go_version").startsWith("go")) { "xdmcore Go toolchain provenance missing" }
+        require(provenance.optString("git_revision").isNotBlank()) { "xdmcore Git revision provenance missing" }
+        require(provenance.optString("target_os") == "android") { "xdmcore target OS provenance mismatch" }
+        require(provenance.optString("target_arch") == "arm64") { "xdmcore target arch provenance mismatch" }
+        require(provenance.optString("build_mode") == "c-shared") { "xdmcore build mode provenance mismatch" }
     }
 
     private fun startFramePump(currentBridge: AndroidGoEngineBridge) {
@@ -285,7 +298,7 @@ class AndroidEngineProcessAuthority(context: Context) {
         const val EXPECTED_PROTOCOL_MAJOR = 1
         const val EXPECTED_PROTOCOL_MINOR = 0
         const val EXPECTED_ABI_MAJOR = 1
-        const val EXPECTED_SCHEMA_VERSION = 0
+        const val EXPECTED_SCHEMA_VERSION = 1
         const val FRAME_POLL_TIMEOUT_MS = 250
         const val FRAME_IDLE_BACKOFF_MS = 25L
         const val UI_COMMAND_TIMEOUT_MS = 10_000L

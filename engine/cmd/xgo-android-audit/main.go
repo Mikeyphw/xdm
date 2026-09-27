@@ -85,6 +85,7 @@ func androidEngineBuild() (report, error) {
 		"tools/xgo/build_android_xdmcore.py",
 		"app/XDM.Android/app/src/main/cpp/xdm_core.h",
 		"app/XDM.Android/app/src/main/assets/xdmcore/manifest.json",
+		"app/XDM.Android/app/src/main/assets/xdmcore/xdmcore-provenance.json",
 	} {
 		if _, err := os.Stat(rel); err != nil {
 			return report{}, fmt.Errorf("missing Android packaging file %s: %w", rel, err)
@@ -97,12 +98,24 @@ func androidEngineBuild() (report, error) {
 		}
 	}
 	manifest := mustRead("app/XDM.Android/app/src/main/assets/xdmcore/manifest.json")
-	for _, needle := range []string{"arm64-v8a", androidhost.CurrentABIVersion, androidhost.WireAPIVersion, "xdm_engine_metadata"} {
+	for _, needle := range []string{"arm64-v8a", androidhost.CurrentABIVersion, androidhost.WireAPIVersion, androidhost.ProvenanceName, androidhost.EngineVersion, "engine_schema_version", "source_modified", "c-shared", "xdm_engine_metadata"} {
 		if !strings.Contains(manifest, needle) {
 			return report{}, fmt.Errorf("metadata manifest missing %s", needle)
 		}
 	}
-	return report{Mode: "android_engine_build", Pass: true, Checks: []string{"ABI build plan", "Android jniLibs package path", "C header maintenance", "engine metadata manifest", "exact exported symbols", "no desktop libc assumption"}}, nil
+	joinedBuild := strings.Join(plan.Artifacts[0].Command, " ")
+	for _, needle := range []string{"BuildRevision=audit-source", "BuildModified=false", "BuildMode=c-shared"} {
+		if !strings.Contains(joinedBuild, needle) {
+			return report{}, fmt.Errorf("Android build plan missing provenance linker token %s", needle)
+		}
+	}
+	provenance := mustRead("app/XDM.Android/app/src/main/assets/xdmcore/xdmcore-provenance.json")
+	for _, needle := range []string{"go_version", "git_revision", "target_os", "target_arch", "build_mode", "c-shared"} {
+		if !strings.Contains(provenance, needle) {
+			return report{}, fmt.Errorf("provenance asset missing %s", needle)
+		}
+	}
+	return report{Mode: "android_engine_build", Pass: true, Checks: []string{"ABI build plan", "Android jniLibs package path", "C header maintenance", "engine metadata manifest", "packaged provenance asset", "exact exported symbols", "no desktop libc assumption"}}, nil
 }
 
 func jniBridgeInstrumentation() (report, error) {

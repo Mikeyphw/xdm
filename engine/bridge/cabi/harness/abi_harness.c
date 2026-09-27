@@ -30,8 +30,9 @@ int main(void) {
 
     xdm_buffer_t metadata = {0};
     expect_status("metadata", xdm_engine_metadata(handle, &metadata), XDM_OK);
-    if (!contains(&metadata, "\"abi_major\":1") || !contains(&metadata, "\"major\":1")) {
-        fprintf(stderr, "metadata missing version fields\n"); failures++;
+    if (!contains(&metadata, "\"abi_major\":1") || !contains(&metadata, "\"major\":1") ||
+        !contains(&metadata, "\"schema_version\":1") || !contains(&metadata, "\"provenance\"")) {
+        fprintf(stderr, "metadata missing version/provenance fields\n"); failures++;
     }
     xdm_buffer_free(metadata);
     xdm_buffer_free(metadata); /* tokenized free must be idempotent */
@@ -59,6 +60,10 @@ int main(void) {
     const char *badcfg = "{\"protocol\":{\"major\":9,\"minor\":0}}";
     uint64_t rejected = 0;
     expect_status("create wrong protocol", xdm_engine_create((uint8_t*)badcfg, strlen(badcfg), &rejected), XDM_E_PROTOCOL);
+
+    const char *bad_schema = "{\"protocol\":{\"major\":1,\"minor\":0},\"compatibility\":{\"engine_version\":\"0.1.0-dev\",\"abi_major\":1,\"schema_version\":999}}";
+    rejected = 0;
+    expect_status("create wrong schema", xdm_engine_create((uint8_t*)bad_schema, strlen(bad_schema), &rejected), XDM_E_PROTOCOL);
 
     for (int i = 0; i < 256; i++) {
         uint64_t h = 0;

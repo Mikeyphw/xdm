@@ -29,7 +29,11 @@ class CrossHostAuditTests(unittest.TestCase):
             self.assertEqual(report["canonical"], report["desktop"])
             self.assertEqual("0.1.0-dev", report["canonical"]["engine_version"])
             self.assertEqual(1, report["canonical"]["protocol_major"])
-            self.assertEqual(0, report["canonical"]["schema_version"])
+            self.assertEqual(1, report["canonical"]["schema_version"])
+            self.assertIn("desktop sends compatibility expectation during engine create", report["checks"])
+            self.assertIn("android validates runtime build provenance", report["checks"])
+            self.assertIn("android rejects wrong native target architecture", report["checks"])
+            self.assertIn("desktop rejects wrong native target architecture", report["checks"])
 
 if __name__ == "__main__":
     unittest.main()
