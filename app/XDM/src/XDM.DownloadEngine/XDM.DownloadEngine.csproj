@@ -11,4 +11,19 @@
   <ItemGroup>
     <ProjectReference Include="../XDM.Core/XDM.Core.csproj" />
   </ItemGroup>
+  <ItemGroup Label="XGO-88 legacy donor authority quarantine">
+    <Compile Remove="DownloadManager.cs" />
+    <Compile Remove="DownloadRecoveryCoordinator.cs" />
+    <Compile Remove="DownloadRetryPolicy.cs" />
+    <Compile Remove="SegmentedDownloadExecutor.cs" />
+    <Compile Remove="Aria2/Aria2ManagedProcess.cs" />
+    <Compile Remove="Aria2/Aria2Service.cs" />
+    <Compile Remove="Backends/Aria2DestinationOwnership.cs" />
+    <Compile Remove="Backends/DownloadBackendAdvisor.cs" />
+    <Compile Remove="Backends/DownloadBackendDecision.cs" />
+    <Compile Remove="Policies/AdaptiveConcurrencyLimiter.cs" />
+    <Compile Remove="Queues/QueueDependencyEvaluator.cs" />
+    <Compile Remove="Queues/QueueSchedulerRuntime.cs" />
+  </ItemGroup>
+
 </Project>

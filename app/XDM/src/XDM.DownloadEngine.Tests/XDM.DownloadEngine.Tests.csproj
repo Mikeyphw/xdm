@@ -24,4 +24,19 @@
     <None Include="Fixtures/Legacy/**/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup Label="XGO-88 retired donor engine tests">
+    <Compile Remove="AdaptiveConcurrencyLimiterTests.cs" />
+    <Compile Remove="Aria2DestinationOwnershipTests.cs" />
+    <Compile Remove="Aria2ServiceOwnershipTests.cs" />
+    <Compile Remove="DownloadBackendAdvisorTests.cs" />
+    <Compile Remove="DownloadManagerProtocolLabTests.cs" />
+    <Compile Remove="DownloadManagerTests.cs" />
+    <Compile Remove="DownloadRecoveryCoordinatorTests.cs" />
+    <Compile Remove="DownloadRetryPolicyTests.cs" />
+    <Compile Remove="QueueDependencyTests.cs" />
+    <Compile Remove="QueueSchedulerRuntimeTests.cs" />
+    <Compile Remove="SegmentedDownloadTests.cs" />
+    <Compile Remove="TransferDiagnosticsInstrumentationTests.cs" />
+  </ItemGroup>
+
 </Project>

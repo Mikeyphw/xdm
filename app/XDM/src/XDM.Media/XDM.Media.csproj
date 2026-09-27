@@ -3,4 +3,10 @@
     <AssemblyName>XDM.Media</AssemblyName>
     <RootNamespace>XDM.Media</RootNamespace>
   </PropertyGroup>
+  <ItemGroup Label="XGO-88 legacy media execution quarantine">
+    <Compile Remove="DashDownloader.cs" />
+    <Compile Remove="HlsDownloader.cs" />
+    <Compile Remove="MediaDownloadService.cs" />
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "policy": "xgo-88-single-authority-v1",
+  "desktop": {
+    "production_roots": [
+      "app/XDM/src/XDM.App",
+      "app/XDM/src/XDM.Platform",
+      "app/XDM/src/XDM.DownloadEngine",
+      "app/XDM/src/XDM.Media"
+    ],
+    "project_quarantine": {
+      "app/XDM/src/XDM.DownloadEngine/XDM.DownloadEngine.csproj": [
+        "DownloadManager.cs",
+        "DownloadRecoveryCoordinator.cs",
+        "DownloadRetryPolicy.cs",
+        "SegmentedDownloadExecutor.cs",
+        "Aria2/Aria2ManagedProcess.cs",
+        "Aria2/Aria2Service.cs",
+        "Backends/Aria2DestinationOwnership.cs",
+        "Backends/DownloadBackendAdvisor.cs",
+        "Backends/DownloadBackendDecision.cs",
+        "Policies/AdaptiveConcurrencyLimiter.cs",
+        "Queues/QueueDependencyEvaluator.cs",
+        "Queues/QueueSchedulerRuntime.cs"
+      ],
+      "app/XDM/src/XDM.Media/XDM.Media.csproj": [
+        "DashDownloader.cs",
+        "HlsDownloader.cs",
+        "MediaDownloadService.cs"
+      ]
+    },
+    "retired_test_quarantine": {
+      "app/XDM/src/XDM.DownloadEngine.Tests/XDM.DownloadEngine.Tests.csproj": [
+        "AdaptiveConcurrencyLimiterTests.cs",
+        "Aria2DestinationOwnershipTests.cs",
+        "Aria2ServiceOwnershipTests.cs",
+        "DownloadBackendAdvisorTests.cs",
+        "DownloadManagerProtocolLabTests.cs",
+        "DownloadManagerTests.cs",
+        "DownloadRecoveryCoordinatorTests.cs",
+        "DownloadRetryPolicyTests.cs",
+        "QueueDependencyTests.cs",
+        "QueueSchedulerRuntimeTests.cs",
+        "SegmentedDownloadTests.cs",
+        "TransferDiagnosticsInstrumentationTests.cs"
+      ],
+      "app/XDM/src/XDM.BrowserMedia.Tests/XDM.BrowserMedia.Tests.csproj": [
+        "DashDownloaderTests.cs",
+        "HlsManifestParserTests.cs",
+        "MediaDownloadServiceTests.cs"
+      ]
+    },
+    "forbidden_active_patterns": [
+      {
+        "id": "legacy_download_authority",
+        "regex": "\\bnew\\s+(?:DownloadManager|DownloadRecoveryCoordinator|QueueSchedulerRuntime|Aria2Service)\\s*\\("
+      },
+      {
+        "id": "legacy_retry_policy",
+        "regex": "\\bDownloadRetryPolicy\\b"
+      },
+      {
+        "id": "legacy_backend_selector",
+        "regex": "\\bDownloadBackendAdvisor\\b"
+      },
+      {
+        "id": "legacy_queue_eligibility",
+        "regex": "\\bQueueDependencyEvaluator\\b"
+      },
+      {
+        "id": "legacy_segmented_executor",
+        "regex": "\\bSegmentedDownloadExecutor\\b"
+      },
+      {
+        "id": "legacy_media_execution",
+        "regex": "\\bnew\\s+(?:HlsDownloader|DashDownloader|MediaDownloadService)\\s*\\("
+      }
+    ],
+    "canonical_store_forbidden_roots": [
+      "app/XDM/src/XDM.App",
+      "app/XDM/src/XDM.Platform"
+    ],
+    "canonical_store_forbidden_patterns": [
+      "Microsoft\\.Data\\.Sqlite",
+      "\\bSqliteConnection\\b",
+      "\\bSQLiteConnection\\b",
+      "\\bINSERT\\s+INTO\\s+downloads\\b",
+      "\\bUPDATE\\s+downloads\\b",
+      "\\bDELETE\\s+FROM\\s+downloads\\b"
+    ]
+  },
+  "android": {
+    "production_files": [
+      "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt",
+      "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt",
+      "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt",
+      "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt",
+      "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt",
+      "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceCoordinator.kt",
+      "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt"
+    ],
+    "forbidden_active_patterns": [
+      {
+        "id": "android_legacy_authority",
+        "regex": "queueIntelligenceCoordinator\\.(?:requestStart|pauseAllDurably|resumeAllManual)\\s*\\("
+      },
+      {
+        "id": "android_legacy_runtime_authority",
+        "regex": "transferRuntime\\.recoverForStartup\\s*\\("
+      },
+      {
+        "id": "android_legacy_scheduler_planner",
+        "regex": "\\b(?:QueueIntelligencePlanner|QueueRetryLedger|QueueDecisionLedger|DurableQueueAdmissionGate)\\b|\\bTransferExecutionStarter\\s*\\("
+      }
+    ]
+  },
+  "go_authority": {
+    "required_tokens": {
+      "engine/media/hls.go": [
+        "func ParseHLSPlaylist("
+      ],
+      "engine/media/dash.go": [
+        "func ParseDASHManifest("
+      ],
+      "engine/transfer/retry/policy.go": [
+        "func (e Engine) Decide("
+      ],
+      "engine/backends/router/selection.go": [
+        "func Select("
+      ],
+      "engine/scheduler/arbitration.go": [
+        "func EvaluateScheduler("
+      ],
+      "engine/store/sqlite/schema.go": [
+        "CurrentSchemaVersion"
+      ]
+    }
+  },
+  "negative_fixtures": [
+    {
+      "id": "desktop_download_manager_reintroduction",
+      "path": "app/XDM/src/XDM.App/InjectedAuthority.cs",
+      "text": "var engine = new DownloadManager();",
+      "expected_rule": "legacy_download_authority"
+    },
+    {
+      "id": "desktop_retry_reintroduction",
+      "path": "app/XDM/src/XDM.Platform/InjectedRetry.cs",
+      "text": "return DownloadRetryPolicy.IsTransient(error);",
+      "expected_rule": "legacy_retry_policy"
+    },
+    {
+      "id": "desktop_media_execution_reintroduction",
+      "path": "app/XDM/src/XDM.Platform/InjectedMedia.cs",
+      "text": "var hls = new HlsDownloader(client);",
+      "expected_rule": "legacy_media_execution"
+    },
+    {
+      "id": "desktop_canonical_db_reintroduction",
+      "path": "app/XDM/src/XDM.Platform/InjectedStore.cs",
+      "text": "using Microsoft.Data.Sqlite; var db = new SqliteConnection(path);",
+      "expected_rule": "canonical_store_writer"
+    },
+    {
+      "id": "android_scheduler_reintroduction",
+      "path": "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/Injected.kt",
+      "text": "queueIntelligenceCoordinator.requestStart(downloadId)",
+      "expected_rule": "android_legacy_authority"
+    }
+  ]
+}

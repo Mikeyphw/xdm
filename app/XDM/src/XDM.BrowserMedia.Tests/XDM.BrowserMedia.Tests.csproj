@@ -31,4 +31,10 @@
     <ProjectReference Include="../XDM.BrowserIntegration/XDM.BrowserIntegration.csproj" />
     <ProjectReference Include="../XDM.Media/XDM.Media.csproj" />
   </ItemGroup>
+  <ItemGroup Label="XGO-88 retired donor media execution tests">
+    <Compile Remove="DashDownloaderTests.cs" />
+    <Compile Remove="HlsManifestParserTests.cs" />
+    <Compile Remove="MediaDownloadServiceTests.cs" />
+  </ItemGroup>
+
 </Project>

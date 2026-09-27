@@ -947,6 +947,232 @@ def performance_budget(args: argparse.Namespace) -> dict[str, Any]:
     return report
 
 
+
+def _compile_remove_entries(project: Path) -> set[str]:
+    source = project.read_text(encoding="utf-8")
+    return {
+        match.group(1).replace("\\", "/")
+        for match in re.finditer(r'<Compile\s+Remove="([^"]+)"\s*/>', source)
+    }
+
+
+def _source_files(root: Path, suffix: str) -> list[Path]:
+    if not root.exists():
+        raise SealAuditError(f"single-authority source root missing: {root}")
+    files: list[Path] = []
+    for path in root.rglob(f"*{suffix}"):
+        rel = path.relative_to(root)
+        if any(part in {"bin", "obj", "build", ".gradle"} for part in rel.parts):
+            continue
+        files.append(path)
+    return sorted(files)
+
+
+def _authority_findings_for_text(
+    repo_root: Path,
+    policy: dict[str, Any],
+    relative_path: str,
+    text: str,
+) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    normalized = relative_path.replace("\\", "/")
+    desktop = policy.get("desktop") or {}
+    desktop_roots = [str(v).rstrip("/") + "/" for v in desktop.get("production_roots") or []]
+    if any(normalized.startswith(root) for root in desktop_roots):
+        for rule in desktop.get("forbidden_active_patterns") or []:
+            pattern = str(rule.get("regex") or "")
+            if pattern and re.search(pattern, text, re.MULTILINE):
+                findings.append({"path": normalized, "rule": str(rule.get("id") or "desktop_forbidden")})
+
+    db_roots = [str(v).rstrip("/") + "/" for v in desktop.get("canonical_store_forbidden_roots") or []]
+    if any(normalized.startswith(root) for root in db_roots):
+        for pattern in desktop.get("canonical_store_forbidden_patterns") or []:
+            if re.search(str(pattern), text, re.IGNORECASE | re.MULTILINE):
+                findings.append({"path": normalized, "rule": "canonical_store_writer"})
+                break
+
+    android = policy.get("android") or {}
+    if normalized in {str(v).replace("\\", "/") for v in android.get("production_files") or []} or normalized.endswith("/Injected.kt"):
+        for rule in android.get("forbidden_active_patterns") or []:
+            pattern = str(rule.get("regex") or "")
+            if pattern and re.search(pattern, text, re.MULTILINE):
+                findings.append({"path": normalized, "rule": str(rule.get("id") or "android_forbidden")})
+    return findings
+
+
+def _single_authority_static_scan(repo_root: Path, policy: dict[str, Any]) -> dict[str, Any]:
+    desktop = policy.get("desktop") or {}
+    quarantine: set[str] = set()
+    quarantine_hashes: dict[str, str] = {}
+    project_quarantine: dict[str, list[str]] = desktop.get("project_quarantine") or {}
+    project_checks: dict[str, Any] = {}
+    for project_name, expected_entries in sorted(project_quarantine.items()):
+        project = repo_root / project_name
+        if not project.exists():
+            raise SealAuditError(f"single-authority project missing: {project_name}")
+        observed = _compile_remove_entries(project)
+        expected = {str(v).replace("\\", "/") for v in expected_entries}
+        missing = sorted(expected - observed)
+        if missing:
+            raise SealAuditError(f"{project_name}: legacy authority compile quarantine missing {missing}")
+        project_dir = Path(project_name).parent
+        for rel in sorted(expected):
+            source_rel = (project_dir / rel).as_posix()
+            source = repo_root / source_rel
+            if not source.exists():
+                raise SealAuditError(f"quarantined donor source disappeared without disposition: {source_rel}")
+            quarantine.add(source_rel)
+            quarantine_hashes[source_rel] = _sha256(source)
+        project_checks[project_name] = {"compile_removed": sorted(expected)}
+
+    retired_test_checks: dict[str, Any] = {}
+    for project_name, expected_entries in sorted((desktop.get("retired_test_quarantine") or {}).items()):
+        project = repo_root / project_name
+        if not project.exists():
+            raise SealAuditError(f"retired-test project missing: {project_name}")
+        observed = _compile_remove_entries(project)
+        expected = {str(v).replace("\\", "/") for v in expected_entries}
+        missing = sorted(expected - observed)
+        if missing:
+            raise SealAuditError(f"{project_name}: retired donor tests still compile: {missing}")
+        project_dir = Path(project_name).parent
+        absent = [rel for rel in sorted(expected) if not (repo_root / project_dir / rel).exists()]
+        if absent:
+            raise SealAuditError(f"retired donor test evidence disappeared unexpectedly: {absent}")
+        retired_test_checks[project_name] = {"compile_removed": sorted(expected)}
+
+    findings: list[dict[str, str]] = []
+    scanned_files = 0
+    for root_name in desktop.get("production_roots") or []:
+        root = repo_root / str(root_name)
+        for path in _source_files(root, ".cs"):
+            relative = path.relative_to(repo_root).as_posix()
+            if relative in quarantine:
+                continue
+            scanned_files += 1
+            findings.extend(_authority_findings_for_text(repo_root, policy, relative, path.read_text(encoding="utf-8", errors="replace")))
+
+    android = policy.get("android") or {}
+    android_files: list[str] = []
+    for file_name in android.get("production_files") or []:
+        relative = str(file_name).replace("\\", "/")
+        path = repo_root / relative
+        if not path.exists():
+            raise SealAuditError(f"single-authority Android surface missing: {relative}")
+        android_files.append(relative)
+        findings.extend(_authority_findings_for_text(repo_root, policy, relative, path.read_text(encoding="utf-8", errors="replace")))
+
+    if findings:
+        raise SealAuditError(f"single-authority active-source violations: {findings[:12]}")
+
+    required_tokens: dict[str, list[str]] = (policy.get("go_authority") or {}).get("required_tokens") or {}
+    go_authority_checks: dict[str, list[str]] = {}
+    for file_name, tokens in sorted(required_tokens.items()):
+        source = (repo_root / file_name).read_text(encoding="utf-8")
+        missing = [str(token) for token in tokens if str(token) not in source]
+        if missing:
+            raise SealAuditError(f"canonical Go authority {file_name} missing {missing}")
+        go_authority_checks[file_name] = [str(token) for token in tokens]
+
+    negative_results: list[dict[str, Any]] = []
+    for fixture in policy.get("negative_fixtures") or []:
+        fixture_id = str(fixture.get("id") or "")
+        path = str(fixture.get("path") or "")
+        expected_rule = str(fixture.get("expected_rule") or "")
+        text = str(fixture.get("text") or "")
+        fixture_findings = _authority_findings_for_text(repo_root, policy, path, text)
+        rules = {item["rule"] for item in fixture_findings}
+        if expected_rule not in rules:
+            raise SealAuditError(
+                f"single-authority negative fixture {fixture_id} did not trigger {expected_rule}; got {sorted(rules)}"
+            )
+        negative_results.append({"id": fixture_id, "expected_rule": expected_rule, "status": "rejected"})
+
+    return {
+        "desktop_active_source_files_scanned": scanned_files,
+        "android_authority_surfaces_scanned": android_files,
+        "project_quarantine": project_checks,
+        "retired_test_quarantine": retired_test_checks,
+        "quarantined_source_count": len(quarantine),
+        "quarantined_source_sha256": quarantine_hashes,
+        "go_authority": go_authority_checks,
+        "negative_fixtures": negative_results,
+    }
+
+
+def single_authority(args: argparse.Namespace) -> dict[str, Any]:
+    repo_root = Path.cwd().resolve()
+    policy = _load(args.policy)
+    if int(policy.get("schema_version") or 0) != 1:
+        raise SealAuditError("unsupported single-authority policy schema")
+
+    static = _single_authority_static_scan(repo_root, policy)
+    commands: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="xgo-seal-authority-") as tmp:
+        temp = Path(tmp)
+        commands.append(_run(["go", "test", "./engine/...", "-count=1"]))
+        commands.append(_run(["go", "vet", "./engine/..."]))
+
+        android_report = temp / "android-legacy-authority.json"
+        commands.append(_run([
+            "go", "run", "./engine/cmd/xgo-android-audit",
+            "--mode", "android_legacy_authority_scan",
+            "--output", str(android_report),
+        ]))
+        android = _load(android_report)
+        if not _report_passed(android):
+            raise SealAuditError("Android legacy-authority seal did not pass")
+
+        desktop_report = temp / "desktop-legacy-authority.json"
+        commands.append(_run([
+            "python3", "tools/xgo/audit_desktop.py",
+            "--mode", "legacy-authority",
+            "--output", str(desktop_report),
+        ]))
+        desktop = _load(desktop_report)
+        if not _report_passed(desktop):
+            raise SealAuditError("Desktop legacy-authority seal did not pass")
+
+        desktop_e2e_report = temp / "desktop-e2e.json"
+        commands.append(_run([
+            "python3", "tools/xgo/audit_desktop.py",
+            "--mode", "desktop-e2e",
+            "--output", str(desktop_e2e_report),
+        ]))
+        desktop_e2e = _load(desktop_e2e_report)
+        if not _report_passed(desktop_e2e):
+            raise SealAuditError("Desktop Go execution/projection seal did not pass")
+
+    report = {
+        "schema_version": 1,
+        "status": "pass",
+        "policy": policy.get("policy"),
+        "invariants": {
+            "legacy_authority_not_compiled_into_desktop_runtime": True,
+            "no_active_desktop_retry_backend_queue_policy": True,
+            "no_active_desktop_hls_dash_execution": True,
+            "no_host_canonical_store_writer": True,
+            "android_scheduler_execution_is_go_authorized": True,
+            "go_is_canonical_retry_backend_queue_authority": True,
+            "go_is_canonical_hls_dash_execution_authority": True,
+            "negative_scanner_fixtures_rejected": True,
+        },
+        "static_scan": static,
+        "host_audits": {
+            "android_legacy_authority": {"mode": _report_field(android, "mode"), "status": "pass"},
+            "desktop_legacy_authority": {"mode": _report_field(desktop, "mode"), "status": "pass"},
+            "desktop_e2e": {"mode": _report_field(desktop_e2e, "mode"), "status": "pass"},
+        },
+        "validation_scope": {
+            "go": "full engine test and vet suites executed by this node",
+            "android": "production authority surfaces plus android_legacy_authority_scan; complete host packaging/build is requalified by GATE-12",
+            "desktop": "legacy-authority and desktop-e2e production scans; complete .NET host build/test is requalified by GATE-12",
+        },
+        "commands": commands,
+    }
+    _write(args.output, report)
+    return report
+
 def _source_const(path: Path, name: str) -> str:
     source = path.read_text(encoding="utf-8")
     match = re.search(rf"(?m)^\s*(?:const\s+)?{re.escape(name)}\s*=\s*(\"[^\"]*\"|-?\d+)\s*$", source)
@@ -1147,6 +1373,10 @@ def main() -> int:
     provenance = sub.add_parser("abi-provenance", help="seal ABI, compatibility and build provenance metadata")
     provenance.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/abi-provenance.json"))
 
+    authority = sub.add_parser("single-authority", help="seal dead-code quarantine and single Go authority")
+    authority.add_argument("--policy", type=Path, default=Path("engine/testdata/seal/single-authority-policy.json"))
+    authority.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/single-authority.json"))
+
     args = parser.parse_args()
     try:
         if args.command == "differential":
@@ -1161,8 +1391,10 @@ def main() -> int:
             report = fuzz_campaign(args)
         elif args.command == "performance-budget":
             report = performance_budget(args)
-        else:
+        elif args.command == "abi-provenance":
             report = abi_provenance(args)
+        else:
+            report = single_authority(args)
     except SealAuditError as exc:
         print(f"XGO seal audit FAILED: {exc}", file=sys.stderr)
         return 1

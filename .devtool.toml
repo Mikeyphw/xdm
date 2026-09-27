@@ -2818,6 +2818,38 @@ outputs = [
   ".devtool/reports/xgo/seal/abi-provenance.json",
 ]
 
+[targets.xgo_seal.jobs.single_authority_scan]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "single-authority",
+  "--output",
+  ".devtool/reports/xgo/seal/single-authority.json",
+]
+inputs = [
+  "engine/testdata/seal/single-authority-policy.json",
+  "engine/media/**",
+  "engine/transfer/retry/**",
+  "engine/backends/router/**",
+  "engine/scheduler/**",
+  "engine/store/sqlite/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/**",
+  "app/XDM.Android/scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/**",
+  "app/XDM/src/XDM.App/**",
+  "app/XDM/src/XDM.Platform/**",
+  "app/XDM/src/XDM.DownloadEngine/**",
+  "app/XDM/src/XDM.DownloadEngine.Tests/**",
+  "app/XDM/src/XDM.Media/**",
+  "app/XDM/src/XDM.BrowserMedia.Tests/**",
+  "tools/xgo/audit_desktop.py",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/single-authority.json",
+]
+
 [targets.xgo_seal.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
@@ -2828,6 +2860,7 @@ validate = [
   { id = "fuzz_campaign", ref = "job:fuzz_campaign", depends_on = ["adversarial_matrix"] },
   { id = "performance_budget", ref = "job:performance_budget", depends_on = ["fuzz_campaign"] },
   { id = "abi_provenance_audit", ref = "job:abi_provenance_audit", depends_on = ["performance_budget"] },
+  { id = "single_authority_scan", ref = "job:single_authority_scan", depends_on = ["abi_provenance_audit"] },
 ]
 
 [targets.xgo_gate_spec]
