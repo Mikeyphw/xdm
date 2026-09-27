@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ type Handler func(context.Context, *Invocation, command.Envelope) error
 
 type Config struct {
 	StatePath      string
+	HostPlatform   string
 	CommandBuffer  int
 	EventBuffer    int
 	PlatformBuffer int
@@ -59,6 +61,7 @@ type Engine struct {
 	active           map[identity.OperationID]*activeOperation
 	androidScheduler *androidhost.AndroidSchedulerHost
 	androidAuthority *androidAuthorityStore
+	desktopAuthority *desktopAuthorityStore
 	authorityErr     error
 	androidUI        *androidUIState
 	androidMedia     *androidMediaState
@@ -87,17 +90,38 @@ func New(config Config) *Engine {
 		platformBuffer = 32
 	}
 	rootCtx, cancel := context.WithCancel(context.Background())
-	authority, authorityErr := newAndroidAuthorityStore(config.StatePath)
-	if authority == nil {
-		authority, _ = newAndroidAuthorityStore("")
+	hostPlatform := strings.ToLower(strings.TrimSpace(config.HostPlatform))
+	if hostPlatform == "" {
+		hostPlatform = "android"
+	}
+	androidAuthority, _ := newAndroidAuthorityStore("")
+	desktopAuthority, _ := newDesktopAuthorityStore("")
+	var authorityErr error
+	if hostPlatform == "desktop" {
+		desktopAuthority, authorityErr = newDesktopAuthorityStore(config.StatePath)
+		if desktopAuthority == nil {
+			desktopAuthority, _ = newDesktopAuthorityStore("")
+		}
+	} else {
+		androidAuthority, authorityErr = newAndroidAuthorityStore(config.StatePath)
+		if androidAuthority == nil {
+			androidAuthority, _ = newAndroidAuthorityStore("")
+		}
 	}
 	androidUI := newAndroidUIState()
 	androidMedia := newAndroidMediaState()
-	if authorityErr == nil && authority.imported() {
-		snapshot := authority.snapshot()
+	if authorityErr == nil && androidAuthority.imported() {
+		snapshot := androidAuthority.snapshot()
 		if err := androidUI.seed(snapshot.UI); err != nil {
 			authorityErr = err
 		} else if err := androidMedia.restorePersistent(snapshot.Media); err != nil {
+			authorityErr = err
+		}
+	}
+	desktopUI := newDesktopUIState()
+	if authorityErr == nil && desktopAuthority.imported() {
+		snapshot := desktopAuthority.snapshot()
+		if err := desktopUI.seed(snapshot.UI); err != nil {
 			authorityErr = err
 		}
 	}
@@ -106,7 +130,7 @@ func New(config Config) *Engine {
 		commands: make(chan queuedCommand, commandBuffer),
 		events:   event.NewQueue(eventBuffer), broker: platform.NewBroker(platformBuffer),
 		handlers: make(map[string]Handler), seen: make(map[command.ID]struct{}), active: make(map[identity.OperationID]*activeOperation),
-		androidScheduler: androidhost.NewAndroidSchedulerHost(), androidAuthority: authority, authorityErr: authorityErr, androidUI: androidUI, androidMedia: androidMedia, desktopUI: newDesktopUIState(),
+		androidScheduler: androidhost.NewAndroidSchedulerHost(), androidAuthority: androidAuthority, desktopAuthority: desktopAuthority, authorityErr: authorityErr, androidUI: androidUI, androidMedia: androidMedia, desktopUI: desktopUI,
 	}
 	e.handlers["runtime.ping"] = pingHandler
 	e.handlers["runtime.platform_probe"] = platformProbeHandler
@@ -123,6 +147,7 @@ func New(config Config) *Engine {
 	e.handlers[DesktopSecretLookupKind] = e.desktopSecretLookupHandler
 	e.handlers[DesktopWakeupKind] = e.desktopWakeupHandler
 	e.handlers[DesktopWakeDueKind] = e.desktopWakeDueHandler
+	e.handlers[DesktopLegacyImportKind] = e.desktopLegacyImportHandler
 	e.handlers[DesktopUICommandKind] = e.desktopUICommandHandler
 	e.handlers[DesktopUIObservationKind] = e.desktopUIObservationHandler
 	e.handlers[DesktopUISnapshotKind] = e.desktopUISnapshotHandler
@@ -161,6 +186,10 @@ func (e *Engine) Start() error {
 		_, _ = e.emit(context.Background(), event.Frame{Class: event.Telemetry, Kind: "android.ui.projection", Payload: uiPayload, CoalesceKey: "android.ui.downloads"})
 		mediaPayload, _ := json.Marshal(e.androidMedia.projection())
 		_, _ = e.emit(context.Background(), event.Frame{Class: event.Telemetry, Kind: "android.media.projection", Payload: mediaPayload, CoalesceKey: "android.media.projection"})
+	}
+	if e.desktopAuthority.imported() {
+		uiPayload, _ := json.Marshal(e.desktopUI.snapshot())
+		_, _ = e.emit(context.Background(), event.Frame{Class: event.Telemetry, Kind: "desktop.ui.projection", Payload: uiPayload, CoalesceKey: "desktop.ui.downloads"})
 	}
 	return nil
 }

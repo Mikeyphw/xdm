@@ -2418,6 +2418,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Enum.TryParse(item.Priority, true, out DownloadPriority priority) ? priority : DownloadPriority.Normal,
             BackendPreference: Enum.TryParse(item.BackendPreference, true, out DownloadBackendPreference preference) ? preference : DownloadBackendPreference.Automatic,
             Backend: Enum.TryParse(item.Backend, true, out DownloadBackendKind backend) ? backend : DownloadBackendKind.Native,
+            BackendTaskId: item.BackendTaskId,
             AllowBackendFallback: item.AllowBackendFallback,
             IsArchived: item.Archived)).ToArray();
         ApplySnapshot(new ApplicationSnapshot(DateTimeOffset.UtcNow, true, downloads));

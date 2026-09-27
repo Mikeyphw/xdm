@@ -322,12 +322,59 @@ func DesktopJSONImportAdapter(_ context.Context, source LegacyImportSource) ([]I
 		return nil, fmt.Errorf("%w: adapter kind", ErrInvalidImportSource)
 	}
 	var doc struct {
-		Items []legacyDownloadRecord `json:"items"`
+		Items         []legacyDownloadRecord `json:"items"`
+		Downloads     []legacyDownloadRecord `json:"downloads"`
+		Checkpoints   []legacyGenericRecord  `json:"checkpoints"`
+		Queues        []legacyGenericRecord  `json:"queues"`
+		Schedules     []legacyGenericRecord  `json:"schedules"`
+		Settings      *legacyGenericRecord   `json:"settings"`
+		Installations []legacyGenericRecord  `json:"installations"`
 	}
 	if err := json.Unmarshal(source.Raw, &doc); err != nil {
 		return nil, fmt.Errorf("%w: desktop json", ErrInvalidImportSource)
 	}
-	return importDownloadRecords(source.Kind, doc.Items)
+	downloads := doc.Downloads
+	if len(downloads) == 0 {
+		downloads = doc.Items
+	}
+	out := make([]ImportedObject, 0, len(downloads)+len(doc.Checkpoints)+len(doc.Queues)+len(doc.Schedules)+len(doc.Installations)+1)
+	if len(downloads) > 0 {
+		imported, err := importDownloadRecords(source.Kind, downloads)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, imported...)
+	}
+	appendGeneric := func(kind string, records []legacyGenericRecord) error {
+		for _, record := range records {
+			id := strings.TrimSpace(record.ID)
+			if id == "" {
+				return fmt.Errorf("%w: %s record id", ErrImportFailed, kind)
+			}
+			canonical := fmt.Sprintf("%s:%x", kind, sha256.Sum256([]byte(string(source.Kind)+"\x00"+kind+"\x00"+id)))
+			out = append(out, ImportedObject{Kind: kind, LegacyID: id, CanonicalID: canonical, Payload: record.Payload})
+		}
+		return nil
+	}
+	for _, item := range []struct {
+		kind    string
+		records []legacyGenericRecord
+	}{
+		{"checkpoint", doc.Checkpoints}, {"queue", doc.Queues}, {"schedule", doc.Schedules}, {"installation", doc.Installations},
+	} {
+		if err := appendGeneric(item.kind, item.records); err != nil {
+			return nil, err
+		}
+	}
+	if doc.Settings != nil {
+		if err := appendGeneric("settings", []legacyGenericRecord{*doc.Settings}); err != nil {
+			return nil, err
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: no supported desktop records", ErrImportFailed)
+	}
+	return out, nil
 }
 
 func importDownloadRecords(kind ImportSourceKind, records []legacyDownloadRecord) ([]ImportedObject, error) {

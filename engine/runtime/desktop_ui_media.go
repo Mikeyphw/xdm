@@ -40,6 +40,7 @@ type DesktopUIDownload struct {
 	ConnectionCount      int     `json:"connection_count"`
 	Priority             string  `json:"priority"`
 	Backend              string  `json:"backend"`
+	BackendTaskID        string  `json:"backend_task_id,omitempty"`
 	BackendPreference    string  `json:"backend_preference"`
 	AllowBackendFallback bool    `json:"allow_backend_fallback"`
 	Archived             bool    `json:"archived"`
@@ -56,6 +57,8 @@ type DesktopUICommand struct {
 	DownloadID      string             `json:"download_id,omitempty"`
 	Download        *DesktopUIDownload `json:"download,omitempty"`
 	RequestRef      string             `json:"request_ref,omitempty"`
+	Backend         string             `json:"backend,omitempty"`
+	BackendTaskID   string             `json:"backend_task_id,omitempty"`
 }
 
 type desktopUIObservation struct {
@@ -109,6 +112,26 @@ func validateDesktopUICommand(c DesktopUICommand) error {
 	return nil
 }
 
+func (s *desktopUIState) seed(projection DesktopUIProjection) error {
+	seen := make(map[string]struct{}, len(projection.Downloads))
+	for _, d := range projection.Downloads {
+		if err := validateDesktopUIDownload(d, true); err != nil {
+			return err
+		}
+		if _, exists := seen[d.ID]; exists {
+			return fmt.Errorf("duplicate desktop UI download %s", d.ID)
+		}
+		seen[d.ID] = struct{}{}
+	}
+	if projection.Downloads == nil {
+		projection.Downloads = []DesktopUIDownload{}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.projection = projection
+	return nil
+}
+
 func (s *desktopUIState) snapshot() DesktopUIProjection {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -155,6 +178,7 @@ func (s *desktopUIState) applyCommand(cmd DesktopUICommand, returnedID string) (
 		if cmd.Download != nil && returnedID != "" && find(returnedID) < 0 {
 			added := *cmd.Download
 			added.ID = returnedID
+			added.BackendTaskID = cmd.BackendTaskID
 			added.State = "Queued"
 			next.Downloads = append([]DesktopUIDownload{added}, next.Downloads...)
 			changed = true
@@ -221,6 +245,9 @@ func (e *Engine) desktopUIObservationHandler(ctx context.Context, inv *Invocatio
 	if err != nil {
 		return err
 	}
+	if err := e.desktopAuthority.saveUI(projection); err != nil {
+		return err
+	}
 	return emitDesktopUIProjection(inv, projection)
 }
 
@@ -231,6 +258,23 @@ func (e *Engine) desktopUICommandHandler(ctx context.Context, inv *Invocation, e
 	}
 	if err := validateDesktopUICommand(cmd); err != nil {
 		return err
+	}
+	canonicalID := cmd.DownloadID
+	if cmd.Action == "add" {
+		canonicalID = "desktop-" + string(env.OperationID)
+		cmd.DownloadID = canonicalID
+		if cmd.Download != nil {
+			cmd.Download.ID = canonicalID
+			cmd.Backend = cmd.Download.Backend
+		}
+	} else if current := e.desktopUI.snapshot(); canonicalID != "" {
+		for _, item := range current.Downloads {
+			if item.ID == canonicalID {
+				cmd.Backend = item.Backend
+				cmd.BackendTaskID = item.BackendTaskID
+				break
+			}
+		}
 	}
 	request, _ := json.Marshal(cmd)
 	reply, err := inv.PlatformRequest(ctx, platform.DesktopDownloadCommand, platform.Refs{OperationID: env.OperationID}, request)
@@ -256,8 +300,21 @@ func (e *Engine) desktopUICommandHandler(ctx context.Context, inv *Invocation, e
 		_ = emitDesktopUIResult(inv, cmd.ClientRequestID, cmd.Action, false, result)
 		return fmt.Errorf("desktop download command rejected: %s", reply.ErrorCode)
 	}
-	returnedID, _ := result["download_id"].(string)
+	returnedID := canonicalID
+	if cmd.Action == "add" {
+		// Go owns canonical download identity. The platform may return a backend
+		// task reference, but it cannot replace the canonical download ID.
+		result["download_id"] = canonicalID
+	} else if platformID, ok := result["download_id"].(string); ok && platformID != "" {
+		returnedID = platformID
+	}
+	if taskID, ok := result["backend_task_id"].(string); ok {
+		cmd.BackendTaskID = taskID
+	}
 	if projection, changed := e.desktopUI.applyCommand(cmd, returnedID); changed {
+		if err := e.desktopAuthority.saveUI(projection); err != nil {
+			return err
+		}
 		if err := emitDesktopUIProjection(inv, projection); err != nil {
 			return err
 		}

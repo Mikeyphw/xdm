@@ -96,6 +96,10 @@ public partial class App : Application
             () => services.GetRequiredService<DesktopGoEngineHost>().StartAsync(),
             diagnostics);
         coreReady &= InitializeService(
+            "XGO-DESKTOP-LEGACY-IMPORT",
+            () => services.GetRequiredService<DesktopLegacyStateImporter>().ImportOnceAsync(),
+            diagnostics);
+        coreReady &= InitializeService(
             "XGO-DESKTOP-PROJECTIONS",
             () => services.GetRequiredService<DesktopGoProjectionClient>().InitializeAsync(),
             diagnostics);
@@ -104,36 +108,16 @@ public partial class App : Application
             () => services.GetRequiredService<ITransferPolicyRuntime>().InitializeAsync(),
             diagnostics);
         coreReady &= InitializeService(
-            "XDM-STARTUP-DOWNLOADS",
-            () => services.GetRequiredService<IDownloadManager>().InitializeAsync(),
-            diagnostics);
-        coreReady &= InitializeService(
             "XGO-DESKTOP-EXECUTION-OBSERVATION",
             () => services.GetRequiredService<DesktopGoExecutionObserver>().InitializeAsync(),
-            diagnostics);
-        coreReady &= InitializeService(
-            "XDM-STARTUP-RECOVERY-COORDINATOR",
-            () => services.GetRequiredService<IDownloadRecoveryCoordinator>()
-                .ScanAsync(
-                    recovery.PreviousSessionWasUnclean,
-                    recovery.PreviousSession?.ActiveDownloadIds,
-                    recovery.PreviousSession?.CheckpointFlushSucceeded),
             diagnostics);
         services.GetRequiredService<IApplicationState>().SetCoreReady(coreReady);
 
         if (!recovery.SafeMode)
         {
             InitializeService(
-                "XDM-STARTUP-SCHEDULER",
-                () => services.GetRequiredService<IQueueSchedulerRuntime>().InitializeAsync(),
-                diagnostics);
-            InitializeService(
                 "XDM-STARTUP-BROWSER",
                 () => services.GetRequiredService<IBrowserIntegrationService>().InitializeAsync(),
-                diagnostics);
-            InitializeService(
-                "XDM-STARTUP-ARIA2",
-                () => services.GetRequiredService<IAria2Service>().InitializeAsync(),
                 diagnostics);
         }
         else
@@ -404,14 +388,13 @@ public partial class App : Application
         services.AddSingleton<IConversionService, ConversionService>();
         services.AddSingleton<IConversionQueueService, ConversionQueueService>();
         services.AddSingleton<IMediaCatalogService, MediaCatalogService>();
-        services.AddSingleton<IMediaDownloadService, MediaDownloadService>();
         services.AddSingleton<IMediaProbeService, MediaProbeService>();
         services.AddSingleton<IApplicationState, ApplicationState>();
         services.AddSingleton<IDownloadHistoryStore, JsonDownloadHistoryStore>();
         services.AddSingleton<IDownloadListTransferService, DownloadListTransferService>();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<IAria2Service, Aria2Service>();
+        services.AddSingleton<IAria2Service, DesktopGoAria2CompatibilityService>();
         services.AddSingleton<LocalizationService>();
         services.AddSingleton<ISettingsTransferService, SettingsTransferService>();
         services.AddSingleton<ISchedulerStateStore, JsonSchedulerStateStore>();
@@ -426,6 +409,7 @@ public partial class App : Application
         services.AddSingleton<DesktopGoPlatformDispatcher>();
         services.AddSingleton<DesktopGoEngineHost>();
         services.AddSingleton<DesktopGoProjectionClient>();
+        services.AddSingleton<DesktopLegacyStateImporter>();
         services.AddSingleton<DesktopGoExecutionObserver>();
         services.AddSingleton<ITransferPolicyRuntime, TransferPolicyRuntime>();
         services.AddSingleton<DownloadChecksumWorkflowStore>();
@@ -433,9 +417,9 @@ public partial class App : Application
         services.AddSingleton<IFinalizationFilePromoter, FinalizationFilePromoter>();
         services.AddSingleton<IPartialFileRepairService>(static provider =>
             new PartialFileRepairService(provider.GetRequiredService<HttpClient>()));
-        services.AddSingleton<IDownloadManager, DownloadManager>();
-        services.AddSingleton<IDownloadRecoveryCoordinator, DownloadRecoveryCoordinator>();
-        services.AddSingleton<IQueueSchedulerRuntime, QueueSchedulerRuntime>();
+        services.AddSingleton<IDownloadManager, DesktopGoCompatibilityDownloadManager>();
+        services.AddSingleton<IDownloadRecoveryCoordinator, DesktopGoRecoveryCoordinator>();
+        services.AddSingleton<IQueueSchedulerRuntime, DesktopGoQueueSchedulerRuntime>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
         services.AddSingleton<IPlatformService, DesktopPlatformService>();
         services.AddSingleton<IUpdateService, VerifiedUpdateService>();

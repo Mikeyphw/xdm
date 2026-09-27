@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using XDM.Core.Downloads;
-using XDM.Core.State;
 using XDM.DownloadEngine;
 
 namespace XDM.Platform;
@@ -23,6 +22,7 @@ public sealed record DesktopGoDownloadProjection(
     int ConnectionCount,
     string Priority,
     string Backend,
+    string? BackendTaskId,
     string BackendPreference,
     bool AllowBackendFallback,
     bool Archived);
@@ -77,6 +77,21 @@ public sealed class DesktopGoProjectionClient : IDisposable
         await _host.SubmitCommandAsync("desktop.media.snapshot", JsonSerializer.SerializeToElement(new { }), cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task ImportLegacyStateAsync(JsonElement package, CancellationToken cancellationToken = default)
+    {
+        string clientRequestId = "import_" + Guid.NewGuid().ToString("N");
+        JsonElement result = await SubmitCorrelatedAsync(
+            "desktop.import_legacy_state",
+            clientRequestId,
+            JsonSerializer.SerializeToElement(new
+            {
+                client_request_id = clientRequestId,
+                package
+            }, JsonOptions),
+            cancellationToken).ConfigureAwait(false);
+        EnsureAccepted(result, "Desktop legacy-state import was rejected by Go.");
+    }
+
     public async Task<string> AddDownloadAsync(DownloadRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -103,6 +118,7 @@ public sealed class DesktopGoProjectionClient : IDisposable
             connection_count = request.ConnectionCount,
             priority = request.Priority.ToString(),
             backend = request.BackendPreference == DownloadBackendPreference.Aria2 ? DownloadBackendKind.Aria2.ToString() : DownloadBackendKind.Native.ToString(),
+            backend_task_id = (string?)null,
             backend_preference = request.BackendPreference.ToString(),
             allow_backend_fallback = request.AllowBackendFallback,
             archived = false
@@ -145,34 +161,12 @@ public sealed class DesktopGoProjectionClient : IDisposable
         EnsureAccepted(result, $"Desktop {action} command was rejected.");
     }
 
-    public Task ObserveExecutionAsync(ApplicationSnapshot snapshot, CancellationToken cancellationToken = default)
+    public Task ObserveExecutionAsync(IReadOnlyList<DesktopGoDownloadProjection> snapshot, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        object[] downloads = snapshot.Downloads.Select(static download => (object)new
-        {
-            id = download.Id,
-            file_name = download.FileName,
-            source_url = SafeProjectionUrl(download.Source),
-            destination_path = download.DestinationPath,
-            downloaded_bytes = download.DownloadedBytes,
-            total_bytes = download.TotalBytes,
-            bytes_per_second = download.BytesPerSecond,
-            state = download.State.ToString(),
-            updated_at_epoch_ms = download.UpdatedAt.ToUnixTimeMilliseconds(),
-            error_message = download.ErrorMessage,
-            queue_id = download.QueueId,
-            category_id = download.CategoryId,
-            queue_order = download.QueueOrder,
-            connection_count = download.ConnectionCount,
-            priority = download.Priority.ToString(),
-            backend = download.Backend.ToString(),
-            backend_preference = download.BackendPreference.ToString(),
-            allow_backend_fallback = download.AllowBackendFallback,
-            archived = download.IsArchived
-        }).ToArray();
         return _host.SubmitCommandAsync(
             "desktop.ui.execution_observation",
-            JsonSerializer.SerializeToElement(new { downloads }, JsonOptions),
+            JsonSerializer.SerializeToElement(new { downloads = snapshot }, JsonOptions),
             cancellationToken);
     }
 
@@ -281,6 +275,7 @@ public sealed class DesktopGoProjectionClient : IDisposable
                 break;
             case "desktop.ui.command_result":
             case "desktop.media.command_result":
+            case "desktop.import.result":
                 CompleteCorrelated(args.Payload);
                 break;
         }

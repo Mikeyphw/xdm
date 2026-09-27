@@ -1246,8 +1246,8 @@
     },
     {
       "area": "desktop",
-      "behavior": "Legacy C# transfer/media engines are deleted after UI reconnection.",
-      "canonical_behavior": "Architecture scan proves no normal execution bypasses Go authoritative engine.",
+      "behavior": "Legacy C# transfer/media engines are retired from production execution after UI reconnection.",
+      "canonical_behavior": "Architecture scan proves no normal execution instantiates superseded C# engine authority; donor implementations remain test-only until differential classification.",
       "donor_strategy": "redesign",
       "donors": [
         "desktop_download_manager",
@@ -1255,7 +1255,7 @@
         "desktop_dash_downloader"
       ],
       "id": "XGO-CAP-DESKTOP-004",
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "target_overlay": "XGO-80",
       "test_id": "fixture:xgo-cap-desktop-004"
     },

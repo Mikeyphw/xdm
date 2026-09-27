@@ -60,6 +60,7 @@ class AndroidEngineProcessAuthority(context: Context) {
         val createConfig = JSONObject()
             .put("protocol", JSONObject().put("major", 1).put("minor", 0))
             .put("state_path", statePath)
+            .put("host_platform", "android")
             .toString()
             .toByteArray(Charsets.UTF_8)
         val nextBridge = AndroidGoEngineBridge().also { it.create(createConfig) }

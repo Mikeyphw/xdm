@@ -3,6 +3,7 @@ using XDM.Core.Diagnostics;
 using XDM.Core.State;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
+using XDM.Platform;
 
 namespace XDM.App.Services;
 
@@ -18,24 +19,13 @@ internal static class ShutdownCoordinator
         ArgumentNullException.ThrowIfNull(recovery);
         ArgumentNullException.ThrowIfNull(diagnostics);
 
-        IDownloadManager downloads = services.GetRequiredService<IDownloadManager>();
+        DesktopGoDownloadExecutionBroker downloads = services.GetRequiredService<DesktopGoDownloadExecutionBroker>();
         bool clean = false;
         DownloadShutdownReport? report = null;
         try
         {
-            downloads.FreezeAdmission();
-
-            string[] activeIds = services.GetRequiredService<IApplicationState>()
-                .Current.Downloads
-                .Where(static download => download.State is XDM.Core.Downloads.DownloadState.Connecting
-                    or XDM.Core.Downloads.DownloadState.Downloading
-                    or XDM.Core.Downloads.DownloadState.Finalizing)
-                .Select(static download => download.Id)
-                .OrderBy(static id => id, StringComparer.Ordinal)
-                .ToArray();
-            recovery.BeginShutdown(activeIds);
-
             report = await downloads.PrepareForShutdownAsync(cancellationToken).ConfigureAwait(false);
+            recovery.BeginShutdown(report.ActiveDownloadIds);
             recovery.RecordCheckpointFlush(
                 report.CheckpointFlushSucceeded,
                 report.CheckpointsAttempted,

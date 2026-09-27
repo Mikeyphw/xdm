@@ -95,26 +95,50 @@ func TestDesktopAddResumeAndSnapshotReopenStayGoOwned(t *testing.T) {
 	}
 	defer e.Shutdown(context.Background())
 
-	add := `{"client_request_id":"ui-add-1","action":"add","request_ref":"req-local-only","download":{"id":"","file_name":"added.bin","source_url":"https://example.test/added.bin","destination_path":"/tmp/added.bin","downloaded_bytes":0,"total_bytes":2048,"bytes_per_second":0,"state":"Queued","updated_at_epoch_ms":11,"queue_id":"default","queue_order":0,"connection_count":4,"priority":"Normal","backend":"Native","backend_preference":"Automatic","allow_backend_fallback":true,"archived":false}}`
-	if err := e.Submit(context.Background(), cmd(t, strings.Repeat("0", 30)+"b1", strings.Repeat("0", 30)+"b1", DesktopUICommandKind, add)); err != nil {
+	operationID := strings.Repeat("0", 30) + "b1"
+	canonicalID := "desktop-op_" + operationID
+	backendTaskID := "0123456789abcdef"
+	add := `{"client_request_id":"ui-add-1","action":"add","request_ref":"req-local-only","download":{"id":"","file_name":"added.bin","source_url":"https://example.test/added.bin","destination_path":"/tmp/added.bin","downloaded_bytes":0,"total_bytes":2048,"bytes_per_second":0,"state":"Queued","updated_at_epoch_ms":11,"queue_id":"default","queue_order":0,"connection_count":4,"priority":"Normal","backend":"Aria2","backend_preference":"Automatic","allow_backend_fallback":true,"archived":false}}`
+	if err := e.Submit(context.Background(), cmd(t, operationID, operationID, DesktopUICommandKind, add)); err != nil {
 		t.Fatal(err)
 	}
 	requestPayload := nextDesktopFrame(t, e, "platform.request")
-	answerDesktopRequest(t, e, requestPayload, true, map[string]any{"download_id": "go-created-1", "status": "created"}, "")
-	projection := nextDesktopFrame(t, e, "desktop.ui.projection")
-	if !strings.Contains(string(projection), `"go-created-1"`) || !strings.Contains(string(projection), `"added.bin"`) {
-		t.Fatalf("add was not projected by Go: %s", projection)
+	var addRequest platform.Request
+	if err := json.Unmarshal(requestPayload, &addRequest); err != nil {
+		t.Fatal(err)
 	}
-	_ = nextDesktopFrame(t, e, "desktop.ui.command_result")
+	if !strings.Contains(string(addRequest.Payload), `"download_id":"`+canonicalID+`"`) {
+		t.Fatalf("platform add request did not receive Go canonical identity: %s", addRequest.Payload)
+	}
+	answerDesktopRequest(t, e, requestPayload, true, map[string]any{
+		"download_id":     "host-must-not-win",
+		"backend_task_id": backendTaskID,
+		"status":          "created",
+	}, "")
+	projection := nextDesktopFrame(t, e, "desktop.ui.projection")
+	if !strings.Contains(string(projection), `"id":"`+canonicalID+`"`) || strings.Contains(string(projection), "host-must-not-win") || !strings.Contains(string(projection), `"backend_task_id":"`+backendTaskID+`"`) || !strings.Contains(string(projection), `"added.bin"`) {
+		t.Fatalf("add identity/backend task was not Go-owned: %s", projection)
+	}
+	result := nextDesktopFrame(t, e, "desktop.ui.command_result")
+	if !strings.Contains(string(result), `"download_id":"`+canonicalID+`"`) || strings.Contains(string(result), "host-must-not-win") {
+		t.Fatalf("add result leaked host-selected identity: %s", result)
+	}
 
-	resume := `{"client_request_id":"ui-resume-1","action":"resume","download_id":"go-created-1"}`
+	resume := `{"client_request_id":"ui-resume-1","action":"resume","download_id":"` + canonicalID + `"}`
 	if err := e.Submit(context.Background(), cmd(t, strings.Repeat("0", 30)+"b2", strings.Repeat("0", 30)+"b2", DesktopUICommandKind, resume)); err != nil {
 		t.Fatal(err)
 	}
 	requestPayload = nextDesktopFrame(t, e, "platform.request")
+	var resumeRequest platform.Request
+	if err := json.Unmarshal(requestPayload, &resumeRequest); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(resumeRequest.Payload), `"backend_task_id":"`+backendTaskID+`"`) || !strings.Contains(string(resumeRequest.Payload), `"download_id":"`+canonicalID+`"`) {
+		t.Fatalf("resume did not receive Go-owned identity/backend task: %s", resumeRequest.Payload)
+	}
 	answerDesktopRequest(t, e, requestPayload, true, map[string]any{"status": "resumed"}, "")
 	projection = nextDesktopFrame(t, e, "desktop.ui.projection")
-	if !strings.Contains(string(projection), `"Queued"`) {
+	if !strings.Contains(string(projection), `"Queued"`) || !strings.Contains(string(projection), `"backend_task_id":"`+backendTaskID+`"`) {
 		t.Fatalf("resume was not reflected by Go: %s", projection)
 	}
 	_ = nextDesktopFrame(t, e, "desktop.ui.command_result")
@@ -123,8 +147,8 @@ func TestDesktopAddResumeAndSnapshotReopenStayGoOwned(t *testing.T) {
 		t.Fatal(err)
 	}
 	reopened := nextDesktopFrame(t, e, "desktop.ui.projection")
-	if !strings.Contains(string(reopened), `"go-created-1"`) {
-		t.Fatalf("UI reopen snapshot lost Go projection: %s", reopened)
+	if !strings.Contains(string(reopened), `"id":"`+canonicalID+`"`) || !strings.Contains(string(reopened), `"backend_task_id":"`+backendTaskID+`"`) {
+		t.Fatalf("UI reopen snapshot lost Go projection authority: %s", reopened)
 	}
 }
 

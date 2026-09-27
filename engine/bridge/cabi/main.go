@@ -112,7 +112,7 @@ func xdm_engine_create(config *C.uint8_t, configLen C.size_t, outHandle *C.uint6
 	if err != nil {
 		return status(err)
 	}
-	e := engineruntime.New(engineruntime.Config{StatePath: cfg.StatePath})
+	e := engineruntime.New(engineruntime.Config{StatePath: cfg.StatePath, HostPlatform: cfg.HostPlatform})
 	if err := e.Start(); err != nil {
 		return status(err)
 	}

@@ -43,8 +43,9 @@ func (p Protocol) Validate() error {
 }
 
 type CreateConfig struct {
-	Protocol  Protocol `json:"protocol"`
-	StatePath string   `json:"state_path,omitempty"`
+	Protocol     Protocol `json:"protocol"`
+	StatePath    string   `json:"state_path,omitempty"`
+	HostPlatform string   `json:"host_platform,omitempty"`
 }
 
 type CommandEnvelope struct {

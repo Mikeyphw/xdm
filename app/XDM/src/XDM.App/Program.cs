@@ -83,7 +83,7 @@ internal static class Program
         bool coreReady = state.Current.CoreReady;
         bool coreStatusReady = viewModel.CoreStatus == "Ready";
         bool archiveCategoryReady = archiveCategory.MatchesFileName("release.zip");
-        bool downloadManagerReady = downloadManager is DownloadManager;
+        bool downloadManagerReady = downloadManager is DesktopGoCompatibilityDownloadManager;
         bool valid = numericConverterReady
             && sectionsReady
             && sectionIconsReady

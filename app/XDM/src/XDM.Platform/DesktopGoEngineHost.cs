@@ -45,7 +45,8 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
         byte[] config = JsonSerializer.SerializeToUtf8Bytes(new
         {
             protocol = new { major = 1, minor = 0 },
-            state_path = _statePath
+            state_path = _statePath,
+            host_platform = "desktop"
         });
         EnsureSuccess(Native.xdm_engine_create(config, (nuint)config.Length, out _handle), "create");
         try
