@@ -3313,6 +3313,44 @@ validate = [
   { id = "desktop_full_seal", ref = "target:xdm_modern#validate", depends_on = ["desktop"] },
 ]
 
+[targets.xgo_final_wave12]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  ".devtool/reports/xgo/seal/**",
+  "engine/testdata/seal/gate12-policy.json",
+  "tools/xgo/audit_gate12.py",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final/**",
+]
+
+[targets.xgo_final_wave12.jobs.wave12_final_gate]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_gate12.py",
+  "--output",
+  ".devtool/reports/xgo/gates/final/wave12-final.json",
+]
+inputs = [
+  ".devtool.toml",
+  ".devtool/reports/xgo/seal/**",
+  "engine/testdata/seal/gate12-policy.json",
+  "tools/xgo/audit_gate12.py",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final/wave12-final.json",
+]
+
+[targets.xgo_final_wave12.workflows]
+validate = [
+  { id = "wave12_final_gate", ref = "job:wave12_final_gate", depends_on = [] }
+]
+
 [targets.xgo_gate_final]
 runner = "command"
 platform = "shared"
@@ -3322,6 +3360,9 @@ inputs = [
   ".devtool.toml",
   "engine/**",
   "tools/xgo/**",
+  "docs/xgo/**",
+  "app/XDM.Android/**",
+  "app/XDM/**",
 ]
 outputs = [
   ".devtool/reports/xgo/gates/final/**",
@@ -3329,6 +3370,8 @@ outputs = [
 
 [targets.xgo_gate_final.workflows]
 validate = [
-  { id = "cross_host", ref = "target:xgo_gate_cross_host#validate", depends_on = [] },
-  { id = "seal", ref = "target:xgo_seal#validate", depends_on = ["cross_host"] }
+  { id = "wave12_seal", ref = "target:xgo_seal#validate", depends_on = [] },
+  { id = "android_host_final", ref = "target:xdm_android#validate", depends_on = ["wave12_seal"] },
+  { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_host_final"] },
+  { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] }
 ]

@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "policy": "wave12-focused-final-gate",
+  "gate_target": "xgo_gate_final",
+  "expected_gate_nodes": [
+    {
+      "id": "wave12_seal",
+      "ref": "target:xgo_seal#validate",
+      "depends_on": []
+    },
+    {
+      "id": "android_host_final",
+      "ref": "target:xdm_android#validate",
+      "depends_on": [
+        "wave12_seal"
+      ]
+    },
+    {
+      "id": "desktop_host_final",
+      "ref": "target:xdm_modern#validate",
+      "depends_on": [
+        "android_host_final"
+      ]
+    },
+    {
+      "id": "wave12_final_gate",
+      "ref": "target:xgo_final_wave12#validate",
+      "depends_on": [
+        "desktop_host_final"
+      ]
+    }
+  ],
+  "expected_seal_nodes": [
+    "bootstrap_contract",
+    "differential_runner",
+    "state_machine_fuzz",
+    "full_crash_matrix",
+    "adversarial_matrix",
+    "fuzz_campaign",
+    "performance_budget",
+    "abi_provenance_audit",
+    "single_authority_scan",
+    "capability_closure_audit"
+  ],
+  "reports": [
+    {
+      "id": "bootstrap",
+      "path": ".devtool/reports/xgo/seal/bootstrap.json"
+    },
+    {
+      "id": "differential",
+      "path": ".devtool/reports/xgo/seal/differential.json"
+    },
+    {
+      "id": "state_machine",
+      "path": ".devtool/reports/xgo/seal/state-machine.json"
+    },
+    {
+      "id": "crash_matrix",
+      "path": ".devtool/reports/xgo/seal/crash-matrix.json"
+    },
+    {
+      "id": "adversarial",
+      "path": ".devtool/reports/xgo/seal/adversarial-matrix.json"
+    },
+    {
+      "id": "fuzz",
+      "path": ".devtool/reports/xgo/seal/fuzz-campaign.json"
+    },
+    {
+      "id": "performance",
+      "path": ".devtool/reports/xgo/seal/performance-budget.json"
+    },
+    {
+      "id": "abi_provenance",
+      "path": ".devtool/reports/xgo/seal/abi-provenance.json"
+    },
+    {
+      "id": "single_authority",
+      "path": ".devtool/reports/xgo/seal/single-authority.json"
+    },
+    {
+      "id": "capability_closure",
+      "path": ".devtool/reports/xgo/seal/capability-closure.json"
+    }
+  ],
+  "expected_counts": {
+    "capabilities": 98,
+    "differential_regressions": 0,
+    "state_machine_operations": 12,
+    "crash_injection_points": 17,
+    "adversarial_scenarios": 21,
+    "fuzz_targets": 10,
+    "fuzz_categories": 9,
+    "performance_workloads": 8,
+    "closure_open_gaps": 0
+  },
+  "race_policy": {
+    "allow_unsupported_host_with_stress_fallback": true,
+    "supported_status": "pass",
+    "unsupported_status": "unsupported_on_host"
+  }
+}

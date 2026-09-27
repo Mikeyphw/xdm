@@ -1516,7 +1516,7 @@ def capability_closure(args: argparse.Namespace) -> dict[str, Any]:
             "go_race": "must execute on a Go race-supported host",
             "android": "complete Gradle/package/device qualification",
             "desktop": "complete .NET build/test/package qualification",
-            "final_gate": "xgo_gate_final composes cross-host qualification followed by the full xgo_seal workflow",
+            "final_gate": "xgo_gate_final runs the Wave 12 xgo_seal workflow, then direct Android/Desktop host seals, then the Gate-12 final-wave verifier",
         },
     }
     report["closure_fingerprint"] = _canonical_hash(
