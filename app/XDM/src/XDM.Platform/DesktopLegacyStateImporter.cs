@@ -14,6 +14,7 @@ public sealed class DesktopLegacyStateImporter(DesktopGoProjectionClient go)
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower
     };
+    private static readonly JsonSerializerOptions LegacyDownloadJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly DesktopGoProjectionClient _go = go ?? throw new ArgumentNullException(nameof(go));
     private readonly string _legacyDirectory = Path.Combine(
@@ -121,7 +122,7 @@ public sealed class DesktopLegacyStateImporter(DesktopGoProjectionClient go)
         {
             throw new InvalidDataException($"Legacy desktop download history '{path}' has no downloads array.");
         }
-        return downloads.Deserialize<PersistedDownload[]>(new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
+        return downloads.Deserialize<PersistedDownload[]>(LegacyDownloadJsonOptions) ?? [];
     }
 
     private object? CreateCheckpointRecord(PersistedDownload download)

@@ -22,11 +22,12 @@ public sealed record DesktopPublicationReceipt(
     string ReceiptId,
     string Location);
 
-public sealed class DesktopGoPublicationBroker
+public sealed class DesktopGoPublicationBroker : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _journalPath;
+    private bool _disposed;
 
     public DesktopGoPublicationBroker()
         : this(Path.Combine(
@@ -184,6 +185,18 @@ public sealed class DesktopGoPublicationBroker
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         File.Move(temp, _journalPath, true);
+    }
+
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+        _gate.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private static string CreateReceiptId(string idempotencyKey)

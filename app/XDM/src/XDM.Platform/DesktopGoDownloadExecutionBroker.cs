@@ -156,7 +156,7 @@ public sealed class DesktopGoDownloadExecutionBroker
             return Reject("aria2_disabled", "aria2 is not enabled in desktop settings.");
         }
         Aria2RpcClient rpc = new(_http, settings.GetRpcUri(), settings.RpcSecret);
-        string gid = await rpc.AddAsync(new Aria2AddRequest(
+        string gid = await rpc.AddUriAsync(new Aria2AddRequest(
             request.Source,
             request.DestinationDirectory,
             request.ResolveFileName(),
@@ -171,7 +171,7 @@ public sealed class DesktopGoDownloadExecutionBroker
             ConnectionCount = request.ConnectionCount,
             ContinueDownloads = settings.ContinueDownloads,
             CheckCertificate = settings.CheckCertificate
-        }, cancellationToken).ConfigureAwait(false);
+        }, settings.SplitCount, settings.MinimumSplitSizeBytes, cancellationToken).ConfigureAwait(false);
         return JsonSerializer.SerializeToElement(new
         {
             ok = true,
