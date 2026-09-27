@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "minimum_duration_seconds": 1,
+  "targets": [
+    {"category":"url_header", "package":"./engine/security/urlpolicy", "fuzz":"FuzzParseTransportURL", "max_input_bytes":16384},
+    {"category":"url_header", "package":"./engine/security/header", "fuzz":"FuzzHeaderAdmission", "max_input_bytes":16384},
+    {"category":"content_range", "package":"./engine/transfer/http", "fuzz":"FuzzContentRangeParser", "max_input_bytes":8192},
+    {"category":"content_disposition", "package":"./engine/transfer/http", "fuzz":"FuzzContentDispositionParser", "max_input_bytes":16384},
+    {"category":"hls", "package":"./engine/media", "fuzz":"FuzzHLSParser", "max_input_bytes":65536},
+    {"category":"dash", "package":"./engine/media", "fuzz":"FuzzDASHParser", "max_input_bytes":65536},
+    {"category":"metalink", "package":"./engine/transfer/metalink", "fuzz":"FuzzMetalinkParser", "max_input_bytes":1048577},
+    {"category":"capture_envelope", "package":"./engine/media", "fuzz":"FuzzCaptureEnvelopeParser", "max_input_bytes":65537},
+    {"category":"wire_protocol", "package":"./engine/api/v1", "fuzz":"FuzzWireCommandDecoder", "max_input_bytes":65536},
+    {"category":"legacy_import", "package":"./engine/ops", "fuzz":"FuzzLegacyImportParser", "max_input_bytes":262144}
+  ]
+}

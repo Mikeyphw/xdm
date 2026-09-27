@@ -69,6 +69,12 @@ func ParseTransport(raw string) (TransportURL, error) {
 	if host == "" {
 		return TransportURL{}, ErrInvalidURL
 	}
+	// A colon in URL.Hostname is only valid for an IP literal. net/url can
+	// accept malformed authorities such as Exa:mple.Test:80; treating that
+	// colon as IPv6 would manufacture an invalid bracketed canonical host.
+	if strings.Contains(host, ":") && net.ParseIP(host) == nil {
+		return TransportURL{}, ErrInvalidURL
+	}
 	port := u.Port()
 	if port == "" {
 		port = defaultPort(scheme)

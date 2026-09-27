@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "policy": "portable-seal-ceilings",
+  "allowed_regression_percent": 35,
+  "workloads": {
+    "large_single_transfer": {"operations": 67108864, "unit": "bytes", "max_wall_ms": 5000},
+    "segmented_transfer": {"operations": 67108864, "unit": "bytes", "max_wall_ms": 7000},
+    "small_downloads": {"operations": 5000, "unit": "downloads", "max_wall_ms": 5000},
+    "hls_10k_fragments": {"operations": 10000, "unit": "fragments", "max_wall_ms": 7000},
+    "dash_large_timeline": {"operations": 10000, "unit": "timeline_entries", "max_wall_ms": 10000},
+    "history_100k_rows": {"operations": 100000, "unit": "rows", "max_wall_ms": 20000},
+    "queued_jobs": {"operations": 2500, "unit": "jobs", "max_wall_ms": 5000},
+    "mass_recovery_startup": {"operations": 1000, "unit": "downloads", "max_wall_ms": 30000}
+  },
+  "host_contracts": {
+    "android": ["jni_bridge_instrumentation", "android_scheduler_authority", "android_legacy_authority_scan"],
+    "desktop": ["engine-host", "desktop-e2e", "legacy-authority"]
+  }
+}

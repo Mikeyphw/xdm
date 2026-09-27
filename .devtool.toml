@@ -2706,12 +2706,98 @@ outputs = [
   ".devtool/reports/xgo/seal/crash-matrix.json",
 ]
 
+[targets.xgo_seal.jobs.adversarial_matrix]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "adversarial",
+  "--output",
+  ".devtool/reports/xgo/seal/adversarial-matrix.json",
+]
+inputs = [
+  "engine/security/**",
+  "engine/transfer/**",
+  "engine/store/**",
+  "engine/media/**",
+  "engine/ops/**",
+  "engine/cmd/xgo-security-audit/**",
+  "engine/cmd/xgo-transfer-audit/**",
+  "engine/cmd/xgo-store-audit/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/cmd/xgo-ops-audit/**",
+  "engine/testdata/**",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/adversarial-matrix.json",
+]
+
+[targets.xgo_seal.jobs.fuzz_campaign]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "fuzz-campaign",
+  "--output",
+  ".devtool/reports/xgo/seal/fuzz-campaign.json",
+]
+inputs = [
+  "engine/security/urlpolicy/**",
+  "engine/security/header/**",
+  "engine/transfer/http/**",
+  "engine/transfer/metalink/**",
+  "engine/media/**",
+  "engine/api/v1/**",
+  "engine/ops/**",
+  "engine/testdata/seal/fuzz-policy.json",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/fuzz-campaign.json",
+]
+
+[targets.xgo_seal.jobs.performance_budget]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "performance-budget",
+  "--output",
+  ".devtool/reports/xgo/seal/performance-budget.json",
+]
+inputs = [
+  "engine/seal/**",
+  "engine/testdata/seal/performance-budget.json",
+  "engine/domain/**",
+  "engine/media/**",
+  "engine/ops/**",
+  "engine/recovery/**",
+  "engine/scheduler/**",
+  "engine/store/**",
+  "engine/transfer/http/**",
+  "engine/androidhost/**",
+  "engine/cmd/xgo-android-audit/**",
+  "engine/cmd/xgo-scheduler-audit/**",
+  "app/XDM.Android/**",
+  "app/XDM/src/XDM.App/**",
+  "app/XDM/src/XDM.Platform/**",
+  "tools/xgo/audit_desktop.py",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/performance-budget.json",
+]
+
 [targets.xgo_seal.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
   { id = "differential_runner", ref = "job:differential_runner", depends_on = ["bootstrap_contract"] },
   { id = "state_machine_fuzz", ref = "job:state_machine_fuzz", depends_on = ["differential_runner"] },
   { id = "full_crash_matrix", ref = "job:full_crash_matrix", depends_on = ["state_machine_fuzz"] },
+  { id = "adversarial_matrix", ref = "job:adversarial_matrix", depends_on = ["full_crash_matrix"] },
+  { id = "fuzz_campaign", ref = "job:fuzz_campaign", depends_on = ["adversarial_matrix"] },
+  { id = "performance_budget", ref = "job:performance_budget", depends_on = ["fuzz_campaign"] },
 ]
 
 [targets.xgo_gate_spec]

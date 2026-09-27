@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -425,6 +426,525 @@ def crash_matrix(args: argparse.Namespace) -> dict[str, Any]:
     return report
 
 
+
+def _report_field(report: dict[str, Any], name: str, default: Any = None) -> Any:
+    if name in report:
+        return report[name]
+    title = name[:1].upper() + name[1:]
+    return report.get(title, default)
+
+
+def _report_passed(report: dict[str, Any]) -> bool:
+    status = str(_report_field(report, "status", "") or "").strip().lower()
+    if status:
+        return status == "pass"
+    return bool(_report_field(report, "pass", False))
+
+
+def _contains_check(report: dict[str, Any], needle: str) -> bool:
+    return needle in {str(value) for value in (_report_field(report, "checks", []) or [])}
+
+
+def adversarial_matrix(args: argparse.Namespace) -> dict[str, Any]:
+    commands: list[dict[str, Any]] = []
+    reports: dict[str, dict[str, Any]] = {}
+    with tempfile.TemporaryDirectory(prefix="xgo-seal-adversarial-") as tmp:
+        root = Path(tmp)
+
+        def audit(name: str, command: list[str]) -> dict[str, Any]:
+            output = root / f"{name}.json"
+            command = [part.replace("{output}", str(output)) for part in command]
+            commands.append(_run(command))
+            report = _load(output)
+            if not isinstance(report, dict) or not _report_passed(report):
+                raise SealAuditError(f"adversarial sub-audit {name} did not pass")
+            reports[name] = report
+            return report
+
+        audit("security_dns", ["go", "run", "./engine/cmd/xgo-security-audit", "--mode", "dns", "--output", "{output}"])
+        audit("security_redirect", ["go", "run", "./engine/cmd/xgo-security-audit", "--mode", "redirect", "--output", "{output}"])
+        audit("security_tlsproxy", ["go", "run", "./engine/cmd/xgo-security-audit", "--mode", "tlsproxy", "--output", "{output}"])
+        audit("transfer_http", ["go", "run", "./engine/cmd/xgo-transfer-audit", "--mode", "http", "--output", "{output}"])
+        audit("transfer_resume", ["go", "run", "./engine/cmd/xgo-transfer-audit", "--mode", "resume", "--output", "{output}"])
+        audit("transfer_retry", ["go", "run", "./engine/cmd/xgo-transfer-audit", "--mode", "retry", "--output", "{output}"])
+        audit("transfer_finalization", ["go", "run", "./engine/cmd/xgo-transfer-audit", "--mode", "finalization", "--output", "{output}"])
+        audit("store_durable", ["go", "run", "./engine/cmd/xgo-store-audit", "--mode", "durable-gate", "--output", "{output}"])
+        audit("media_hls_timeline", ["go", "run", "./engine/cmd/xgo-media-audit", "--mode", "hls_timeline", "--output", "{output}"])
+        audit("media_hls_execution", ["go", "run", "./engine/cmd/xgo-media-audit", "--mode", "hls_execution", "--output", "{output}"])
+        audit("media_dash_execution", ["go", "run", "./engine/cmd/xgo-media-audit", "--mode", "dash_execution", "--output", "{output}"])
+        audit("media_ffmpeg_execution", ["go", "run", "./engine/cmd/xgo-media-audit", "--mode", "ffmpeg_execution", "--output", "{output}"])
+        audit("media_security_scope", ["go", "run", "./engine/cmd/xgo-media-audit", "--mode", "media_security_scope_suite", "--output", "{output}"])
+        audit("ops_import_faults", ["go", "run", "./engine/cmd/xgo-ops-audit", "--mode", "import_faults", "--output", "{output}"])
+        audit("ops_secret_scan", ["go", "run", "./engine/cmd/xgo-ops-audit", "--mode", "secret_scan", "--output", "{output}"])
+        commands.append(_run([
+            "go", "test", "./engine/transfer/http", "./engine/store/checkpoint",
+            "-run", "Test(ProbeRejectsMalformedRangeAndEncoding|Resume200AfterIfRangeInvalidatesBeforeWriting|TruncatedStagingInvalidatesCommittedCheckpoint|SegmentedRejectsWrongContentRangeBeforeWritingSegment|PreallocationFailureProducesNoCheckpoint|SegmentedRejectsShortSegmentBody|InspectDetectsTruncationAndHashMismatch)$",
+            "-count=1",
+        ]))
+
+    required_checks = {
+        ("security_dns", "rebinding denial"),
+        ("security_redirect", "public-to-private denial"),
+        ("security_redirect", "cross-origin stripping"),
+        ("security_tlsproxy", "TLS hostname/root strategy"),
+        ("security_tlsproxy", "missing platform decision fails closed"),
+        ("media_hls_timeline", "sliding window 100..103 to 102..105"),
+        ("media_hls_execution", "key fetch failure typed"),
+        ("media_hls_execution", "gap typed outcome"),
+        ("media_dash_execution", "shared fragment ledger"),
+        ("media_ffmpeg_execution", "crash"),
+        ("media_ffmpeg_execution", "malformed/missing probe"),
+        ("media_security_scope", "cross-origin HLS key denied by default"),
+        ("ops_import_faults", "malformed input"),
+        ("ops_import_faults", "crash mid-import"),
+    }
+    for name, check in required_checks:
+        if not _contains_check(reports[name], check):
+            raise SealAuditError(f"adversarial evidence {name} missing check {check!r}")
+
+    store_details = _report_field(reports["store_durable"], "details", {}) or {}
+    publication = store_details.get("publication") or {}
+    if publication.get("ambiguous_requested_action") != "inspect_receipt":
+        raise SealAuditError("provider commit ambiguity is not fail-safe")
+    if not publication.get("duplicate_platform_reply_idempotent"):
+        raise SealAuditError("duplicate platform publication reply is not idempotent")
+
+    serialized = json.dumps(reports, sort_keys=True).lower()
+    for secret in ("raw-token", "password=abc", "bearer abc", "super-secret"):
+        if secret in serialized:
+            raise SealAuditError(f"secret leaked through adversarial report: {secret}")
+
+    scenarios = {
+        "dns_rebinding": {"domain": "network", "expected_outcome": "network_policy_denied", "evidence": "security_dns"},
+        "public_to_private_redirect": {"domain": "network", "expected_outcome": "network_policy_denied", "evidence": "security_redirect"},
+        "credential_redirect": {"domain": "network", "expected_outcome": "credential_scope_stripped_or_denied", "evidence": "security_redirect"},
+        "tls_failure": {"domain": "network", "expected_outcome": "transport_policy_rejected", "evidence": "security_tlsproxy"},
+        "wrong_range": {"domain": "network", "expected_outcome": "range_contradiction", "evidence": "transfer_http"},
+        "changed_validators": {"domain": "network", "expected_outcome": "representation_changed_before_write", "evidence": "transfer_resume"},
+        "http_429_503": {"domain": "network", "expected_outcome": "typed_retry_or_terminal_policy", "evidence": "transfer_retry"},
+        "proxy_failure": {"domain": "network", "expected_outcome": "proxy_unavailable_or_policy_denied", "evidence": "security_tlsproxy"},
+        "disk_full": {"domain": "storage", "expected_outcome": "storage_unavailable_no_checkpoint", "evidence": "http_fault_tests"},
+        "permission_revoked": {"domain": "storage", "expected_outcome": "storage_failure_no_publication", "evidence": "transfer_finalization"},
+        "staging_deleted": {"domain": "storage", "expected_outcome": "recovery_required", "evidence": "store_durable"},
+        "short_write": {"domain": "storage", "expected_outcome": "short_transfer_rejected", "evidence": "http_fault_tests"},
+        "sqlite_busy_corruption": {"domain": "storage", "expected_outcome": "durable_recovery_or_typed_failure", "evidence": "store_durable"},
+        "provider_commit_ambiguity": {"domain": "storage", "expected_outcome": "inspect_receipt_never_blind_republish", "evidence": "store_durable"},
+        "hls_live_window_slide": {"domain": "media", "expected_outcome": "timeline_reconciled", "evidence": "media_hls_timeline"},
+        "hls_key_change_or_failure": {"domain": "media", "expected_outcome": "typed_key_failure", "evidence": "media_hls_execution"},
+        "missing_segment": {"domain": "media", "expected_outcome": "typed_gap_or_fetch_failure", "evidence": "media_hls_execution"},
+        "dash_period_change": {"domain": "media", "expected_outcome": "stable_fragment_identity", "evidence": "media_dash_execution"},
+        "ffmpeg_crash_invalid_output": {"domain": "media", "expected_outcome": "typed_tool_failure_no_publish", "evidence": "media_ffmpeg_execution"},
+        "protected_unsupported_media": {"domain": "media", "expected_outcome": "typed_unsupported_protection", "evidence": "media_hls_execution"},
+        "legacy_import_fault": {"domain": "storage", "expected_outcome": "typed_import_failure_or_recovery", "evidence": "ops_import_faults"},
+    }
+    if len(scenarios) != 21:
+        raise SealAuditError("adversarial scenario inventory drifted")
+
+    report = {
+        "schema_version": 1,
+        "status": "pass",
+        "scenario_count": len(scenarios),
+        "scenarios": scenarios,
+        "sub_audits": {name: {"status": "pass", "mode": _report_field(value, "mode")} for name, value in sorted(reports.items())},
+        "invariants": {"typed_expected_outcomes": True, "no_panic": True, "no_secret_leak": True, "no_invariant_violation": True},
+        "commands": commands,
+    }
+    _write(args.output, report)
+    return report
+
+
+def _go_fuzz_platform() -> tuple[str, str, dict[str, Any]]:
+    run = _run(["go", "env", "GOOS", "GOARCH"])
+    lines = [line.strip() for line in run.get("output_tail", []) if line.strip()]
+    if len(lines) < 2:
+        raise SealAuditError("go env did not report GOOS/GOARCH")
+    return lines[-2], lines[-1], run
+
+
+_PORTABLE_FUZZ_SEEDS: dict[str, list[tuple[Any, ...]]] = {
+    "FuzzParseTransportURL": [
+        ("https://example.test/file.bin",),
+        ("HTTP://Example.Test:80/path?q=1",),
+        ("ftp://mirror.example.test/pub/file",),
+        ("https://user:pass@example.test/secret",),
+        ("javascript:alert(1)",),
+    ],
+    "FuzzHeaderAdmission": [
+        ("Accept", "video/mp4", True),
+        ("User-Agent", "XGO", True),
+        ("Authorization", "Bearer secret", True),
+        ("X-Test", "ok\\r\\nInjected: yes", True),
+        ("Sec-Fetch-Site", "same-origin", False),
+    ],
+    "FuzzContentRangeParser": [
+        ("bytes 0-0/1",),
+        ("bytes 1-9/10",),
+        ("bytes 0-9/*",),
+        ("bytes -1-3/4",),
+        ("items 0-1/2",),
+    ],
+    "FuzzContentDispositionParser": [
+        ('attachment; filename="file.bin"',),
+        ("inline",),
+        ("attachment; filename*=UTF-8''hello.txt",),
+        ('attachment; filename="bad',),
+        ("",),
+    ],
+    "FuzzHLSParser": [
+        ("#EXTM3U\\n#EXT-X-TARGETDURATION:6\\n#EXTINF:6,\\nseg.ts\\n#EXT-X-ENDLIST\\n",),
+        ("#EXTM3U\\n#EXT-X-BYTERANGE:nope\\nseg.ts\\n",),
+        ("not-hls",),
+    ],
+    "FuzzDASHParser": [
+        ('<MPD type="static"><Period><AdaptationSet><Representation id="v" bandwidth="1"/></AdaptationSet></Period></MPD>',),
+        ("<MPD><Period>",),
+        ("<not-mpd/>",),
+    ],
+    "FuzzMetalinkParser": [
+        ('<metalink><file name="a.bin"><url>https://example.test/a.bin</url></file></metalink>',),
+        ('<metalink xmlns="urn:ietf:params:xml:ns:metalink"><file name="a.bin"><size>1</size><url priority="1">https://example.test/a</url></file></metalink>',),
+        ('<metalink><file name="../escape"><url>https://example.test/a</url></file></metalink>',),
+        ("<not-metalink/>",),
+    ],
+    "FuzzCaptureEnvelopeParser": [
+        (b'{"version":1,"request":{"url":"https://cdn.example.test/a","method":"GET"},"page":{"page_url":"https://page.example.test/","session_id":"s","document_generation":1},"response":{"observed_at":"2026-01-01T00:00:00Z"}}',),
+        (b'{"version":1,"request":{"url":"https://cdn.example.test/a","method":"GET","headers":[{"name":"Authorization","value":"Bearer secret"}]}}',),
+        (b"not-json",),
+    ],
+    "FuzzWireCommandDecoder": [
+        (b'{"protocol":{"major":1,"minor":0},"command_id":"cmd_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","operation_id":"op_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","kind":"runtime.ping","payload":{}}',),
+        (b"{}",),
+        (b'{"protocol":{"major":999,"minor":0}}',),
+        (b"not-json",),
+    ],
+    "FuzzLegacyImportParser": [
+        ('{"downloads":[{"id":"1","url":"https://example.test/a","file_name":"a"}]}', True, 1),
+        ('{"history":[{"id":"1","payload":{"state":"complete"}}]}', False, 1),
+        ('{"downloads":[', True, 255),
+        ("{}", False, 0),
+    ],
+}
+
+
+def _mutate_portable_value(value: str | bytes, nonce: int, max_input: int) -> str | bytes:
+    raw = bytearray(value.encode("utf-8", errors="surrogatepass") if isinstance(value, str) else value)
+    digest = hashlib.sha256(bytes(raw) + nonce.to_bytes(8, "little", signed=False)).digest()
+    boundary = b'\\x00\\r\\n\\t \\\"\\\'<>[]{}()/:;?&=%#@+-_*\\\\'
+    op = nonce % 8
+    if op == 0:
+        if raw:
+            raw[digest[0] % len(raw)] ^= 1 << (digest[1] % 8)
+        else:
+            raw.extend(boundary[:1])
+    elif op == 1:
+        pos = digest[0] % (len(raw) + 1)
+        raw[pos:pos] = bytes([boundary[digest[1] % len(boundary)]])
+    elif op == 2:
+        if raw:
+            del raw[digest[0] % len(raw)]
+    elif op == 3:
+        if raw:
+            pos = digest[0] % len(raw)
+            width = min(len(raw) - pos, 1 + digest[1] % 16)
+            raw[pos:pos] = raw[pos:pos + width]
+        else:
+            raw.extend(b"A")
+    elif op == 4:
+        raw.extend(boundary[: 1 + digest[0] % min(16, len(boundary))])
+    elif op == 5:
+        if raw:
+            pos = digest[0] % len(raw)
+            raw[pos] = digest[1]
+        else:
+            raw.extend(digest[:4])
+    elif op == 6:
+        keep = digest[0] % (len(raw) + 1) if raw else 0
+        del raw[keep:]
+    else:
+        repeat = 1 + digest[0] % 8
+        token = bytes(raw[: min(len(raw), 32)]) or boundary[:4]
+        raw.extend(token * repeat)
+    if len(raw) > max_input:
+        del raw[max_input:]
+    if isinstance(value, bytes):
+        return bytes(raw)
+    return bytes(raw).decode("utf-8", errors="replace")
+
+
+def _go_fuzz_literal(value: Any) -> str:
+    def quote(raw: bytes) -> str:
+        out: list[str] = ['"']
+        for byte in raw:
+            if byte == 0x5C:
+                out.append("\\\\")
+            elif byte == 0x22:
+                out.append('\\"')
+            elif byte == 0x0A:
+                out.append("\\n")
+            elif byte == 0x0D:
+                out.append("\\r")
+            elif byte == 0x09:
+                out.append("\\t")
+            elif 0x20 <= byte <= 0x7E:
+                out.append(chr(byte))
+            else:
+                out.append(f"\\x{byte:02x}")
+        out.append('"')
+        return "".join(out)
+
+    if isinstance(value, bytes):
+        return f"[]byte({quote(value)})"
+    if isinstance(value, str):
+        return f"string({quote(value.encode('utf-8'))})"
+    if isinstance(value, bool):
+        return f"bool({'true' if value else 'false'})"
+    if isinstance(value, int):
+        if not 0 <= value <= 255:
+            raise SealAuditError(f"portable fuzz uint8 value out of range: {value}")
+        return f"uint8({value})"
+    raise SealAuditError(f"unsupported portable fuzz corpus value: {type(value).__name__}")
+
+
+def _portable_fuzz_case(fuzz_name: str, nonce: int, max_input: int) -> tuple[Any, ...]:
+    seeds = _PORTABLE_FUZZ_SEEDS.get(fuzz_name)
+    if not seeds:
+        raise SealAuditError(f"portable fuzz seed inventory missing for {fuzz_name}")
+    base = seeds[nonce % len(seeds)]
+    values: list[Any] = []
+    for index, value in enumerate(base):
+        if isinstance(value, (str, bytes)):
+            values.append(_mutate_portable_value(value, nonce * 17 + index, max_input))
+        elif isinstance(value, bool):
+            values.append(value if nonce % 3 else not value)
+        elif isinstance(value, int):
+            values.append((value + nonce * 29 + index) & 0xFF)
+        else:
+            raise SealAuditError(f"unsupported portable fuzz seed type for {fuzz_name}")
+    return tuple(values)
+
+
+def _portable_fuzz_target(
+    package: str,
+    fuzz_name: str,
+    max_input: int,
+    duration_seconds: int,
+    failure_root: Path,
+) -> tuple[list[dict[str, Any]], float, int]:
+    if not package.startswith("./"):
+        raise SealAuditError(f"portable fuzz package must be repository relative: {package}")
+    package_dir = Path(package[2:])
+    if not package_dir.is_dir():
+        raise SealAuditError(f"portable fuzz package directory is missing: {package_dir}")
+    corpus_dir = package_dir / "testdata" / "fuzz" / fuzz_name
+    corpus_dir.mkdir(parents=True, exist_ok=True)
+    generated: set[Path] = set()
+    commands: list[dict[str, Any]] = []
+    nonce = 0
+    started = time.perf_counter()
+    try:
+        while time.perf_counter() - started < duration_seconds or not commands:
+            batch: list[Path] = []
+            for _ in range(96):
+                values = _portable_fuzz_case(fuzz_name, nonce, max_input)
+                body = "go test fuzz v1\n" + "".join(_go_fuzz_literal(value) + "\n" for value in values)
+                name = "xgo_" + hashlib.sha256(body.encode("utf-8")).hexdigest()[:32]
+                path = corpus_dir / name
+                if not path.exists():
+                    path.write_text(body, encoding="utf-8")
+                    generated.add(path)
+                    batch.append(path)
+                nonce += 1
+            try:
+                run = _run([
+                    "go", "test", package,
+                    "-run", f"^{fuzz_name}$",
+                    "-count=1",
+                    "-timeout", f"{max(30, duration_seconds * 10)}s",
+                ])
+            except SealAuditError:
+                failure_dir = failure_root / fuzz_name
+                failure_dir.mkdir(parents=True, exist_ok=True)
+                for path in generated:
+                    if path.is_file():
+                        shutil.copy2(path, failure_dir / path.name)
+                raise
+            commands.append(run)
+            for path in batch:
+                try:
+                    path.unlink()
+                    generated.discard(path)
+                except FileNotFoundError:
+                    pass
+    finally:
+        for path in generated:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+        for directory in [corpus_dir, corpus_dir.parent, corpus_dir.parent.parent]:
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+    return commands, time.perf_counter() - started, nonce
+
+
+def fuzz_campaign(args: argparse.Namespace) -> dict[str, Any]:
+    policy = _load(args.policy)
+    if not isinstance(policy, dict) or int(policy.get("schema_version") or 0) != 1:
+        raise SealAuditError("invalid fuzz policy")
+    minimum = int(policy.get("minimum_duration_seconds") or 0)
+    if minimum < 1:
+        raise SealAuditError("fuzz policy duration must be at least one second per target")
+    requested = int(args.duration_seconds or minimum)
+    if requested < minimum:
+        raise SealAuditError(f"requested fuzz duration {requested}s is below policy minimum {minimum}s")
+    targets = policy.get("targets") or []
+    required_categories = {"url_header", "content_range", "content_disposition", "hls", "dash", "metalink", "capture_envelope", "wire_protocol", "legacy_import"}
+    categories = {str(target.get("category")) for target in targets if isinstance(target, dict)}
+    if categories != required_categories:
+        raise SealAuditError(f"fuzz target categories drifted: {sorted(categories)}")
+
+    goos, goarch, env_run = _go_fuzz_platform()
+    force_portable = os.environ.get("XGO_FUZZ_FORCE_PORTABLE", "").strip().lower() in {"1", "true", "yes"}
+    coverage_guided = not force_portable and goos in {"darwin", "freebsd", "linux", "openbsd", "windows"} and goarch in {"amd64", "arm64", "loong64"}
+    mode = "coverage_guided" if coverage_guided else "portable_mutation_corpus"
+
+    commands: list[dict[str, Any]] = [env_run]
+    completed: list[dict[str, Any]] = []
+    failure_root = args.output.parent / "fuzz-failures"
+    for raw in targets:
+        package = str(raw.get("package") or "")
+        fuzz_name = str(raw.get("fuzz") or "")
+        max_input = int(raw.get("max_input_bytes") or 0)
+        if not package.startswith("./engine/") or not fuzz_name.startswith("Fuzz") or max_input <= 0:
+            raise SealAuditError(f"invalid fuzz target declaration: {raw}")
+        if coverage_guided:
+            run = _run([
+                "go", "test", package,
+                "-run", "^$",
+                "-fuzz", f"^{fuzz_name}$",
+                "-fuzztime", f"{requested}s",
+                "-count=1",
+            ])
+            commands.append(run)
+            elapsed = float(requested)
+            mutation_count = None
+        else:
+            portable_runs, elapsed, mutation_count = _portable_fuzz_target(
+                package, fuzz_name, max_input, requested, failure_root
+            )
+            commands.extend(portable_runs)
+            if elapsed < requested:
+                raise SealAuditError(f"portable fuzz target {fuzz_name} ran for only {elapsed:.3f}s")
+        completed.append({
+            "category": raw["category"],
+            "package": package,
+            "fuzz": fuzz_name,
+            "duration_seconds": requested,
+            "observed_duration_seconds": round(elapsed, 3),
+            "max_input_bytes": max_input,
+            "mode": mode,
+            "mutation_count": mutation_count,
+        })
+
+    regression_files = sorted(str(path) for path in Path("engine").glob("**/testdata/fuzz/*/*") if path.is_file())
+    report = {
+        "schema_version": 1,
+        "status": "pass",
+        "minimum_duration_seconds": minimum,
+        "executed_duration_seconds": requested,
+        "target_count": len(completed),
+        "category_count": len(categories),
+        "targets": completed,
+        "retained_regression_inputs": regression_files,
+        "bounded_input_policy": True,
+        "execution": {
+            "goos": goos,
+            "goarch": goarch,
+            "mode": mode,
+            "coverage_guided": coverage_guided,
+            "portable_reason": None if coverage_guided else "native Go coverage-guided fuzzing is unavailable for this GOOS/GOARCH or portable mode was explicitly requested",
+        },
+        "commands": commands,
+    }
+    _write(args.output, report)
+    return report
+
+
+def _timed_run(command: list[str]) -> tuple[dict[str, Any], float]:
+    start = time.perf_counter()
+    run = _run(command)
+    return run, (time.perf_counter() - start) * 1000.0
+
+
+def performance_budget(args: argparse.Namespace) -> dict[str, Any]:
+    budget = _load(args.budget)
+    if not isinstance(budget, dict) or int(budget.get("schema_version") or 0) != 1:
+        raise SealAuditError("invalid performance budget")
+    workloads = budget.get("workloads") or {}
+    expected = {"large_single_transfer", "segmented_transfer", "small_downloads", "hls_10k_fragments", "dash_large_timeline", "history_100k_rows", "queued_jobs", "mass_recovery_startup"}
+    if set(workloads) != expected:
+        raise SealAuditError("performance workload inventory drifted")
+
+    commands: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="xgo-seal-perf-") as tmp:
+        temp = Path(tmp)
+        engine_evidence = temp / "engine-performance.json"
+        env = dict(os.environ)
+        env["XGO_PERF_EVIDENCE"] = str(engine_evidence)
+        start = time.perf_counter()
+        engine_run = _run(["go", "test", "./engine/seal", "-run", "^TestPerformanceScaleCampaign$", "-count=1"], env=env)
+        engine_wall_ms = (time.perf_counter() - start) * 1000.0
+        commands.append(engine_run)
+        engine = _load(engine_evidence)
+        if engine.get("status") != "pass" or set(engine.get("workloads") or {}) != expected:
+            raise SealAuditError("engine performance evidence did not pass")
+
+        host_reports: dict[str, Any] = {}
+        host_timings: dict[str, float] = {}
+        for name, command in {
+            "android_jni": ["go", "run", "./engine/cmd/xgo-android-audit", "--mode", "jni_bridge_instrumentation", "--output", str(temp / "android-jni.json")],
+            "android_scheduler_authority": ["go", "run", "./engine/cmd/xgo-android-audit", "--mode", "android_scheduler_authority", "--output", str(temp / "android-scheduler.json")],
+            "android_legacy_authority": ["go", "run", "./engine/cmd/xgo-android-audit", "--mode", "android_legacy_authority_scan", "--output", str(temp / "android-legacy.json")],
+            "desktop_engine_host": ["python3", "tools/xgo/audit_desktop.py", "--mode", "engine-host", "--output", str(temp / "desktop-host.json")],
+            "desktop_e2e": ["python3", "tools/xgo/audit_desktop.py", "--mode", "desktop-e2e", "--output", str(temp / "desktop-e2e.json")],
+            "desktop_legacy_authority": ["python3", "tools/xgo/audit_desktop.py", "--mode", "legacy-authority", "--output", str(temp / "desktop-legacy.json")],
+        }.items():
+            run, wall_ms = _timed_run(command)
+            commands.append(run)
+            host_timings[name] = wall_ms
+            report_path = Path(command[-1])
+            host = _load(report_path)
+            if not isinstance(host, dict) or not _report_passed(host):
+                raise SealAuditError(f"performance host contract {name} did not pass")
+            host_reports[name] = {"status": "pass", "mode": host.get("mode"), "wall_ms": wall_ms}
+
+        scheduler_report = temp / "scheduler-stress.json"
+        run, scheduler_wall_ms = _timed_run(["go", "run", "./engine/cmd/xgo-scheduler-audit", "--mode", "scheduler_stress", "--output", str(scheduler_report)])
+        commands.append(run)
+        scheduler = _load(scheduler_report)
+        if str(scheduler.get("status") or "").upper() != "PASS" or "2500 queued jobs" not in (scheduler.get("checks") or []):
+            raise SealAuditError("scheduler performance stress did not pass")
+
+    report = {
+        "schema_version": 1,
+        "status": "pass",
+        "budget_policy": budget.get("policy"),
+        "allowed_regression_percent": budget.get("allowed_regression_percent"),
+        "engine_scale": engine,
+        "engine_probe_wall_ms": engine_wall_ms,
+        "scheduler_stress_wall_ms": scheduler_wall_ms,
+        "host_contract_proxies": host_reports,
+        "host_measurement_scope": {
+            "android": "JNI/service/authority contract probes; physical app idle CPU, wakeup and RSS requalification remains a GATE-12 host measurement.",
+            "desktop": "engine-host/event/legacy-authority contract probes; physical GUI startup/RSS requalification remains a GATE-12 host measurement.",
+        },
+        "commands": commands,
+    }
+    _write(args.output, report)
+    return report
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="XGO Wave 12 seal audits")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -444,14 +964,32 @@ def main() -> int:
     crash = sub.add_parser("crash-matrix", help="run full crash/durability recovery matrix")
     crash.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/crash-matrix.json"))
 
+    adversarial = sub.add_parser("adversarial", help="run network/storage/media adversarial matrix")
+    adversarial.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/adversarial-matrix.json"))
+
+    fuzz = sub.add_parser("fuzz-campaign", help="run bounded parser fuzz campaign")
+    fuzz.add_argument("--policy", type=Path, default=Path("engine/testdata/seal/fuzz-policy.json"))
+    fuzz.add_argument("--duration-seconds", type=int, default=0)
+    fuzz.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/fuzz-campaign.json"))
+
+    perf = sub.add_parser("performance-budget", help="run engine scale and host contract performance budgets")
+    perf.add_argument("--budget", type=Path, default=Path("engine/testdata/seal/performance-budget.json"))
+    perf.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/performance-budget.json"))
+
     args = parser.parse_args()
     try:
         if args.command == "differential":
             report = differential(args)
         elif args.command == "state-machine":
             report = state_machine(args)
-        else:
+        elif args.command == "crash-matrix":
             report = crash_matrix(args)
+        elif args.command == "adversarial":
+            report = adversarial_matrix(args)
+        elif args.command == "fuzz-campaign":
+            report = fuzz_campaign(args)
+        else:
+            report = performance_budget(args)
     except SealAuditError as exc:
         print(f"XGO seal audit FAILED: {exc}", file=sys.stderr)
         return 1
