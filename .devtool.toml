@@ -2641,9 +2641,77 @@ outputs = [
   ".devtool/reports/xgo/seal/bootstrap.json",
 ]
 
+[targets.xgo_seal.jobs.differential_runner]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "differential",
+  "--output",
+  ".devtool/reports/xgo/seal/differential.json",
+]
+inputs = [
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/**",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/differential.json",
+]
+
+[targets.xgo_seal.jobs.state_machine_fuzz]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "state-machine",
+  "--output",
+  ".devtool/reports/xgo/seal/state-machine.json",
+]
+inputs = [
+  "engine/domain/**",
+  "engine/store/sqlite/**",
+  "engine/backends/migration/**",
+  "engine/recovery/**",
+  "engine/seal/**",
+  "engine/testdata/seal/state-machine-seeds.json",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/state-machine.json",
+]
+
+[targets.xgo_seal.jobs.full_crash_matrix]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "crash-matrix",
+  "--output",
+  ".devtool/reports/xgo/seal/crash-matrix.json",
+]
+inputs = [
+  "engine/store/**",
+  "engine/recovery/**",
+  "engine/backends/migration/**",
+  "engine/media/**",
+  "engine/cmd/xgo-store-audit/**",
+  "engine/cmd/xgo-media-audit/**",
+  "engine/seal/**",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/crash-matrix.json",
+]
+
 [targets.xgo_seal.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
+  { id = "differential_runner", ref = "job:differential_runner", depends_on = ["bootstrap_contract"] },
+  { id = "state_machine_fuzz", ref = "job:state_machine_fuzz", depends_on = ["differential_runner"] },
+  { id = "full_crash_matrix", ref = "job:full_crash_matrix", depends_on = ["state_machine_fuzz"] },
 ]
 
 [targets.xgo_gate_spec]

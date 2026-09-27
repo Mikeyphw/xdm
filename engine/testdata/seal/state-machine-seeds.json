@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "operations": [
+    "start",
+    "pause",
+    "resume",
+    "cancel",
+    "retry",
+    "migrate_backend",
+    "backend_loss",
+    "crash",
+    "recover",
+    "verify",
+    "publish",
+    "delete"
+  ],
+  "invariants": [
+    "INV-XGO-OWNERSHIP-001",
+    "INV-XGO-GENERATION-001",
+    "INV-XGO-TERMINAL-001",
+    "INV-XGO-VERIFY-001",
+    "INV-XGO-PUBLISH-001",
+    "INV-XGO-RECOVERY-001",
+    "INV-XGO-DELETE-001"
+  ],
+  "seeds": [
+    {"id":"pause-resume-publish","operations":["start","pause","resume","verify","publish"]},
+    {"id":"cancel-retry-generation","operations":["start","cancel","retry","verify","publish"]},
+    {"id":"backend-loss-retry","operations":["start","backend_loss","retry","verify","publish"]},
+    {"id":"migration-fences-old-generation","operations":["start","migrate_backend","verify","publish"]},
+    {"id":"crash-recover-resume","operations":["start","pause","crash","recover","resume","verify","publish"]},
+    {"id":"crash-before-verification","operations":["start","crash","recover","verify","publish"]},
+    {"id":"delete-before-start","operations":["delete","start","retry","publish"]},
+    {"id":"delete-after-publish","operations":["start","verify","publish","delete","retry","resume"]},
+    {"id":"double-publish","operations":["start","verify","publish","publish"]},
+    {"id":"invalid-resume","operations":["resume","start","resume","verify"]},
+    {"id":"loss-while-paused","operations":["start","pause","backend_loss","retry"]},
+    {"id":"migrate-after-recovery","operations":["start","crash","recover","migrate_backend","verify","publish"]}
+  ]
+}

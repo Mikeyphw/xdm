@@ -1,0 +1,1285 @@
+{
+  "allowed_classifications": [
+    "android_preserved",
+    "desktop_preserved",
+    "merged_improvement",
+    "bug_fixed",
+    "intentionally_removed",
+    "regression"
+  ],
+  "classification_count": 98,
+  "classifications": [
+    {
+      "canonical_behavior_sha256": "3a5b4b152e2e56283231e37fd635cde5e0dd2b9d40d1dafb4c888115bcaca580",
+      "capability_id": "XGO-CAP-ABI-001",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "8bf9e1c3b00a6d0d2d7681130ee2f9ec45cbf43489f50983053b13deae4b0628",
+      "fixture_id": "xgo-cap-abi-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "a47d546d5a04000342ba28be1e574756ae244eb6a1576b7a9c8c9f3ae1ed4a43",
+      "capability_id": "XGO-CAP-ANDROID-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_download_models"
+      ],
+      "donor_strategy": "new_design",
+      "expected_sha256": "0e1a0f49ed6de61cc33f5e01a3f13f8106f37ace9f9ac0ea44c5c50802d474f9",
+      "fixture_id": "xgo-cap-android-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "52881727b7fe07be3b621cf0bb15cfe62807c29bf15f0f09a20b6ee4aa4443cb",
+      "capability_id": "XGO-CAP-ANDROID-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_startup_recovery",
+        "android_queue_coordinator"
+      ],
+      "donor_strategy": "new_design",
+      "expected_sha256": "8bf0c2a85d850d84e7c864159dc039cb3de3c03c75067b2f0f6812695deb7e89",
+      "fixture_id": "xgo-cap-android-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "78dd745c8cc48b40781ce01ade5fd540bb601fe027fb55609e5aba4a166d2632",
+      "capability_id": "XGO-CAP-ANDROID-003",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_destination_writer",
+        "android_publication_safety"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "3f7d5a0237007470f84bc96aa7bd6416e77d56710babeb56d147ab3c4adb21a3",
+      "fixture_id": "xgo-cap-android-003",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "a231c8837a5831fd8e52b393d449a8ff26e47adfe3cb1c9293243c89d7fa470e",
+      "capability_id": "XGO-CAP-ANDROID-004",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_queue_coordinator",
+        "android_startup_recovery"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "3fe07d8809ef3a7e6ff09d9ccd3b2d9ed5e241ae5d8196bec1e1dfd88c2453cd",
+      "fixture_id": "xgo-cap-android-004",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "d44184e347da365ccd2d2eb525ff6862641f33eb53be1dc9cae5f27a520123ae",
+      "capability_id": "XGO-CAP-ANDROID-005",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_entities",
+        "android_database",
+        "android_download_dao"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "7d51c1a1c3a656673d3fc59705ed45639c8d9596ab86d30dbf7df08ce6bf528a",
+      "fixture_id": "xgo-cap-android-005",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "e61c8c4a38983c9937d03247a5fbbe1440b564d62c077e72b3342de611a3fc88",
+      "capability_id": "XGO-CAP-ANDROID-006",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_queue_coordinator"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "017831d9fc17ac1386760717f92fdf5b95e93881cbd1d435afd2dc77a927f01d",
+      "fixture_id": "xgo-cap-android-006",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "a0ce2c0d3543646d631273b7b4eb8130a434d830c0d334b6008577481456c7b7",
+      "capability_id": "XGO-CAP-ANDROID-007",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_queue_coordinator",
+        "android_startup_recovery",
+        "android_entities"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "778e0f791c9bc301ff10f2f405ff9c84ec17d0d88e755c01f60dae9522e40a74",
+      "fixture_id": "xgo-cap-android-007",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "88e1ee151bb32b1b808531deedc577ceb6f27e57256c8d7c1ea163a29e617e96",
+      "capability_id": "XGO-CAP-ARIA2-001",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_aria2_rpc",
+        "android_aria2_rpc"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "fecbaeeb9beb7e77d3c5ede4e88e779371e5c830bed9555aa0dcdcfcdc93563b",
+      "fixture_id": "xgo-cap-aria2-001",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "cc038bf978c06685d8b7e714abac040cf36a6f8ad4e3fed2f6e787f12cc20647",
+      "capability_id": "XGO-CAP-ARIA2-002",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_aria2_backend",
+        "android_aria2_contract_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "d425b4ed1205bdf3092a847719e115b19fc9946189d78755d11cdf5b405314b3",
+      "fixture_id": "xgo-cap-aria2-002",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "8c4429a0060092e59a18ece2599ef47620933ba21cc6c71cdff373cf5cb252ff",
+      "capability_id": "XGO-CAP-ARIA2-003",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_aria2_backend",
+        "android_aria2_contract_test",
+        "desktop_aria2_rpc"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "1d9da9c64735da248379cba7d9a6fa528b80227a18ba9535a13151f3990e21a6",
+      "fixture_id": "xgo-cap-aria2-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "afee454c0b82b42b127392878d191c0dfb966e711165b888190c0f88baf7445a",
+      "capability_id": "XGO-CAP-BACKEND-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_backend_contract",
+        "android_aria2_backend",
+        "desktop_backend_advisor"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "85bc9747bcaea844caac289ab1547eb30d6fc9e8a8f953bac8fcef935ba6e70b",
+      "fixture_id": "xgo-cap-backend-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "675c5dc22744d5bafb108811222f9de0e70329591409f92da88bdfe1ce157b42",
+      "capability_id": "XGO-CAP-BACKEND-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_backend_contract",
+        "desktop_backend_advisor"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "71f586a8a2d510cfa9cf07a8fd3620272dfc13e69f9e672dc7e49c143eb1bcee",
+      "fixture_id": "xgo-cap-backend-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "d27da6bf108830602c8859a48f799234eaed2053c4edce799c4db2d2943cabc7",
+      "capability_id": "XGO-CAP-BACKEND-003",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_backend_migration_contract",
+        "android_backend_migration_coordinator",
+        "android_backend_migration_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "c85e5dea322bfbb8931416d02310f2fcec691f21c65411f0c306825ff904cce9",
+      "fixture_id": "xgo-cap-backend-003",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "ac20833fdf9add09e6b635502a06337bddac850414adf65bd26f244e1cdad4f4",
+      "capability_id": "XGO-CAP-BANDWIDTH-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_native_http",
+        "desktop_bandwidth_profile"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "6f8018e4569d4bad0e4a038c56ea5c337a775c49c11c2be686634089004cb94d",
+      "fixture_id": "xgo-cap-bandwidth-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "bc2dfd4b9a4449ee0494927287da01bc685bd53387f9e5b57b8d4e57e59d04dc",
+      "capability_id": "XGO-CAP-CAPTURE-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_browser_capture_models",
+        "android_capture_registry",
+        "desktop_browser_protocol",
+        "desktop_firefox_handoff"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "5d171525a46fd71289193b15ce1998c998c670d6091346d607f9bd0b09e8da58",
+      "fixture_id": "xgo-cap-capture-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "5cb2a4534089e668378d9ff7562e46c80d6fb031e487ed1b060009d677e04191",
+      "capability_id": "XGO-CAP-CAPTURE-002",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_browser_capture_models",
+        "android_capture_registry"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "d3f110196cb74842ff0c38dfc9b3a24f2d9147afedc01ac96f82694bb1769a12",
+      "fixture_id": "xgo-cap-capture-002",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "375d390a2b06e199e225fbf2ee7ca23560e3eff04d1b60ac17233c19928e6184",
+      "capability_id": "XGO-CAP-CHECKPOINT-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_checkpoint_integrity",
+        "android_checkpoint_store"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "aca9c922a891a1f2d58e9bc23d63b524b3f9c13c8ed7ed97f8aecae1329a057a",
+      "fixture_id": "xgo-cap-checkpoint-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "401402d0f73b37aeb282634ae8769e97642a4f2e12d3feb880f6c26a54e7356a",
+      "capability_id": "XGO-CAP-CHECKSUM-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_checksum_contract",
+        "desktop_checksum_service"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "8ec7a136e5d27088a6ea85967b8ed7201bba40dcdfe04b28d05e4951563e8a38",
+      "fixture_id": "xgo-cap-checksum-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "90cf0d839aeddc9eb2aacda6a1ebc5e78d1fb7e132c7ff2a972838467d874442",
+      "capability_id": "XGO-CAP-DASH-001",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_dash_parser",
+        "desktop_dash_parser_test",
+        "android_manifest_resolution_test"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "5e391064267ac9f75b7980603d14a889f466d13c6fe37629e6c87f9422d81d29",
+      "fixture_id": "xgo-cap-dash-001",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "0bcff05566f22e7c628d32f4339a9856c7b42cd055876767a0a55821fe6f9bd3",
+      "capability_id": "XGO-CAP-DASH-002",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_dash_parser",
+        "desktop_dash_parser_test"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "7a4900351890cdcfc823676b643505a2f4bbc9b0d2ca46952706977176f49fc2",
+      "fixture_id": "xgo-cap-dash-002",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "8d3a3ec67c6eb7da452ee0662904a77db246ebca24ee4a6185d0e474b68aa8c0",
+      "capability_id": "XGO-CAP-DASH-003",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_dash_downloader",
+        "desktop_dash_downloader_test",
+        "android_manifest_resolution_test"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "69b2b93cfdf0a727c475e33d57584947aa15dc462f335ba9d588a82e7b33c3a7",
+      "fixture_id": "xgo-cap-dash-003",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "6d0aa83a552bc0a17d76bc26116df8035dbae69ab189b69c45e4f559f9fc80dc",
+      "capability_id": "XGO-CAP-DASH-004",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_dash_downloader",
+        "android_media_dispatcher"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "e2508ba94c0ac3b209a54efcc06f06efef76d7742494f72eff8db958b66442d6",
+      "fixture_id": "xgo-cap-dash-004",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "c82dabb5f9b17dd795bca3a467fddb258c8017c5793a1ceb6987f84165f51adf",
+      "capability_id": "XGO-CAP-DESKTOP-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "new_design",
+      "expected_sha256": "42da039914e3b04620d73072e6546bf96c2a1ba4660fd035503a7b797055f166",
+      "fixture_id": "xgo-cap-desktop-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "b9f04b038ed2d1f9a7a82cb96b2b54f0081357c6ccb47bd605ffdae263b90cef",
+      "capability_id": "XGO-CAP-DESKTOP-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "1e97731bc8d2932007537bc6625a416c0ccece7cab21b7f8a11968014fe72610",
+      "fixture_id": "xgo-cap-desktop-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "28e2939284ee6feb16d3d1f0cf6868e62438a1a8a8f6b4964bcd249b8f2b8f4e",
+      "capability_id": "XGO-CAP-DESKTOP-003",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_proxy_settings",
+        "desktop_download_schedule"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "6dded6d7442708c1f3efb41c4dc9d0b43224cba9b4c1785e9d281863af8299fd",
+      "fixture_id": "xgo-cap-desktop-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "ac1b31a693911a159f99da1b80035c26793a221a9a8f2f9ce0bed3f1dfba6b91",
+      "capability_id": "XGO-CAP-DESKTOP-004",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_download_manager",
+        "desktop_hls_downloader",
+        "desktop_dash_downloader"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "6702547c32c0c8c43f465d15e74abd2a5de36d44b71ea4cb60b60a933b98e23c",
+      "fixture_id": "xgo-cap-desktop-004",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "5e58aabc7a0653966d9a0940887706b7056a6b98b640b2aaff1420d34f333961",
+      "capability_id": "XGO-CAP-DOMAIN-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_download_models",
+        "android_backend_contract",
+        "desktop_download_request"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "afb1877ecd38f8423e4096bb562b93dfa6b5ca39a6cfeeb69399724dbf212044",
+      "fixture_id": "xgo-cap-domain-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "e32129dd01db312b3e210f5ee5d5b14b5db5dbde9e22a032deb79c2820f749c3",
+      "capability_id": "XGO-CAP-DOMAIN-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_download_intake",
+        "desktop_download_request"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "460f8b71d8361b5f774c8c5ffe27877c2ebc50b8ea1f6164cbe9a41a732afb70",
+      "fixture_id": "xgo-cap-domain-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "325421a0b0fd118a74e91e16d728724e30c00cbe0d09ef5259223168f0b2cb1c",
+      "capability_id": "XGO-CAP-DOMAIN-003",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_completion_verification",
+        "android_atomic_finalization",
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "9c9bd8cc5b695ce5ee961745865bae7ba98c3bdbfed35dd71518d8eafb69621d",
+      "fixture_id": "xgo-cap-domain-003",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "de69256585783659df356e710d1b243a2bd59b06a630338d532fd389ed7a6959",
+      "capability_id": "XGO-CAP-DOMAIN-004",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_execution_semantics_test",
+        "desktop_retry_policy"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "f87caea6cd8ff565d5b40905573af5988adf23fb40db0b03780b11dbce56326b",
+      "fixture_id": "xgo-cap-domain-004",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "63d0c6cf83cadefce66988d32a0427907488cf341bd88b4d698fa7f65de52146",
+      "capability_id": "XGO-CAP-FFMPEG-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_ffmpeg_compiler",
+        "desktop_ffmpeg_service"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "65ccc09b9ea9ae2e974318ffe53a9166e86ef0edcf722e7fed28d3d35c307eef",
+      "fixture_id": "xgo-cap-ffmpeg-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "cffcc63d845d2e524c7e7e757b479765729cdd0358b18965ea3be6f64531fc83",
+      "capability_id": "XGO-CAP-FFMPEG-002",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_ffmpeg_compiler",
+        "android_ffmpeg_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "ba3d0a3afd709bb06070d0bdce1c53a6b9d9f02053e8a9999f595918964fcda4",
+      "fixture_id": "xgo-cap-ffmpeg-002",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "4a356d4a16e564eebc6d89f40691a5a1ee47c7b56325e3d2049f626001deb0cd",
+      "capability_id": "XGO-CAP-FFMPEG-003",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_media_dispatcher",
+        "desktop_ffmpeg_service"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "7cd6298218748ac97c2869c4e1c39a0756ecd47de5b7300a45fa94d43b37329d",
+      "fixture_id": "xgo-cap-ffmpeg-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "b384b7753a485c12166fa013aca17f36fe104f20dcded9a8156f0d8c997d8aa0",
+      "capability_id": "XGO-CAP-FFMPEG-004",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_ffmpeg_verifier",
+        "desktop_ffmpeg_service"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "0e99bc8f7d50339dc4015a36a129e4548e4acb5829233fec6c6bdbd37c6dd24b",
+      "fixture_id": "xgo-cap-ffmpeg-004",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "3d13671353018a540a32aaf2c3409305fc1cbbbd7647825a9e17b68f30090b6f",
+      "capability_id": "XGO-CAP-FINALIZE-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_atomic_finalization",
+        "android_completion_verification"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "9e69b9701519b3ae468258fbb50f1deba74a3c79f5022d08057f97b201bdfe5b",
+      "fixture_id": "xgo-cap-finalize-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "e0e9d15cf29835ce515ab09fe4e27150356fe10234019ffbba51484cdea2f00b",
+      "capability_id": "XGO-CAP-FOUNDATION-001",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "dfc148d80ce0ef1ba7b88f3c518f3d44ec4ac9d59c725fd9e9af2576a97d0c07",
+      "fixture_id": "xgo-cap-foundation-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "e3a1ad13f561142a599c5eae74bfea8ce3f03565de1b860c1bae1250ff294494",
+      "capability_id": "XGO-CAP-FOUNDATION-002",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "a8b996bf3528c0da173a15f77ca7cd657a1c1850dbd4640a85d6c3770f60cfac",
+      "fixture_id": "xgo-cap-foundation-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "50334faaa4b6b9b9b70288ec6bb641f588c355f68dcea6c48d4580a5ead91e1a",
+      "capability_id": "XGO-CAP-FOUNDATION-003",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "1508eba3d2e59498c323f731c51b91b69a9e75e804d7ad2c7fe33db9108e8668",
+      "fixture_id": "xgo-cap-foundation-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "0d597e274dbc854f3d08538136e6a6662d83d2988000e9d321c9e4828b827886",
+      "capability_id": "XGO-CAP-FOUNDATION-004",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "b898182ea7d1f53339fad05afb2f0908abeaaa13fcf40f31e3fcc503115fdfa2",
+      "fixture_id": "xgo-cap-foundation-004",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "2ebef2139feaf1377bd1944dcfd18277b8d639cd13435bb67f518173b0d07698",
+      "capability_id": "XGO-CAP-FTP-001",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_ftp"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "ec78e0dd9d6e13131c8cd646c1d7f676e5793fe3188d861ae67904defcf42170",
+      "fixture_id": "xgo-cap-ftp-001",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "6513cc2a3ac579cfbef2b15060173d7868c5fb2ddfe0d6841f27ca2660363be4",
+      "capability_id": "XGO-CAP-HLS-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_hls_dao",
+        "android_native_hls",
+        "desktop_fragment_checkpoint"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "a5a0ad2cc1a32b0a7fa9c62c4b8654f2609cb57c72cbffadc5b8bd83cbba0f0f",
+      "fixture_id": "xgo-cap-hls-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "87f783bc830fa7e5a22b64179ca72a73f9bce268a0d115622d433b8ad2b25d1a",
+      "capability_id": "XGO-CAP-HLS-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_native_hls",
+        "desktop_hls_parser",
+        "desktop_hls_parser_test"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "30aba02717c973687086060ddf7bd86dfb45b427174b5e2a55ffa788260ae503",
+      "fixture_id": "xgo-cap-hls-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "85063334b82b68433eac0c1c4a70b3022f49b8a8792835635fee60c4632bc8b2",
+      "capability_id": "XGO-CAP-HLS-003",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_native_hls",
+        "desktop_hls_parser"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "f862ed2ce8d35d4e5146590058e8efb570aa3c958e35c9ae62672f9c3ba90df7",
+      "fixture_id": "xgo-cap-hls-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "fc369df6defd3368cbfa44c45dd2b7c1bb12f0e339f889f3c30f8798b2aa66aa",
+      "capability_id": "XGO-CAP-HLS-004",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_native_hls",
+        "android_hls_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "7cf37b2d12dbf24f1d110d4fa104b6f587a46a9b28ef945ca75f69e4257865ea",
+      "fixture_id": "xgo-cap-hls-004",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "89a9b27c423d460f04b9c8ef3114cafea4487f4c49666bab79e4f15a438e66e1",
+      "capability_id": "XGO-CAP-HLS-005",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_native_hls",
+        "desktop_hls_downloader"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "8b86363a66906e389e487a9ac5fce2231d1d910d0c50b30fae631ba4694df724",
+      "fixture_id": "xgo-cap-hls-005",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "e9aebe3c1bdd263717c7adc3c53a9c3436a430249c1dc73b45144dc095cdcda8",
+      "capability_id": "XGO-CAP-HLS-006",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_native_hls",
+        "android_hls_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "65985157d60e7d6f0a562cf31b0d4380eecf7c118dbe718f40b4885403ebfb90",
+      "fixture_id": "xgo-cap-hls-006",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "4c699e1c5a81b420a16ab6fb8b3c4c84532e2b2b5709b57a2aaa6166d10e7500",
+      "capability_id": "XGO-CAP-HLS-007",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_hls_downloader",
+        "android_native_hls"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "e2a001b74708a81ee05c4f1e77625e527d5c27c33f0d8bfda9c85199b62b8cdc",
+      "fixture_id": "xgo-cap-hls-007",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "62a0c8fc106384305d9fd17770a7dd7ad03f314319027d52b3b9e94d7b0b7621",
+      "capability_id": "XGO-CAP-HTTP-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_native_http",
+        "android_native_protocol_test",
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "7f9d05b876c6729d2d632c75106f4a77c11673c01152aaca1a5a94c3a25db777",
+      "fixture_id": "xgo-cap-http-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "0ada2e8f228c3f7829edae71c2f9cc001cca6dfc7729f24adbed42c7f8a49112",
+      "capability_id": "XGO-CAP-HTTP-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_native_http",
+        "android_checkpoint_integrity",
+        "desktop_resume_checkpoint"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "0f5652dacc8b16f9f56ed511dc562c7fa1a0dbe11aa9101fa2700b0a79cb8e68",
+      "fixture_id": "xgo-cap-http-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "682d94756966ecc12acd81d72992e99d3633a52ecb72760efdf7f81c9f205445",
+      "capability_id": "XGO-CAP-HTTP-003",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_native_http",
+        "android_native_http_test",
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "dbe99ac26b467c2fa7a6e298c7512d6cdc95e67f787e101763803035925d5f55",
+      "fixture_id": "xgo-cap-http-003",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "3067f034452a02ce2018f28c22bfb8f329e7eff0cfddba4cf28c72fd7c1e02b7",
+      "capability_id": "XGO-CAP-HTTP-004",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_native_http",
+        "android_native_http_test",
+        "desktop_segmented_executor"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "39df3ce5899bed00d383f011cb788fefc726f540295d9a15cdb0fcab6a40ba4a",
+      "fixture_id": "xgo-cap-http-004",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "19b0d0262a587c2a8c5b512943cb111676464bb6428d6da612103930da07797d",
+      "capability_id": "XGO-CAP-HTTP-005",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_native_http",
+        "android_native_protocol_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "0e55826f6996d932716dbc78929c7c9f4dfbd97bf6281eea505e2f47362df215",
+      "fixture_id": "xgo-cap-http-005",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "b14f20031533a397bdef8d538458fd7983c94b85819b004e45541a93bf5f24f8",
+      "capability_id": "XGO-CAP-HTTP-006",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_native_http",
+        "desktop_resume_checkpoint"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "e046b707c2cf149c3d7f972a4e6430f71a1ed8b2f95008c049d4b463789a88ba",
+      "fixture_id": "xgo-cap-http-006",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "64e32f099bb804f2ca7893d5c42fc45e3fcc230804b7af6ae184758b9a53538a",
+      "capability_id": "XGO-CAP-MEDIA-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_logical_media_graph",
+        "android_media_security"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "df1f4440e87b6fedadda7157fd24019f2228326a53d73e640e83916d681fcf80",
+      "fixture_id": "xgo-cap-media-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "1fa99b11b4f8ba421d57c50ee0358cb2d62d35fd870b81ca5439d5b1775c11eb",
+      "capability_id": "XGO-CAP-MEDIA-002",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_logical_media_graph",
+        "android_logical_media_graph_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "91eb713384894a0cae717d59becd4a24b57ddd2cba96074f7a6472d047cf967d",
+      "fixture_id": "xgo-cap-media-002",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "106194e7014d084cc568314ed788bcdde20201aa30490689f6aefb7f17a56497",
+      "capability_id": "XGO-CAP-MEDIA-003",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_media_selection",
+        "desktop_media_selection_test",
+        "android_media_dispatcher"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "27677fe5ecf6a16f9acc39b70335499bc25bcde91283c06ee2af7de29ebd0ac5",
+      "fixture_id": "xgo-cap-media-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "32d28515b50a6a475d6ac350c41fd4107de216e3615ac224866e4e6988877bcb",
+      "capability_id": "XGO-CAP-MEDIA-004",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_media_security",
+        "desktop_browser_security_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "df93c35e32010359fc8553ed2c8ec38c54a6cf459a5a4398faea2af70a31219c",
+      "fixture_id": "xgo-cap-media-004",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "89eaa7bec403d93838c052b25a237f461805af9b22f02b5ed7e8dd0fffea42d3",
+      "capability_id": "XGO-CAP-METALINK-001",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_metalink"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "ab4dd834078187482306fd2251e501fb1778789f776a7deef3b66a1533ac51e5",
+      "fixture_id": "xgo-cap-metalink-001",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "585e52f6372fd096911956034762ae788f7bf7add99a94af233eb7a2aee5e921",
+      "capability_id": "XGO-CAP-OPS-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_bandwidth_profile",
+        "desktop_proxy_settings",
+        "android_queue_intelligence"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "5e89e6a2e52948f9873b3205162a21e10f8c1dc3cd3569fccf0777b410edbb6d",
+      "fixture_id": "xgo-cap-ops-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "69cc093a5426c6a1015b5cd74a675013d3b97acae2471af2129909f17c2fbd4b",
+      "capability_id": "XGO-CAP-OPS-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_request_security_guard",
+        "desktop_download_request"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "6ff54ecdf642ac7259bcffe4e7cbc35d095935f0a16bbff70bec60a2fe4008a8",
+      "fixture_id": "xgo-cap-ops-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "798dd3d14fbb36f9bbdbce58803e265881cff8a296a6bb4b8f2607b8d4129cd6",
+      "capability_id": "XGO-CAP-OPS-003",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_completion_verification",
+        "android_media_dispatcher",
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "d03103e1bb8f341c27343da09946822ec0e6a63b96c51f04a49fc764457d1475",
+      "fixture_id": "xgo-cap-ops-003",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "987bb4971c07943024dd18ee90fc9feac41b202d004ef0f4c78e763bed747177",
+      "capability_id": "XGO-CAP-OPS-004",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_media_security",
+        "desktop_browser_security_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "a96c574345373a85f6b33340fb9afd5737174190df2fccd83140ddf0b033716e",
+      "fixture_id": "xgo-cap-ops-004",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "9f389d489f94e42d6cec3eaa19e973264a7477fe2922aee02cf2b16b72a6721b",
+      "capability_id": "XGO-CAP-OPS-005",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_database",
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "f83e18f0bcee65419788668c912f27c911be4371fd5fb0690ff5bd55ad28cbb3",
+      "fixture_id": "xgo-cap-ops-005",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "ad484069c3a1d7172ae63df5717bd75ee20e1c54a1508650bd6a6d18da5524d0",
+      "capability_id": "XGO-CAP-OWNERSHIP-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_backend_contract",
+        "android_backend_coordinator_test",
+        "android_execution_semantics_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "924c831bc7759ca6d33ce51d962eb2ad35224ac15cfd403708c4f6a94f385264",
+      "fixture_id": "xgo-cap-ownership-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "7d4276032d636e07aff28ff09fe83a5a5f1213a56f9833fd7e43f07de93175c7",
+      "capability_id": "XGO-CAP-OWNERSHIP-002",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_backend_contract",
+        "android_backend_ownership_dao",
+        "android_backend_coordinator_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "28e3ad53d6fa14339232ba23fddf19664bb9f8786b94477064c6a053f53c2205",
+      "fixture_id": "xgo-cap-ownership-002",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "b0e899e59bed0bd0e5ddabef3b3686f0f697aebd2a3de0c6488e03bb485d322b",
+      "capability_id": "XGO-CAP-OWNERSHIP-003",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_aria2_backend",
+        "android_aria2_contract_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "28e1c7ec53811683a0b7309910d087f6146414930a2cc493bb883a66a3b1f45d",
+      "fixture_id": "xgo-cap-ownership-003",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "78d7acd62cdba5402bb9851abe272923437773e57277a0f6789eeab9747929d4",
+      "capability_id": "XGO-CAP-PLATFORM-001",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "648dcac188561f00bfd8db7368081f6a31e07399011f2d2a20c7704fc8fddb26",
+      "fixture_id": "xgo-cap-platform-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "f70cc10998ae0b538ebb6fbb5c30f6195196007201eb6aaf602a93d12cc24d08",
+      "capability_id": "XGO-CAP-PLATFORM-002",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "fdeaec64be4b7dd3ac640a61b4c2bf7d6ba8532bba53e1417f5225c5e499bbec",
+      "fixture_id": "xgo-cap-platform-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "f0c4e653ce30054d7f9234f870c13fce045210dd86cf7aa1f7f8753c4ee91850",
+      "capability_id": "XGO-CAP-PROXY-001",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_proxy_settings",
+        "desktop_download_request"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "694c2c8720744836e9f90b6c5ef33e8d9a8b72aed1abc3f24070444c258d2b51",
+      "fixture_id": "xgo-cap-proxy-001",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "db67b71c68f81daee25110ab9bfbbfed44ea8a336cf96ccbbcf0ccb7c1ccd9c3",
+      "capability_id": "XGO-CAP-PUBLICATION-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_atomic_finalization",
+        "android_finalization_store",
+        "android_publication_safety",
+        "android_destination_writer",
+        "android_publication_contract_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "5cfda3fa96e79aafe7e5a0ca7f06acb4d6e4b3cf3eb462b243e70592d3b41e6a",
+      "fixture_id": "xgo-cap-publication-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "0977f164da42fa07a2b3463c40d1b334019181675b0442e2846bf7324fa8d435",
+      "capability_id": "XGO-CAP-QUEUE-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_queue_intelligence",
+        "android_queue_coordinator"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "bab8fe9ef8c2c0b8fec115cf795e2a8f3e8590c2e1b7bd128b7d31285cb70e8a",
+      "fixture_id": "xgo-cap-queue-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "c73b91106d61a7dbbff83c7cde24d7361c6a4c3ec7ad01480ec22935e5e71338",
+      "capability_id": "XGO-CAP-QUEUE-002",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_queue_graph"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "ac984da57be17e38dc116696f3360a2c7fb9262f293ce2dc79de2ff6c7edbe30",
+      "fixture_id": "xgo-cap-queue-002",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "9b95f164cbe28eacb9f9a48822b8f3218eb3d47b2b53c18dfbaa780bb6bb52a3",
+      "capability_id": "XGO-CAP-RECOVERY-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_recovery_contracts",
+        "android_startup_recovery",
+        "android_startup_recovery_test",
+        "desktop_recovery_coordinator"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "eff57ec7c257e082a55151632aceb32527880f7368174536fb11bd0931af6942",
+      "fixture_id": "xgo-cap-recovery-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "96c3df3449b6cb353037e6f773cf05a7ba3cb8758ee22694a610bb11be08d69e",
+      "capability_id": "XGO-CAP-RECOVERY-002",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_backend_migration_coordinator",
+        "android_backend_migration_test",
+        "android_execution_semantics_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "f85ded303370d7459edf8ac7868ec54dbb1a5b864b81a75a0d3ef5664e251cdc",
+      "fixture_id": "xgo-cap-recovery-002",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "1a7adb13a8deaeab44f531941a9363da5b1efb57574726e16eb6b38508429234",
+      "capability_id": "XGO-CAP-REPAIR-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_selective_repair",
+        "desktop_partial_repair",
+        "android_checkpoint_integrity"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "2ed741cdd9019d5c574033e9abae1813edbb1f3eac20e89bafdab1ec53311938",
+      "fixture_id": "xgo-cap-repair-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "e7298b2058bd05491f9ccc4d02de119d6cc9a2889c1a4f4d46ab34a8b2c1272c",
+      "capability_id": "XGO-CAP-REQUEST-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_download_intake",
+        "android_native_http",
+        "desktop_download_request"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "b83675ff8e5ea1e91e40f95c37d01c30ef8b7eba1190f1a874ac7a4adc580921",
+      "fixture_id": "xgo-cap-request-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "700ebb91c6b0ecee41bf83d354cd570d993167fb92b2b6a4e642d6fa5efa7adc",
+      "capability_id": "XGO-CAP-REQUEST-002",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_download_request",
+        "desktop_download_manager"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "ef0376230efae59dbb2a7ba201295814178c4b3f1017e9097d13cafa92bac11f",
+      "fixture_id": "xgo-cap-request-002",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "ca97732f2fa2f871e14e8513ba8e647d1eeee6fa134906d763ab3b7ef8359988",
+      "capability_id": "XGO-CAP-RETRY-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_queue_retry_ledger",
+        "desktop_retry_policy",
+        "android_native_http"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "0befb2c95fc526374a9ed807ff1d27fea44a0d0a77e04dbb767bff3401129a80",
+      "fixture_id": "xgo-cap-retry-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "69f6c6dd0ebc838c705322a44c4a1e6e1eba3d6e6864e727da8b739d55c97655",
+      "capability_id": "XGO-CAP-RUNTIME-001",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "45b7371debf0871e676435aa7774139c40553f1c42fec243cef0ae2bc3419af3",
+      "fixture_id": "xgo-cap-runtime-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "aaa47b82f3a21a3b73ec2d5101ee72235ea2c02ac7d057a21fe7b25d85cb87e8",
+      "capability_id": "XGO-CAP-RUNTIME-002",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "b9d344bc603d777d138cb0788cf8591fb93f2e885e36e2495a58f1c2d5a2fa9b",
+      "fixture_id": "xgo-cap-runtime-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "afd1df97c38a92ddbbc9fc1e84cd6388fa125d57de0c7c7aab33338d18b3fdfd",
+      "capability_id": "XGO-CAP-RUNTIME-003",
+      "classification": "merged_improvement",
+      "donor_ids": [],
+      "donor_strategy": "new_design",
+      "expected_sha256": "1074f1da2579c4f5ab5c6ace0e44908a2f2d30a6cfa7bbaa608340456c13f742",
+      "fixture_id": "xgo-cap-runtime-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "fca23c494a0e1aa6c8c366c15fad0c770c13b679ed0fdcc5b9e69610a1aedc32",
+      "capability_id": "XGO-CAP-SCHED-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_queue_intelligence",
+        "android_queue_coordinator"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "0afbb0aca6b1a903fcce6f3e6d0f94215fae5bafd76345d272e7657861df04a7",
+      "fixture_id": "xgo-cap-sched-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "f2fb0da26a7b2c35a57a6501cafec75e0d5e1c5f1f8a89e9b960b8d7fbbf77a5",
+      "capability_id": "XGO-CAP-SCHED-002",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_schedule_window",
+        "desktop_download_schedule"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "4ed1943649eb18f47a0c66808b68427106725ea663af6610df4835706c780ed9",
+      "fixture_id": "xgo-cap-sched-002",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "ffd1a8ab7cda2ff652750b8c5c0008ad26506153697e4d875fe1d3b1083c96d9",
+      "capability_id": "XGO-CAP-SCHED-003",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_queue_coordinator",
+        "android_queue_intelligence",
+        "desktop_queue_graph"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "65a0159eadddd436631c44b061432bd428d79d738c198b338432f830b716c93b",
+      "fixture_id": "xgo-cap-sched-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "32c504c5733a62a939d629b87169e0740e2e33d062dceeb6b9892c33d752b7dd",
+      "capability_id": "XGO-CAP-SCHED-004",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_queue_coordinator",
+        "android_queue_intelligence"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "458504fe5a8bbc8f4c941b8e7cad58477832b28c003fdbce0eff626485bfb48b",
+      "fixture_id": "xgo-cap-sched-004",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "24d60c32b6ebfa47bfc7b8c3fa97a00434fadab19fce1c516185fe28df2c2436",
+      "capability_id": "XGO-CAP-SCHED-005",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "desktop_bandwidth_profile",
+        "android_queue_intelligence"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "a730ce388fb3920156b362608c65b591e460dbb8d75737642684e8f113f2fa25",
+      "fixture_id": "xgo-cap-sched-005",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "ea9cc27d08e7c91a831087a9ca358ca635a8a1f917df1e23be8f8af271915acd",
+      "capability_id": "XGO-CAP-SCHED-006",
+      "classification": "desktop_preserved",
+      "donor_ids": [
+        "desktop_download_schedule"
+      ],
+      "donor_strategy": "desktop_led",
+      "expected_sha256": "ba9c93994b5ea6cb8754d2635b5d8aee8e78974b9d5dd52c496dc5757bf201e5",
+      "fixture_id": "xgo-cap-sched-006",
+      "rationale": "Canonical behavior preserves the stronger Desktop donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "174439afedf0da8ea55699f65c81e35e2114b3dbfb8c932265b186d715f3ef42",
+      "capability_id": "XGO-CAP-SECURITY-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "a40162f9940722178db1103fe6797a1d953037723c5befeb12c75809dbea7e24",
+      "fixture_id": "xgo-cap-security-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "8564369f55fa2c52cecc3fd1e71640308b99a5222ee24a5275c4976eed1afa87",
+      "capability_id": "XGO-CAP-SECURITY-002",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test",
+        "desktop_browser_security_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "2ba19f049f227e2d9c6e024c36a96d4dd517f1e31261584c73be293a4bc7ed99",
+      "fixture_id": "xgo-cap-security-002",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "db791d83852d1ff20f30c42931552558e54430aab4724ecbf63961d6570ea593",
+      "capability_id": "XGO-CAP-SECURITY-003",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "526dfa21948516593b33819a2f81cb0f5550bc3fe6515c522e0e2c5efc22e299",
+      "fixture_id": "xgo-cap-security-003",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "62938afbe2d9a44e3aa639ba62ff8dad17915d8457553377f86c5478f9e58fe5",
+      "capability_id": "XGO-CAP-SECURITY-004",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_native_http"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "148206a582630503254a3873b9afd6fb5d808aeb0221861f2df9d763e92cb4ae",
+      "fixture_id": "xgo-cap-security-004",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "62fc907cfe503213fa5a9daa95620e0c6d60bc040a84e30194bcc8160d873025",
+      "capability_id": "XGO-CAP-SECURITY-005",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_request_security_guard",
+        "android_security_guard_test"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "9ed80be867553651543077d021cfe9ec058784b0e353b46d640d3f2ccf3467b6",
+      "fixture_id": "xgo-cap-security-005",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "92b17fd03de9ec758f88bfbdf02f297882811cb08c744fa19fbb6caafba7a381",
+      "capability_id": "XGO-CAP-SECURITY-006",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_request_security_guard"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "c1d0dac9d4add4926982e67e540b79a0dc192e942d49a000c7ca5c870f5bf4af",
+      "fixture_id": "xgo-cap-security-006",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "842370018ed6e323411b52d3e155aa980fb72a3e9848f9b6b4020cd028e9935f",
+      "capability_id": "XGO-CAP-STORE-001",
+      "classification": "android_preserved",
+      "donor_ids": [
+        "android_entities",
+        "android_database",
+        "android_download_dao"
+      ],
+      "donor_strategy": "android_led",
+      "expected_sha256": "2f137a2406b0cbd54e7c40468774fd6aa27f9d0f8ef15c6a112344ffd5dc6ded",
+      "fixture_id": "xgo-cap-store-001",
+      "rationale": "Canonical behavior preserves the stronger Android donor semantics represented by the neutral fixture."
+    },
+    {
+      "canonical_behavior_sha256": "1b6c1e43e92bd4635596fd7f28782fe5d9abedd85e641cb89baff613b64869fe",
+      "capability_id": "XGO-CAP-STORE-002",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_download_dao",
+        "android_backend_ownership_dao"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "e8738ccc5e9c7182e442a175d89da95ebdb81acbdde5e63d8028f386d8bbf6a9",
+      "fixture_id": "xgo-cap-store-002",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "3cd428b624c815b935bdda0318b015b46e80db4a65b19f5406a6fc2b08fd6c86",
+      "capability_id": "XGO-CAP-STORE-003",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_database"
+      ],
+      "donor_strategy": "redesign",
+      "expected_sha256": "0d57121bec971863d56ff3c391a2a8bec8fe5173096b14635589a655c13ed5cd",
+      "fixture_id": "xgo-cap-store-003",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    },
+    {
+      "canonical_behavior_sha256": "1b417e8a82685672a6698f2ab119490c8e2d63a06d7384d4afacda9e3fa7b3c7",
+      "capability_id": "XGO-CAP-VERIFY-001",
+      "classification": "merged_improvement",
+      "donor_ids": [
+        "android_completion_verification",
+        "android_checksum_contract",
+        "desktop_checksum_service"
+      ],
+      "donor_strategy": "merged",
+      "expected_sha256": "0a8f5d1082e77cb1350a8b834fe10dc65cb1b791decd2e25f9d668d7490ef976",
+      "fixture_id": "xgo-cap-verify-001",
+      "rationale": "Canonical Go behavior intentionally merges or redesigns donor semantics under the capability ledger contract."
+    }
+  ],
+  "schema_version": 1
+}
