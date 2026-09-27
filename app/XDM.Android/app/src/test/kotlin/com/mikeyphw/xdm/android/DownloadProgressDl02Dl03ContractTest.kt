@@ -31,7 +31,7 @@ class DownloadProgressDl02Dl03ContractTest {
         assertFalse(publishBody.contains("ownershipStore.findByDownload"))
         assertTrue(runtime.contains("private data class PublicationFence"))
         assertTrue(runtime.contains("durableOwnershipMismatch(publicationFence)"))
-        assertTrue(viewModel.contains("semanticDownloads = repository.downloads.distinctUntilChangedBy"))
+        assertTrue(viewModel.contains("private val semanticDownloads = androidDownloadUiClient.projection"))
         assertTrue(viewModel.contains("private val durableUiState"))
         assertTrue(viewModel.contains("liveTransferUi"))
     }

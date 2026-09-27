@@ -29,7 +29,7 @@ class Phase65DiagnosticExportDownloadActionContractTest {
         val screen = source("app/src/main/kotlin/com/mikeyphw/xdm/android/ui/downloads/DownloadsScreen.kt")
         val viewModel = source("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
         val repository = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadRepository.kt")
-        val uiBroker = source("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
+        val uiBroker = source("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt")
         val dao = source("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/DownloadDao.kt")
 
         assertTrue(planner.contains("deleteHistory(download, label = \"Delete download entry\")"))

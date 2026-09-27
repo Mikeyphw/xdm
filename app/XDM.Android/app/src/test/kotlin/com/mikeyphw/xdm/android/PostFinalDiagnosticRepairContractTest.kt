@@ -31,8 +31,10 @@ class PostFinalDiagnosticRepairContractTest {
         val manifest = source("app/src/main/AndroidManifest.xml")
         val devtool = File(repositoryRoot, ".devtool.toml").readText()
 
-        assertTrue(coordinator.contains("val nextEligibleAtEpochMs = decision.nextEligibleAtEpochMs"))
-        assertTrue(worker.contains("import com.mikeyphw.xdm.android.model.DownloadState"))
+        assertTrue(coordinator.contains("AndroidSchedulerHost.wake("))
+        assertTrue(coordinator.contains("Go owns Android queue eligibility and execution scheduling."))
+        assertTrue(worker.contains("AndroidSchedulerHost.wake("))
+        assertFalse(worker.contains("import com.mikeyphw.xdm.android.model.DownloadState"))
         assertTrue(appBuild.contains(":browser-extension:validateFirefoxExtension"))
         assertFalse(appBuild.contains(":browser-extension:packageFirefoxExtension"))
         assertFalse(manifest.contains("android:extractNativeLibs"))

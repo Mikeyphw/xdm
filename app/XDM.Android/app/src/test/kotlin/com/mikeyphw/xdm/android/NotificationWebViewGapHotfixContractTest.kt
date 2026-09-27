@@ -1,6 +1,7 @@
 package com.mikeyphw.xdm.android
 
 import java.io.File
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -10,14 +11,19 @@ class NotificationWebViewGapHotfixContractTest {
         val notifications = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferNotifications.kt").readText()
         val worker = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/QueueIntelligenceWorker.kt").readText()
         val uidt = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/UserInitiatedTransferJobService.kt").readText()
+        val service = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferForegroundService.kt").readText()
         val receiver = File(root, "scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferActionReceiver.kt").readText()
-        assertTrue(uidt.contains("runtime.liveSummaryFor(downloadId"))
-        assertTrue(worker.contains("runtime.liveProgress.collectLatest"))
+        assertTrue(uidt.contains("AndroidSchedulerHost.wake("))
+        assertTrue(uidt.contains("AndroidEngineWakeReason.USER_INITIATED_DATA_TRANSFER"))
+        assertFalse(uidt.contains("runtime.liveSummaryFor") || uidt.contains("runtime.requestPauseOwnedAsync"))
+        assertTrue(worker.contains("AndroidSchedulerHost.wake("))
+        assertFalse(worker.contains("runtime.liveProgress.collectLatest"))
+        assertTrue(service.contains("runtime.summary.collectLatest"))
         assertTrue(notifications.contains("summary.activeCount == 1"))
         assertTrue(notifications.contains("canPostChannel(channelFor(state))"))
-        assertTrue(receiver.contains("recordNotificationControlCommand"))
+        assertTrue(receiver.contains("AndroidGoDownloadCommands.submit("))
+        assertFalse(receiver.contains("recordNotificationControlCommand"))
         assertTrue(uidt.contains("JOB_END_NOTIFICATION_POLICY_REMOVE"))
-        assertTrue(uidt.contains("JOB_END_NOTIFICATION_POLICY_DETACH"))
         assertTrue(notifications.contains("setOnlyAlertOnce(true)"))
     }
 

@@ -26,6 +26,7 @@ class FfmpegRoadmapPostSealHotfixContractTest {
         val manager = text("app/src/main/kotlin/com/mikeyphw/xdm/android/ffmpeg/NativeHlsMediaManager.kt")
         val vm = text("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
         val app = text("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt")
+        val broker = text("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt")
         val dao = text("persistence/src/main/kotlin/com/mikeyphw/xdm/android/persistence/NativeHlsDao.kt")
 
         assertTrue(manager.contains("NativeHlsExecutionEngine()"))
@@ -41,13 +42,13 @@ class FfmpegRoadmapPostSealHotfixContractTest {
         assertTrue(manager.contains("throw cancelled"))
         assertTrue(vm.contains("enginePlan.lane == MediaExecutionLane.NativeHlsSegmented"))
         assertTrue(vm.contains("nativeHlsMediaManager.enqueue"))
-        assertTrue(vm.contains("nativeHlsMediaManager.pause"))
-        assertTrue(vm.contains("nativeHlsMediaManager.resume"))
-        assertTrue(vm.contains("nativeHlsMediaManager.cancel"))
+        assertFalse(vm.contains("nativeHlsMediaManager.pause") || vm.contains("nativeHlsMediaManager.resume") || vm.contains("nativeHlsMediaManager.cancel"))
+        assertTrue(broker.contains("nativeHls.pause(id)") && broker.contains("nativeHls.resume(id)") && broker.contains("nativeHls.cancel(id)"))
         assertTrue(app.contains("NativeHlsMediaManager("))
-        assertTrue(app.contains("transferRuntime.recoverForStartup()"))
-        assertTrue(app.contains("val nativeHlsRecovery: Result<Int>"))
-        assertTrue(app.contains("nativeHlsMediaManager.recoverInterruptedJobs()"))
+        assertTrue(app.contains("AndroidDownloadExecutionBroker("))
+        assertFalse(app.contains("transferRuntime.recoverForStartup()"))
+        assertFalse(app.contains("nativeHlsMediaManager.recoverInterruptedJobs()"))
+        assertTrue(app.contains("QueueIntelligenceWorker.enqueueImmediate(this@XdmApplication)"))
         assertTrue(manager.contains("reconcileCommittedPublication(job)"))
         assertTrue(manager.contains("FinalizationJournalStage.DestinationCommitted"))
         assertTrue(manager.contains("repository.finalizationForDownload(job.downloadId)"))
@@ -184,8 +185,10 @@ class FfmpegRoadmapPostSealHotfixContractTest {
 
         // Native-HLS RecoveryRequired rows still resume through their durable native owner rather
         // than falling into the ordinary backend retry path.
+        val broker = text("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt")
         assertTrue(vm.contains("DownloadState.RecoveryRequired"))
-        assertTrue(vm.contains("nativeHlsMediaManager.resume(current.id)"))
+        assertTrue(vm.contains("action = if (candidate.state in setOf(DownloadState.Failed, DownloadState.RecoveryRequired)) \"retry\" else \"resume\""))
+        assertTrue(broker.contains("\"resume\", \"retry\" -> mutate") && broker.contains("nativeHls.resume(id)"))
     }
 
 }

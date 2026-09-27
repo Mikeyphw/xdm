@@ -19,7 +19,7 @@ class Xar13DownloadsTruthfulActionsContractTest {
     @Test
     fun downloadsActionsReloadCurrentRowsAndDoNotHideNativeHlsWork() {
         val vm = readUtf8("app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt")
-        val broker = readUtf8("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt")
+        val broker = readUtf8("app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt")
         assertTrue(vm.contains("private val semanticDownloads = androidDownloadUiClient.projection"))
         assertTrue(vm.contains("DownloadActionExecutionTruth.policyOverrideFromCurrent(download)"))
         assertTrue(vm.contains("androidDownloadUiClient.command") && vm.contains("action = \"delete\""))

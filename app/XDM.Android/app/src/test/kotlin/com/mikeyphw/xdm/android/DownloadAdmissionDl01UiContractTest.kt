@@ -13,7 +13,7 @@ class DownloadAdmissionDl01UiContractTest {
         val viewModel = File(root, "src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val surface = File(root, "src/main/kotlin/com/mikeyphw/xdm/android/ui/intake/AddDownloadSurface.kt").readText()
         val app = File(root, "src/main/kotlin/com/mikeyphw/xdm/android/XdmApp.kt").readText()
-        val broker = File(root, "src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt").readText()
+        val broker = File(root, "src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt").readText()
 
         val addStart = viewModel.indexOf("fun addDownload(")
         val checksumParse = viewModel.indexOf("parseExpectedChecksum", addStart)

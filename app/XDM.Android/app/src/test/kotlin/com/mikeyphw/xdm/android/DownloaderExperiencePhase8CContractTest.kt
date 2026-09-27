@@ -59,7 +59,8 @@ class DownloaderExperiencePhase8CContractTest {
         val screens = UiSourceTree.readAll(root)
         val viewModel = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/MainViewModel.kt").readText()
         val application = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmApplication.kt").readText()
-        val broker = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidLegacyDownloadUiBroker.kt").readText()
+        val protocol = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadUiProtocol.kt").readText()
+        val executionBroker = File(root, "app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidDownloadExecutionBroker.kt").readText()
         listOf(
             "QueueNetworkRequirement.entries",
             "QueueRetryStrategy.entries",
@@ -70,7 +71,8 @@ class DownloaderExperiencePhase8CContractTest {
         ).forEach { assertTrue("Phase 8C UI missing $it", screens.contains(it)) }
         assertTrue(viewModel.contains("fun startIgnoringQueuePolicy(download: Download)"))
         assertTrue(viewModel.contains("policyOverride = DownloadActionExecutionTruth.policyOverrideFromCurrent(download)"))
-        assertTrue(viewModel.contains("androidDownloadUiClient.command") && broker.contains("policyOverride = payload.optBoolean(\"policy_override\", false)"))
+        assertTrue(viewModel.contains("androidDownloadUiClient.command") && protocol.contains("policy_override"))
+        assertFalse(executionBroker.contains("policy_override"))
         assertTrue(application.contains("QueueConditionMonitor"))
         assertTrue(application.contains("QueueIntelligenceWorker.enqueueImmediate"))
     }
