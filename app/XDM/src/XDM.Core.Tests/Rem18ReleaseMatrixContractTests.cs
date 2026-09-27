@@ -55,7 +55,7 @@ public sealed class Rem18ReleaseMatrixContractTests
         string config = File.ReadAllText(Path.Combine(root, ".devtool.toml"));
 
         Assert.Contains("[targets.xdm_modern]", config, StringComparison.Ordinal);
-        Assert.Contains("type = \"dotnet\"", config, StringComparison.Ordinal);
+        Assert.Contains("runner = \"dotnet\"", config, StringComparison.Ordinal);
         Assert.Contains("[targets.xdm_modern.workflows]", config, StringComparison.Ordinal);
         Assert.Contains("\"job:xdm-rem18-package-matrix\"", config, StringComparison.Ordinal);
         Assert.Contains("\"job:xdm-rem18-linux-x64-smoke\"", config, StringComparison.Ordinal);

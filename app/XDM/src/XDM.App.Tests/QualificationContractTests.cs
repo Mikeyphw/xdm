@@ -19,7 +19,7 @@ public sealed class QualificationContractTests
         string source = File.ReadAllText(Path.Combine(RepositoryRoot(), "app/XDM/src/XDM.App/Program.cs"));
         Assert.Contains("expectedSections", source, StringComparison.Ordinal);
         foreach (string id in new[] { "downloads", "recovery", "queues", "scheduler", "browser", "media", "conversion", "settings", "diagnostics" })
-            Assert.Contains($"\\\"{id}\\\"", source, StringComparison.Ordinal);
+            Assert.Contains($"\"{id}\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Sections.Count == 8", source, StringComparison.Ordinal);
     }
 

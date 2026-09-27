@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace XDM.Media;
@@ -205,6 +207,11 @@ public sealed class YtDlpProvider : IYtDlpProvider
         string? audioCodec = GetString(format, "acodec");
         bool hasVideo = !string.IsNullOrWhiteSpace(videoCodec) && !string.Equals(videoCodec, "none", StringComparison.OrdinalIgnoreCase);
         bool hasAudio = !string.IsNullOrWhiteSpace(audioCodec) && !string.Equals(audioCodec, "none", StringComparison.OrdinalIgnoreCase);
+        if (!hasVideo && !hasAudio)
+        {
+            return null;
+        }
+
         MediaStreamKind kind = hasVideo && hasAudio
             ? MediaStreamKind.Muxed
             : hasVideo
@@ -230,6 +237,13 @@ public sealed class YtDlpProvider : IYtDlpProvider
             }
         }
 
+        long? bitrateKbps = GetLong(format, "tbr")
+            ?? (hasVideo ? GetLong(format, "vbr") : null)
+            ?? (hasAudio ? GetLong(format, "abr") : null);
+        long? bandwidth = bitrateKbps is > 0 and <= long.MaxValue / 1000
+            ? bitrateKbps.Value * 1000
+            : null;
+
         string providerData = JsonSerializer.Serialize(new ExternalMediaFormatData(
             url.AbsoluteUri,
             protocol,
@@ -241,7 +255,7 @@ public sealed class YtDlpProvider : IYtDlpProvider
             url,
             GetString(format, "ext"),
             CombineCodecs(videoCodec, audioCodec),
-            GetLong(format, "tbr") is long tbr ? tbr * 1000 : null,
+            bandwidth,
             GetInt(format, "width"),
             GetInt(format, "height"),
             GetDouble(format, "fps"),
@@ -355,7 +369,6 @@ public sealed class YtDlpProvider : IYtDlpProvider
             return;
         }
 
-        int index = 0;
         foreach (JsonProperty language in subtitles.EnumerateObject())
         {
             if (language.Value.ValueKind != JsonValueKind.Array)
@@ -372,7 +385,11 @@ public sealed class YtDlpProvider : IYtDlpProvider
                     continue;
                 }
 
-                string id = $"subtitle-{language.Name}-{index++}";
+                string id = $"subtitle-{language.Name}-{StableId(
+                    language.Name,
+                    uri.AbsoluteUri,
+                    GetString(subtitle, "ext"),
+                    GetString(subtitle, "name"))}";
                 formats.Add(new MediaFormat(
                     id,
                     MediaStreamKind.Subtitle,
@@ -390,6 +407,16 @@ public sealed class YtDlpProvider : IYtDlpProvider
                     JsonSerializer.Serialize(new ExternalMediaFormatData(uri.AbsoluteUri, "https", id, []))));
             }
         }
+    }
+
+    private static string StableId(params string?[] components)
+    {
+        string material = string.Join(
+            "\u001f",
+            components.Where(static component => !string.IsNullOrWhiteSpace(component)));
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(material)))
+            .ToLowerInvariant()[..16];
     }
 
     private static bool IsSafeConfigValue(string? value)

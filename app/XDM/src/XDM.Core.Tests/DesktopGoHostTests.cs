@@ -5,6 +5,11 @@ namespace XDM.Core.Tests;
 
 public sealed class DesktopGoHostTests
 {
+    private static readonly JsonSerializerOptions JournalJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true
+    };
+
     [Fact]
     public async Task PublicationBrokerIsIdempotentAcrossRepeatedCommit()
     {
@@ -57,7 +62,7 @@ public sealed class DesktopGoHostTests
                         status = "pending"
                     }
                 }
-            }, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }));
+            }, JournalJsonOptions));
             DesktopGoPublicationBroker broker = new(journal);
             DesktopPublicationReceipt receipt = await broker.CommitAsync(Request(staging, destination, "publish:test:77"));
 
@@ -97,7 +102,7 @@ public sealed class DesktopGoHostTests
                         status = "pending"
                     }
                 }
-            }, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }));
+            }, JournalJsonOptions));
             DesktopGoPublicationBroker broker = new(journal);
             DesktopPublicationRequest request = Request(staging, destination, "publish:test:pending") with { CollisionPolicy = "unique" };
 
@@ -138,7 +143,7 @@ public sealed class DesktopGoHostTests
                         status = "pending"
                     }
                 }
-            }, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }));
+            }, JournalJsonOptions));
             DesktopGoPublicationBroker broker = new(journal);
 
             await Assert.ThrowsAsync<InvalidDataException>(() =>

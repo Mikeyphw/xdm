@@ -41,7 +41,15 @@ public sealed class JsonDownloadHistoryStore : IDownloadHistoryStore
             AtomicFile.Quarantine(_historyPath, "incompatible");
             throw;
         }
-        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (InvalidDataException)
+        {
+            AtomicFile.Quarantine(_historyPath, "corrupt");
+            throw;
+        }
+        catch (Exception exception) when (
+            exception is JsonException
+            or IOException
+            or UnauthorizedAccessException)
         {
             AtomicFile.Quarantine(_historyPath, "corrupt");
             return await TryLoadBackupAsync(cancellationToken).ConfigureAwait(false) ?? [];

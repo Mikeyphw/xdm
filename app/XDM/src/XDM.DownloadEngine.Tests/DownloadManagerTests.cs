@@ -2401,7 +2401,11 @@ public sealed class DownloadManagerTests
             AddCount++;
             string path = Path.Combine(request.DestinationDirectory, request.FileName ?? "download.bin");
             string gid = request.Gid ?? "2089b05ecca3d829";
-            Aria2TaskStatus status = HoldActive ? Aria2TaskStatus.Active : Aria2TaskStatus.Complete;
+            Aria2TaskStatus status = HoldActive
+                ? request.StartPaused
+                    ? Aria2TaskStatus.Paused
+                    : Aria2TaskStatus.Active
+                : Aria2TaskStatus.Complete;
             if (!HoldActive)
             {
                 await File.WriteAllBytesAsync(path, _payload, cancellationToken);

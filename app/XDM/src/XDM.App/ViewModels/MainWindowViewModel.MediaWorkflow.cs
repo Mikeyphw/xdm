@@ -4,6 +4,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XDM.Media;
+using XDM.Platform;
 
 namespace XDM.App.ViewModels;
 
@@ -447,6 +448,8 @@ public partial class MainWindowViewModel
             MediaKind.Dash => "application/dash+xml",
             _ => null
         };
+        var firstFormat = catalog.Formats.Count == 0 ? null : catalog.Formats[0];
+
         object captureRecord = new
         {
             id = captureId,
@@ -455,8 +458,8 @@ public partial class MainWindowViewModel
             title = catalog.Title,
             kind,
             mime_type = mimeType,
-            container = catalog.Formats.FirstOrDefault()?.Container,
-            codecs = catalog.Formats.FirstOrDefault()?.Codecs,
+            container = firstFormat?.Container,
+            codecs = firstFormat?.Codecs,
             duration_ms = catalog.Duration is TimeSpan duration ? (long?)duration.TotalMilliseconds : null,
             file_name = fileName,
             manifest_is_live = catalog.IsLive,

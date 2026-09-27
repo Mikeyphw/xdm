@@ -24,7 +24,10 @@ public sealed class SettingsService(ISettingsStore store) : ISettingsService, ID
             IsOperational = true;
             LoadFailureMessage = null;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (
+            exception is IOException
+            or UnauthorizedAccessException
+            or InvalidDataException)
         {
             IsOperational = false;
             LoadFailureMessage = exception.Message;

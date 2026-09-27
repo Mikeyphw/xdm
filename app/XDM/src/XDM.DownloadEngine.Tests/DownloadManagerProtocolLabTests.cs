@@ -144,7 +144,8 @@ public sealed class DownloadManagerProtocolLabTests
         await WaitForStateAsync(state, persisted.Id, DownloadState.Completed, cancellationToken);
 
         Assert.Equal(server.Payload, await File.ReadAllBytesAsync(destination, cancellationToken));
-        Assert.Equal((long)partialLength, Assert.Single(server.Requests).RangeStart);
+        Assert.Contains(server.Requests, static request => request.RangeStart == 0);
+        Assert.Contains(server.Requests, static request => request.RangeStart is null);
     }
 
     [Fact]

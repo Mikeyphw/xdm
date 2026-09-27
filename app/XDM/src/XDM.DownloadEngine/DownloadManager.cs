@@ -2426,6 +2426,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 retainedLease = session.Aria2OwnershipLease;
                 session.Aria2OwnershipLease = null;
                 session.Aria2OwnershipUncertain = false;
+                session.Aria2SchedulingPauseInProgress = true;
             }
             _applicationState.UpsertDownload(CreateSnapshot(session));
             await PersistAsync(force: true, cancellationToken).ConfigureAwait(false);
@@ -2607,6 +2608,11 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                 }
             }
 
+            lock (session.Sync)
+            {
+                session.Aria2SchedulingPauseInProgress = false;
+            }
+
             if (existingTask.Status is Aria2TaskStatus.Paused
                 or Aria2TaskStatus.Complete
                 or Aria2TaskStatus.Error
@@ -2727,6 +2733,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
             lock (session.Sync)
             {
                 session.Aria2TerminalSignal = null;
+                session.Aria2SchedulingPauseInProgress = false;
                 if (session.Aria2OwnershipUncertain)
                 {
                     if (leaseBundle is not null)
@@ -3052,6 +3059,7 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
 
                     if (session.State is DownloadState.Connecting
                         or DownloadState.Downloading
+                        or DownloadState.Paused
                         or DownloadState.Finalizing
                         or DownloadState.Queued)
                     {
@@ -3151,6 +3159,13 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                     session.DownloadedBytes = task.CompletedBytes;
                     session.TotalBytes = task.TotalBytes > 0 ? task.TotalBytes : session.TotalBytes;
                     session.BytesPerSecond = task.DownloadSpeedBytesPerSecond;
+
+                    bool internalSchedulingPause =
+                        task.Status == Aria2TaskStatus.Paused
+                        && session.Aria2SchedulingPauseInProgress
+                        && !session.PauseRequested
+                        && !session.QueueStopRequested;
+
                     if (!session.Aria2OwnershipUncertain
                         || task.Status is Aria2TaskStatus.Paused
                             or Aria2TaskStatus.Complete
@@ -3162,6 +3177,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                         {
                             Aria2TaskStatus.Active => DownloadState.Downloading,
                             Aria2TaskStatus.Waiting => DownloadState.Connecting,
+                            Aria2TaskStatus.Paused when internalSchedulingPause => session.State,
+                            Aria2TaskStatus.Paused when session.QueueStopRequested => DownloadState.Queued,
                             Aria2TaskStatus.Paused => DownloadState.Paused,
                             Aria2TaskStatus.Complete => DownloadState.Finalizing,
                             Aria2TaskStatus.Error => DownloadState.Failed,
@@ -3170,10 +3187,14 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
                         };
                     }
 
-                    if (task.Status is Aria2TaskStatus.Paused
-                        or Aria2TaskStatus.Complete
-                        or Aria2TaskStatus.Error
-                        or Aria2TaskStatus.Removed)
+                    bool terminalForSession =
+                        task.Status is Aria2TaskStatus.Complete
+                            or Aria2TaskStatus.Error
+                            or Aria2TaskStatus.Removed
+                        || (task.Status == Aria2TaskStatus.Paused
+                            && !internalSchedulingPause);
+
+                    if (terminalForSession)
                     {
                         session.Aria2OwnershipUncertain = false;
                         session.RecoveryRequired = task.Status == Aria2TaskStatus.Error;
@@ -6858,6 +6879,8 @@ public sealed class DownloadManager : IDownloadManager, IDisposable
         public TaskCompletionSource<Aria2TaskStatus>? Aria2TerminalSignal { get; set; }
 
         public bool Aria2FinalizationScheduled { get; set; }
+
+        public bool Aria2SchedulingPauseInProgress { get; set; }
 
         public DateTimeOffset LastCheckpointAt { get; set; } = DateTimeOffset.MinValue;
 

@@ -7,22 +7,60 @@ public sealed class ExternalMediaToolTests
     [Fact]
     public async Task FfmpegHealthAndMuxUseArgumentListWithoutShell()
     {
-        RecordingRunner runner = new((_, arguments) =>
-            arguments.Contains("-version", StringComparer.Ordinal)
-                ? new ExternalToolResult(0, "ffmpeg version test\n", string.Empty)
-                : new ExternalToolResult(0, string.Empty, string.Empty));
-        FfmpegService service = new(runner, "/fake/ffmpeg");
+        string tempRoot = Path.Combine(
+            Path.GetTempPath(),
+            $"xdm-ffmpeg-test-{Guid.NewGuid():N}");
 
-        ExternalToolHealth health = await service.GetHealthAsync();
-        await service.MuxAsync(["/tmp/input one.mp4", "/tmp/input two.m4a"], "/tmp/output file.mp4");
+        Directory.CreateDirectory(tempRoot);
 
-        Assert.True(health.IsAvailable);
-        Assert.Equal(2, runner.Calls.Count);
-        Assert.Equal("/fake/ffmpeg", runner.Calls[1].Executable);
-        Assert.Contains("/tmp/input one.mp4", runner.Calls[1].Arguments);
-        Assert.Contains("/tmp/output file.mp4", runner.Calls[1].Arguments);
-        Assert.DoesNotContain("sh", runner.Calls[1].Arguments);
-        Assert.DoesNotContain("cmd.exe", runner.Calls[1].Arguments);
+        try
+        {
+            string videoInput = Path.Combine(tempRoot, "input one.mp4");
+            string audioInput = Path.Combine(tempRoot, "input two.m4a");
+            string output = Path.Combine(tempRoot, "output file.mp4");
+
+            RecordingRunner runner = new((_, arguments) =>
+            {
+                if (arguments.Contains("-version", StringComparer.Ordinal))
+                {
+                    return new ExternalToolResult(
+                        0,
+                        "ffmpeg version test\n",
+                        string.Empty);
+                }
+
+                string outputPath = arguments[^1];
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                File.WriteAllText(outputPath, "fake mux output");
+
+                return new ExternalToolResult(
+                    0,
+                    string.Empty,
+                    string.Empty);
+            });
+
+            FfmpegService service = new(runner, "/fake/ffmpeg");
+
+            ExternalToolHealth health = await service.GetHealthAsync();
+            await service.MuxAsync(
+                [videoInput, audioInput],
+                output);
+
+            Assert.True(health.IsAvailable);
+            Assert.Equal(2, runner.Calls.Count);
+            Assert.Equal("/fake/ffmpeg", runner.Calls[1].Executable);
+            Assert.Contains(videoInput, runner.Calls[1].Arguments);
+            Assert.Contains(output, runner.Calls[1].Arguments);
+            Assert.DoesNotContain("sh", runner.Calls[1].Arguments);
+            Assert.DoesNotContain("cmd.exe", runner.Calls[1].Arguments);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
     }
 
     [Fact]

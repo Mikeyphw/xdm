@@ -32,13 +32,12 @@ public static partial class DiagnosticRedactor
     {
         ArgumentNullException.ThrowIfNull(value);
         string redacted = UriUserInfoRegex().Replace(value, "$1[REDACTED]@");
-        redacted = HeaderSecretRegex().Replace(redacted, match =>
-        {
-            string key = match.Groups[1].Value;
-            return match.Value.Contains(':')
-                ? $"{key}: [REDACTED]"
-                : $"{key}=[REDACTED]";
-        });
+        redacted = HeaderSecretRegex().Replace(
+            redacted,
+            static match => $"{match.Groups[1].Value}: [REDACTED]");
+        redacted = AssignmentSecretRegex().Replace(
+            redacted,
+            static match => $"{match.Groups[1].Value}=[REDACTED]");
         redacted = QuerySecretRegex().Replace(redacted, "$1[REDACTED]");
         redacted = WindowsPathRegex().Replace(redacted, static match => RedactPathLiteral(match.Value));
         redacted = UnixPathRegex().Replace(redacted, static match => RedactPathLiteral(match.Value));
@@ -112,7 +111,16 @@ public static partial class DiagnosticRedactor
             return "unavailable";
         }
 
-        string fileName = Path.GetFileName(value.Trim().Trim('"', '\'', '`'));
+        string normalized = value
+            .Trim()
+            .Trim('"', '\'', '`')
+            .Replace('\\', '/');
+
+        int separator = normalized.LastIndexOf('/');
+        string fileName = separator >= 0
+            ? normalized[(separator + 1)..]
+            : normalized;
+
         return string.IsNullOrWhiteSpace(fileName)
             ? "[LOCAL-PATH]"
             : $"[LOCAL-PATH]/{fileName}";
@@ -134,8 +142,11 @@ public static partial class DiagnosticRedactor
     public static bool IsSecretQueryKey(string key)
         => SecretQueryKeys.Any(candidate => string.Equals(candidate, key, StringComparison.OrdinalIgnoreCase));
 
-    [GeneratedRegex("""(?im)\b(Authorization|Proxy-Authorization|Cookie|Set-Cookie|X-XDM-Token|X-Api-Key|Api-Key|Authentication|Password|Passwd|Client-Secret|Refresh-Token|Access-Token)\s*[:=]\s*[^\r\n"]*""")]
+    [GeneratedRegex("""(?im)\b(Authorization|Proxy-Authorization|Cookie|Set-Cookie|X-XDM-Token|X-Api-Key|Api-Key|Authentication|Password|Passwd|Client-Secret|Refresh-Token|Access-Token)\s*:\s*[^\r\n"]*""")]
     private static partial Regex HeaderSecretRegex();
+
+    [GeneratedRegex("""(?im)\b(Authorization|Proxy-Authorization|Cookie|Set-Cookie|X-XDM-Token|X[_-]?Api[_-]?Key|Api[_-]?Key|Authentication|Password|Passwd|Client[_-]?Secret|Refresh[_-]?Token|Access[_-]?Token|Id[_-]?Token)\s*=\s*[^&;\r\n"']*""")]
+    private static partial Regex AssignmentSecretRegex();
 
     [GeneratedRegex("""(?i)([?&](?:token|access_token|refresh_token|id_token|auth|authorization|key|api_key|apikey|client_secret|secret|signature|sig|password|passwd|pwd|x-amz-signature|x-amz-credential|x-amz-security-token)=)[^&#\s"']+""")]
     private static partial Regex QuerySecretRegex();
@@ -143,7 +154,7 @@ public static partial class DiagnosticRedactor
     [GeneratedRegex("""(?i)\b([a-z][a-z0-9+.-]*://)([^/@\s"'<>]+)@""")]
     private static partial Regex UriUserInfoRegex();
 
-    [GeneratedRegex("""(?i)(?:[A-Z]:\\(?:[^\\/:*?"<>|\r\n]+\\)+[^\\/:*?"<>|\r\n]*)""")]
+    [GeneratedRegex("""(?i)(?:[A-Z]:\\+(?:[^\\/:*?"<>|\r\n]+\\+)+[^\\/:*?"<>|\r\n]*)""")]
     private static partial Regex WindowsPathRegex();
 
     [GeneratedRegex("""(?i)/(?:home|users|mnt|media|var|tmp|data/data)/(?:[^\s"'<>]+/)*[^\s"'<>]*""")]

@@ -62,7 +62,8 @@ public sealed class LocalizationService : INotifyPropertyChanged, IDisposable
             english = fallback;
         }
 
-        if (TryGetModernString(key, out string? modernLocalized))
+        if (TryGetModernString(key, out string? modernLocalized)
+            && modernLocalized is not null)
         {
             return modernLocalized;
         }

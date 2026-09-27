@@ -45,10 +45,10 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             return await LoadFileAsync(_settingsPath, cancellationToken).ConfigureAwait(false);
         }
-        catch (UnsupportedSettingsSchemaException)
+        catch (UnsupportedSettingsSchemaException exception)
         {
             AtomicFile.Quarantine(_settingsPath, "incompatible");
-            throw;
+            throw new InvalidDataException(exception.Message, exception);
         }
         catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
         {

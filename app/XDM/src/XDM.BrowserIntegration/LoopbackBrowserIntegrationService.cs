@@ -142,7 +142,6 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
                 await _lifetimeCancellation.CancelAsync().ConfigureAwait(false);
             }
 
-            _listener?.Close();
             if (_listenerTask is not null)
             {
                 try
@@ -158,6 +157,7 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
             }
 
             await WaitForHandlersAsync(cancellationToken).ConfigureAwait(false);
+            _listener?.Close();
 
             _listener = null;
             _listenerTask = null;

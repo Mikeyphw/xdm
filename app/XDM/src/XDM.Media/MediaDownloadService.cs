@@ -516,14 +516,15 @@ public sealed class MediaDownloadService(
         string basename = Path.GetFileNameWithoutExtension(destinationPath);
         string label = FragmentIdentity.SanitizeFileComponent(subtitle.Language ?? subtitle.Name ?? subtitle.Id, "subtitle");
         string extension = ResolveSubtitleExtension(subtitle);
-        string candidate = Path.Combine(directory, $"{basename}.{label}{extension}");
+        string stem = Path.Combine(directory, $"{basename}.{label}");
+        string reservedStem = stem;
         int duplicate = 2;
-        while (!reservedPaths.Add(candidate))
+        while (!reservedPaths.Add(reservedStem))
         {
-            candidate = Path.Combine(directory, $"{basename}.{label}.{duplicate++}{extension}");
+            reservedStem = Path.Combine(directory, $"{basename}.{label}.{duplicate++}");
         }
 
-        return candidate;
+        return reservedStem + extension;
     }
 
     private static string ResolveSubtitleExtension(MediaFormat subtitle)

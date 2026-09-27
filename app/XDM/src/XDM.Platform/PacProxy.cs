@@ -204,27 +204,19 @@ public sealed partial class PacProxy : IWebProxy
 
     private static bool MatchesBypassPattern(Uri destination, string pattern)
     {
-        if (string.Equals(destination.Host, pattern, StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(pattern))
         {
-            return true;
+            return false;
         }
 
-        string wildcard = "^" + Regex.Escape(pattern)
-            .Replace("\\*", ".*", StringComparison.Ordinal)
-            .Replace("\\?", ".", StringComparison.Ordinal) + "$";
-        try
-        {
-            return Regex.IsMatch(destination.Host, wildcard, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50))
-                || Regex.IsMatch(destination.AbsoluteUri, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50));
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-        catch (RegexMatchTimeoutException)
-        {
-            return false;
-        }
+        return System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(
+                pattern,
+                destination.Host,
+                ignoreCase: true)
+            || System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(
+                pattern,
+                destination.AbsoluteUri,
+                ignoreCase: true);
     }
 
     private static bool TryCreateProxyUri(string endpoint, [NotNullWhen(true)] out Uri? proxy)
@@ -300,12 +292,10 @@ public sealed partial class PacProxy : IWebProxy
             };
 
         private static bool ShellMatches(string value, string pattern)
-        {
-            string regex = "^" + Regex.Escape(pattern)
-                .Replace("\\*", ".*", StringComparison.Ordinal)
-                .Replace("\\?", ".", StringComparison.Ordinal) + "$";
-            return Regex.IsMatch(value, regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50));
-        }
+            => System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(
+                pattern,
+                value,
+                ignoreCase: true);
     }
 
     private enum PacRuleKind
