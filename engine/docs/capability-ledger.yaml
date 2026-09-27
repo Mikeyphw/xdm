@@ -13,7 +13,8 @@
       "id": "XGO-CAP-DOMAIN-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-06",
-      "test_id": "fixture:xgo-cap-domain-001"
+      "test_id": "fixture:xgo-cap-domain-001",
+      "evidence_id": "domain_model"
     },
     {
       "area": "domain",
@@ -27,7 +28,8 @@
       "id": "XGO-CAP-DOMAIN-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-06",
-      "test_id": "fixture:xgo-cap-domain-002"
+      "test_id": "fixture:xgo-cap-domain-002",
+      "evidence_id": "domain_model"
     },
     {
       "area": "domain",
@@ -42,7 +44,8 @@
       "id": "XGO-CAP-DOMAIN-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-06",
-      "test_id": "fixture:xgo-cap-domain-003"
+      "test_id": "fixture:xgo-cap-domain-003",
+      "evidence_id": "domain_model"
     },
     {
       "area": "domain",
@@ -56,7 +59,8 @@
       "id": "XGO-CAP-DOMAIN-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-07",
-      "test_id": "fixture:xgo-cap-domain-004"
+      "test_id": "fixture:xgo-cap-domain-004",
+      "evidence_id": "domain_model"
     },
     {
       "area": "persistence",
@@ -71,7 +75,8 @@
       "id": "XGO-CAP-STORE-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-12",
-      "test_id": "fixture:xgo-cap-store-001"
+      "test_id": "fixture:xgo-cap-store-001",
+      "evidence_id": "durable_state"
     },
     {
       "area": "persistence",
@@ -85,7 +90,8 @@
       "id": "XGO-CAP-STORE-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-13",
-      "test_id": "fixture:xgo-cap-store-002"
+      "test_id": "fixture:xgo-cap-store-002",
+      "evidence_id": "durable_state"
     },
     {
       "area": "persistence",
@@ -98,7 +104,8 @@
       "id": "XGO-CAP-STORE-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-11",
-      "test_id": "fixture:xgo-cap-store-003"
+      "test_id": "fixture:xgo-cap-store-003",
+      "evidence_id": "durable_state"
     },
     {
       "area": "ownership",
@@ -113,7 +120,8 @@
       "id": "XGO-CAP-OWNERSHIP-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-14",
-      "test_id": "fixture:xgo-cap-ownership-001"
+      "test_id": "fixture:xgo-cap-ownership-001",
+      "evidence_id": "durable_state"
     },
     {
       "area": "ownership",
@@ -128,7 +136,8 @@
       "id": "XGO-CAP-OWNERSHIP-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-15",
-      "test_id": "fixture:xgo-cap-ownership-002"
+      "test_id": "fixture:xgo-cap-ownership-002",
+      "evidence_id": "durable_state"
     },
     {
       "area": "ownership",
@@ -142,7 +151,8 @@
       "id": "XGO-CAP-OWNERSHIP-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-42",
-      "test_id": "fixture:xgo-cap-ownership-003"
+      "test_id": "fixture:xgo-cap-ownership-003",
+      "evidence_id": "durable_state"
     },
     {
       "area": "checkpoint",
@@ -156,7 +166,8 @@
       "id": "XGO-CAP-CHECKPOINT-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-16",
-      "test_id": "fixture:xgo-cap-checkpoint-001"
+      "test_id": "fixture:xgo-cap-checkpoint-001",
+      "evidence_id": "durable_state"
     },
     {
       "area": "verification",
@@ -171,7 +182,8 @@
       "id": "XGO-CAP-VERIFY-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-17",
-      "test_id": "fixture:xgo-cap-verify-001"
+      "test_id": "fixture:xgo-cap-verify-001",
+      "evidence_id": "durable_state"
     },
     {
       "area": "publication",
@@ -188,7 +200,8 @@
       "id": "XGO-CAP-PUBLICATION-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-18",
-      "test_id": "fixture:xgo-cap-publication-001"
+      "test_id": "fixture:xgo-cap-publication-001",
+      "evidence_id": "durable_state"
     },
     {
       "area": "recovery",
@@ -204,7 +217,8 @@
       "id": "XGO-CAP-RECOVERY-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-19",
-      "test_id": "fixture:xgo-cap-recovery-001"
+      "test_id": "fixture:xgo-cap-recovery-001",
+      "evidence_id": "durable_state"
     },
     {
       "area": "recovery",
@@ -219,7 +233,8 @@
       "id": "XGO-CAP-RECOVERY-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-19",
-      "test_id": "fixture:xgo-cap-recovery-002"
+      "test_id": "fixture:xgo-cap-recovery-002",
+      "evidence_id": "durable_state"
     },
     {
       "area": "request",
@@ -234,7 +249,8 @@
       "id": "XGO-CAP-REQUEST-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-20",
-      "test_id": "fixture:xgo-cap-request-001"
+      "test_id": "fixture:xgo-cap-request-001",
+      "evidence_id": "security_policy"
     },
     {
       "area": "security",
@@ -248,7 +264,8 @@
       "id": "XGO-CAP-SECURITY-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-21",
-      "test_id": "fixture:xgo-cap-security-001"
+      "test_id": "fixture:xgo-cap-security-001",
+      "evidence_id": "security_policy"
     },
     {
       "area": "security",
@@ -263,7 +280,8 @@
       "id": "XGO-CAP-SECURITY-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-21",
-      "test_id": "fixture:xgo-cap-security-002"
+      "test_id": "fixture:xgo-cap-security-002",
+      "evidence_id": "security_policy"
     },
     {
       "area": "security",
@@ -277,7 +295,8 @@
       "id": "XGO-CAP-SECURITY-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-22",
-      "test_id": "fixture:xgo-cap-security-003"
+      "test_id": "fixture:xgo-cap-security-003",
+      "evidence_id": "security_policy"
     },
     {
       "area": "security",
@@ -291,7 +310,8 @@
       "id": "XGO-CAP-SECURITY-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-23",
-      "test_id": "fixture:xgo-cap-security-004"
+      "test_id": "fixture:xgo-cap-security-004",
+      "evidence_id": "security_policy"
     },
     {
       "area": "security",
@@ -305,7 +325,8 @@
       "id": "XGO-CAP-SECURITY-005",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-24",
-      "test_id": "fixture:xgo-cap-security-005"
+      "test_id": "fixture:xgo-cap-security-005",
+      "evidence_id": "security_policy"
     },
     {
       "area": "security",
@@ -318,7 +339,8 @@
       "id": "XGO-CAP-SECURITY-006",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-25",
-      "test_id": "fixture:xgo-cap-security-006"
+      "test_id": "fixture:xgo-cap-security-006",
+      "evidence_id": "security_policy"
     },
     {
       "area": "proxy",
@@ -332,7 +354,8 @@
       "id": "XGO-CAP-PROXY-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-25",
-      "test_id": "fixture:xgo-cap-proxy-001"
+      "test_id": "fixture:xgo-cap-proxy-001",
+      "evidence_id": "security_policy"
     },
     {
       "area": "http",
@@ -347,7 +370,8 @@
       "id": "XGO-CAP-HTTP-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-26",
-      "test_id": "fixture:xgo-cap-http-001"
+      "test_id": "fixture:xgo-cap-http-001",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "http",
@@ -362,7 +386,8 @@
       "id": "XGO-CAP-HTTP-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-27",
-      "test_id": "fixture:xgo-cap-http-002"
+      "test_id": "fixture:xgo-cap-http-002",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "http",
@@ -377,7 +402,8 @@
       "id": "XGO-CAP-HTTP-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-28",
-      "test_id": "fixture:xgo-cap-http-003"
+      "test_id": "fixture:xgo-cap-http-003",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "http",
@@ -392,7 +418,8 @@
       "id": "XGO-CAP-HTTP-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-29",
-      "test_id": "fixture:xgo-cap-http-004"
+      "test_id": "fixture:xgo-cap-http-004",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "http",
@@ -406,7 +433,8 @@
       "id": "XGO-CAP-HTTP-005",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-29",
-      "test_id": "fixture:xgo-cap-http-005"
+      "test_id": "fixture:xgo-cap-http-005",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "http",
@@ -420,7 +448,8 @@
       "id": "XGO-CAP-HTTP-006",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-30",
-      "test_id": "fixture:xgo-cap-http-006"
+      "test_id": "fixture:xgo-cap-http-006",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "retry",
@@ -435,7 +464,8 @@
       "id": "XGO-CAP-RETRY-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-31",
-      "test_id": "fixture:xgo-cap-retry-001"
+      "test_id": "fixture:xgo-cap-retry-001",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "bandwidth",
@@ -449,7 +479,8 @@
       "id": "XGO-CAP-BANDWIDTH-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-32",
-      "test_id": "fixture:xgo-cap-bandwidth-001"
+      "test_id": "fixture:xgo-cap-bandwidth-001",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "checksum",
@@ -463,7 +494,8 @@
       "id": "XGO-CAP-CHECKSUM-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-33",
-      "test_id": "fixture:xgo-cap-checksum-001"
+      "test_id": "fixture:xgo-cap-checksum-001",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "repair",
@@ -478,7 +510,8 @@
       "id": "XGO-CAP-REPAIR-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-34",
-      "test_id": "fixture:xgo-cap-repair-001"
+      "test_id": "fixture:xgo-cap-repair-001",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "finalization",
@@ -492,7 +525,8 @@
       "id": "XGO-CAP-FINALIZE-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-35",
-      "test_id": "fixture:xgo-cap-finalize-001"
+      "test_id": "fixture:xgo-cap-finalize-001",
+      "evidence_id": "transfer_core"
     },
     {
       "area": "request",
@@ -506,7 +540,8 @@
       "id": "XGO-CAP-REQUEST-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-36",
-      "test_id": "fixture:xgo-cap-request-002"
+      "test_id": "fixture:xgo-cap-request-002",
+      "evidence_id": "security_policy"
     },
     {
       "area": "ftp",
@@ -519,7 +554,8 @@
       "id": "XGO-CAP-FTP-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-37",
-      "test_id": "fixture:xgo-cap-ftp-001"
+      "test_id": "fixture:xgo-cap-ftp-001",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "metalink",
@@ -532,7 +568,8 @@
       "id": "XGO-CAP-METALINK-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-38",
-      "test_id": "fixture:xgo-cap-metalink-001"
+      "test_id": "fixture:xgo-cap-metalink-001",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "backend",
@@ -547,7 +584,8 @@
       "id": "XGO-CAP-BACKEND-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-39",
-      "test_id": "fixture:xgo-cap-backend-001"
+      "test_id": "fixture:xgo-cap-backend-001",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "backend",
@@ -561,7 +599,8 @@
       "id": "XGO-CAP-BACKEND-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-40",
-      "test_id": "fixture:xgo-cap-backend-002"
+      "test_id": "fixture:xgo-cap-backend-002",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "aria2",
@@ -575,7 +614,8 @@
       "id": "XGO-CAP-ARIA2-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-41",
-      "test_id": "fixture:xgo-cap-aria2-001"
+      "test_id": "fixture:xgo-cap-aria2-001",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "aria2",
@@ -589,7 +629,8 @@
       "id": "XGO-CAP-ARIA2-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-42",
-      "test_id": "fixture:xgo-cap-aria2-002"
+      "test_id": "fixture:xgo-cap-aria2-002",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "aria2",
@@ -604,7 +645,8 @@
       "id": "XGO-CAP-ARIA2-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-43",
-      "test_id": "fixture:xgo-cap-aria2-003"
+      "test_id": "fixture:xgo-cap-aria2-003",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "backend",
@@ -619,7 +661,8 @@
       "id": "XGO-CAP-BACKEND-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-43",
-      "test_id": "fixture:xgo-cap-backend-003"
+      "test_id": "fixture:xgo-cap-backend-003",
+      "evidence_id": "backend_execution"
     },
     {
       "area": "queue",
@@ -633,7 +676,8 @@
       "id": "XGO-CAP-QUEUE-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-44",
-      "test_id": "fixture:xgo-cap-queue-001"
+      "test_id": "fixture:xgo-cap-queue-001",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "queue",
@@ -646,7 +690,8 @@
       "id": "XGO-CAP-QUEUE-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-45",
-      "test_id": "fixture:xgo-cap-queue-002"
+      "test_id": "fixture:xgo-cap-queue-002",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "scheduler",
@@ -660,7 +705,8 @@
       "id": "XGO-CAP-SCHED-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-46",
-      "test_id": "fixture:xgo-cap-sched-001"
+      "test_id": "fixture:xgo-cap-sched-001",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "scheduler",
@@ -674,7 +720,8 @@
       "id": "XGO-CAP-SCHED-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-46",
-      "test_id": "fixture:xgo-cap-sched-002"
+      "test_id": "fixture:xgo-cap-sched-002",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "scheduler",
@@ -689,7 +736,8 @@
       "id": "XGO-CAP-SCHED-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-47",
-      "test_id": "fixture:xgo-cap-sched-003"
+      "test_id": "fixture:xgo-cap-sched-003",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "scheduler",
@@ -703,7 +751,8 @@
       "id": "XGO-CAP-SCHED-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-47",
-      "test_id": "fixture:xgo-cap-sched-004"
+      "test_id": "fixture:xgo-cap-sched-004",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "scheduler",
@@ -717,7 +766,8 @@
       "id": "XGO-CAP-SCHED-005",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-48",
-      "test_id": "fixture:xgo-cap-sched-005"
+      "test_id": "fixture:xgo-cap-sched-005",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "scheduler",
@@ -730,7 +780,8 @@
       "id": "XGO-CAP-SCHED-006",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-48",
-      "test_id": "fixture:xgo-cap-sched-006"
+      "test_id": "fixture:xgo-cap-sched-006",
+      "evidence_id": "scheduler_core"
     },
     {
       "area": "capture",
@@ -746,7 +797,8 @@
       "id": "XGO-CAP-CAPTURE-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-49",
-      "test_id": "fixture:xgo-cap-capture-001"
+      "test_id": "fixture:xgo-cap-capture-001",
+      "evidence_id": "media_core"
     },
     {
       "area": "capture",
@@ -760,7 +812,8 @@
       "id": "XGO-CAP-CAPTURE-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-50",
-      "test_id": "fixture:xgo-cap-capture-002"
+      "test_id": "fixture:xgo-cap-capture-002",
+      "evidence_id": "media_core"
     },
     {
       "area": "media",
@@ -774,7 +827,8 @@
       "id": "XGO-CAP-MEDIA-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-51",
-      "test_id": "fixture:xgo-cap-media-001"
+      "test_id": "fixture:xgo-cap-media-001",
+      "evidence_id": "media_core"
     },
     {
       "area": "media",
@@ -788,7 +842,8 @@
       "id": "XGO-CAP-MEDIA-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-52",
-      "test_id": "fixture:xgo-cap-media-002"
+      "test_id": "fixture:xgo-cap-media-002",
+      "evidence_id": "media_core"
     },
     {
       "area": "media",
@@ -803,7 +858,8 @@
       "id": "XGO-CAP-MEDIA-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-53",
-      "test_id": "fixture:xgo-cap-media-003"
+      "test_id": "fixture:xgo-cap-media-003",
+      "evidence_id": "media_core"
     },
     {
       "area": "media",
@@ -817,7 +873,8 @@
       "id": "XGO-CAP-MEDIA-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-51",
-      "test_id": "fixture:xgo-cap-media-004"
+      "test_id": "fixture:xgo-cap-media-004",
+      "evidence_id": "media_core"
     },
     {
       "area": "hls",
@@ -832,7 +889,8 @@
       "id": "XGO-CAP-HLS-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-54",
-      "test_id": "fixture:xgo-cap-hls-001"
+      "test_id": "fixture:xgo-cap-hls-001",
+      "evidence_id": "media_core"
     },
     {
       "area": "hls",
@@ -847,7 +905,8 @@
       "id": "XGO-CAP-HLS-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-55",
-      "test_id": "fixture:xgo-cap-hls-002"
+      "test_id": "fixture:xgo-cap-hls-002",
+      "evidence_id": "media_core"
     },
     {
       "area": "hls",
@@ -861,7 +920,8 @@
       "id": "XGO-CAP-HLS-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-55",
-      "test_id": "fixture:xgo-cap-hls-003"
+      "test_id": "fixture:xgo-cap-hls-003",
+      "evidence_id": "media_core"
     },
     {
       "area": "hls",
@@ -875,7 +935,8 @@
       "id": "XGO-CAP-HLS-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-55",
-      "test_id": "fixture:xgo-cap-hls-004"
+      "test_id": "fixture:xgo-cap-hls-004",
+      "evidence_id": "media_core"
     },
     {
       "area": "hls",
@@ -889,7 +950,8 @@
       "id": "XGO-CAP-HLS-005",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-56",
-      "test_id": "fixture:xgo-cap-hls-005"
+      "test_id": "fixture:xgo-cap-hls-005",
+      "evidence_id": "media_core"
     },
     {
       "area": "hls",
@@ -903,7 +965,8 @@
       "id": "XGO-CAP-HLS-006",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-57",
-      "test_id": "fixture:xgo-cap-hls-006"
+      "test_id": "fixture:xgo-cap-hls-006",
+      "evidence_id": "media_core"
     },
     {
       "area": "hls",
@@ -917,7 +980,8 @@
       "id": "XGO-CAP-HLS-007",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-57",
-      "test_id": "fixture:xgo-cap-hls-007"
+      "test_id": "fixture:xgo-cap-hls-007",
+      "evidence_id": "media_core"
     },
     {
       "area": "dash",
@@ -932,7 +996,8 @@
       "id": "XGO-CAP-DASH-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-58",
-      "test_id": "fixture:xgo-cap-dash-001"
+      "test_id": "fixture:xgo-cap-dash-001",
+      "evidence_id": "media_core"
     },
     {
       "area": "dash",
@@ -946,7 +1011,8 @@
       "id": "XGO-CAP-DASH-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-58",
-      "test_id": "fixture:xgo-cap-dash-002"
+      "test_id": "fixture:xgo-cap-dash-002",
+      "evidence_id": "media_core"
     },
     {
       "area": "dash",
@@ -961,7 +1027,8 @@
       "id": "XGO-CAP-DASH-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-59",
-      "test_id": "fixture:xgo-cap-dash-003"
+      "test_id": "fixture:xgo-cap-dash-003",
+      "evidence_id": "media_core"
     },
     {
       "area": "dash",
@@ -975,7 +1042,8 @@
       "id": "XGO-CAP-DASH-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-59",
-      "test_id": "fixture:xgo-cap-dash-004"
+      "test_id": "fixture:xgo-cap-dash-004",
+      "evidence_id": "media_core"
     },
     {
       "area": "ffmpeg",
@@ -989,7 +1057,8 @@
       "id": "XGO-CAP-FFMPEG-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-60",
-      "test_id": "fixture:xgo-cap-ffmpeg-001"
+      "test_id": "fixture:xgo-cap-ffmpeg-001",
+      "evidence_id": "media_core"
     },
     {
       "area": "ffmpeg",
@@ -1003,7 +1072,8 @@
       "id": "XGO-CAP-FFMPEG-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-60",
-      "test_id": "fixture:xgo-cap-ffmpeg-002"
+      "test_id": "fixture:xgo-cap-ffmpeg-002",
+      "evidence_id": "media_core"
     },
     {
       "area": "ffmpeg",
@@ -1017,7 +1087,8 @@
       "id": "XGO-CAP-FFMPEG-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-61",
-      "test_id": "fixture:xgo-cap-ffmpeg-003"
+      "test_id": "fixture:xgo-cap-ffmpeg-003",
+      "evidence_id": "media_core"
     },
     {
       "area": "ffmpeg",
@@ -1031,7 +1102,8 @@
       "id": "XGO-CAP-FFMPEG-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-61",
-      "test_id": "fixture:xgo-cap-ffmpeg-004"
+      "test_id": "fixture:xgo-cap-ffmpeg-004",
+      "evidence_id": "media_core"
     },
     {
       "area": "settings",
@@ -1046,7 +1118,8 @@
       "id": "XGO-CAP-OPS-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-62",
-      "test_id": "fixture:xgo-cap-ops-001"
+      "test_id": "fixture:xgo-cap-ops-001",
+      "evidence_id": "ops_core"
     },
     {
       "area": "secrets",
@@ -1060,7 +1133,8 @@
       "id": "XGO-CAP-OPS-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-63",
-      "test_id": "fixture:xgo-cap-ops-002"
+      "test_id": "fixture:xgo-cap-ops-002",
+      "evidence_id": "ops_core"
     },
     {
       "area": "diagnostics",
@@ -1075,7 +1149,8 @@
       "id": "XGO-CAP-OPS-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-64",
-      "test_id": "fixture:xgo-cap-ops-003"
+      "test_id": "fixture:xgo-cap-ops-003",
+      "evidence_id": "ops_core"
     },
     {
       "area": "diagnostics",
@@ -1089,7 +1164,8 @@
       "id": "XGO-CAP-OPS-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-64",
-      "test_id": "fixture:xgo-cap-ops-004"
+      "test_id": "fixture:xgo-cap-ops-004",
+      "evidence_id": "ops_core"
     },
     {
       "area": "import",
@@ -1103,7 +1179,8 @@
       "id": "XGO-CAP-OPS-005",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-65",
-      "test_id": "fixture:xgo-cap-ops-005"
+      "test_id": "fixture:xgo-cap-ops-005",
+      "evidence_id": "ops_core"
     },
     {
       "area": "android",
@@ -1116,7 +1193,8 @@
       "id": "XGO-CAP-ANDROID-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-66",
-      "test_id": "fixture:xgo-cap-android-001"
+      "test_id": "fixture:xgo-cap-android-001",
+      "evidence_id": "android_host"
     },
     {
       "area": "android",
@@ -1130,7 +1208,8 @@
       "id": "XGO-CAP-ANDROID-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-68",
-      "test_id": "fixture:xgo-cap-android-002"
+      "test_id": "fixture:xgo-cap-android-002",
+      "evidence_id": "android_host"
     },
     {
       "area": "android",
@@ -1144,7 +1223,8 @@
       "id": "XGO-CAP-ANDROID-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-69",
-      "test_id": "fixture:xgo-cap-android-003"
+      "test_id": "fixture:xgo-cap-android-003",
+      "evidence_id": "android_host"
     },
     {
       "area": "android",
@@ -1158,7 +1238,8 @@
       "id": "XGO-CAP-ANDROID-006",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-70",
-      "test_id": "fixture:xgo-cap-android-006"
+      "test_id": "fixture:xgo-cap-android-006",
+      "evidence_id": "android_host"
     },
     {
       "area": "android",
@@ -1172,7 +1253,8 @@
       "id": "XGO-CAP-ANDROID-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-71",
-      "test_id": "fixture:xgo-cap-android-004"
+      "test_id": "fixture:xgo-cap-android-004",
+      "evidence_id": "android_host"
     },
     {
       "area": "android",
@@ -1187,7 +1269,8 @@
       "id": "XGO-CAP-ANDROID-005",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-74",
-      "test_id": "fixture:xgo-cap-android-005"
+      "test_id": "fixture:xgo-cap-android-005",
+      "evidence_id": "android_host"
     },
     {
       "area": "android",
@@ -1202,7 +1285,8 @@
       "id": "XGO-CAP-ANDROID-007",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-75",
-      "test_id": "fixture:xgo-cap-android-007"
+      "test_id": "fixture:xgo-cap-android-007",
+      "evidence_id": "android_host"
     },
     {
       "area": "desktop",
@@ -1215,7 +1299,8 @@
       "id": "XGO-CAP-DESKTOP-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-76",
-      "test_id": "fixture:xgo-cap-desktop-001"
+      "test_id": "fixture:xgo-cap-desktop-001",
+      "evidence_id": "desktop_host"
     },
     {
       "area": "desktop",
@@ -1228,7 +1313,8 @@
       "id": "XGO-CAP-DESKTOP-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-77",
-      "test_id": "fixture:xgo-cap-desktop-002"
+      "test_id": "fixture:xgo-cap-desktop-002",
+      "evidence_id": "desktop_host"
     },
     {
       "area": "desktop",
@@ -1242,7 +1328,8 @@
       "id": "XGO-CAP-DESKTOP-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-78",
-      "test_id": "fixture:xgo-cap-desktop-003"
+      "test_id": "fixture:xgo-cap-desktop-003",
+      "evidence_id": "desktop_host"
     },
     {
       "area": "desktop",
@@ -1257,7 +1344,8 @@
       "id": "XGO-CAP-DESKTOP-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-80",
-      "test_id": "fixture:xgo-cap-desktop-004"
+      "test_id": "fixture:xgo-cap-desktop-004",
+      "evidence_id": "desktop_host"
     },
     {
       "area": "foundation",
@@ -1268,7 +1356,8 @@
       "id": "XGO-CAP-FOUNDATION-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-04",
-      "test_id": "fixture:xgo-cap-foundation-001"
+      "test_id": "fixture:xgo-cap-foundation-001",
+      "evidence_id": "foundation_core"
     },
     {
       "area": "foundation",
@@ -1279,7 +1368,8 @@
       "id": "XGO-CAP-FOUNDATION-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-05",
-      "test_id": "fixture:xgo-cap-foundation-002"
+      "test_id": "fixture:xgo-cap-foundation-002",
+      "evidence_id": "foundation_core"
     },
     {
       "area": "foundation",
@@ -1290,7 +1380,8 @@
       "id": "XGO-CAP-FOUNDATION-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-05",
-      "test_id": "fixture:xgo-cap-foundation-003"
+      "test_id": "fixture:xgo-cap-foundation-003",
+      "evidence_id": "foundation_core"
     },
     {
       "area": "foundation",
@@ -1301,7 +1392,8 @@
       "id": "XGO-CAP-FOUNDATION-004",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-05",
-      "test_id": "fixture:xgo-cap-foundation-004"
+      "test_id": "fixture:xgo-cap-foundation-004",
+      "evidence_id": "foundation_core"
     },
     {
       "area": "runtime",
@@ -1312,7 +1404,8 @@
       "id": "XGO-CAP-RUNTIME-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-08",
-      "test_id": "fixture:xgo-cap-runtime-001"
+      "test_id": "fixture:xgo-cap-runtime-001",
+      "evidence_id": "runtime_abi"
     },
     {
       "area": "runtime",
@@ -1323,7 +1416,8 @@
       "id": "XGO-CAP-RUNTIME-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-08",
-      "test_id": "fixture:xgo-cap-runtime-002"
+      "test_id": "fixture:xgo-cap-runtime-002",
+      "evidence_id": "runtime_abi"
     },
     {
       "area": "runtime",
@@ -1334,7 +1428,8 @@
       "id": "XGO-CAP-RUNTIME-003",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-08",
-      "test_id": "fixture:xgo-cap-runtime-003"
+      "test_id": "fixture:xgo-cap-runtime-003",
+      "evidence_id": "runtime_abi"
     },
     {
       "area": "runtime",
@@ -1345,7 +1440,8 @@
       "id": "XGO-CAP-PLATFORM-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-09",
-      "test_id": "fixture:xgo-cap-platform-001"
+      "test_id": "fixture:xgo-cap-platform-001",
+      "evidence_id": "runtime_abi"
     },
     {
       "area": "runtime",
@@ -1356,7 +1452,8 @@
       "id": "XGO-CAP-PLATFORM-002",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-09",
-      "test_id": "fixture:xgo-cap-platform-002"
+      "test_id": "fixture:xgo-cap-platform-002",
+      "evidence_id": "runtime_abi"
     },
     {
       "area": "runtime",
@@ -1367,7 +1464,8 @@
       "id": "XGO-CAP-ABI-001",
       "status": "IMPLEMENTED",
       "target_overlay": "XGO-10",
-      "test_id": "fixture:xgo-cap-abi-001"
+      "test_id": "fixture:xgo-cap-abi-001",
+      "evidence_id": "runtime_abi"
     }
   ],
   "donor_strategy_values": [

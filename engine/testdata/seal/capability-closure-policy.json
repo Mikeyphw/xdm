@@ -1,0 +1,500 @@
+{
+  "schema_version": 1,
+  "policy": "xgo-89-capability-closure-v1",
+  "allowed_final_statuses": [
+    "IMPLEMENTED",
+    "INTENTIONALLY_REMOVED"
+  ],
+  "evidence_groups": [
+    {
+      "id": "foundation_core",
+      "areas": [
+        "foundation"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/domain/identity",
+            "./engine/domain/resource",
+            "-count=1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "domain_model",
+      "areas": [
+        "domain"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/domain/...",
+            "-count=1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "durable_state",
+      "areas": [
+        "persistence",
+        "ownership",
+        "checkpoint",
+        "verification",
+        "publication",
+        "recovery"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/store/...",
+            "./engine/recovery/...",
+            "./engine/backends/migration",
+            "-count=1"
+          ]
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-store-audit",
+            "--mode",
+            "durable-gate",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        }
+      ]
+    },
+    {
+      "id": "security_policy",
+      "areas": [
+        "request",
+        "security",
+        "proxy"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/security/...",
+            "-count=1"
+          ]
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-security-audit",
+            "--mode",
+            "request",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-security-audit",
+            "--mode",
+            "header",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-security-audit",
+            "--mode",
+            "route",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-security-audit",
+            "--mode",
+            "dns",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-security-audit",
+            "--mode",
+            "redirect",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-security-audit",
+            "--mode",
+            "tlsproxy",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        }
+      ]
+    },
+    {
+      "id": "transfer_core",
+      "areas": [
+        "http",
+        "retry",
+        "bandwidth",
+        "checksum",
+        "repair",
+        "finalization"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/transfer/...",
+            "-count=1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backend_execution",
+      "areas": [
+        "ftp",
+        "metalink",
+        "backend",
+        "aria2"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/backends/...",
+            "./engine/transfer/metalink",
+            "-count=1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scheduler_core",
+      "areas": [
+        "queue",
+        "scheduler"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/scheduler/...",
+            "-count=1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "media_core",
+      "areas": [
+        "capture",
+        "media",
+        "hls",
+        "dash",
+        "ffmpeg"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/media/...",
+            "-count=1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ops_core",
+      "areas": [
+        "settings",
+        "secrets",
+        "diagnostics",
+        "import"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/ops/...",
+            "-count=1"
+          ]
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-ops-audit",
+            "--mode",
+            "ops_gate_suite",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        }
+      ]
+    },
+    {
+      "id": "runtime_abi",
+      "areas": [
+        "runtime"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "test",
+            "./engine/runtime/...",
+            "./engine/api/v1",
+            "./engine/bridge/cabi/...",
+            "-count=1"
+          ]
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-runtime-audit",
+            "--mode",
+            "runtime",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-runtime-audit",
+            "--mode",
+            "platform",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        }
+      ]
+    },
+    {
+      "id": "android_host",
+      "areas": [
+        "android"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "jni_bridge_instrumentation",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "engine_service_instrumentation",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "android_publication_faults",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "android_network_security",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "android_scheduler_authority",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "android_media_e2e",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "android_import_matrix",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "go",
+            "run",
+            "./engine/cmd/xgo-android-audit",
+            "--mode",
+            "android_legacy_authority_scan",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        }
+      ]
+    },
+    {
+      "id": "desktop_host",
+      "areas": [
+        "desktop"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "python3",
+            "tools/xgo/audit_desktop.py",
+            "--mode",
+            "engine-host",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "python3",
+            "tools/xgo/audit_desktop.py",
+            "--mode",
+            "publication",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "python3",
+            "tools/xgo/audit_desktop.py",
+            "--mode",
+            "platform-services",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "python3",
+            "tools/xgo/audit_desktop.py",
+            "--mode",
+            "desktop-e2e",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        },
+        {
+          "argv": [
+            "python3",
+            "tools/xgo/audit_desktop.py",
+            "--mode",
+            "legacy-authority",
+            "--output",
+            "{output}"
+          ],
+          "report": true
+        }
+      ]
+    }
+  ],
+  "fresh_architecture_policy": "engine/testdata/seal/single-authority-policy.json",
+  "final_engine_commands": [
+    [
+      "go",
+      "test",
+      "./engine/...",
+      "-count=1"
+    ],
+    [
+      "go",
+      "vet",
+      "./engine/..."
+    ]
+  ]
+}

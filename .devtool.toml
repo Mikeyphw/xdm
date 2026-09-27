@@ -2850,6 +2850,43 @@ outputs = [
   ".devtool/reports/xgo/seal/single-authority.json",
 ]
 
+[targets.xgo_seal.jobs.capability_closure_audit]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_seal.py",
+  "capability-closure",
+  "--output",
+  ".devtool/reports/xgo/seal/capability-closure.json",
+]
+inputs = [
+  "engine/docs/capability-ledger.yaml",
+  "engine/docs/donor-map.yaml",
+  "engine/testdata/fixture-registry.json",
+  "engine/testdata/**",
+  "engine/domain/**",
+  "engine/store/**",
+  "engine/recovery/**",
+  "engine/security/**",
+  "engine/transfer/**",
+  "engine/backends/**",
+  "engine/scheduler/**",
+  "engine/media/**",
+  "engine/ops/**",
+  "engine/runtime/**",
+  "engine/api/v1/**",
+  "engine/bridge/cabi/**",
+  "engine/cmd/xgo-android-audit/**",
+  "app/XDM.Android/**",
+  "app/XDM/src/XDM.App/**",
+  "app/XDM/src/XDM.Platform/**",
+  "tools/xgo/audit_desktop.py",
+  "tools/xgo/audit_seal.py",
+]
+outputs = [
+  ".devtool/reports/xgo/seal/capability-closure.json",
+]
+
 [targets.xgo_seal.workflows]
 validate = [
   { id = "bootstrap_contract", ref = "job:bootstrap_contract", depends_on = [] },
@@ -2861,6 +2898,7 @@ validate = [
   { id = "performance_budget", ref = "job:performance_budget", depends_on = ["fuzz_campaign"] },
   { id = "abi_provenance_audit", ref = "job:abi_provenance_audit", depends_on = ["performance_budget"] },
   { id = "single_authority_scan", ref = "job:single_authority_scan", depends_on = ["abi_provenance_audit"] },
+  { id = "capability_closure_audit", ref = "job:capability_closure_audit", depends_on = ["single_authority_scan"] },
 ]
 
 [targets.xgo_gate_spec]

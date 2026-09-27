@@ -1173,6 +1173,363 @@ def single_authority(args: argparse.Namespace) -> dict[str, Any]:
     _write(args.output, report)
     return report
 
+
+
+def _closure_document_gaps(
+    repo_root: Path,
+    ledger: dict[str, Any],
+    registry: dict[str, Any],
+    donor_map: dict[str, Any],
+    classifications: dict[str, Any],
+    policy: dict[str, Any],
+) -> tuple[list[str], dict[str, Any]]:
+    gaps: list[str] = []
+    for name, document in (
+        ("ledger", ledger),
+        ("fixture registry", registry),
+        ("donor map", donor_map),
+        ("differential classifications", classifications),
+        ("closure policy", policy),
+    ):
+        if int(document.get("schema_version") or 0) != 1:
+            gaps.append(f"{name}: unsupported schema_version {document.get('schema_version')!r}")
+
+    caps_raw = ledger.get("capabilities") or []
+    fixtures_raw = registry.get("fixtures") or []
+    donors_raw = donor_map.get("entries") or []
+    classifications_raw = classifications.get("classifications") or []
+    groups_raw = policy.get("evidence_groups") or []
+    if not isinstance(caps_raw, list) or not caps_raw:
+        gaps.append("ledger: capabilities must be a non-empty list")
+        caps_raw = []
+    if not isinstance(fixtures_raw, list):
+        gaps.append("fixture registry: fixtures must be a list")
+        fixtures_raw = []
+    if not isinstance(donors_raw, list):
+        gaps.append("donor map: entries must be a list")
+        donors_raw = []
+    if not isinstance(classifications_raw, list):
+        gaps.append("differential classifications: classifications must be a list")
+        classifications_raw = []
+    if not isinstance(groups_raw, list) or not groups_raw:
+        gaps.append("closure policy: evidence_groups must be a non-empty list")
+        groups_raw = []
+
+    capabilities: dict[str, dict[str, Any]] = {}
+    for item in caps_raw:
+        if not isinstance(item, dict):
+            gaps.append("ledger: capability entry is not an object")
+            continue
+        cid = str(item.get("id") or "")
+        if not cid:
+            gaps.append("ledger: capability has empty id")
+        elif cid in capabilities:
+            gaps.append(f"ledger: duplicate capability id {cid}")
+        else:
+            capabilities[cid] = item
+
+    fixture_meta: dict[str, dict[str, Any]] = {}
+    for item in fixtures_raw:
+        if not isinstance(item, dict):
+            gaps.append("fixture registry: fixture entry is not an object")
+            continue
+        fid = str(item.get("fixture_id") or "")
+        if not fid:
+            gaps.append("fixture registry: fixture has empty id")
+        elif fid in fixture_meta:
+            gaps.append(f"fixture registry: duplicate fixture id {fid}")
+        else:
+            fixture_meta[fid] = item
+    if registry.get("fixture_count") != len(fixtures_raw):
+        gaps.append(
+            f"fixture registry: fixture_count {registry.get('fixture_count')!r} does not match {len(fixtures_raw)} entries"
+        )
+
+    donor_ids = {str(item.get("id") or "") for item in donors_raw if isinstance(item, dict)}
+    if "" in donor_ids:
+        gaps.append("donor map: empty donor id")
+        donor_ids.discard("")
+
+    classification_map: dict[str, dict[str, Any]] = {}
+    for item in classifications_raw:
+        if not isinstance(item, dict):
+            gaps.append("differential classifications: entry is not an object")
+            continue
+        cid = str(item.get("capability_id") or "")
+        if not cid:
+            gaps.append("differential classifications: empty capability id")
+        elif cid in classification_map:
+            gaps.append(f"differential classifications: duplicate capability id {cid}")
+        else:
+            classification_map[cid] = item
+    if classifications.get("classification_count") != len(classifications_raw):
+        gaps.append(
+            "differential classifications: classification_count does not match entries"
+        )
+
+    groups: dict[str, dict[str, Any]] = {}
+    for item in groups_raw:
+        if not isinstance(item, dict):
+            gaps.append("closure policy: evidence group is not an object")
+            continue
+        gid = str(item.get("id") or "")
+        if not gid:
+            gaps.append("closure policy: evidence group has empty id")
+        elif gid in groups:
+            gaps.append(f"closure policy: duplicate evidence group {gid}")
+        else:
+            groups[gid] = item
+
+    allowed_statuses = {str(v) for v in policy.get("allowed_final_statuses") or []}
+    expected_statuses = {"IMPLEMENTED", "INTENTIONALLY_REMOVED"}
+    if allowed_statuses != expected_statuses:
+        gaps.append(
+            f"closure policy: allowed_final_statuses must be {sorted(expected_statuses)}, got {sorted(allowed_statuses)}"
+        )
+
+    if set(classification_map) != set(capabilities):
+        missing = sorted(set(capabilities) - set(classification_map))
+        extra = sorted(set(classification_map) - set(capabilities))
+        gaps.append(f"differential classifications: coverage mismatch missing={missing} extra={extra}")
+
+    referenced_fixtures: set[str] = set()
+    referenced_groups: set[str] = set()
+    status_counts: dict[str, int] = {}
+    area_counts: dict[str, int] = {}
+    group_counts: dict[str, int] = {}
+    rows: list[dict[str, Any]] = []
+
+    for cid in sorted(capabilities):
+        cap = capabilities[cid]
+        status = str(cap.get("status") or "")
+        area = str(cap.get("area") or "")
+        status_counts[status] = status_counts.get(status, 0) + 1
+        area_counts[area] = area_counts.get(area, 0) + 1
+        if status not in expected_statuses:
+            gaps.append(f"{cid}: non-final ledger status {status!r}")
+
+        donors = [str(v) for v in cap.get("donors") or []]
+        unknown_donors = sorted(set(donors) - donor_ids)
+        if unknown_donors:
+            gaps.append(f"{cid}: unknown donor ids {unknown_donors}")
+
+        test_id = str(cap.get("test_id") or "")
+        if not test_id.startswith("fixture:"):
+            gaps.append(f"{cid}: final capability must bind a neutral fixture, got {test_id!r}")
+            fixture_id = ""
+        else:
+            fixture_id = test_id.split(":", 1)[1]
+            referenced_fixtures.add(fixture_id)
+            meta = fixture_meta.get(fixture_id)
+            if meta is None:
+                gaps.append(f"{cid}: fixture {fixture_id!r} is missing from registry")
+            else:
+                if [str(v) for v in meta.get("capability_ids") or []] != [cid]:
+                    gaps.append(f"{cid}: fixture registry capability link mismatch")
+                path_text = str(meta.get("path") or "")
+                fixture_path = repo_root / path_text
+                if not fixture_path.is_file():
+                    gaps.append(f"{cid}: fixture file missing: {path_text}")
+                else:
+                    try:
+                        fixture = _load(fixture_path)
+                    except SealAuditError as exc:
+                        gaps.append(f"{cid}: {exc}")
+                    else:
+                        if int(fixture.get("schema_version") or 0) != 1:
+                            gaps.append(f"{cid}: fixture schema_version is not 1")
+                        if str(fixture.get("fixture_id") or "") != fixture_id:
+                            gaps.append(f"{cid}: fixture file id mismatch")
+                        if [str(v) for v in fixture.get("capability_ids") or []] != [cid]:
+                            gaps.append(f"{cid}: fixture file capability link mismatch")
+                        fixture_donors = [str(v) for v in fixture.get("donor_ids") or []]
+                        if fixture_donors != donors:
+                            gaps.append(f"{cid}: fixture donor ids drifted from ledger")
+                        if "expected" not in fixture:
+                            gaps.append(f"{cid}: fixture has no expected semantic outcome")
+
+        classification = classification_map.get(cid) or {}
+        cls = str(classification.get("classification") or "")
+        if cls == "regression":
+            gaps.append(f"{cid}: differential classification is regression")
+        if status == "IMPLEMENTED" and cls == "intentionally_removed":
+            gaps.append(f"{cid}: IMPLEMENTED capability classified intentionally_removed")
+        if status == "INTENTIONALLY_REMOVED":
+            if cls != "intentionally_removed":
+                gaps.append(f"{cid}: INTENTIONALLY_REMOVED capability classification is {cls!r}")
+            if not str(cap.get("removal_rationale") or "").strip():
+                gaps.append(f"{cid}: intentional removal lacks removal_rationale")
+
+        evidence_id = str(cap.get("evidence_id") or "")
+        group = groups.get(evidence_id)
+        if status == "IMPLEMENTED":
+            if group is None:
+                gaps.append(f"{cid}: implemented capability has unknown evidence_id {evidence_id!r}")
+            else:
+                group_areas = {str(v) for v in group.get("areas") or []}
+                if area not in group_areas:
+                    gaps.append(
+                        f"{cid}: evidence group {evidence_id} does not cover capability area {area!r}"
+                    )
+                commands = group.get("commands") or []
+                if not isinstance(commands, list) or not commands:
+                    gaps.append(f"{cid}: evidence group {evidence_id} has no executable commands")
+                referenced_groups.add(evidence_id)
+                group_counts[evidence_id] = group_counts.get(evidence_id, 0) + 1
+        elif evidence_id:
+            gaps.append(f"{cid}: intentionally removed capability must not claim implementation evidence")
+
+        rows.append(
+            {
+                "capability_id": cid,
+                "area": area,
+                "status": status,
+                "fixture_id": fixture_id,
+                "evidence_id": evidence_id,
+                "classification": cls,
+            }
+        )
+
+    extra_fixtures = sorted(set(fixture_meta) - referenced_fixtures)
+    if extra_fixtures:
+        gaps.append(f"fixture registry: unbound fixtures {extra_fixtures}")
+    unreferenced_groups = sorted(set(groups) - referenced_groups)
+    if unreferenced_groups:
+        gaps.append(f"closure policy: unreferenced evidence groups {unreferenced_groups}")
+
+    summary = {
+        "capability_count": len(capabilities),
+        "fixture_count": len(fixture_meta),
+        "donor_count": len(donor_ids),
+        "status_counts": dict(sorted(status_counts.items())),
+        "area_counts": dict(sorted(area_counts.items())),
+        "evidence_group_counts": dict(sorted(group_counts.items())),
+        "rows": rows,
+    }
+    return gaps, summary
+
+
+def _run_closure_evidence_group(group: dict[str, Any], temp: Path) -> dict[str, Any]:
+    gid = str(group.get("id") or "")
+    commands: list[dict[str, Any]] = []
+    for index, spec in enumerate(group.get("commands") or []):
+        if not isinstance(spec, dict):
+            raise SealAuditError(f"closure evidence group {gid}: command {index} is not an object")
+        argv_raw = spec.get("argv") or []
+        if not isinstance(argv_raw, list) or not argv_raw:
+            raise SealAuditError(f"closure evidence group {gid}: command {index} has no argv")
+        report_path = temp / f"{gid}-{index}.json"
+        argv = [str(value).replace("{output}", str(report_path)) for value in argv_raw]
+        command = _run(argv)
+        if bool(spec.get("report")):
+            if not report_path.is_file():
+                raise SealAuditError(f"closure evidence group {gid}: command {index} did not produce {report_path}")
+            report = _load(report_path)
+            if not _report_passed(report):
+                raise SealAuditError(f"closure evidence group {gid}: report {index} did not pass")
+            command["report_sha256"] = _sha256(report_path)
+            command["report_status"] = "pass"
+        commands.append(command)
+    return {
+        "id": gid,
+        "areas": [str(v) for v in group.get("areas") or []],
+        "status": "pass",
+        "commands": commands,
+    }
+
+
+def capability_closure(args: argparse.Namespace) -> dict[str, Any]:
+    repo_root = Path.cwd().resolve()
+    ledger = _load(args.ledger)
+    registry = _load(args.registry)
+    donor_map = _load(args.donor_map)
+    classifications = _load(args.classifications)
+    policy = _load(args.policy)
+    gaps, summary = _closure_document_gaps(
+        repo_root, ledger, registry, donor_map, classifications, policy
+    )
+    if gaps:
+        raise SealAuditError(f"capability closure has {len(gaps)} open gap(s): {gaps[:20]}")
+
+    # Audit the audit: known-invalid in-memory variants must be rejected before
+    # the repository is trusted as closed.
+    negative_results: list[dict[str, str]] = []
+    mutations: list[tuple[str, callable]] = [
+        ("planned_status", lambda doc: doc["capabilities"][0].__setitem__("status", "PLANNED")),
+        ("missing_evidence", lambda doc: doc["capabilities"][0].__setitem__("evidence_id", "")),
+        ("missing_fixture", lambda doc: doc["capabilities"][0].__setitem__("test_id", "fixture:missing-xgo89")),
+    ]
+    for name, mutate in mutations:
+        mutated = json.loads(json.dumps(ledger))
+        mutate(mutated)
+        negative_gaps, _ = _closure_document_gaps(
+            repo_root, mutated, registry, donor_map, classifications, policy
+        )
+        if not negative_gaps:
+            raise SealAuditError(f"capability closure negative self-test {name} was not rejected")
+        negative_results.append({"id": name, "status": "rejected"})
+
+    groups = {str(item.get("id") or ""): item for item in policy.get("evidence_groups") or []}
+    evidence_results: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="xgo-seal-closure-") as tmp:
+        temp = Path(tmp)
+        for gid in sorted(summary["evidence_group_counts"]):
+            evidence_results.append(_run_closure_evidence_group(groups[gid], temp))
+
+    single_policy_path = repo_root / str(policy.get("fresh_architecture_policy") or "")
+    single_policy = _load(single_policy_path)
+    if int(single_policy.get("schema_version") or 0) != 1:
+        raise SealAuditError("capability closure fresh architecture policy schema is unsupported")
+    fresh_architecture = _single_authority_static_scan(repo_root, single_policy)
+
+    final_commands: list[dict[str, Any]] = []
+    for raw in policy.get("final_engine_commands") or []:
+        if not isinstance(raw, list) or not raw:
+            raise SealAuditError("capability closure final_engine_commands contains an invalid command")
+        final_commands.append(_run([str(v) for v in raw]))
+
+    implemented = int(summary["status_counts"].get("IMPLEMENTED", 0))
+    removed = int(summary["status_counts"].get("INTENTIONALLY_REMOVED", 0))
+    if implemented + removed != int(summary["capability_count"]):
+        raise SealAuditError("capability closure status accounting is inconsistent")
+
+    report = {
+        "schema_version": 1,
+        "status": "pass",
+        "policy": policy.get("policy"),
+        "open_gap_count": 0,
+        "remediation_required": False,
+        "remediation_contract": "Any future open gap blocks XGO-89 and requires an explicit XGO-RMxx overlay plus regression evidence before rerunning the affected gate.",
+        "closure": summary,
+        "evidence_groups": evidence_results,
+        "fresh_architecture_audit": {
+            "status": "pass",
+            "desktop_active_source_files_scanned": fresh_architecture.get("desktop_active_source_files_scanned"),
+            "android_authority_surfaces_scanned": fresh_architecture.get("android_authority_surfaces_scanned"),
+            "quarantined_source_count": fresh_architecture.get("quarantined_source_count"),
+            "negative_fixtures": fresh_architecture.get("negative_fixtures"),
+            "go_authority": fresh_architecture.get("go_authority"),
+        },
+        "negative_self_tests": negative_results,
+        "final_engine_commands": final_commands,
+        "gate12_remaining_host_qualification": {
+            "go_race": "must execute on a Go race-supported host",
+            "android": "complete Gradle/package/device qualification",
+            "desktop": "complete .NET build/test/package qualification",
+            "final_gate": "xgo_gate_final composes cross-host qualification followed by the full xgo_seal workflow",
+        },
+    }
+    report["closure_fingerprint"] = _canonical_hash(
+        {
+            "closure": summary,
+            "evidence": [item["id"] for item in evidence_results],
+            "fresh_architecture": report["fresh_architecture_audit"],
+            "open_gap_count": 0,
+        }
+    )
+    _write(args.output, report)
+    return report
+
 def _source_const(path: Path, name: str) -> str:
     source = path.read_text(encoding="utf-8")
     match = re.search(rf"(?m)^\s*(?:const\s+)?{re.escape(name)}\s*=\s*(\"[^\"]*\"|-?\d+)\s*$", source)
@@ -1377,6 +1734,14 @@ def main() -> int:
     authority.add_argument("--policy", type=Path, default=Path("engine/testdata/seal/single-authority-policy.json"))
     authority.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/single-authority.json"))
 
+    closure = sub.add_parser("capability-closure", help="close the capability ledger against fresh executable evidence")
+    closure.add_argument("--ledger", type=Path, default=Path("engine/docs/capability-ledger.yaml"))
+    closure.add_argument("--registry", type=Path, default=Path("engine/testdata/fixture-registry.json"))
+    closure.add_argument("--donor-map", type=Path, default=Path("engine/docs/donor-map.yaml"))
+    closure.add_argument("--classifications", type=Path, default=Path("engine/testdata/seal/differential-classifications.json"))
+    closure.add_argument("--policy", type=Path, default=Path("engine/testdata/seal/capability-closure-policy.json"))
+    closure.add_argument("--output", type=Path, default=Path(".devtool/reports/xgo/seal/capability-closure.json"))
+
     args = parser.parse_args()
     try:
         if args.command == "differential":
@@ -1393,8 +1758,10 @@ def main() -> int:
             report = performance_budget(args)
         elif args.command == "abi-provenance":
             report = abi_provenance(args)
-        else:
+        elif args.command == "single-authority":
             report = single_authority(args)
+        else:
+            report = capability_closure(args)
     except SealAuditError as exc:
         print(f"XGO seal audit FAILED: {exc}", file=sys.stderr)
         return 1
