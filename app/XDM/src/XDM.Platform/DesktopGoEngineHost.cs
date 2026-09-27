@@ -13,6 +13,11 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
 {
     private const int Ok = 0;
     private const int TimeoutStatus = 4;
+    private const string ExpectedEngineVersion = "0.1.0-dev";
+    private const int ExpectedProtocolMajor = 1;
+    private const int ExpectedProtocolMinor = 0;
+    private const int ExpectedAbiMajor = 1;
+    private const int ExpectedSchemaVersion = 0;
     private readonly DesktopGoPlatformDispatcher _dispatcher;
     private readonly string _statePath;
     private CancellationTokenSource? _pumpCancellation;
@@ -215,11 +220,20 @@ public sealed class DesktopGoEngineHost : IAsyncDisposable
         byte[] bytes = CopyAndFree(buffer);
         using JsonDocument document = JsonDocument.Parse(bytes);
         JsonElement root = document.RootElement;
+        string engineVersion = root.GetProperty("engine_version").GetString() ?? string.Empty;
+        JsonElement protocol = root.GetProperty("protocol");
+        int protocolMajor = protocol.GetProperty("major").GetInt32();
+        int protocolMinor = protocol.GetProperty("minor").GetInt32();
         int abiMajor = root.GetProperty("abi_major").GetInt32();
-        int protocolMajor = root.GetProperty("protocol").GetProperty("major").GetInt32();
-        if (abiMajor != 1 || protocolMajor != 1)
+        int schemaVersion = root.GetProperty("schema_version").GetInt32();
+        if (!string.Equals(engineVersion, ExpectedEngineVersion, StringComparison.Ordinal)
+            || protocolMajor != ExpectedProtocolMajor
+            || protocolMinor != ExpectedProtocolMinor
+            || abiMajor != ExpectedAbiMajor
+            || schemaVersion != ExpectedSchemaVersion)
         {
-            throw new InvalidOperationException($"Unsupported xdmcore ABI/protocol: abi={abiMajor}, protocol={protocolMajor}.");
+            throw new InvalidOperationException(
+                $"Unsupported xdmcore metadata: engine={engineVersion}, protocol={protocolMajor}.{protocolMinor}, abi={abiMajor}, schema={schemaVersion}.");
         }
     }
 

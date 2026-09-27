@@ -167,6 +167,13 @@ public sealed class DesktopGoHostTests
         Assert.Contains("DesktopGoEngineHost", app, StringComparison.Ordinal);
         Assert.Contains("xdm_engine_create", host, StringComparison.Ordinal);
         Assert.Contains("xdm_engine_platform_reply", host, StringComparison.Ordinal);
+        Assert.Contains("engine_version", host, StringComparison.Ordinal);
+        Assert.Contains("schema_version", host, StringComparison.Ordinal);
+        Assert.Contains("ExpectedEngineVersion = \"0.1.0-dev\"", host, StringComparison.Ordinal);
+        Assert.Contains("ExpectedProtocolMajor = 1", host, StringComparison.Ordinal);
+        Assert.Contains("ExpectedProtocolMinor = 0", host, StringComparison.Ordinal);
+        Assert.Contains("ExpectedAbiMajor = 1", host, StringComparison.Ordinal);
+        Assert.Contains("ExpectedSchemaVersion = 0", host, StringComparison.Ordinal);
         Assert.DoesNotContain("IDownloadManager", host, StringComparison.Ordinal);
     }
 

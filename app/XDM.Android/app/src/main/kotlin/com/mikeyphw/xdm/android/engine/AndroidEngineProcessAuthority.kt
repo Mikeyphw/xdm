@@ -64,6 +64,12 @@ class AndroidEngineProcessAuthority(context: Context) {
             .toString()
             .toByteArray(Charsets.UTF_8)
         val nextBridge = AndroidGoEngineBridge().also { it.create(createConfig) }
+        try {
+            validateEngineMetadata(nextBridge.metadata())
+        } catch (error: Throwable) {
+            nextBridge.close()
+            throw error
+        }
         val nextIdentity = "android-go-engine-${System.currentTimeMillis()}"
         bridge = nextBridge
         engineIdentity = nextIdentity
@@ -176,6 +182,17 @@ class AndroidEngineProcessAuthority(context: Context) {
         }
     }
 
+
+    private fun validateEngineMetadata(bytes: ByteArray) {
+        val metadata = JSONObject(String(bytes, Charsets.UTF_8))
+        val protocol = metadata.optJSONObject("protocol") ?: error("xdmcore metadata protocol is missing")
+        require(metadata.optString("engine_version") == EXPECTED_ENGINE_VERSION) { "xdmcore engine version mismatch" }
+        require(protocol.optInt("major", -1) == EXPECTED_PROTOCOL_MAJOR) { "xdmcore protocol major mismatch" }
+        require(protocol.optInt("minor", -1) == EXPECTED_PROTOCOL_MINOR) { "xdmcore protocol minor mismatch" }
+        require(metadata.optInt("abi_major", -1) == EXPECTED_ABI_MAJOR) { "xdmcore ABI major mismatch" }
+        require(metadata.optInt("schema_version", -1) == EXPECTED_SCHEMA_VERSION) { "xdmcore schema version mismatch" }
+    }
+
     private fun startFramePump(currentBridge: AndroidGoEngineBridge) {
         framePump?.cancel()
         val dispatcher = AndroidPlatformRequestDispatcher(
@@ -264,6 +281,11 @@ class AndroidEngineProcessAuthority(context: Context) {
         .joinToString("") { byte -> "%02x".format(byte) }
 
     private companion object {
+        const val EXPECTED_ENGINE_VERSION = "0.1.0-dev"
+        const val EXPECTED_PROTOCOL_MAJOR = 1
+        const val EXPECTED_PROTOCOL_MINOR = 0
+        const val EXPECTED_ABI_MAJOR = 1
+        const val EXPECTED_SCHEMA_VERSION = 0
         const val FRAME_POLL_TIMEOUT_MS = 250
         const val FRAME_IDLE_BACKOFF_MS = 25L
         const val UI_COMMAND_TIMEOUT_MS = 10_000L
