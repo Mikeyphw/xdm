@@ -21,3 +21,8 @@ media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffmpeg.so
 media-ffmpeg/src/main/jniLibs/arm64-v8a/libxdm_ffprobe.so
 media-ffmpeg/runtime/ffmpeg-runtime.lock.json
 media-ffmpeg/runtime/licenses/
+# Generated XGO Android JNI core. Built by tools/xgo/build_android_xdmcore.py.
+app/src/main/jniLibs/arm64-v8a/libxdmcore.so
+app/src/main/jniLibs/arm64-v8a/libxdmcore.h
+# Legacy/manual external SQLite payload is forbidden; the builder removes it.
+app/src/main/jniLibs/arm64-v8a/libsqlite3.so

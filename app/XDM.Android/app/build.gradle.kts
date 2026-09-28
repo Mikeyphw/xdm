@@ -40,6 +40,35 @@ val requireAlignedFfmpegRuntime = providers.gradleProperty("xdm.requireFfmpegRun
     .map(String::toBoolean)
     .orElse(false)
 
+// XGO native core is a first-class Android packaging input. Building it here
+// prevents assemble/instrumentation from silently producing an APK that starts
+// without libxdmcore.so. The builder owns Android/arm64 toolchain resolution,
+// embedded SQLite linkage and 16 KiB ELF validation.
+val xgoRepositoryRoot = rootProject.projectDir.parentFile.parentFile
+val xgoNativeCoreBuilder = xgoRepositoryRoot.resolve("tools/xgo/build_android_xdmcore.py")
+val xgoNativeCoreSo = file("src/main/jniLibs/arm64-v8a/libxdmcore.so")
+val xgoNativeCoreHeader = file("src/main/jniLibs/arm64-v8a/libxdmcore.h")
+val xgoNativeCoreProvenance = file("src/main/assets/xdmcore/xdmcore-provenance.json")
+
+val buildXgoNativeCore = tasks.register<Exec>("buildXgoNativeCore") {
+    group = "build"
+    description = "Build and verify the Android/arm64 XGO JNI core with embedded SQLite."
+    workingDir(xgoRepositoryRoot)
+    commandLine("python3", xgoNativeCoreBuilder.absolutePath, "--execute")
+    inputs.file(xgoRepositoryRoot.resolve("go.work"))
+    inputs.file(xgoNativeCoreBuilder)
+    inputs.files(fileTree(xgoRepositoryRoot.resolve("engine")) {
+        exclude("**/.devtool/**", "**/build/**")
+    })
+    outputs.files(xgoNativeCoreSo, xgoNativeCoreHeader, xgoNativeCoreProvenance)
+}
+
+// Every APK-producing variant reaches merge*NativeLibs. Binding here covers
+// debug, androidTest, developmentUnsigned and release without task-name lists.
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }.configureEach {
+    dependsOn(buildXgoNativeCore)
+}
+
 fun validationEvidence(propertyName: String): Boolean = providers.gradleProperty(propertyName)
     .map(String::toBoolean)
     .orElse(false)
@@ -151,6 +180,7 @@ android {
         // repeatedly invoking the unavailable glibc/qemu strip path.
         jniLibs.keepDebugSymbols += setOf(
             "**/libaria2c.so",
+            "**/libxdmcore.so",
             "**/libxdm_ffmpeg.so",
             "**/libxdm_ffprobe.so",
             "**/libandroidx.graphics.path.so",

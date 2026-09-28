@@ -1,24 +1,26 @@
 # SQLite backend portability contract
 
 XGO uses SQLite through a small Go-owned cgo binding to SQLite's stable C ABI.
-The Go engine does not depend on a third-party Go SQLite module and does not
-expose SQLite handles outside `engine/store/sqlite`.
+SQLite handles remain private to `engine/store/sqlite`; repository/schema/CAS
+semantics do not depend on the host packaging strategy.
 
 ## Runtime linkage
 
-The cgo implementation links `-lsqlite3`. The packaging layer for each host is
-responsible for making a compatible SQLite library available:
+Android uses the same embedded-amalgamation approach already proven by
+chrootctl: `github.com/mattn/go-sqlite3` contributes its SQLite amalgamation to
+the final Go/cgo link, while XGO's own binding continues to call the stable
+`sqlite3_*` C API. Android therefore does **not** link `-lsqlite3`, does not use
+Android hidden/private SQLite symbols, and does not require a separately
+packaged `libsqlite3.so`.
 
-- Termux/native Android development: Termux `libsqlite3`.
-- Android application packaging: ship/link an app-owned SQLite library through
-  the NDK build; do not depend on Android hidden/private SQLite symbols.
+Other hosts retain their existing external SQLite linkage contract:
+
 - Linux: system or application-packaged `libsqlite3`.
 - macOS: system or application-packaged SQLite according to release policy.
 - Windows: application-packaged SQLite import library/DLL.
 
-Those packaging adapters are intentionally later host work. The authoritative
-schema, migration semantics, repository API and CAS behavior are independent of
-how the host supplies the SQLite C library.
+The Android native builder verifies that `libxdmcore.so` has no dynamic
+`libsqlite3.so` dependency before it is accepted for application packaging.
 
 ## No-cgo behavior
 
