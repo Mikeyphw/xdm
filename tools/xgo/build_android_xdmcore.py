@@ -483,7 +483,7 @@ def execute(data: dict) -> dict:
                 "CC": lane.cc,
                 "CC_FOR_TARGET": lane.cc,
                 "CGO_CFLAGS": " ".join(
-                    ["-O2", "-fPIC", *(f"-I{path}" for path in jni_include_dirs)]
+                    ["-O2", "-fPIC", *(f"-isystem {path}" for path in jni_include_dirs)]
                 ),
                 "CGO_LDFLAGS": _base_ldflags(lane.extra_ldflags),
             }

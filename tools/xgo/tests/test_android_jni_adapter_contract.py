@@ -41,3 +41,13 @@ def test_jni_translation_unit_is_android_guarded():
     adapter = (ROOT / "engine/bridge/cabi/jni_android.c").read_text()
     assert adapter.startswith("#ifdef __ANDROID__")
     assert adapter.rstrip().endswith("#endif")
+
+def test_jni_headers_are_system_includes_not_user_includes():
+    source = BUILDER.read_text()
+    execute = source[source.index("def execute"):source.index("def main")]
+    assert '*(f"-isystem {path}" for path in jni_include_dirs)' in execute
+    assert '*(f"-I{path}" for path in jni_include_dirs)' not in execute
+
+    probe = source[source.index("def _probe_compiler"):source.index("def resolve_compiler")]
+    assert "jni_include_dirs" not in probe
+
