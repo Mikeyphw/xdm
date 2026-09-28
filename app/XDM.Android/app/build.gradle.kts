@@ -63,9 +63,19 @@ val buildXgoNativeCore = tasks.register<Exec>("buildXgoNativeCore") {
     outputs.files(xgoNativeCoreSo, xgoNativeCoreHeader, xgoNativeCoreProvenance)
 }
 
-// Every APK-producing variant reaches merge*NativeLibs. Binding here covers
-// debug, androidTest, developmentUnsigned and release without task-name lists.
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }.configureEach {
+// buildXgoNativeCore writes generated JNI and provenance files into the app's
+// main jniLibs/assets source roots. Gradle validates producer ownership at the
+// first source-set merge, before merge*NativeLibs. Bind every merge family that
+// can consume those generated files so ordering remains explicit for debug,
+// androidTest, developmentUnsigned, release, and future variants.
+tasks.matching {
+    val taskName = it.name
+    taskName.startsWith("merge") && (
+        taskName.endsWith("JniLibFolders") ||
+            taskName.endsWith("Assets") ||
+            taskName.endsWith("NativeLibs")
+        )
+}.configureEach {
     dependsOn(buildXgoNativeCore)
 }
 

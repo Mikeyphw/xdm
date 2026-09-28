@@ -60,3 +60,20 @@ def test_dynamic_dependency_policy_rejects_versioned_termux_sonames():
     needed = re.findall(r"\(NEEDED\).*?\[([^\]]+)\]", sample)
     forbidden = sorted(name for name in needed if name == "libsqlite3.so" or ".so." in name)
     assert forbidden == ["libz.so.1"]
+
+def test_gradle_declares_native_builder_dependency_for_all_generated_source_consumers():
+    root = MODULE_PATH.parents[2]
+    gradle = (root / "app/XDM.Android/app/build.gradle.kts").read_text(encoding="utf-8")
+
+    # buildXgoNativeCore writes into src/main/jniLibs and src/main/assets.
+    # Gradle 9.7+ validates ownership at the source-set merge tasks themselves,
+    # not only at the later merge*NativeLibs task.
+    assert 'taskName.endsWith("JniLibFolders")' in gradle
+    assert 'taskName.endsWith("Assets")' in gradle
+    assert 'taskName.endsWith("NativeLibs")' in gradle
+    assert "dependsOn(buildXgoNativeCore)" in gradle
+
+    native_block = gradle[gradle.index("// buildXgoNativeCore writes generated JNI"):]
+    native_block = native_block[:native_block.index("fun validationEvidence")]
+    assert native_block.count("dependsOn(buildXgoNativeCore)") == 1
+
