@@ -63,3 +63,14 @@ transaction. It preserves the authoritative full Android validation phase
 matrix and intentionally does not absorb unrelated local Devtool-wrapper work.
 The SQLite/JNI remediation remains a focused post-GATE-12 implementation
 artifact; final qualification stays separate.
+
+
+## V5 cgo platform-constraint correction
+
+The v4 runtime verifier correctly exposed a remaining `DT_NEEDED: libsqlite3.so`.
+The root cause was the cgo directive `#cgo linux LDFLAGS: -lsqlite3`: for cgo
+constraint evaluation, Android also satisfies the Linux condition. V5 changes
+that directive to `#cgo linux,!android LDFLAGS: -lsqlite3`, so ordinary Linux
+continues to use the system SQLite library while Android relies exclusively on
+the embedded `mattn/go-sqlite3` amalgamation. The regression test now locks this
+platform exclusion explicitly.

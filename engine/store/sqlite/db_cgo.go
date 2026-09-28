@@ -3,7 +3,7 @@
 package sqlite
 
 /*
-#cgo linux LDFLAGS: -lsqlite3
+#cgo linux,!android LDFLAGS: -lsqlite3
 #cgo darwin LDFLAGS: -lsqlite3
 #cgo windows LDFLAGS: -lsqlite3
 #include <stdlib.h>

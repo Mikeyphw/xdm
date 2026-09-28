@@ -39,6 +39,10 @@ def test_android_sqlite_binding_uses_embedded_amalgamation():
     android = (root / "engine/store/sqlite/db_android_amalgamation.go").read_text(encoding="utf-8")
     gomod = (root / "engine/go.mod").read_text(encoding="utf-8")
     assert "#cgo android LDFLAGS: -lsqlite3" not in cgo
+    # cgo treats Android as satisfying the linux condition as well. The
+    # system-SQLite linker directive must therefore explicitly exclude Android.
+    assert "#cgo linux,!android LDFLAGS: -lsqlite3" in cgo
+    assert "#cgo linux LDFLAGS: -lsqlite3" not in cgo
     assert '_ "github.com/mattn/go-sqlite3"' in android
     assert "github.com/mattn/go-sqlite3 v1.14.50" in gomod
 
