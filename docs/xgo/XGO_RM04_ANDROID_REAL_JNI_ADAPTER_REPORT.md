@@ -21,3 +21,15 @@ runtime JNI implementation.
 Because the native library changes, the previously built APK is invalidated.
 Keep the earlier dependency/unit/XGO-seal checkpoint, but rebuild the Android
 package boundary before lint and physical instrumentation.
+
+## RM04 v2 builder correction
+
+RM04 v1 accidentally attached the JNI include flags to `_probe_compiler()`
+instead of the real Android build environment. That made the compiler probe
+reference `jni_include_dirs` before it existed and left `execute()` without
+the JNI include paths.
+
+RM04 v2 keeps the generic compiler probe independent of JNI headers and applies
+the resolved JNI include directories only to the actual Android cgo build.
+No JNI ABI or Kotlin bridge semantics changed.
+
