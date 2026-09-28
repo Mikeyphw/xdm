@@ -48,6 +48,35 @@ def _write(path: Path | None, payload: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+
+def _audit_artifact_paths(target_name: str, target: dict[str, Any]) -> None:
+    root = str(target.get("root") or ".").strip().replace("\\", "/").rstrip("/")
+    if not root or root == ".":
+        return
+    artifacts = target.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return
+
+    def check(field: str, raw: Any) -> None:
+        if not isinstance(raw, str) or not raw.strip():
+            return
+        value = raw.strip().replace("\\", "/")
+        while value.startswith("./"):
+            value = value[2:]
+        if value == root or value.startswith(root + "/"):
+            resolved = f"{root}/{value}"
+            raise TopologyError(
+                f"{target_name}: artifacts.{field} must be target-root-relative; "
+                f"target root is {root!r}, got {raw!r}, which would resolve as {resolved!r}"
+            )
+
+    check("output_directory", artifacts.get("output_directory"))
+    paths = artifacts.get("paths")
+    if isinstance(paths, list):
+        for index, value in enumerate(paths):
+            check(f"paths[{index}]", value)
+
+
 def _steps(target_name: str, target: dict[str, Any]) -> list[dict[str, Any]]:
     workflows = target.get("workflows")
     if not isinstance(workflows, dict):
@@ -110,6 +139,13 @@ def audit(config_path: Path, output: Path | None, only_target: str = "") -> dict
     xgo_group = groups.get("xgo")
     if not isinstance(xgo_group, list) or [str(v) for v in xgo_group] != SUBSYSTEM_TARGETS:
         raise TopologyError("workspace.groups.xgo must list all subsystem targets in canonical order")
+
+    # Artifact paths are interpreted relative to each target root by Devtool.
+    # Reject configurations that repeat the root and would therefore resolve to
+    # duplicated paths such as app/XDM.Android/app/XDM.Android/...
+    for target_name, target_value in targets.items():
+        if isinstance(target_value, dict):
+            _audit_artifact_paths(str(target_name), target_value)
 
     inspected: dict[str, Any] = {}
     names = [only_target] if only_target else expected

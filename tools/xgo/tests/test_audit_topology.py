@@ -94,6 +94,49 @@ class TopologyAuditTests(unittest.TestCase):
         report = audit(config, None, only_target="xgo_gate_android")
         self.assertEqual(report["inspected"]["xgo_gate_android"]["validate_node_count"], 3)
 
+
+    def test_artifact_paths_must_be_target_root_relative(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
+        config = root/".devtool.toml"
+        make_config(config)
+        text = config.read_text()
+        text += """
+[targets.xdm_android]
+runner = "android"
+root = "app/XDM.Android"
+execution_environment = "native-termux"
+
+[targets.xdm_android.artifacts]
+output_directory = "app/XDM.Android/app/build/outputs/apk/debug"
+paths = ["app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk"]
+"""
+        config.write_text(text)
+        with self.assertRaisesRegex(TopologyError, "must be target-root-relative"):
+            audit(config, None, only_target="xgo_seal")
+
+    def test_target_relative_artifact_paths_are_allowed(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
+        config = root/".devtool.toml"
+        make_config(config)
+        text = config.read_text()
+        text += """
+[targets.xdm_android]
+runner = "android"
+root = "app/XDM.Android"
+execution_environment = "native-termux"
+
+[targets.xdm_android.artifacts]
+output_directory = "app/build/outputs/apk/debug"
+paths = [
+    "app/build/outputs/apk/debug/app-debug.apk",
+    "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+"""
+        config.write_text(text)
+        report = audit(config, None, only_target="xgo_seal")
+        self.assertEqual(report["status"], "pass")
+
+
     def test_cycle_rejected(self) -> None:
         root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
         config = root/".devtool.toml"

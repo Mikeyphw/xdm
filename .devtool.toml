@@ -228,13 +228,15 @@ lint = [":app:lintDebug"]
 clean = ["clean"]
 
 [targets.xdm_android.artifacts]
-output_directory = "app/XDM.Android/app/build/outputs/apk/debug"
+# Artifact paths are resolved relative to targets.xdm_android.root
+# ("app/XDM.Android"). Do not repeat the target root here.
+output_directory = "app/build/outputs/apk/debug"
 required = false
 external_verification = "required"
 verify = false
 paths = [
-    "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
-    "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+    "app/build/outputs/apk/debug/app-debug.apk",
+    "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
 ]
 recursive = true
 
