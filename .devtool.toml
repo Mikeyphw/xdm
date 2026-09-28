@@ -3415,3 +3415,224 @@ validate = [
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_host_final"] },
   { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] }
 ]
+
+[targets.xgo_wrapper]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "devtoolw",
+  "tools/xgo/validate-devtool-wrapper.py",
+  "docs/xgo/DEVTOOL_WRAPPER.md",
+]
+
+[targets.xgo_wrapper.jobs.contract]
+runner = "command"
+command = ["python3", "tools/xgo/validate-devtool-wrapper.py"]
+inputs = [
+  ".devtool.toml",
+  "devtoolw",
+  "tools/xgo/validate-devtool-wrapper.py",
+]
+
+[targets.xgo_wrapper.workflows]
+validate = [
+  { id = "contract", ref = "job:contract", depends_on = [] }
+]
+
+[wrapper]
+schema = 1
+default_command = "android"
+
+[wrapper.commands.android]
+description = "Validate the XDM Android host target through Devtool"
+devtool = "validate"
+target = "xdm_android"
+aliases = ["a", "android-validate"]
+allow_passthrough = true
+
+[wrapper.commands.android-test]
+description = "Run the XDM Android target test action through Devtool"
+devtool = "test"
+target = "xdm_android"
+aliases = ["atest"]
+allow_passthrough = true
+
+[wrapper.commands.android-build]
+description = "Build the XDM Android target through Devtool"
+devtool = "build"
+target = "xdm_android"
+aliases = ["abuild"]
+allow_passthrough = true
+
+[wrapper.commands.android-lint]
+description = "Run XDM Android lint through Devtool"
+devtool = "lint"
+target = "xdm_android"
+aliases = ["alint"]
+allow_passthrough = true
+
+[wrapper.commands.desktop]
+description = "Validate the XDM desktop host target through Devtool"
+devtool = "validate"
+target = "xdm_modern"
+aliases = ["d", "desktop-validate"]
+allow_passthrough = true
+
+[wrapper.commands.desktop-test]
+description = "Run the XDM desktop target test action through Devtool"
+devtool = "test"
+target = "xdm_modern"
+aliases = ["dtest"]
+allow_passthrough = true
+
+[wrapper.commands.desktop-build]
+description = "Build the XDM desktop target through Devtool"
+devtool = "build"
+target = "xdm_modern"
+aliases = ["dbuild"]
+allow_passthrough = true
+
+[wrapper.commands.desktop-package]
+description = "Run the REM18 desktop packaging/evidence workflow"
+workflow = "package"
+target = "xdm_modern"
+aliases = ["dpackage"]
+
+[wrapper.commands.xgo-foundation]
+description = "Run the XGO foundation workflow"
+workflow = "validate"
+target = "xgo_foundation"
+
+[wrapper.commands.xgo-store]
+description = "Run the XGO durable-store workflow"
+workflow = "validate"
+target = "xgo_store"
+
+[wrapper.commands.xgo-security]
+description = "Run the XGO security workflow"
+workflow = "validate"
+target = "xgo_security"
+
+[wrapper.commands.xgo-transfer]
+description = "Run the XGO transfer workflow"
+workflow = "validate"
+target = "xgo_transfer"
+
+[wrapper.commands.xgo-backends]
+description = "Run the XGO backend workflow"
+workflow = "validate"
+target = "xgo_backends"
+
+[wrapper.commands.xgo-scheduler]
+description = "Run the XGO scheduler workflow"
+workflow = "validate"
+target = "xgo_scheduler"
+
+[wrapper.commands.xgo-media]
+description = "Run the XGO media workflow"
+workflow = "validate"
+target = "xgo_media"
+
+[wrapper.commands.xgo-ops]
+description = "Run the XGO operations workflow"
+workflow = "validate"
+target = "xgo_ops"
+
+[wrapper.commands.xgo-android]
+description = "Run the XGO Android integration workflow"
+workflow = "validate"
+target = "xgo_android"
+
+[wrapper.commands.xgo-desktop]
+description = "Run the XGO desktop integration workflow"
+workflow = "validate"
+target = "xgo_desktop"
+
+[wrapper.commands.xgo-seal]
+description = "Run the Wave-12 XGO seal workflow"
+workflow = "validate"
+target = "xgo_seal"
+aliases = ["seal"]
+
+[wrapper.commands.gate-spec]
+description = "Run the XGO specification gate"
+workflow = "validate"
+target = "xgo_gate_spec"
+
+[wrapper.commands.gate-foundation]
+description = "Run the XGO foundation gate"
+workflow = "validate"
+target = "xgo_gate_foundation"
+
+[wrapper.commands.gate-durable]
+description = "Run the XGO durable-state gate"
+workflow = "validate"
+target = "xgo_gate_durable"
+
+[wrapper.commands.gate-security]
+description = "Run the XGO security gate"
+workflow = "validate"
+target = "xgo_gate_security"
+
+[wrapper.commands.gate-transfer]
+description = "Run the XGO transfer gate"
+workflow = "validate"
+target = "xgo_gate_transfer"
+
+[wrapper.commands.gate-backends]
+description = "Run the XGO backend gate"
+workflow = "validate"
+target = "xgo_gate_backends"
+
+[wrapper.commands.gate-scheduler]
+description = "Run the XGO scheduler gate"
+workflow = "validate"
+target = "xgo_gate_scheduler"
+
+[wrapper.commands.gate-media-identity]
+description = "Run the XGO media identity gate"
+workflow = "validate"
+target = "xgo_gate_media_identity"
+
+[wrapper.commands.gate-media-exec]
+description = "Run the XGO media execution gate"
+workflow = "validate"
+target = "xgo_gate_media_exec"
+
+[wrapper.commands.gate-ops]
+description = "Run the XGO operations gate"
+workflow = "validate"
+target = "xgo_gate_ops"
+
+[wrapper.commands.gate-android]
+description = "Run the authoritative XGO Android host gate"
+workflow = "validate"
+target = "xgo_gate_android"
+aliases = ["android-gate"]
+
+[wrapper.commands.gate-cross-host]
+description = "Run the XGO cross-host gate"
+workflow = "validate"
+target = "xgo_gate_cross_host"
+aliases = ["cross-host"]
+
+[wrapper.commands.final-wave12]
+description = "Run only the final Wave-12 verifier after prerequisite host evidence exists"
+workflow = "validate"
+target = "xgo_final_wave12"
+aliases = ["wave12-final"]
+
+[wrapper.commands.gate-final]
+description = "Run the authoritative Wave-12 final gate: XGO seal, Android host, desktop host, final verifier"
+workflow = "validate"
+target = "xgo_gate_final"
+aliases = ["final", "gate"]
+
+[wrapper.commands.wrapper-check]
+description = "Validate the repository-local Devtool wrapper contract without Gradle"
+workflow = "validate"
+target = "xgo_wrapper"
+aliases = ["wrapper-contract"]
