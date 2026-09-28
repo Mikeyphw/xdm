@@ -51,3 +51,15 @@ def test_jni_headers_are_system_includes_not_user_includes():
     probe = source[source.index("def _probe_compiler"):source.index("def resolve_compiler")]
     assert "jni_include_dirs" not in probe
 
+def test_android_runtime_log_dependency_is_explicit_and_verified():
+    source = BUILDER.read_text()
+
+    base_ldflags = source[source.index("def _base_ldflags"):source.index("def _probe_compiler")]
+    assert '"-llog"' in base_ldflags
+
+    verify = source[source.index("def verify_native_output"):source.index("def execute")]
+    assert "REQUIRED_ANDROID_NEEDED_LIBRARIES" in verify
+    assert "missing required Android runtime dependencies" in verify
+
+    assert mod.REQUIRED_ANDROID_NEEDED_LIBRARIES == ["liblog.so"]
+

@@ -66,6 +66,10 @@ JNI_SYMBOLS = [
     "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_releaseBuffer",
 ]
 
+REQUIRED_ANDROID_NEEDED_LIBRARIES = [
+    "liblog.so",
+]
+
 
 @dataclass(frozen=True)
 class CompilerLane:
@@ -298,6 +302,7 @@ def _make_sysroot_shim(native_clang: Path, sysroot: Path) -> tuple[Path, tuple[s
 def _base_ldflags(extra: tuple[str, ...] = ()) -> str:
     values = [
         "-fuse-ld=lld",
+        "-llog",
         f"-Wl,-z,max-page-size={ANDROID_PAGE_SIZE}",
         f"-Wl,-z,common-page-size={ANDROID_PAGE_SIZE}",
         *extra,
@@ -432,6 +437,16 @@ def verify_native_output(path: Path, lane: CompilerLane) -> dict:
             + ", ".join(forbidden_needed)
         )
 
+    missing_required_needed = [
+        name for name in REQUIRED_ANDROID_NEEDED_LIBRARIES
+        if name not in needed
+    ]
+    if missing_required_needed:
+        raise RuntimeError(
+            "libxdmcore.so is missing required Android runtime dependencies: "
+            + ", ".join(missing_required_needed)
+        )
+
     symbol_table = subprocess.check_output([tool, "-Ws", str(path)], text=True, stderr=subprocess.STDOUT)
     missing_jni = [name for name in JNI_SYMBOLS if name not in symbol_table]
     if missing_jni:
@@ -459,6 +474,7 @@ def verify_native_output(path: Path, lane: CompilerLane) -> dict:
         "elf": "aarch64",
         "sqlite_dynamic_dependency": False,
         "needed_libraries": needed,
+        "required_android_needed_libraries": REQUIRED_ANDROID_NEEDED_LIBRARIES,
         "load_alignments": alignments,
         "jni_exports": JNI_SYMBOLS,
         "inspector": tool,

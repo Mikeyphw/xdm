@@ -52,3 +52,22 @@ translation unit.
 The compiler probe remains JNI-independent. No Java/native ABI, buffer
 ownership, or XGO engine behavior changes.
 
+## RM04 v4 Android log runtime dependency correction
+
+The first physical instrumentation run after the real JNI adapter was present
+moved past JNI symbol lookup but failed while loading `libxdmcore.so`:
+
+`dlopen failed: cannot locate symbol "__android_log_vprint"`
+
+Go's Android `runtime/cgo` references Android logging APIs from `liblog.so`.
+The shared object previously advertised only `libdl.so` and `libc.so`, so ART
+could not resolve the logging symbol at load time.
+
+RM04 v4 adds `-llog` to the Android cgo linker contract. The post-build ELF
+verification now requires `liblog.so` to appear in DT_NEEDED, in addition to
+the existing checks for JNI exports, AArch64, 16 KiB load alignment, and no
+dynamic SQLite dependency.
+
+This is a linker/runtime dependency correction only. The JNI method ABI,
+Kotlin bridge, zero-copy buffer ownership, and engine behavior are unchanged.
+
