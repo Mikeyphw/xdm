@@ -21,7 +21,6 @@ using XDM.Diagnostics;
 using XDM.DownloadEngine;
 using XDM.DownloadEngine.Aria2;
 using XDM.DownloadEngine.Policies;
-using XDM.DownloadEngine.Queues;
 using XDM.Media;
 using XDM.Persistence;
 using XDM.Platform;

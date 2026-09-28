@@ -4,7 +4,6 @@ using XDM.Core.Queues;
 using XDM.Core.Scheduling;
 using XDM.DownloadEngine;
 using XDM.DownloadEngine.Aria2;
-using XDM.DownloadEngine.Queues;
 
 namespace XDM.Platform;
 

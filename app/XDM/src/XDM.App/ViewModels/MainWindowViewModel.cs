@@ -17,7 +17,6 @@ using XDM.Core.State;
 using XDM.Diagnostics;
 using XDM.DownloadEngine;
 using XDM.DownloadEngine.Aria2;
-using XDM.DownloadEngine.Queues;
 using XDM.Media;
 using XDM.Platform;
 
