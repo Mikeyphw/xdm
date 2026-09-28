@@ -64,25 +64,78 @@ interface NativeXdmCore {
 }
 
 object JniNativeXdmCore : NativeXdmCore {
+    private const val XDM_OK = 0
+    private const val XDM_E_INVALID = 1
+    private const val XDM_E_NOT_FOUND = 2
+    private const val XDM_E_PROTOCOL = 3
+    private const val XDM_E_TIMEOUT = 4
+    private const val XDM_E_STOPPED = 5
+
     init {
         System.loadLibrary("xdmcore")
     }
 
-    override fun create(config: ByteArray): Long = nativeCreate(config)
-    override fun command(handle: Long, message: ByteArray) = nativeCommand(handle, message)
-    override fun nextFrame(handle: Long, timeoutMillis: Int): NativeBufferLease? = nativeNextFrame(handle, timeoutMillis)
-    override fun platformReply(handle: Long, message: ByteArray) = nativePlatformReply(handle, message)
-    override fun metadata(handle: Long): NativeBufferLease = nativeMetadata(handle)
-    override fun shutdown(handle: Long) = nativeShutdown(handle)
+    override fun create(config: ByteArray): Long {
+        val outHandle = LongArray(1)
+        requireStatus(nativeCreate(config, outHandle))
+        return outHandle[0].takeIf { it != 0L } ?: throw BridgeProtocolException.NativeInternal()
+    }
 
-    private external fun nativeCreate(config: ByteArray): Long
-    private external fun nativeCommand(handle: Long, message: ByteArray)
-    private external fun nativeNextFrame(handle: Long, timeoutMillis: Int): NativeBufferLease?
-    private external fun nativePlatformReply(handle: Long, message: ByteArray)
-    private external fun nativeMetadata(handle: Long): NativeBufferLease
-    private external fun nativeShutdown(handle: Long)
+    override fun command(handle: Long, message: ByteArray) {
+        requireStatus(nativeCommand(handle, message))
+    }
+
+    override fun nextFrame(handle: Long, timeoutMillis: Int): NativeBufferLease? {
+        val result = nativeNextFrame(handle, timeoutMillis)
+            ?: throw BridgeProtocolException.NativeInternal()
+        if (result.status == XDM_E_TIMEOUT) {
+            return null
+        }
+        requireStatus(result.status)
+        val data = result.data ?: throw BridgeProtocolException.NativeInternal()
+        return NativeBufferLease(data, result.token)
+    }
+
+    override fun platformReply(handle: Long, message: ByteArray) {
+        requireStatus(nativePlatformReply(handle, message))
+    }
+
+    override fun metadata(handle: Long): NativeBufferLease {
+        val result = nativeMetadata(handle) ?: throw BridgeProtocolException.NativeInternal()
+        requireStatus(result.status)
+        val data = result.data ?: throw BridgeProtocolException.NativeInternal()
+        return NativeBufferLease(data, result.token)
+    }
+
+    override fun shutdown(handle: Long) {
+        requireStatus(nativeShutdown(handle))
+    }
+
+    private fun requireStatus(status: Int) {
+        when (status) {
+            XDM_OK -> Unit
+            XDM_E_INVALID -> throw BridgeProtocolException.InvalidBytes()
+            XDM_E_NOT_FOUND, XDM_E_STOPPED -> throw BridgeProtocolException.NativeStopped()
+            XDM_E_PROTOCOL -> throw BridgeProtocolException.ProtocolMismatch()
+            XDM_E_TIMEOUT -> throw BridgeProtocolException.NativeTimeout()
+            else -> throw BridgeProtocolException.NativeInternal()
+        }
+    }
+
+    private external fun nativeCreate(config: ByteArray, outHandle: LongArray): Int
+    private external fun nativeCommand(handle: Long, message: ByteArray): Int
+    private external fun nativeNextFrame(handle: Long, timeoutMillis: Int): NativeCallBuffer?
+    private external fun nativePlatformReply(handle: Long, message: ByteArray): Int
+    private external fun nativeMetadata(handle: Long): NativeCallBuffer?
+    private external fun nativeShutdown(handle: Long): Int
     external fun releaseBuffer(token: Long)
 }
+
+internal class NativeCallBuffer(
+    val status: Int,
+    val data: ByteBuffer?,
+    val token: Long,
+)
 
 class NativeBufferLease internal constructor(
     private val data: ByteBuffer,

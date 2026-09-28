@@ -56,6 +56,16 @@ SYMBOLS = [
     "xdm_engine_shutdown",
 ]
 
+JNI_SYMBOLS = [
+    "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeCreate",
+    "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeCommand",
+    "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeNextFrame",
+    "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativePlatformReply",
+    "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeMetadata",
+    "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeShutdown",
+    "Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_releaseBuffer",
+]
+
 
 @dataclass(frozen=True)
 class CompilerLane:
@@ -130,6 +140,7 @@ def plan(go_version: str, source_revision: str, source_modified: bool = False) -
         "required_page_size": ANDROID_PAGE_SIZE,
         "required_ndk_revision": REQUIRED_NDK_REVISION,
         "required_symbols": SYMBOLS,
+        "required_jni_symbols": JNI_SYMBOLS,
         "artifacts": artifacts,
     }
 
@@ -220,6 +231,43 @@ def _ndk_roots() -> list[Path]:
     return result
 
 
+
+def _jni_include_dirs() -> tuple[Path, ...]:
+    candidates: list[Path] = []
+    for ndk in _ndk_roots():
+        prebuilt = ndk / "toolchains/llvm/prebuilt"
+        candidates.extend(sorted(prebuilt.glob("*/sysroot/usr/include")))
+
+    prefix = _termux_prefix()
+    if prefix:
+        candidates.append(prefix / "include")
+
+    java_home = os.environ.get("JAVA_HOME", "").strip()
+    if java_home:
+        candidates.append(Path(java_home) / "include")
+
+    seen: set[Path] = set()
+    for base in candidates:
+        try:
+            resolved = base.expanduser().resolve()
+        except OSError:
+            continue
+        if resolved in seen or not (resolved / "jni.h").is_file():
+            continue
+        seen.add(resolved)
+        result = [resolved]
+        for child in ("android", "linux"):
+            subdir = resolved / child
+            if (subdir / "jni_md.h").is_file():
+                result.append(subdir)
+        return tuple(result)
+
+    raise RuntimeError(
+        "jni.h was not found in the configured Android NDK, Termux prefix, "
+        "or JAVA_HOME; Android JNI adapter compilation cannot proceed"
+    )
+
+
 def _ndk_revision(root: Path) -> str:
     props = root / "source.properties"
     if not props.is_file():
@@ -274,7 +322,9 @@ def _probe_compiler(lane: CompilerLane) -> tuple[bool, str]:
                 "CGO_ENABLED": "1",
                 "CC": lane.cc,
                 "CC_FOR_TARGET": lane.cc,
-                "CGO_CFLAGS": "-O2 -fPIC",
+                "CGO_CFLAGS": " ".join(
+                    ["-O2", "-fPIC", *(f"-I{path}" for path in jni_include_dirs)]
+                ),
                 "CGO_LDFLAGS": _base_ldflags(lane.extra_ldflags),
                 "GO111MODULE": "off",
                 "GOWORK": "off",
@@ -384,6 +434,14 @@ def verify_native_output(path: Path, lane: CompilerLane) -> dict:
             + ", ".join(forbidden_needed)
         )
 
+    symbol_table = subprocess.check_output([tool, "-Ws", str(path)], text=True, stderr=subprocess.STDOUT)
+    missing_jni = [name for name in JNI_SYMBOLS if name not in symbol_table]
+    if missing_jni:
+        raise RuntimeError(
+            "libxdmcore.so is missing required Android JNI entry points: "
+            + ", ".join(missing_jni)
+        )
+
     program_headers = subprocess.check_output([tool, "-lW", str(path)], text=True, stderr=subprocess.STDOUT)
     alignments: list[int] = []
     for raw in program_headers.splitlines():
@@ -404,12 +462,14 @@ def verify_native_output(path: Path, lane: CompilerLane) -> dict:
         "sqlite_dynamic_dependency": False,
         "needed_libraries": needed,
         "load_alignments": alignments,
+        "jni_exports": JNI_SYMBOLS,
         "inspector": tool,
     }
 
 
 def execute(data: dict) -> dict:
     lane = resolve_compiler()
+    jni_include_dirs = _jni_include_dirs()
     stale_sqlite = ROOT / STALE_SQLITE_RUNTIME
     if stale_sqlite.exists():
         stale_sqlite.unlink()
@@ -441,6 +501,7 @@ def execute(data: dict) -> dict:
         "compiler": lane.cc,
         "compiler_lane": lane.lane,
         "cgo_ldflags": _base_ldflags(lane.extra_ldflags),
+        "jni_include_dirs": [str(path) for path in jni_include_dirs],
         "verification": verification,
     }
 

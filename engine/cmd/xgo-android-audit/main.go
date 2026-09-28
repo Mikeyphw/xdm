@@ -138,9 +138,23 @@ func jniBridgeInstrumentation() (report, error) {
 		return report{}, fmt.Errorf("double buffer release not detected: %w", err)
 	}
 	bridge := mustRead("app/XDM.Android/app/src/main/kotlin/com/mikeyphw/xdm/android/engine/AndroidGoEngineBridge.kt")
-	for _, needle := range []string{"System.loadLibrary(\"xdmcore\")", "create", "command", "nextFrame", "platformReply", "shutdown", "releaseBuffer", "BridgeProtocolException"} {
+	for _, needle := range []string{"System.loadLibrary(\"xdmcore\")", "NativeCallBuffer", "nativeCreate", "nativeCommand", "nativeNextFrame", "nativePlatformReply", "nativeMetadata", "nativeShutdown", "releaseBuffer", "BridgeProtocolException"} {
 		if !strings.Contains(bridge, needle) {
 			return report{}, fmt.Errorf("bridge missing %s", needle)
+		}
+	}
+	jni := mustRead("engine/bridge/cabi/jni_android.c")
+	for _, symbol := range []string{
+		"Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeCreate",
+		"Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeCommand",
+		"Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeNextFrame",
+		"Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativePlatformReply",
+		"Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeMetadata",
+		"Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_nativeShutdown",
+		"Java_com_mikeyphw_xdm_android_engine_JniNativeXdmCore_releaseBuffer",
+	} {
+		if !strings.Contains(jni, symbol) {
+			return report{}, fmt.Errorf("real JNI adapter missing %s", symbol)
 		}
 	}
 	for _, forbidden := range []string{"selectVariant(", "chooseBackend(", "retryPolicy =", "scheduleDownload("} {
