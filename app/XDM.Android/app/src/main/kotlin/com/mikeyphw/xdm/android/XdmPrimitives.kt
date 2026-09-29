@@ -61,6 +61,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -474,21 +475,20 @@ fun XdmAdaptiveSheet(
 ) {
     val focusRestorationController = LocalXdmFocusRestorationController.current
     val sheetFocusRequester = remember { FocusRequester() }
-    var restoreFocusAfterDismiss by remember { mutableStateOf(false) }
-
-    LaunchedEffect(visible, focusRestorationController) {
-        if (visible) {
-            restoreFocusAfterDismiss = true
-        } else if (restoreFocusAfterDismiss) {
-            // Publish one restoration request after the sheet leaves the visible state.
-            // The opener's xdmFocusRestorePoint owns the actual FocusRequester call so
-            // modal/popup teardown cannot steal focus back after this coroutine exits.
-            focusRestorationController.requestRestoreLastFocus()
-            restoreFocusAfterDismiss = false
-        }
-    }
 
     if (!visible) return
+
+    // Capture the exact registered opener while it still owns Compose focus, before
+    // Material3 creates a separate dialog window. The token is scoped to this one
+    // modal lifetime; an unrelated historical restore point can never be selected.
+    val restoreTarget = remember(focusRestorationController) {
+        focusRestorationController.captureFocusedRestoreTarget()
+    }
+    DisposableEffect(focusRestorationController, restoreTarget) {
+        onDispose {
+            restoreTarget?.let(focusRestorationController::requestRestore)
+        }
+    }
 
     fun dismissAndRestoreFocus() {
         onDismissRequest()

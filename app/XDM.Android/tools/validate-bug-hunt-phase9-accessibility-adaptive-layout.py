@@ -44,12 +44,20 @@ checks = [
     ("app/build.gradle.kts", ["implementation(libs.androidx.window)"]),
     ("app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAccessibility.kt", [
         "class XdmFocusRestorationController",
+        "XdmFocusRestoreToken",
         "FocusRequester",
         "restoreLastFocus()",
         "xdmFocusRestorePoint",
-        "LocalView",
-        "hostView.hasWindowFocus()",
-        "stableFocusedFrames",
+        "captureFocusedRestoreTarget",
+        "baselineFocusAcquisition",
+        "ViewTreeObserver.OnWindowFocusChangeListener",
+        "onHostWindowFocusChanged",
+        "postOnAnimation",
+        "MaximumRestoreAttempts",
+        "RequiredStableTraversalChecks",
+        "requestFocus() returning true is only admission",
+        "requesters[key] !== requester",
+        "capturedFocusAcquisition > focusAcquisitionGeneration",
         "XdmTraversalOrder",
         "keyboardDpadSwitchAccessOrder",
         "object XdmContrastPolicy",
@@ -69,6 +77,9 @@ checks = [
         "sheetFocusRequester.requestFocus()",
         "dismissAndRestoreFocus()",
         "focusRequester(sheetFocusRequester)",
+        "captureFocusedRestoreTarget()",
+        "DisposableEffect(focusRestorationController, restoreTarget)",
+        "restoreTarget?.let(focusRestorationController::requestRestore)",
         "XdmContrastPolicy.ensureReadableContentColor",
         "LiveRegionMode.Polite",
     ]),
@@ -140,6 +151,18 @@ test_rel = "app/src/androidTest/kotlin/com/mikeyphw/xdm/android/Phase9Accessibil
 test_data = text(test_rel)
 if "useUnmergedTree = false" in test_data:
     missing.append(f"{test_rel}: unsupported waitUntilDoesNotExist overload must not be used")
+
+
+accessibility_rel = "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAccessibility.kt"
+accessibility_data = text(accessibility_rel)
+for forbidden in ("repeat(90)", "stableFocusedFrames"):
+    if forbidden in accessibility_data:
+        missing.append(f"{accessibility_rel}: obsolete frame-polling focus heuristic remains: {forbidden!r}")
+
+primitives_rel = "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt"
+primitives_data = text(primitives_rel)
+if "focusRestorationController.requestRestoreLastFocus()" in primitives_data:
+    missing.append(f"{primitives_rel}: adaptive sheet must restore its captured opener token, not global last focus")
 
 if missing:
     raise SystemExit("Phase 9 accessibility/adaptive r2 validation failed:\n" + "\n".join(missing))

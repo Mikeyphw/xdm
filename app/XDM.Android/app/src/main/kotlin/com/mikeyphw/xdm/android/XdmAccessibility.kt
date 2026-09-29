@@ -1,23 +1,19 @@
 package com.mikeyphw.xdm.android
 
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -79,101 +75,255 @@ object XdmTraversalOrder {
     )
 }
 
+internal data class XdmFocusRestoreToken(
+    val key: String,
+    val capturedFocusAcquisition: Long,
+)
+
+private data class XdmPendingFocusRestore(
+    val key: String,
+    val requestGeneration: Long,
+    val baselineFocusAcquisition: Long,
+    var observedFocusAcquisition: Long = 0L,
+    var attempts: Int = 0,
+    var stableChecks: Int = 0,
+)
+
 @Stable
 class XdmFocusRestorationController {
     private val requesters = linkedMapOf<String, FocusRequester>()
     private var lastFocusedKey: String? = null
-    private var focusedKey by mutableStateOf<String?>(null)
+    private var focusedKey: String? = null
+    private var focusAcquisitionGeneration: Long = 0L
 
-    internal var restoreRequestKey by mutableStateOf<String?>(null)
+    private var hostView: View? = null
+    private var hostWindowFocused: Boolean = false
+    private var pendingRestore: XdmPendingFocusRestore? = null
+    private var restoreAttemptScheduled: Boolean = false
+    private var stabilityCheckScheduled: Boolean = false
+
+    internal var restoreRequestGeneration: Long = 0L
         private set
-    internal var restoreRequestGeneration by mutableStateOf(0L)
-        private set
 
-    fun register(key: String, requester: FocusRequester) { requesters[key] = requester }
-
-    fun unregister(key: String, requester: FocusRequester) {
-        if (requesters[key] === requester) requesters.remove(key)
-        if (focusedKey == key) focusedKey = null
-        if (lastFocusedKey == key && key !in requesters) lastFocusedKey = null
+    fun register(key: String, requester: FocusRequester) {
+        requesters[key] = requester
+        if (pendingRestore?.key == key) scheduleRestoreAttempt()
     }
 
-    fun markLastFocused(key: String) { lastFocusedKey = key }
+    fun unregister(key: String, requester: FocusRequester) {
+        if (requesters[key] !== requester) return
+        requesters.remove(key)
+        if (focusedKey == key) focusedKey = null
+        if (lastFocusedKey == key) lastFocusedKey = null
+    }
 
-    internal fun updateFocused(key: String, focused: Boolean) {
+    /** Compatibility hook retained for callers that explicitly record an opener. */
+    fun markLastFocused(key: String) {
+        if (key in requesters) lastFocusedKey = key
+    }
+
+    /**
+     * Capture only a restore point that owns Compose focus *now*.
+     *
+     * This intentionally does not fall back to lastFocusedKey: a sheet opened from an
+     * unrelated control must never restore some older registered target on dismissal.
+     */
+    internal fun captureFocusedRestoreTarget(): XdmFocusRestoreToken? {
+        val key = focusedKey ?: return null
+        if (key !in requesters) return null
+        return XdmFocusRestoreToken(key = key, capturedFocusAcquisition = focusAcquisitionGeneration)
+    }
+
+    internal fun updateFocused(key: String, requester: FocusRequester, focused: Boolean) {
+        // Ignore callbacks from a restore point that has already been replaced by a
+        // newer requester for the same logical key during adaptive recomposition.
+        if (requesters[key] !== requester) return
         if (focused) {
+            focusAcquisitionGeneration += 1L
             focusedKey = key
             lastFocusedKey = key
+            pendingRestore?.takeIf { it.key == key && focusAcquisitionGeneration > it.baselineFocusAcquisition }?.let { pending ->
+                pending.observedFocusAcquisition = focusAcquisitionGeneration
+                pending.stableChecks = 0
+                scheduleStabilityCheck(pending.requestGeneration)
+            }
         } else if (focusedKey == key) {
             focusedKey = null
+            pendingRestore?.takeIf { it.key == key }?.let { pending ->
+                pending.observedFocusAcquisition = 0L
+                pending.stableChecks = 0
+                scheduleRestoreAttempt()
+            }
         }
     }
 
-    internal fun isFocused(key: String): Boolean = focusedKey == key
-
     /**
-     * Publish a restoration request for the surviving restore point. The request is
-     * fulfilled by xdmFocusRestorePoint() from the opener subtree after modal teardown.
+     * Begin a generation-scoped restore transaction for a target captured when the
+     * modal opened. Success requires a *new* focus acquisition after this request.
      */
-    fun requestRestoreLastFocus(): Boolean {
-        val key = lastFocusedKey ?: return false
-        if (key !in requesters) return false
-        restoreRequestKey = key
+    internal fun requestRestore(target: XdmFocusRestoreToken): Boolean {
+        if (target.capturedFocusAcquisition > focusAcquisitionGeneration) return false
         restoreRequestGeneration += 1L
+        pendingRestore = XdmPendingFocusRestore(
+            key = target.key,
+            requestGeneration = restoreRequestGeneration,
+            baselineFocusAcquisition = focusAcquisitionGeneration,
+        )
+        scheduleRestoreAttempt()
         return true
     }
 
     /** Compatibility entrypoint retained for existing callers/contracts. */
+    fun requestRestoreLastFocus(): Boolean {
+        val key = lastFocusedKey ?: return false
+        if (key !in requesters) return false
+        return requestRestore(XdmFocusRestoreToken(key, focusAcquisitionGeneration))
+    }
+
+    /** Compatibility entrypoint retained for existing callers/contracts. */
     fun restoreLastFocus(): Boolean = requestRestoreLastFocus()
+
+    internal fun attachHostView(view: View) {
+        hostView = view
+        hostWindowFocused = view.hasWindowFocus()
+        if (hostWindowFocused) scheduleRestoreAttempt()
+    }
+
+    internal fun detachHostView(view: View) {
+        if (hostView === view) {
+            hostView = null
+            hostWindowFocused = false
+            restoreAttemptScheduled = false
+            stabilityCheckScheduled = false
+        }
+    }
+
+    internal fun onHostWindowFocusChanged(hasFocus: Boolean) {
+        hostWindowFocused = hasFocus
+        if (!hasFocus) {
+            pendingRestore?.stableChecks = 0
+            return
+        }
+        scheduleRestoreAttempt()
+    }
+
+    private fun scheduleRestoreAttempt() {
+        val view = hostView ?: return
+        if (restoreAttemptScheduled || pendingRestore == null) return
+        restoreAttemptScheduled = true
+        // Anchor restoration to the Android window-focus callback, then cross one
+        // host-view traversal boundary. This avoids guessing how many Compose frames
+        // a Material3 dialog needs to dispose while still keeping retries bounded.
+        view.postOnAnimation {
+            restoreAttemptScheduled = false
+            performRestoreAttempt(view)
+        }
+    }
+
+    private fun performRestoreAttempt(view: View) {
+        if (hostView !== view || !hostWindowFocused || !view.hasWindowFocus()) return
+        val pending = pendingRestore ?: return
+
+        if (
+            pending.observedFocusAcquisition > pending.baselineFocusAcquisition &&
+            focusedKey == pending.key
+        ) {
+            scheduleStabilityCheck(pending.requestGeneration)
+            return
+        }
+
+        val requester = requesters[pending.key]
+        pending.attempts += 1
+        if (requester != null) {
+            // requestFocus() returning true is only admission, not completion. The
+            // onFocusChanged(true) event above is the authoritative success evidence.
+            runCatching { requester.requestFocus() }
+        }
+
+        if (pendingRestore?.requestGeneration != pending.requestGeneration) return
+        if (pending.attempts >= MaximumRestoreAttempts) {
+            if (focusedKey != pending.key || pending.observedFocusAcquisition <= pending.baselineFocusAcquisition) {
+                pendingRestore = null
+            }
+            return
+        }
+
+        if (focusedKey != pending.key || pending.observedFocusAcquisition <= pending.baselineFocusAcquisition) {
+            scheduleRestoreAttempt()
+        }
+    }
+
+    private fun scheduleStabilityCheck(requestGeneration: Long) {
+        val view = hostView ?: return
+        if (stabilityCheckScheduled) return
+        stabilityCheckScheduled = true
+        view.postOnAnimation {
+            stabilityCheckScheduled = false
+            val pending = pendingRestore
+            if (pending == null || pending.requestGeneration != requestGeneration) return@postOnAnimation
+
+            val stillFocused =
+                hostWindowFocused &&
+                    view.hasWindowFocus() &&
+                    focusedKey == pending.key &&
+                    pending.observedFocusAcquisition > pending.baselineFocusAcquisition
+
+            if (!stillFocused) {
+                pending.stableChecks = 0
+                scheduleRestoreAttempt()
+                return@postOnAnimation
+            }
+
+            pending.stableChecks += 1
+            if (pending.stableChecks >= RequiredStableTraversalChecks) {
+                pendingRestore = null
+            } else {
+                scheduleStabilityCheck(requestGeneration)
+            }
+        }
+    }
+
+    private companion object {
+        const val MaximumRestoreAttempts = 12
+        const val RequiredStableTraversalChecks = 2
+    }
 }
 
 val LocalXdmFocusRestorationController = compositionLocalOf { XdmFocusRestorationController() }
 
 @Composable
-fun rememberXdmFocusRestorationController(): XdmFocusRestorationController = remember { XdmFocusRestorationController() }
+fun rememberXdmFocusRestorationController(): XdmFocusRestorationController {
+    val hostView = androidx.compose.ui.platform.LocalView.current
+    val controller = remember(hostView) { XdmFocusRestorationController() }
+
+    DisposableEffect(hostView, controller) {
+        val observer = hostView.viewTreeObserver
+        val listener = ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+            controller.onHostWindowFocusChanged(hasFocus)
+        }
+        controller.attachHostView(hostView)
+        observer.addOnWindowFocusChangeListener(listener)
+        onDispose {
+            if (observer.isAlive) observer.removeOnWindowFocusChangeListener(listener)
+            controller.detachHostView(hostView)
+        }
+    }
+
+    return controller
+}
 
 @Composable
 fun Modifier.xdmFocusRestorePoint(key: String): Modifier {
     val controller = LocalXdmFocusRestorationController.current
     val requester = remember { FocusRequester() }
-    val hostView = LocalView.current
-    val restoreRequestKey = controller.restoreRequestKey
-    val restoreRequestGeneration = controller.restoreRequestGeneration
 
     DisposableEffect(key, requester, controller) {
         controller.register(key, requester)
         onDispose { controller.unregister(key, requester) }
     }
 
-    LaunchedEffect(key, requester, controller, hostView, restoreRequestKey, restoreRequestGeneration) {
-        if (restoreRequestGeneration == 0L || restoreRequestKey != key) return@LaunchedEffect
-
-        // A ModalBottomSheet/Dialog can leave Compose semantics before its Android
-        // window has returned focus to the activity. Requesting Compose focus while
-        // that modal window still owns focus is transient and can be cleared again.
-        // Wait for the surviving host window to become authoritative, then request
-        // focus from the opener subtree until it is stable across several frames.
-        var stableFocusedFrames = 0
-        repeat(90) {
-            withFrameNanos { }
-            if (!hostView.hasWindowFocus()) {
-                stableFocusedFrames = 0
-                return@repeat
-            }
-            if (!controller.isFocused(key)) {
-                runCatching { requester.requestFocus() }
-            }
-            if (controller.isFocused(key)) {
-                stableFocusedFrames += 1
-                if (stableFocusedFrames >= 3) return@LaunchedEffect
-            } else {
-                stableFocusedFrames = 0
-            }
-        }
-    }
-
     return focusRequester(requester).onFocusChanged { state ->
-        controller.updateFocused(key, state.isFocused)
+        controller.updateFocused(key, requester, state.isFocused)
     }
 }
 

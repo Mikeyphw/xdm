@@ -270,3 +270,57 @@ No Gate-12 continuation topology change is needed. The existing
 RM05 focused precheck, so this production source change is naturally
 requalified at that boundary. Qualification remains pending until the focused
 instrumentation method passes on the Termux emulator/device.
+
+## RM05 v9 — generation-scoped opener transaction and host-focus event handoff
+
+The RM05 v8 focused instrumentation still failed after Android-back dismissal:
+the adaptive-sheet semantics node disappeared, yet the surviving `Open sheet`
+button reported `Focused = false`. Repeating focus requests for more frames is
+therefore not an acceptable remediation. The remaining defect is the restoration
+model itself.
+
+RM05 v9 replaces the frame-polling model with a modal-lifetime restore
+transaction:
+
+1. `XdmAdaptiveSheet` captures the exact *currently focused and registered*
+   restore point synchronously when the modal first enters composition, before
+   Material3 creates the separate dialog window.
+2. The captured `XdmFocusRestoreToken` belongs only to that modal lifetime.
+   Dismissal cannot fall back to an unrelated historical `lastFocusedKey`.
+3. When the modal leaves composition, the sheet publishes a generation-scoped
+   restore request for that token.
+4. `rememberXdmFocusRestorationController()` observes the host Android view with
+   `ViewTreeObserver.OnWindowFocusChangeListener`. Restoration is scheduled from
+   the real host-window focus-return event rather than by polling
+   `hasWindowFocus()` for an arbitrary number of Compose frames.
+5. The actual `FocusRequester.requestFocus()` call crosses a host-view
+   `postOnAnimation` traversal boundary after host ownership returns. A `true`
+   return is treated only as admission; it is not accepted as proof of restored
+   focus.
+6. Success requires a new `onFocusChanged(true)` acquisition whose focus
+   generation is newer than the restore request baseline. This prevents stale or
+   transitional `focusedKey` state from satisfying the transaction.
+7. Two post-acquisition host traversals verify that the target remains focused.
+   Loss of focus during that settlement window reopens the bounded request path.
+   Retries are capped and are a recovery mechanism, not the synchronization
+   mechanism.
+8. Restore-point registration is requester-identity aware. Disposal callbacks
+   from an old adaptive-layout representation cannot clear a newer requester for
+   the same logical key.
+
+The public compatibility methods `markLastFocused()`,
+`requestRestoreLastFocus()`, and `restoreLastFocus()` remain available for
+existing contracts, but `XdmAdaptiveSheet` no longer uses global last-focus
+history. If a sheet is opened from a control that is not a registered restore
+point, no unrelated target is focused on dismissal.
+
+The Phase-9 static validator now requires the token capture, window-focus
+listener, focus-acquisition generation, host-view traversal handoff, bounded
+retry constants, and modal-scoped restore call. It explicitly rejects the v8
+`repeat(90)` / `stableFocusedFrames` heuristic and rejects a return to
+`XdmAdaptiveSheet` calling `requestRestoreLastFocus()` globally.
+
+The end-to-end device assertion is deliberately unchanged: after real Android
+Back dismissal and sheet teardown, the original opener must report Compose
+`Focused = true`. The existing `gate-final-continue` focused precheck remains the
+runtime authority before lint and the complete instrumentation suite.
