@@ -25,6 +25,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.test.espresso.Espresso
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -35,30 +36,43 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
 
     @Test
     fun composeScreenshotAndSemanticsMatrixCoversPhoneSplitThresholdTabletLandscapeLargeFontAndHinge() {
-        XdmAdaptiveTestMatrix.screenshotSemanticsCases.forEach { case ->
-            composeRule.setContent {
-                val profile = case.profile
-                CompositionLocalProvider(
-                    LocalXdmWindowClass provides profile.windowClass,
-                    LocalXdmWindowProfile provides profile,
-                ) {
-                    XdmTheme {
-                        XdmAdaptiveShell(
-                            windowClass = profile.windowClass,
-                            windowProfile = profile,
-                            selectedRoute = AppRoute.Downloads,
-                            destinations = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings),
-                            activeTransferCount = 1,
-                            queuedTransferCount = 2,
-                            runtimeLabel = case.name,
-                            onNavigate = {},
-                            onAddDownload = {},
-                        ) { Text("Matrix ${case.name}", modifier = Modifier.padding(16.dp)) }
-                    }
+        val cases = XdmAdaptiveTestMatrix.screenshotSemanticsCases
+        val activeCase = mutableStateOf(cases.first())
+
+        composeRule.setContent {
+            val case = activeCase.value
+            val profile = case.profile
+            CompositionLocalProvider(
+                LocalXdmWindowClass provides profile.windowClass,
+                LocalXdmWindowProfile provides profile,
+            ) {
+                XdmTheme {
+                    XdmAdaptiveShell(
+                        windowClass = profile.windowClass,
+                        windowProfile = profile,
+                        selectedRoute = AppRoute.Downloads,
+                        destinations = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings),
+                        activeTransferCount = 1,
+                        queuedTransferCount = 2,
+                        runtimeLabel = case.name,
+                        onNavigate = {},
+                        onAddDownload = {},
+                    ) { Text("Matrix ${case.name}", modifier = Modifier.padding(16.dp)) }
                 }
             }
+        }
+
+        cases.forEach { case ->
+            composeRule.runOnIdle { activeCase.value = case }
+            composeRule.waitForIdle()
             composeRule.onRoot().captureToImage()
-            val shellTag = if (case.profile.usesNavigationSidebar) XdmScreenTags.ShellExpanded else if (case.profile.windowClass == XdmWindowClass.Compact) XdmScreenTags.ShellCompact else XdmScreenTags.ShellMedium
+            val shellTag = if (case.profile.usesNavigationSidebar) {
+                XdmScreenTags.ShellExpanded
+            } else if (case.profile.windowClass == XdmWindowClass.Compact) {
+                XdmScreenTags.ShellCompact
+            } else {
+                XdmScreenTags.ShellMedium
+            }
             composeRule.onNodeWithTag(shellTag).assertIsDisplayed()
             assertTrue(Phase9AccessibilityRegressionContracts.coversScreenshotCase(case.name))
         }
@@ -91,8 +105,9 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         }
         composeRule.onNodeWithText("Open sheet").performClick()
         composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Focusable actions bottom sheet").performClick()
-        composeRule.runOnIdle { }
+        composeRule.onNodeWithContentDescription("Focusable actions bottom sheet").assertIsDisplayed()
+        Espresso.pressBack()
+        composeRule.waitForIdle()
         composeRule.onNodeWithText("Open sheet").assertIsFocused()
     }
 

@@ -205,6 +205,7 @@ private fun XdmBottomNavigation(
                 selected = selected,
                 onClick = { onNavigate(route) },
                 modifier = Modifier.semantics {
+                    contentDescription = route.label
                     stateDescription = if (selected) "Selected" else "Not selected"
                 },
                 icon = { Icon(route.icon, contentDescription = null) },
@@ -311,6 +312,7 @@ private fun XdmSidebarDestination(route: AppRoute, selected: Boolean, onClick: (
             .xdmMinimumTouchTarget()
             .clickable(role = Role.Button, onClick = onClick)
             .semantics {
+                contentDescription = route.label
                 this.selected = selected
                 role = Role.Button
                 stateDescription = if (selected) "${route.label} selected" else "${route.label} not selected"

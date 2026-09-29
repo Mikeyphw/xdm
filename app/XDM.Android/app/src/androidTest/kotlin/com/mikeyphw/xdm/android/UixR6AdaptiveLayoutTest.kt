@@ -126,17 +126,28 @@ class UixR6AdaptiveLayoutTest {
 
     @Composable
     private fun Shell(windowClass: XdmWindowClass) {
-        XdmTheme {
-            XdmAdaptiveShell(
-                windowClass = windowClass,
-                selectedRoute = AppRoute.Downloads,
-                destinations = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings),
-                activeTransferCount = 2,
-                queuedTransferCount = 4,
-                runtimeLabel = "Native engine ready",
-                onNavigate = {},
-                onAddDownload = {},
-            ) { Text("Downloads content") }
+        val profile = when (windowClass) {
+            XdmWindowClass.Compact -> XdmAdaptiveLayoutPolicy.profileFor(393f, 851f)
+            XdmWindowClass.Medium -> XdmAdaptiveLayoutPolicy.profileFor(700f, 900f)
+            XdmWindowClass.Expanded -> XdmAdaptiveLayoutPolicy.profileFor(1280f, 900f)
+        }
+        CompositionLocalProvider(
+            LocalXdmWindowClass provides windowClass,
+            LocalXdmWindowProfile provides profile,
+        ) {
+            XdmTheme {
+                XdmAdaptiveShell(
+                    windowClass = windowClass,
+                    windowProfile = profile,
+                    selectedRoute = AppRoute.Downloads,
+                    destinations = listOf(AppRoute.Downloads, AppRoute.Media, AppRoute.Library, AppRoute.Activity, AppRoute.Settings),
+                    activeTransferCount = 2,
+                    queuedTransferCount = 4,
+                    runtimeLabel = "Native engine ready",
+                    onNavigate = {},
+                    onAddDownload = {},
+                ) { Text("Downloads content") }
+            }
         }
     }
 }

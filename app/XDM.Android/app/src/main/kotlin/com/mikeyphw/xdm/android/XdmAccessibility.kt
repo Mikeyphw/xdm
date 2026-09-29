@@ -156,6 +156,7 @@ fun Modifier.xdmScreen(tag: String, label: String): Modifier =
     }
 
 fun Modifier.xdmPane(label: String, traversal: Float? = null): Modifier = semantics {
+    contentDescription = label
     paneTitle = label
     isTraversalGroup = true
     traversal?.let { traversalIndex = it }

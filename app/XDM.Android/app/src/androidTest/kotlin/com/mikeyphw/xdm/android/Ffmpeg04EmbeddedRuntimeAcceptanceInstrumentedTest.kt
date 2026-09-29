@@ -20,13 +20,15 @@ import org.junit.runner.RunWith
 class Ffmpeg04EmbeddedRuntimeAcceptanceInstrumentedTest {
     @Test
     fun embeddedRuntimeMuxesSeparateTracksAndProbesOutputWithoutTermux() = runBlocking {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val testContext = instrumentation.context
         val fixtureRoot = File(context.cacheDir, "ffmpeg04-fixtures").apply {
             deleteRecursively()
             mkdirs()
         }
-        val video = copyAsset(context, "ffmpeg04/video-only.mp4", File(fixtureRoot, "video-only.mp4"))
-        val audio = copyAsset(context, "ffmpeg04/audio-only.m4a", File(fixtureRoot, "audio-only.m4a"))
+        val video = copyAsset(testContext, "ffmpeg04/video-only.mp4", File(fixtureRoot, "video-only.mp4"))
+        val audio = copyAsset(testContext, "ffmpeg04/audio-only.m4a", File(fixtureRoot, "audio-only.m4a"))
         val runtime = EmbeddedFfmpegRuntime(context)
         val capability = runtime.capabilities(force = true)
         assertTrue(capability.summary, capability.ready)
