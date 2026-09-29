@@ -8,9 +8,9 @@
   "abi_major": 1,
   "engine_schema_version": 1,
   "build": {
-    "go_version": "go-recorded-at-build-time",
-    "git_revision": "recorded-at-build-time",
-    "git_modified": false,
+    "go_version": "go1.27.1",
+    "git_revision": "9796375ebeed0f46f005d91d586d955fbfd81abd",
+    "git_modified": true,
     "target_os": "android",
     "target_arch": "arm64",
     "build_mode": "c-shared"

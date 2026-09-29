@@ -1,0 +1,19 @@
+#!/bin/sh
+# DEVTOOL_WRAPPER_LAUNCHER=1
+# Generated-style launcher for the repository Devtool wrapper contract.
+# Keep command policy in .devtool.toml; do not add execution logic here.
+set -eu
+
+script="$0"
+if command -v readlink >/dev/null 2>&1 && [ -L "$script" ]; then
+    link_target=$(readlink "$script" || true)
+    case "$link_target" in
+        /*) script="$link_target" ;;
+        ?*) script="$(dirname -- "$script")/$link_target" ;;
+    esac
+fi
+
+script_dir=$(dirname -- "$script")
+repo_root=$(CDPATH= cd -- "$script_dir" 2>/dev/null && pwd -P) || exit 1
+
+exec devtool --repo "$repo_root" wrapper exec "$@"

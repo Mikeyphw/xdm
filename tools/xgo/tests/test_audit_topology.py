@@ -137,6 +137,36 @@ paths = [
         self.assertEqual(report["status"], "pass")
 
 
+
+    def test_target_ready_accepts_primary_runner_without_workflow_table(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
+        config = root/".devtool.toml"
+        make_config(config)
+
+        text = config.read_text()
+        text += """
+[targets.xdm_android]
+runner = "android"
+root = "app/XDM.Android"
+execution_environment = "native-termux"
+
+[targets.xdm_android.artifacts]
+output_directory = "app/build/outputs/apk/debug"
+paths = [
+    "app/build/outputs/apk/debug/app-debug.apk",
+    "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+"""
+        config.write_text(text)
+
+        report = audit(config, None, only_target="xdm_android")
+        inspected = report["inspected"]["xdm_android"]
+
+        self.assertEqual(inspected["runner"], "android")
+        self.assertEqual(inspected["validation_mode"], "primary-runner")
+        self.assertEqual(inspected["validate_node_count"], 0)
+
+
     def test_cycle_rejected(self) -> None:
         root = Path(tempfile.mkdtemp(prefix="xgo-topology-"))
         config = root/".devtool.toml"

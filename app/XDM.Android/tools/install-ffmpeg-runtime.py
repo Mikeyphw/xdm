@@ -184,6 +184,24 @@ def detect_ndk(version: str) -> Path:
 
 def ndk_prebuilt_toolchains(ndk: Path) -> list[Path]:
     prebuilt = ndk / "toolchains/llvm/prebuilt"
+
+    # Termux ARM64 NDK packages may use a flattened host layout:
+    #
+    #   prebuilt/bin/
+    #   prebuilt/lib/
+    #   prebuilt/sysroot/
+    #
+    # rather than the upstream layout:
+    #
+    #   prebuilt/linux-x86_64/bin/
+    #   prebuilt/linux-x86_64/sysroot/
+    #
+    # In the flattened form `prebuilt` itself is the toolchain root. Treating
+    # each child directory as a candidate makes `bin` become the selected
+    # sysroot owner and incorrectly produces `prebuilt/bin/sysroot`.
+    if (prebuilt / "bin").is_dir() and (prebuilt / "sysroot").is_dir():
+        return [prebuilt]
+
     options = sorted((p for p in prebuilt.iterdir() if p.is_dir()), key=lambda p: p.name)
     if not options:
         raise SystemExit(f"NDK LLVM toolchain missing under {prebuilt}")
@@ -208,6 +226,101 @@ def write_exec_wrapper(path: Path, executable: Path, prefix_args: list[str]) -> 
     command = " ".join(shlex.quote(str(part)) for part in [executable, *prefix_args])
     path.write_text(f"#!/bin/sh\nexec {command} \"$@\"\n", encoding="utf-8")
     path.chmod(0o755)
+
+
+def ndk_android_resource_dir(toolchain: Path) -> Path:
+    """Locate the NDK Clang resource dir for AArch64 Android.
+
+    The caller may supply:
+      * the NDK root,
+      * toolchains/llvm/prebuilt,
+      * or one concrete host-prebuilt directory.
+
+    Never recursively select arbitrary libunwind.a archives because the NDK
+    also contains host runtimes such as i386/x86_64 libunwind.
+    """
+    roots: list[Path] = []
+
+    def add_root(path: Path) -> None:
+        path = path.resolve()
+        if path.is_dir() and path not in roots:
+            roots.append(path)
+
+    # NDK root.
+    prebuilt = toolchain / "toolchains/llvm/prebuilt"
+    if prebuilt.is_dir():
+        for child in sorted(prebuilt.iterdir()):
+            if child.is_dir():
+                add_root(child)
+
+    # .../toolchains/llvm/prebuilt
+    if toolchain.name == "prebuilt" and toolchain.is_dir():
+        for child in sorted(toolchain.iterdir()):
+            if child.is_dir():
+                add_root(child)
+
+    # Already a concrete host-prebuilt directory.
+    if toolchain.parent.name == "prebuilt":
+        add_root(toolchain)
+
+    # Also try the supplied path directly. This makes the helper robust to
+    # valid layouts without weakening target-runtime validation below.
+    add_root(toolchain)
+
+    matches: dict[Path, Path] = {}
+
+    for root in roots:
+        # Modern NDKs use lib/clang; retain lib64/clang compatibility for
+        # older layouts without searching unrelated host runtime trees.
+        for rel in (Path("lib/clang"), Path("lib64/clang")):
+            clang_root = root / rel
+            if not clang_root.is_dir():
+                continue
+
+            for version_dir in sorted(
+                (x for x in clang_root.iterdir() if x.is_dir()),
+                key=lambda x: x.name,
+            ):
+                linux = version_dir / "lib/linux"
+
+                builtins = (
+                    linux /
+                    "libclang_rt.builtins-aarch64-android.a"
+                )
+                unwind = linux / "aarch64/libunwind.a"
+
+                if builtins.is_file() and unwind.is_file():
+                    matches[version_dir.resolve()] = version_dir
+
+    if len(matches) != 1:
+        searched = ", ".join(str(x) for x in roots) or "<none>"
+        found = ", ".join(str(x) for x in matches.values()) or "<none>"
+        raise SystemExit(
+            "Could not identify exactly one AArch64 Android Clang "
+            "resource directory. "
+            f"Host-prebuilt roots checked: {searched}. "
+            f"Matching resource directories: {found}"
+        )
+
+    resource_dir = next(iter(matches.values()))
+
+    # Fail closed against accidentally selecting host/i386 runtimes.
+    unwind = resource_dir / "lib/linux/aarch64/libunwind.a"
+    builtins = (
+        resource_dir /
+        "lib/linux/libclang_rt.builtins-aarch64-android.a"
+    )
+
+    if not unwind.is_file():
+        raise SystemExit(
+            f"AArch64 Android libunwind missing: {unwind}"
+        )
+    if not builtins.is_file():
+        raise SystemExit(
+            f"AArch64 Android compiler-rt builtins missing: {builtins}"
+        )
+
+    return resource_dir
 
 
 def tool_fingerprint(path: Path) -> dict:
@@ -315,8 +428,35 @@ def resolve_toolchain(ndk: Path, api: int, build_root: Path, identity: dict) -> 
     wrapper_bin = build_root / "termux-llvm-bin"
     wrapper_bin.mkdir(parents=True, exist_ok=True)
     target = f"aarch64-linux-android{api}"
-    write_exec_wrapper(wrapper_bin / f"{target}-clang", termux_tools["clang"], [f"--target={target}", f"--sysroot={sysroot}", "-fuse-ld=lld"])
-    write_exec_wrapper(wrapper_bin / f"{target}-clang++", termux_tools["clang++"], [f"--target={target}", f"--sysroot={sysroot}", "-fuse-ld=lld"])
+    resource_dir = ndk_android_resource_dir(sysroot_owner)
+    target_runtime_dir = resource_dir / "lib/linux/aarch64"
+
+    compiler_args = [
+        f"--target={target}",
+        f"--sysroot={sysroot}",
+        f"-resource-dir={resource_dir}",
+        "--rtlib=compiler-rt",
+        "--unwindlib=libunwind",
+        f"-L{target_runtime_dir}",
+        "-fuse-ld=lld",
+    ]
+
+    print(f"Termux Android resource dir: {resource_dir}", flush=True)
+    print(
+        f"Termux Android AArch64 runtime dir: {target_runtime_dir}",
+        flush=True,
+    )
+
+    write_exec_wrapper(
+        wrapper_bin / f"{target}-clang",
+        termux_tools["clang"],
+        compiler_args,
+    )
+    write_exec_wrapper(
+        wrapper_bin / f"{target}-clang++",
+        termux_tools["clang++"],
+        compiler_args,
+    )
     for name in ("llvm-ar", "llvm-ranlib", "llvm-strip", "llvm-nm"):
         write_exec_wrapper(wrapper_bin / name, termux_tools[name], [])
     return sysroot_owner, wrapper_bin, backend

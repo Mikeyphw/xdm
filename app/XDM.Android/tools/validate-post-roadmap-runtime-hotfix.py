@@ -5,6 +5,11 @@ def need(path, *terms):
     s=(r/path).read_text()
     for term in terms:
         assert term in s, f"{path}: missing {term}"
+
+def reject(path, *terms):
+    s=(r/path).read_text()
+    for term in terms:
+        assert term not in s, f"{path}: stale retained contract still present: {term}"
 need(Path("app/src/main/kotlin/com/mikeyphw/xdm/android/ffmpeg/NativeHlsMediaManager.kt"), "probeResourceLength", "it.all { part -> part.expectedBytes != null }", "part.expectedBytes ?: part.byteRange?.length")
 need(Path("media/src/main/kotlin/com/mikeyphw/xdm/android/media/NativeHlsExecutionEngine.kt"), "it.all { part -> part.expectedBytes != null }")
 need(Path("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/TransferLaunchPolicy.kt"), "userVisible -> TransferLaunchMode.ForegroundService")
@@ -16,6 +21,18 @@ print("post-roadmap runtime hotfix static seal: PASS")
 # V4 retained-contract convergence.
 need(Path("app/src/test/kotlin/com/mikeyphw/xdm/android/Phase63ReleaseReadinessSupportBundleSealContractTest.kt"), "supportBundleSealSeparatesMissingAttestationFromRuntimePrivacyFailure")
 need(Path("scheduler/src/main/kotlin/com/mikeyphw/xdm/android/scheduler/AndroidTransferRequestSecurityGuard.kt"), "InetAddress.getAllByName(host)")
-need(Path("app/src/test/kotlin/com/mikeyphw/xdm/android/RemediationPhase04_05ContractTest.kt"), "userVisible -> TransferLaunchMode.ForegroundService")
+remediation_04_05 = Path("app/src/test/kotlin/com/mikeyphw/xdm/android/RemediationPhase04_05ContractTest.kt")
+need(
+    remediation_04_05,
+    "AndroidDownloadExecutionBroker.kt",
+    "AndroidGoDownloadCommands.submit(appContext",
+    "AndroidSchedulerHost.wake(",
+    "QueueIntelligenceWorker.enqueueImmediate(appContext)",
+)
+reject(
+    remediation_04_05,
+    "AndroidLegacyDownloadUiBroker.kt",
+    "userVisible -> TransferLaunchMode.ForegroundService",
+)
 need(Path("app/src/test/kotlin/com/mikeyphw/xdm/android/Ux03DownloadsQueueProductUiContractTest.kt"), "destinationCardLabel(download)")
 print("post-roadmap runtime hotfix v4 retained-contract seal: PASS")

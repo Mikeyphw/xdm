@@ -3444,6 +3444,236 @@ validate = [
   { id = "contract", ref = "job:contract", depends_on = [] }
 ]
 
+
+# ---------------------------------------------------------------------------
+# Gate-12 checkpoint continuation.
+#
+# Already completed and intentionally NOT repeated:
+#   xgo_seal
+#   xdm_android preflight
+#   xdm_android dependencies
+#   xdm_android compile
+#   xdm_android resources
+#   xdm_android unit tests
+#   xdm_android package / APK build
+#
+# Resume boundary:
+#   corrected artifact contract -> lint -> device instrumentation
+#   -> desktop host -> final Wave-12 verifier
+# ---------------------------------------------------------------------------
+
+[jobs.xgo-gate12-continue-android-topology]
+runner = "command"
+root = "."
+command = [
+  "python3",
+  "tools/xgo/audit_topology.py",
+  "target-ready",
+  "--config", ".devtool.toml",
+  "--target", "xdm_android",
+  "--output", ".devtool/reports/xgo/gates/final-continue/android-topology.json",
+]
+inputs = [
+  ".devtool.toml",
+  "tools/xgo/audit_topology.py",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/android-topology.json",
+]
+
+[jobs.xgo-gate12-continue-android-package-refresh]
+runner = "command"
+root = "app/XDM.Android"
+shell_command = """
+set -eu
+
+AAPT2="$(command -v aapt2)"
+
+./gradlew \
+  :app:assembleDebugAndroidTest \
+  :app:verifyFfmpegDebugApkRuntime \
+  --max-workers=1 \
+  --no-daemon \
+  --build-cache \
+  -Pandroid.aapt2FromMavenOverride="$AAPT2" \
+  -Dorg.gradle.parallel=false \
+  -Dorg.gradle.vfs.watch=false \
+  -Pkotlin.incremental=true \
+  -Pkotlin.compiler.execution.strategy=in-process \
+  --no-configuration-cache \
+  --console=plain
+"""
+inputs = [
+  "app/**",
+  "../../engine/**",
+  "../../tools/xgo/build_android_xdmcore.py",
+  "build.gradle.kts",
+  "settings.gradle.kts",
+  "gradle.properties",
+]
+outputs = [
+  "app/build/outputs/apk/debug/app-debug.apk",
+  "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+
+[jobs.xgo-gate12-continue-android-artifacts]
+runner = "command"
+root = "."
+shell_command = """
+set -eu
+
+APP_APK="app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk"
+TEST_APK="app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+REPORT=".devtool/reports/xgo/gates/final-continue/android-artifacts.sha256"
+
+test -s "$APP_APK"
+test -s "$TEST_APK"
+
+unzip -tq "$APP_APK" >/dev/null
+unzip -tq "$TEST_APK" >/dev/null
+
+unzip -l "$APP_APK" | grep -q 'lib/arm64-v8a/libxdmcore.so'
+unzip -l "$APP_APK" | grep -q 'assets/xdmcore/xdmcore-provenance.json'
+
+mkdir -p "$(dirname "$REPORT")"
+sha256sum "$APP_APK" "$TEST_APK" > "$REPORT"
+
+echo "Gate-12 Android retained APK checkpoint: PASS"
+"""
+inputs = [
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/android-artifacts.sha256",
+]
+
+[jobs.xgo-gate12-continue-android-lint]
+runner = "command"
+root = "app/XDM.Android"
+shell_command = """
+set -eu
+
+AAPT2="$(command -v aapt2)"
+
+./gradlew :app:lintDebug \
+  --max-workers=1 \
+  --no-daemon \
+  --build-cache \
+  -Pandroid.aapt2FromMavenOverride="$AAPT2" \
+  -Dorg.gradle.parallel=false \
+  -Dorg.gradle.vfs.watch=false \
+  -Pkotlin.incremental=true \
+  -Pkotlin.compiler.execution.strategy=in-process \
+  --no-configuration-cache \
+  --console=plain
+"""
+inputs = [
+  "app/**",
+  "build.gradle.kts",
+  "settings.gradle.kts",
+  "gradle.properties",
+]
+
+[jobs.xgo-gate12-continue-android-instrumentation]
+runner = "command"
+root = "."
+shell_command = """
+set -eu
+
+ADB="$(command -v adb)"
+APP_APK="app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk"
+TEST_APK="app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+RUNNER="com.mikeyphw.xdm.android.debug.test/androidx.test.runner.AndroidJUnitRunner"
+REPORT=".devtool/reports/xgo/gates/final-continue/android-instrumentation.txt"
+
+mkdir -p "$(dirname "$REPORT")"
+: > "$REPORT"
+
+DEVICES="$("$ADB" devices | awk 'NR > 1 && $2 == "device" { print $1 }')"
+
+# Preserve xdm_android's when-device-present policy.
+if [ -z "$DEVICES" ]; then
+    echo "Instrumentation: SKIPPED (no authorized device; policy=when-device-present)" \
+        | tee -a "$REPORT"
+    exit 0
+fi
+
+for SERIAL in $DEVICES; do
+    echo "=== device: $SERIAL ===" | tee -a "$REPORT"
+
+    "$ADB" -s "$SERIAL" install -r -t "$APP_APK" \
+        | tee -a "$REPORT"
+
+    "$ADB" -s "$SERIAL" install -r -t "$TEST_APK" \
+        | tee -a "$REPORT"
+
+    set +e
+    OUTPUT="$("$ADB" -s "$SERIAL" shell am instrument \
+        -w -r "$RUNNER" 2>&1)"
+    RC=$?
+    set -e
+
+    printf '%s\n' "$OUTPUT" | tee -a "$REPORT"
+
+    if [ "$RC" -ne 0 ]; then
+        echo "Instrumentation command failed with exit $RC" \
+            | tee -a "$REPORT"
+        exit "$RC"
+    fi
+
+    if ! printf '%s\n' "$OUTPUT" | grep -q 'INSTRUMENTATION_CODE: -1'; then
+        echo "Instrumentation did not report successful terminal code -1" \
+            | tee -a "$REPORT"
+        exit 1
+    fi
+
+    if printf '%s\n' "$OUTPUT" | grep -Eq \
+        'Process crashed|FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_STATUS_CODE: -2'
+    then
+        echo "Instrumentation reported a process/test failure" \
+            | tee -a "$REPORT"
+        exit 1
+    fi
+done
+
+echo "Gate-12 Android device instrumentation checkpoint: PASS" \
+    | tee -a "$REPORT"
+"""
+inputs = [
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/android-instrumentation.txt",
+]
+
+[targets.xgo_gate_final_continue]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "engine/**",
+  "tools/xgo/**",
+  "app/XDM.Android/**",
+  "app/XDM/**",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/**",
+]
+
+[targets.xgo_gate_final_continue.workflows]
+validate = [
+  { id = "android_package_refresh", ref = "job:xgo-gate12-continue-android-package-refresh", depends_on = [] },
+  { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["android_package_refresh"] },
+  { id = "android_lint_remaining", ref = "job:xgo-gate12-continue-android-lint", depends_on = ["android_artifact_checkpoint"] },
+  { id = "android_instrumentation_remaining", ref = "job:xgo-gate12-continue-android-instrumentation", depends_on = ["android_lint_remaining"] },
+  { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_instrumentation_remaining"] },
+  { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
+]
+
 [wrapper]
 schema = 1
 default_command = "android"
@@ -3632,6 +3862,13 @@ description = "Run the authoritative Wave-12 final gate: XGO seal, Android host,
 workflow = "validate"
 target = "xgo_gate_final"
 aliases = ["final", "gate"]
+
+
+[wrapper.commands.gate-final-continue]
+description = "Resume Gate-12 after passed XGO seal and passed Android build phases"
+workflow = "validate"
+target = "xgo_gate_final_continue"
+aliases = ["final-continue", "gate-continue"]
 
 [wrapper.commands.wrapper-check]
 description = "Validate the repository-local Devtool wrapper contract without Gradle"

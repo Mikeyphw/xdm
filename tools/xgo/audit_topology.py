@@ -158,7 +158,30 @@ def audit(config_path: Path, output: Path | None, only_target: str = "") -> dict
         env = str(target.get("execution_environment") or "")
         if env != "native-termux":
             raise TopologyError(f"{name}: bootstrap execution_environment must be native-termux, got {env!r}")
-        validate = _steps(name, target)
+        workflows = target.get("workflows")
+        runner = str(target.get("runner") or "").strip()
+        has_validate_workflow = (
+            isinstance(workflows, dict)
+            and isinstance(workflows.get("validate"), list)
+            and bool(workflows.get("validate"))
+        )
+
+        if has_validate_workflow:
+            validate = _steps(name, target)
+            validation_mode = "workflow"
+        elif only_target and runner:
+            # target-ready must support the same MP05 primary-runner fallback
+            # that cross-target refs already support. Native targets such as
+            # xdm_android intentionally expose validate through their runner
+            # rather than a [targets.<name>.workflows] table.
+            validate = []
+            validation_mode = "primary-runner"
+        else:
+            # Preserve the existing fail-closed behavior for canonical XGO
+            # subsystem/gate targets, which are expected to define workflows.
+            validate = _steps(name, target)
+            validation_mode = "workflow"
+
         jobs = target.get("jobs") if isinstance(target.get("jobs"), dict) else {}
         for step in validate:
             ref = step["ref"]
@@ -179,18 +202,21 @@ def audit(config_path: Path, output: Path | None, only_target: str = "") -> dict
                 else:
                     # Devtool MP05 permits target:<name>#<action> to fall back to the
                     # target's primary runner action when no named workflow exists.
-                    # GATE-10 uses that supported contract for xdm_android#validate so
-                    # the Android runner's native validation planner executes inside
-                    # the same DAG rather than through a recursive Devtool process.
-                    runner = str(child_target.get("runner") or "").strip() if isinstance(child_target, dict) else ""
-                    if not runner:
+                    runner_child = (
+                        str(child_target.get("runner") or "").strip()
+                        if isinstance(child_target, dict)
+                        else ""
+                    )
+                    if not runner_child:
                         raise TopologyError(
                             f"{name}: target {child} has neither workflow {workflow!r} nor a primary runner fallback"
                         )
+
         inspected[name] = {
-            "runner": str(target.get("runner") or ""),
+            "runner": runner,
             "root": str(target.get("root") or ""),
             "execution_environment": env,
+            "validation_mode": validation_mode,
             "validate_node_count": len(validate),
         }
 
