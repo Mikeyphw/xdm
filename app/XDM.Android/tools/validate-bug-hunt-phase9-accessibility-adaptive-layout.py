@@ -112,6 +112,7 @@ checks = [
         "assertIsFocused",
         "requestFocus()",
         "waitUntilDoesNotExist",
+        "useUnmergedTree = false",
         "performClick",
     ]),
     ("app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt", [

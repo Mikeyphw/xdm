@@ -118,6 +118,7 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         composeRule.waitUntilDoesNotExist(
             hasTestTag(XdmTestTags.AdaptiveSheet),
             timeoutMillis = 5_000L,
+            useUnmergedTree = false,
         )
         composeRule.waitForIdle()
 

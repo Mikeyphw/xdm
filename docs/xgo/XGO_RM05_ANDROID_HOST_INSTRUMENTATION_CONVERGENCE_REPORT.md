@@ -192,3 +192,22 @@ check before lint and the complete 25-test instrumentation suite.
 
 Qualification remains pending until `./devtoolw gate-final-continue` passes on
 the Termux/emulator or device environment.
+
+
+## RM05 v6 — non-experimental Compose teardown wait overload
+
+The first focused-test rebuild of RM05 v5 stopped at
+`:app:compileDebugAndroidTestKotlin` before instrumentation. The corrected test
+used the legacy two-argument `ComposeTestRule.waitUntilDoesNotExist(matcher,
+timeoutMillis)` overload, which is marked `ExperimentalTestApi` by the Compose
+test library consumed by this project; this repository treats missing
+experimental opt-ins as compilation errors.
+
+RM05 v6 keeps the v5 lifecycle model intact and switches only to the current
+non-experimental overload by passing `useUnmergedTree = false` explicitly. No
+production focus behavior and no `xgo_gate_final_continue` dependency is
+changed. The Phase-9 static validator now requires the explicit overload so a
+future edit cannot silently fall back to the experimental signature.
+
+Qualification remains pending until the Android test APK compiles and the
+existing `./devtoolw gate-final-continue` focus precheck passes.
