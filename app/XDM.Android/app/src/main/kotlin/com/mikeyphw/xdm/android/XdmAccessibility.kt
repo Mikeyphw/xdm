@@ -17,6 +17,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -135,6 +136,7 @@ fun rememberXdmFocusRestorationController(): XdmFocusRestorationController = rem
 fun Modifier.xdmFocusRestorePoint(key: String): Modifier {
     val controller = LocalXdmFocusRestorationController.current
     val requester = remember { FocusRequester() }
+    val hostView = LocalView.current
     val restoreRequestKey = controller.restoreRequestKey
     val restoreRequestGeneration = controller.restoreRequestGeneration
 
@@ -143,21 +145,27 @@ fun Modifier.xdmFocusRestorePoint(key: String): Modifier {
         onDispose { controller.unregister(key, requester) }
     }
 
-    LaunchedEffect(key, requester, controller, restoreRequestKey, restoreRequestGeneration) {
+    LaunchedEffect(key, requester, controller, hostView, restoreRequestKey, restoreRequestGeneration) {
         if (restoreRequestGeneration == 0L || restoreRequestKey != key) return@LaunchedEffect
 
-        // The modal/popup focus owner can finish releasing focus after dismissal.
-        // Fulfil the request from the surviving opener subtree and require focus to
-        // remain stable across two frames before stopping the bounded retry loop.
+        // A ModalBottomSheet/Dialog can leave Compose semantics before its Android
+        // window has returned focus to the activity. Requesting Compose focus while
+        // that modal window still owns focus is transient and can be cleared again.
+        // Wait for the surviving host window to become authoritative, then request
+        // focus from the opener subtree until it is stable across several frames.
         var stableFocusedFrames = 0
-        repeat(12) {
+        repeat(90) {
             withFrameNanos { }
+            if (!hostView.hasWindowFocus()) {
+                stableFocusedFrames = 0
+                return@repeat
+            }
             if (!controller.isFocused(key)) {
                 runCatching { requester.requestFocus() }
             }
             if (controller.isFocused(key)) {
                 stableFocusedFrames += 1
-                if (stableFocusedFrames >= 2) return@LaunchedEffect
+                if (stableFocusedFrames >= 3) return@LaunchedEffect
             } else {
                 stableFocusedFrames = 0
             }

@@ -233,3 +233,40 @@ cannot recur.
 
 Qualification remains pending until `:app:assembleDebugAndroidTest` compiles and
 the existing focused instrumentation precheck passes.
+
+
+## RM05 v8 — host-window-authoritative focus restoration
+
+RM05 v7 compiled successfully far enough for the focused instrumentation method
+to execute. The method dismissed the adaptive sheet and observed that its
+semantics node no longer existed, but the surviving `Open sheet` button still
+reported `Focused = false`. This proves the remaining residual is production
+focus restoration rather than test synchronization or Compose-test API
+compatibility.
+
+The v4 production implementation published a restore request when
+`XdmAdaptiveSheet(visible = false)` recomposed, and the surviving opener retried
+`FocusRequester.requestFocus()` for twelve Compose frames. That lifecycle signal
+was still too early: Material modal/dialog semantics can disappear before the
+separate Android modal window has relinquished window focus back to the host
+activity. A request can therefore look briefly successful and then be cleared by
+final window teardown.
+
+RM05 v8 moves the retry gate to the actual Android ownership boundary.
+`xdmFocusRestorePoint()` now captures `LocalView.current` and, after a keyed
+restoration request, waits until the host view reports `hasWindowFocus()`. Only
+then does it request Compose focus. It continues a bounded retry loop for up to
+90 frames and requires the opener to remain focused for three consecutive
+window-focused frames before considering restoration stable. If the modal window
+briefly retakes ownership, stability is reset and no focus request is issued
+until host ownership returns.
+
+The Phase-9 static validator now requires the host-window focus gate and stable
+focus tracking. The runtime assertion itself is intentionally unchanged: the
+opener must genuinely regain focus after Android-back dismissal.
+
+No Gate-12 continuation topology change is needed. The existing
+`gate-final-continue` path already rebuilds the Android APK/test APK before the
+RM05 focused precheck, so this production source change is naturally
+requalified at that boundary. Qualification remains pending until the focused
+instrumentation method passes on the Termux emulator/device.
