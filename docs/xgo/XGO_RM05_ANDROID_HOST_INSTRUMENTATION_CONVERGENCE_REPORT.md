@@ -367,3 +367,48 @@ The Gate-12 continuation topology remains unchanged: the focused RM05 precheck
 must pass before lint and the complete instrumentation suite are allowed to run.
 Qualification remains deferred to `./devtoolw gate-final-continue` on the
 Termux/emulator or device environment.
+
+## RM05 v11 — Devtool-owned Gradle execution convergence
+
+The Gate-12 repair continuation previously owned three Android lifecycle steps as
+repository shell jobs. In particular, APK refresh and lint called `./gradlew`
+directly from `.devtool.toml`, while complete instrumentation was implemented as
+a hand-written install/`am instrument` loop. That bypassed the Devtool Android
+runner's SDK/JDK/AAPT2/provider/resource/telemetry boundary and made the same
+Gate-12 work behave differently from ordinary `xdm_android` validation. On a
+Termux session where project-local SDK discovery differed, the bypass surfaced
+as a missing-SDK failure even though Devtool's Android runner already knew how
+to resolve the toolchain.
+
+RM05 v11 removes those orchestration bypasses:
+
+- `xdm_android` now owns the Gate-12 package task set as its native Devtool
+  `package` action;
+- narrow `gate12_package`, `gate12_lint`, and `gate12_instrumentation` workflows
+  expose the corresponding native Android runner actions;
+- `xgo_gate_final_continue` composes those workflows through
+  `target:xdm_android#...` references instead of shelling out to Gradle or
+  reimplementing full instrumentation;
+- the focused RM05 ADB precheck remains intentionally direct because it is a
+  single-method device fail-fast probe, not a Gradle/build lifecycle; and
+- a new `xgo_devtool_policy` target fails closed if executable XGO orchestration
+  in `.devtool.toml`, `devtoolw`, or `tools/xgo/**` directly launches
+  `gradle`/`gradlew` or declares the legacy `gradle_tasks` job shortcut.
+
+The same policy is now the first node of both `xgo_gate_final_continue` and the
+authoritative `xgo_gate_final`. Gate-12 policy data was updated to include that
+node, while the ten-node `xgo_seal` workflow and its retained reports remain
+unchanged. This preserves the expensive seal checkpoint instead of invalidating
+it for an orchestration-only correction.
+
+The policy scope is deliberately the XGO Devtool execution graph. Historical
+Android project runbooks, documentation, and CI outside `.devtool.toml`,
+`devtoolw`, and `tools/xgo/**` are not rewritten by this remediation. Within the
+XGO graph, Gradle execution must enter through a native Devtool runner action;
+seeing the project wrapper later in Devtool's own Android-runner log is expected
+because Devtool itself ultimately launches Gradle.
+
+`./devtoolw gate-final-continue` remains a repair-cycle continuation. A green
+continuation requalifies the invalidated Android/desktop/final-wave boundary;
+it does not replace a later from-scratch `./devtoolw gate-final` when full
+Gate-12 closure is required.

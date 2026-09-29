@@ -4,9 +4,16 @@
   "gate_target": "xgo_gate_final",
   "expected_gate_nodes": [
     {
+      "id": "devtool_execution_policy",
+      "ref": "target:xgo_devtool_policy#validate",
+      "depends_on": []
+    },
+    {
       "id": "wave12_seal",
       "ref": "target:xgo_seal#validate",
-      "depends_on": []
+      "depends_on": [
+        "devtool_execution_policy"
+      ]
     },
     {
       "id": "android_host_final",

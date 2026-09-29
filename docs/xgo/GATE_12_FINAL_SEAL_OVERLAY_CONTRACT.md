@@ -14,16 +14,17 @@ GATE-12 is a **Wave-12-focused final gate**. It must not replay the historical X
 
 The authoritative `xgo_gate_final#validate` DAG is exactly:
 
-1. `target:xgo_seal#validate` — all ten Wave 12 nodes, XGO-81 through XGO-89.
-2. `target:xdm_android#validate` — one direct Android host build/test/package seal.
-3. `target:xdm_modern#validate` — one direct Desktop .NET build/test seal.
-4. `target:xgo_final_wave12#validate` — final evidence/invariant verifier.
+1. `target:xgo_devtool_policy#validate` — cheap read-only enforcement that XGO-owned orchestration never launches raw Gradle.
+2. `target:xgo_seal#validate` — all ten Wave 12 nodes, XGO-81 through XGO-89.
+3. `target:xdm_android#validate` — one direct Android host build/test/package seal.
+4. `target:xdm_modern#validate` — one direct Desktop .NET build/test seal.
+5. `target:xgo_final_wave12#validate` — final evidence/invariant verifier.
 
 `xgo_gate_cross_host` is intentionally absent. Older subsystem/gate workflows are not replayed merely because this is the final gate.
 
 ## New invariants
 
-- GATE-12 executes the ten-node Wave 12 seal exactly once.
+- GATE-12 first proves the XGO Devtool-execution policy, then executes the ten-node Wave 12 seal exactly once.
 - GATE-12 directly requalifies each real host exactly once after the Wave 12 seal.
 - Every Wave 12 report is present and has `status=pass` before final seal completion.
 - Differential regressions are zero across all 98 capabilities.
@@ -54,9 +55,20 @@ Validation tasks: absent; target workflow is authoritative
 
 ## Exit criteria
 
-- Devtool topology accepts `xgo_gate_final` with exactly four target-level nodes.
+- Devtool topology accepts `xgo_gate_final` with exactly five target-level nodes (the original four-node gate plus the RM05 v11 Devtool-execution policy preflight).
 - `xgo_gate_cross_host` is not referenced by GATE-12.
 - `xgo_seal` retains exactly ten Wave 12 nodes.
 - XGO Python regression tests pass.
 - Full Go engine tests and vet pass.
-- Final verifier passes after its three upstream target dependencies complete.
+- Final verifier passes after the policy preflight and its three host/seal upstream target dependencies complete.
+
+
+## Post-GATE-12 RM05 v11 amendment
+
+The gate was originally authored and applied with four target-level nodes. The
+RM05 repair cycle exposed a repository-orchestration defect: continuation jobs
+invoked `./gradlew` directly instead of entering through Devtool's Android
+runner. RM05 v11 therefore prepends the read-only `xgo_devtool_policy` node to
+both the repair continuation and authoritative final gate. The Wave-12 seal
+itself remains exactly ten nodes and is not reapplied or expanded by this
+amendment.

@@ -207,6 +207,13 @@ build = [
   "assembleDebug",
 ]
 
+# Gate-12 package refresh is a first-class Devtool Android package action.
+# Keep this task set here so XGO workflows never shell out to gradlew.
+package = [
+  ":app:assembleDebugAndroidTest",
+  ":app:verifyFfmpegDebugApkRuntime",
+]
+
 test = [
     ":core-model:test",
     ":core-utils:test",
@@ -242,6 +249,19 @@ recursive = true
 
 [targets.xdm_android.validation]
 resumable = true
+
+# Narrow Gate-12 continuation lanes. These resolve through the native Android
+# runner, preserving Devtool SDK/JDK/AAPT2/provider/resource/telemetry policy.
+[targets.xdm_android.workflows]
+gate12_package = [
+  { id = "package", ref = "runner:android#package", depends_on = [] },
+]
+gate12_lint = [
+  { id = "lint", ref = "runner:android#lint", depends_on = [] },
+]
+gate12_instrumentation = [
+  { id = "instrumentation", ref = "runner:android#instrumentation", depends_on = [] },
+]
 
 [validation.phases]
 preflight = [
@@ -3355,6 +3375,43 @@ validate = [
   { id = "desktop_full_seal", ref = "target:xdm_modern#validate", depends_on = ["desktop"] },
 ]
 
+[targets.xgo_devtool_policy]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "devtoolw",
+  "tools/xgo/**",
+]
+outputs = [
+  ".devtool/reports/xgo/policy/**",
+]
+
+[targets.xgo_devtool_policy.jobs.no_raw_gradle]
+runner = "command"
+command = [
+  "python3",
+  "tools/xgo/audit_devtool_execution_policy.py",
+  "--output",
+  ".devtool/reports/xgo/policy/devtool-execution.json",
+]
+inputs = [
+  ".devtool.toml",
+  "devtoolw",
+  "tools/xgo/**",
+]
+outputs = [
+  ".devtool/reports/xgo/policy/devtool-execution.json",
+]
+metadata = { read_only = false, purpose = "devtool-execution-policy" }
+
+[targets.xgo_devtool_policy.workflows]
+validate = [
+  { id = "no_raw_gradle", ref = "job:no_raw_gradle", depends_on = [] },
+]
+
 [targets.xgo_final_wave12]
 runner = "command"
 platform = "shared"
@@ -3390,7 +3447,7 @@ outputs = [
 
 [targets.xgo_final_wave12.workflows]
 validate = [
-  { id = "wave12_final_gate", ref = "job:wave12_final_gate", depends_on = [] }
+  { id = "wave12_final_gate", ref = "job:wave12_final_gate", depends_on = [] },
 ]
 
 [targets.xgo_gate_final]
@@ -3412,10 +3469,11 @@ outputs = [
 
 [targets.xgo_gate_final.workflows]
 validate = [
-  { id = "wave12_seal", ref = "target:xgo_seal#validate", depends_on = [] },
+  { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
+  { id = "wave12_seal", ref = "target:xgo_seal#validate", depends_on = ["devtool_execution_policy"] },
   { id = "android_host_final", ref = "target:xdm_android#validate", depends_on = ["wave12_seal"] },
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_host_final"] },
-  { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] }
+  { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
 ]
 
 [targets.xgo_wrapper]
@@ -3457,13 +3515,15 @@ validate = [
 #
 # RM05 remediation changes Android app + androidTest sources, so the retained APK/lint
 # evidence is intentionally invalidated. Resume from a cheap topology sanity
-# check, rebuild both APKs, re-check their payloads, run a focused RM05 residual
-# instrumentation precheck, then rerun authoritative lint + the full device suite
-# before desktop and the final Wave-12 verifier.
+# policy check and topology sanity, rebuild both APKs through the native Devtool
+# Android package action, re-check their payloads, run a focused RM05 residual
+# device precheck, then rerun Devtool-owned lint + full instrumentation before
+# desktop and the final Wave-12 verifier.
 #
 # Resume boundary:
-#   topology -> package/APK refresh -> artifact checkpoint -> RM05 residual precheck
-#   -> lint -> full device instrumentation -> desktop host -> final Wave-12 verifier
+#   Devtool execution policy -> topology -> Android package -> artifact checkpoint
+#   -> RM05 residual precheck -> Android lint -> Android instrumentation
+#   -> desktop host -> final Wave-12 verifier
 # ---------------------------------------------------------------------------
 
 [jobs.xgo-gate12-continue-android-topology]
@@ -3483,41 +3543,6 @@ inputs = [
 ]
 outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-topology.json",
-]
-
-[jobs.xgo-gate12-continue-android-package-refresh]
-runner = "command"
-root = "app/XDM.Android"
-shell_command = """
-set -eu
-
-AAPT2="$(command -v aapt2)"
-
-./gradlew \
-  :app:assembleDebugAndroidTest \
-  :app:verifyFfmpegDebugApkRuntime \
-  --max-workers=1 \
-  --no-daemon \
-  --build-cache \
-  -Pandroid.aapt2FromMavenOverride="$AAPT2" \
-  -Dorg.gradle.parallel=false \
-  -Dorg.gradle.vfs.watch=false \
-  -Pkotlin.incremental=true \
-  -Pkotlin.compiler.execution.strategy=in-process \
-  --no-configuration-cache \
-  --console=plain
-"""
-inputs = [
-  "app/**",
-  "../../engine/**",
-  "../../tools/xgo/build_android_xdmcore.py",
-  "build.gradle.kts",
-  "settings.gradle.kts",
-  "gradle.properties",
-]
-outputs = [
-  "app/build/outputs/apk/debug/app-debug.apk",
-  "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
 ]
 
 [jobs.xgo-gate12-continue-android-artifacts]
@@ -3609,106 +3634,6 @@ outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt",
 ]
 
-[jobs.xgo-gate12-continue-android-lint]
-runner = "command"
-root = "app/XDM.Android"
-shell_command = """
-set -eu
-
-AAPT2="$(command -v aapt2)"
-
-./gradlew :app:lintDebug \
-  --max-workers=1 \
-  --no-daemon \
-  --build-cache \
-  -Pandroid.aapt2FromMavenOverride="$AAPT2" \
-  -Dorg.gradle.parallel=false \
-  -Dorg.gradle.vfs.watch=false \
-  -Pkotlin.incremental=true \
-  -Pkotlin.compiler.execution.strategy=in-process \
-  --no-configuration-cache \
-  --console=plain
-"""
-inputs = [
-  "app/**",
-  "build.gradle.kts",
-  "settings.gradle.kts",
-  "gradle.properties",
-]
-
-[jobs.xgo-gate12-continue-android-instrumentation]
-runner = "command"
-root = "."
-shell_command = """
-set -eu
-
-ADB="$(command -v adb)"
-APP_APK="app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk"
-TEST_APK="app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
-RUNNER="com.mikeyphw.xdm.android.debug.test/androidx.test.runner.AndroidJUnitRunner"
-REPORT=".devtool/reports/xgo/gates/final-continue/android-instrumentation.txt"
-
-mkdir -p "$(dirname "$REPORT")"
-: > "$REPORT"
-
-DEVICES="$("$ADB" devices | awk 'NR > 1 && $2 == "device" { print $1 }')"
-
-# Preserve xdm_android's when-device-present policy.
-if [ -z "$DEVICES" ]; then
-    echo "Instrumentation: SKIPPED (no authorized device; policy=when-device-present)" \
-        | tee -a "$REPORT"
-    exit 0
-fi
-
-for SERIAL in $DEVICES; do
-    echo "=== device: $SERIAL ===" | tee -a "$REPORT"
-
-    "$ADB" -s "$SERIAL" install -r -t "$APP_APK" \
-        | tee -a "$REPORT"
-
-    "$ADB" -s "$SERIAL" install -r -t "$TEST_APK" \
-        | tee -a "$REPORT"
-
-    set +e
-    OUTPUT="$("$ADB" -s "$SERIAL" shell am instrument \
-        -w -r "$RUNNER" 2>&1)"
-    RC=$?
-    set -e
-
-    printf '%s\n' "$OUTPUT" | tee -a "$REPORT"
-
-    if [ "$RC" -ne 0 ]; then
-        echo "Instrumentation command failed with exit $RC" \
-            | tee -a "$REPORT"
-        exit "$RC"
-    fi
-
-    if ! printf '%s\n' "$OUTPUT" | grep -q 'INSTRUMENTATION_CODE: -1'; then
-        echo "Instrumentation did not report successful terminal code -1" \
-            | tee -a "$REPORT"
-        exit 1
-    fi
-
-    if printf '%s\n' "$OUTPUT" | grep -Eq \
-        'Process crashed|FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_STATUS_CODE: -2'
-    then
-        echo "Instrumentation reported a process/test failure" \
-            | tee -a "$REPORT"
-        exit 1
-    fi
-done
-
-echo "Gate-12 Android device instrumentation checkpoint: PASS" \
-    | tee -a "$REPORT"
-"""
-inputs = [
-  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
-  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
-]
-outputs = [
-  ".devtool/reports/xgo/gates/final-continue/android-instrumentation.txt",
-]
-
 [targets.xgo_gate_final_continue]
 runner = "command"
 platform = "shared"
@@ -3727,12 +3652,13 @@ outputs = [
 
 [targets.xgo_gate_final_continue.workflows]
 validate = [
-  { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = [] },
-  { id = "android_package_refresh", ref = "job:xgo-gate12-continue-android-package-refresh", depends_on = ["android_topology_sanity"] },
+  { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
+  { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = ["devtool_execution_policy"] },
+  { id = "android_package_refresh", ref = "target:xdm_android#gate12_package", depends_on = ["android_topology_sanity"] },
   { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["android_package_refresh"] },
   { id = "android_rm05_residual_precheck", ref = "job:xgo-gate12-continue-android-rm05-precheck", depends_on = ["android_artifact_checkpoint"] },
-  { id = "android_lint_remaining", ref = "job:xgo-gate12-continue-android-lint", depends_on = ["android_rm05_residual_precheck"] },
-  { id = "android_instrumentation_remaining", ref = "job:xgo-gate12-continue-android-instrumentation", depends_on = ["android_lint_remaining"] },
+  { id = "android_lint_remaining", ref = "target:xdm_android#gate12_lint", depends_on = ["android_rm05_residual_precheck"] },
+  { id = "android_instrumentation_remaining", ref = "target:xdm_android#gate12_instrumentation", depends_on = ["android_lint_remaining"] },
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_instrumentation_remaining"] },
   { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
 ]
