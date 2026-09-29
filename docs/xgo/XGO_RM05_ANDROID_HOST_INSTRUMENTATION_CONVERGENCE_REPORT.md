@@ -95,3 +95,36 @@ final verifier. It deliberately does not replay the already-qualified
 
 Qualification is deferred to `./devtoolw gate-final-continue`; this report does
 not claim the five failures are closed until that continuation is green.
+
+## RM05 v3 — final two residuals
+
+The RM05 v2 continuation executed all 25 device tests and reduced the residual
+set from five failures to two. The Add Download, FFmpeg mux, and adaptive shell
+identity fixes are therefore device-qualified by that run.
+
+The two remaining failures were:
+
+1. legacy-v2 RSA-OAEP software/WebCrypto-side encryption succeeded, but
+   AndroidKeyStore private-key decryption failed at KeyMint `finish()`;
+2. adaptive-sheet dismissal requested opener focus only once and the focus
+   controller reported success without propagating `FocusRequester.requestFocus()`'s
+   actual result.
+
+RM05 v3 pins newly generated legacy-v2 capture keys to the interoperable
+SHA-1/SHA-1 OAEP contract used by WebCrypto and AndroidKeyStore's MGF1 default.
+The legacy SHA-256 alias remains discoverable for reader-only migration attempts
+rather than being deleted from production state. The self-test continues to
+encrypt through a reconstructed software/JCA public key and decrypt through the
+AndroidKeyStore private key, so the browser/app boundary remains real.
+
+Focus restoration now returns the real `FocusRequester.requestFocus()` result
+and retries for four bounded composition frames after the modal leaves the
+visible state. The accessibility assertion remains unchanged.
+
+The Gate-12 continuation also gains an RM05 residual precheck immediately after
+APK refresh/artifact verification. It runs only the Keystore OAEP and adaptive
+focus methods, so a repair regression fails before the expensive lint phase. A
+green precheck still proceeds through full lint and all 25 instrumentation tests;
+it is not accepted as final evidence by itself.
+
+Qualification remains deferred to `./devtoolw gate-final-continue`.

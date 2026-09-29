@@ -40,7 +40,7 @@ class BrowserCaptureEnvelopeManagerInstrumentedTest {
         manager.selfTestKeyWrap().getOrThrow()
 
         assertTrue(manager.expectedWrappedKeyBytes >= 256)
-        assertTrue(manager.captureOaepHash == "SHA-1" || manager.captureOaepHash == "SHA-256")
+        assertTrue(manager.captureOaepHash == "SHA-1")
     }
 
     @Test

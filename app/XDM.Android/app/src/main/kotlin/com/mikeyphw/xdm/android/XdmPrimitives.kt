@@ -481,9 +481,13 @@ fun XdmAdaptiveSheet(
         if (visible) {
             restoreFocusAfterDismiss = true
         } else if (restoreFocusAfterDismiss) {
-            // Let the modal leave composition before asking the opener to retake focus.
-            withFrameNanos { }
-            focusRestorationController.restoreLastFocus()
+            // Modal surfaces can release focus a frame later than their visibility state.
+            // Retry for a bounded number of frames so the opener wins after teardown,
+            // while keeping restoration truthful through FocusRequester.requestFocus().
+            repeat(4) {
+                withFrameNanos { }
+                focusRestorationController.restoreLastFocus()
+            }
             restoreFocusAfterDismiss = false
         }
     }

@@ -89,7 +89,7 @@ class XdmFocusRestorationController {
 
     fun restoreLastFocus(): Boolean {
         val requester = lastFocusedKey?.let(requesters::get) ?: return false
-        return runCatching { requester.requestFocus(); true }.getOrDefault(false)
+        return runCatching { requester.requestFocus() }.getOrDefault(false)
     }
 }
 

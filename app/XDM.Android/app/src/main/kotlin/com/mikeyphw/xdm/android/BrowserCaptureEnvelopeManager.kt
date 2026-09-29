@@ -1,6 +1,5 @@
 package com.mikeyphw.xdm.android
 
-import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.mikeyphw.xdm.android.browser.XdmBrowserDeepLinkPayload
@@ -101,7 +100,7 @@ class BrowserCaptureEnvelopeManager {
 
     /** WebCrypto hash that must be used by the generated Firefox extension for RSA-OAEP. */
     val captureOaepHash: String
-        get() = oaepDigest
+        get() = ACTIVE_OAEP_DIGEST
 
     /** RSA ciphertext size expected for this app-private capture key. */
     val expectedWrappedKeyBytes: Int
@@ -110,7 +109,7 @@ class BrowserCaptureEnvelopeManager {
     /** Read-only provider smoke test used by Debug Center; no capture data or network access is involved. */
     fun selfTestKeyWrap(): Result<Unit> = runCatching {
         val clearKey = ByteArray(32).also(java.security.SecureRandom()::nextBytes)
-        val spec = OAEPParameterSpec(oaepDigest, "MGF1", mgf1ParameterSpec, PSource.PSpecified.DEFAULT)
+        val spec = oaepSpecForAlias(ACTIVE_KEY_ALIAS)
         val browserSidePublicKey = KeyFactory.getInstance(KeyProperties.KEY_ALGORITHM_RSA)
             .generatePublic(X509EncodedKeySpec(publicKey().encoded))
         val encrypt = Cipher.getInstance(RSA_TRANSFORMATION)
@@ -118,13 +117,17 @@ class BrowserCaptureEnvelopeManager {
         val wrapped = encrypt.doFinal(clearKey)
         check(wrapped.size == expectedWrappedKeyBytes) { "RSA-OAEP produced an unexpected ciphertext size" }
         val decrypt = Cipher.getInstance(RSA_TRANSFORMATION)
-        decrypt.init(Cipher.DECRYPT_MODE, privateKey(), spec)
+        decrypt.init(Cipher.DECRYPT_MODE, privateKey(ACTIVE_KEY_ALIAS), spec)
         check(decrypt.doFinal(wrapped).contentEquals(clearKey)) { "RSA-OAEP round trip did not reproduce the session key" }
     }
 
     fun decrypt(payload: XdmBrowserDeepLinkPayload, nowEpochMs: Long = System.currentTimeMillis()): Result<DecodedSession> = runCatching {
         require(payload.hasEncryptedCaptureEnvelope) { "Encrypted capture envelope is incomplete" }
-        require(payload.captureKeyId == keyId) { "Legacy v2 browser capture key no longer matches this app install. Replace the old extension with the v3 XPI once; v3 is not tied to app keys." }
+        val captureKeyId = requireNotNull(payload.captureKeyId)
+        val captureKeyAlias = resolveCaptureKeyAlias(captureKeyId)
+            ?: throw IllegalArgumentException(
+                "Legacy v2 browser capture key no longer matches this app install. Replace the old extension with the v3 XPI once; v3 is not tied to app keys.",
+            )
         val wrappedKey = decodeBase64Url(requireNotNull(payload.wrappedKey))
         val iv = decodeBase64Url(requireNotNull(payload.envelopeIv))
         val ciphertext = decodeBase64Url(requireNotNull(payload.envelopeCiphertext))
@@ -137,13 +140,7 @@ class BrowserCaptureEnvelopeManager {
 
         val aesKey = try {
             val rsa = Cipher.getInstance(RSA_TRANSFORMATION)
-            val oaep = OAEPParameterSpec(
-                oaepDigest,
-                "MGF1",
-                mgf1ParameterSpec,
-                PSource.PSpecified.DEFAULT,
-            )
-            rsa.init(Cipher.DECRYPT_MODE, privateKey(), oaep)
+            rsa.init(Cipher.DECRYPT_MODE, privateKey(captureKeyAlias), oaepSpecForAlias(captureKeyAlias))
             rsa.doFinal(wrappedKey)
         } catch (error: GeneralSecurityException) {
             throw IllegalArgumentException(
@@ -331,30 +328,41 @@ class BrowserCaptureEnvelopeManager {
         )
     }
 
-    private val oaepDigest: String
-        get() = if (Build.VERSION.SDK_INT >= 35) KeyProperties.DIGEST_SHA256 else KeyProperties.DIGEST_SHA1
+    private fun publicKey() =
+        keyStore().getCertificate(ACTIVE_KEY_ALIAS)?.publicKey ?: generateActiveKeyPair().public
 
-    private val mgf1ParameterSpec: MGF1ParameterSpec
-        get() = if (Build.VERSION.SDK_INT >= 35) MGF1ParameterSpec.SHA256 else MGF1ParameterSpec.SHA1
+    private fun privateKey(alias: String): java.security.PrivateKey {
+        val existing = keyStore().getKey(alias, null) as? java.security.PrivateKey
+        if (existing != null) return existing
+        if (alias == ACTIVE_KEY_ALIAS) return generateActiveKeyPair().private
+        error("Legacy browser capture key is no longer available")
+    }
 
-    private val keyAlias: String
-        get() = if (Build.VERSION.SDK_INT >= 35) KEY_ALIAS_SHA256 else KEY_ALIAS_SHA1
-
-    private fun publicKey() = keyStore().getCertificate(keyAlias)?.publicKey ?: generateKeyPair().public
-    private fun privateKey() = (keyStore().getKey(keyAlias, null) as? java.security.PrivateKey) ?: generateKeyPair().private
-
-    private fun generateKeyPair(): java.security.KeyPair {
+    private fun generateActiveKeyPair(): java.security.KeyPair {
         val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEYSTORE)
-        val builder = KeyGenParameterSpec.Builder(keyAlias, KeyProperties.PURPOSE_DECRYPT)
+        val builder = KeyGenParameterSpec.Builder(ACTIVE_KEY_ALIAS, KeyProperties.PURPOSE_DECRYPT)
             .setKeySize(3072)
-            .setDigests(oaepDigest)
+            .setDigests(ACTIVE_OAEP_DIGEST)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
             .setUserAuthenticationRequired(false)
-        if (Build.VERSION.SDK_INT >= 35) {
-            builder.setMgf1Digests(KeyProperties.DIGEST_SHA256)
-        }
+        // Do not override MGF1 on API 35+: AndroidKeyStore's interoperable default
+        // is SHA-1, which also matches WebCrypto when the legacy-v2 OAEP hash is SHA-1.
         generator.initialize(builder.build())
         return generator.generateKeyPair()
+    }
+
+    private fun resolveCaptureKeyAlias(captureKeyId: String): String? {
+        val store = keyStore()
+        return LEGACY_KEY_ALIASES.firstOrNull { alias ->
+            val certificate = store.getCertificate(alias) ?: return@firstOrNull false
+            certificate.publicKey.encoded.sha256Hex().take(24) == captureKeyId
+        }
+    }
+
+    private fun oaepSpecForAlias(alias: String): OAEPParameterSpec = if (alias == KEY_ALIAS_SHA256) {
+        OAEPParameterSpec(KeyProperties.DIGEST_SHA256, "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT)
+    } else {
+        OAEPParameterSpec(KeyProperties.DIGEST_SHA1, "MGF1", MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT)
     }
 
     private fun keyStore(): KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
@@ -437,6 +445,9 @@ class BrowserCaptureEnvelopeManager {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val KEY_ALIAS_SHA1 = "xdm_browser_capture_v3_rsa_sha1"
         private const val KEY_ALIAS_SHA256 = "xdm_browser_capture_v3_rsa_sha256"
+        private const val ACTIVE_KEY_ALIAS = KEY_ALIAS_SHA1
+        private val ACTIVE_OAEP_DIGEST = KeyProperties.DIGEST_SHA1
+        private val LEGACY_KEY_ALIASES = listOf(KEY_ALIAS_SHA1, KEY_ALIAS_SHA256)
         private const val RSA_TRANSFORMATION = "RSA/ECB/OAEPPadding"
         private const val AES_TRANSFORMATION = "AES/GCM/NoPadding"
         private const val ENVELOPE_FORMAT_VERSION = 1

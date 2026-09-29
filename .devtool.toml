@@ -3455,14 +3455,15 @@ validate = [
 #   xdm_android resources
 #   xdm_android unit tests
 #
-# RM05 v2 changes Android app + androidTest sources, so the retained APK/lint
+# RM05 remediation changes Android app + androidTest sources, so the retained APK/lint
 # evidence is intentionally invalidated. Resume from a cheap topology sanity
-# check, rebuild both APKs, re-check their payloads, rerun lint and all device
-# instrumentation, then continue to desktop and the final Wave-12 verifier.
+# check, rebuild both APKs, re-check their payloads, run a focused RM05 residual
+# instrumentation precheck, then rerun authoritative lint + the full device suite
+# before desktop and the final Wave-12 verifier.
 #
 # Resume boundary:
-#   topology -> package/APK refresh -> artifact checkpoint -> lint
-#   -> device instrumentation -> desktop host -> final Wave-12 verifier
+#   topology -> package/APK refresh -> artifact checkpoint -> RM05 residual precheck
+#   -> lint -> full device instrumentation -> desktop host -> final Wave-12 verifier
 # ---------------------------------------------------------------------------
 
 [jobs.xgo-gate12-continue-android-topology]
@@ -3549,6 +3550,63 @@ inputs = [
 ]
 outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-artifacts.sha256",
+]
+
+[jobs.xgo-gate12-continue-android-rm05-precheck]
+runner = "command"
+root = "."
+shell_command = """
+set -eu
+
+ADB="$(command -v adb)"
+APP_APK="app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk"
+TEST_APK="app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+RUNNER="com.mikeyphw.xdm.android.debug.test/androidx.test.runner.AndroidJUnitRunner"
+FILTER="com.mikeyphw.xdm.android.BrowserCaptureEnvelopeManagerInstrumentedTest#androidKeystoreOaepRoundTripUsesCurrentCaptureContract,com.mikeyphw.xdm.android.Phase9AccessibilityAdaptiveLayoutInstrumentedTest#adaptiveSheetRequestsFocusAndRestoresFocusToOpener"
+REPORT=".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt"
+
+mkdir -p "$(dirname "$REPORT")"
+: > "$REPORT"
+
+DEVICES="$("$ADB" devices | awk 'NR > 1 && $2 == "device" { print $1 }')"
+if [ -z "$DEVICES" ]; then
+    echo "RM05 residual precheck: SKIPPED (no authorized device; policy=when-device-present)" | tee -a "$REPORT"
+    exit 0
+fi
+
+for SERIAL in $DEVICES; do
+    echo "=== device: $SERIAL ===" | tee -a "$REPORT"
+    "$ADB" -s "$SERIAL" install -r -t "$APP_APK" | tee -a "$REPORT"
+    "$ADB" -s "$SERIAL" install -r -t "$TEST_APK" | tee -a "$REPORT"
+
+    set +e
+    OUTPUT="$("$ADB" -s "$SERIAL" shell am instrument -w -r -e class "$FILTER" "$RUNNER" 2>&1)"
+    RC=$?
+    set -e
+    printf '%s\n' "$OUTPUT" | tee -a "$REPORT"
+
+    if [ "$RC" -ne 0 ]; then
+        echo "RM05 residual precheck command failed with exit $RC" | tee -a "$REPORT"
+        exit "$RC"
+    fi
+    if ! printf '%s\n' "$OUTPUT" | grep -q 'INSTRUMENTATION_CODE: -1'; then
+        echo "RM05 residual precheck did not report terminal code -1" | tee -a "$REPORT"
+        exit 1
+    fi
+    if printf '%s\n' "$OUTPUT" | grep -Eq 'Process crashed|FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_STATUS_CODE: -2'; then
+        echo "RM05 residual precheck reported a process/test failure" | tee -a "$REPORT"
+        exit 1
+    fi
+done
+
+echo "Gate-12 RM05 residual instrumentation precheck: PASS" | tee -a "$REPORT"
+"""
+inputs = [
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt",
 ]
 
 [jobs.xgo-gate12-continue-android-lint]
@@ -3672,7 +3730,8 @@ validate = [
   { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = [] },
   { id = "android_package_refresh", ref = "job:xgo-gate12-continue-android-package-refresh", depends_on = ["android_topology_sanity"] },
   { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["android_package_refresh"] },
-  { id = "android_lint_remaining", ref = "job:xgo-gate12-continue-android-lint", depends_on = ["android_artifact_checkpoint"] },
+  { id = "android_rm05_residual_precheck", ref = "job:xgo-gate12-continue-android-rm05-precheck", depends_on = ["android_artifact_checkpoint"] },
+  { id = "android_lint_remaining", ref = "job:xgo-gate12-continue-android-lint", depends_on = ["android_rm05_residual_precheck"] },
   { id = "android_instrumentation_remaining", ref = "job:xgo-gate12-continue-android-instrumentation", depends_on = ["android_lint_remaining"] },
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_instrumentation_remaining"] },
   { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
@@ -3869,7 +3928,7 @@ aliases = ["final", "gate"]
 
 
 [wrapper.commands.gate-final-continue]
-description = "Resume Gate-12 after checkpointed XGO seal from the RM05-invalidated Android package/lint/instrumentation boundary"
+description = "Resume Gate-12 after checkpointed XGO seal: rebuild Android, precheck RM05 residuals, then lint/full instrumentation/desktop/final"
 workflow = "validate"
 target = "xgo_gate_final_continue"
 aliases = ["final-continue", "gate-continue"]

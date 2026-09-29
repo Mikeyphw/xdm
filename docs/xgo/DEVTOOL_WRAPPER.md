@@ -30,18 +30,22 @@ It deliberately does **not** rerun:
 - `xgo_seal`;
 - Android preflight;
 - Android dependency resolution;
-- Android compile/resources;
-- Android unit tests;
-- Android APK/package build.
+- the earlier Android unit-test qualification phases.
 
-Those boundaries already passed before the artifact-path failure.
+RM05 remediation changes Android app and `androidTest` sources, so package/APK,
+artifact, lint, and device evidence are no longer treated as retained after an
+RM05 edit. The continuation therefore runs:
 
-It resumes with:
+1. cheap Android topology sanity;
+2. app + instrumentation APK refresh and embedded-runtime verification;
+3. APK integrity/native/provenance artifact checkpoint;
+4. the two-test RM05 residual instrumentation precheck;
+5. authoritative Android lint;
+6. the complete device instrumentation suite when a device is present;
+7. full `xdm_modern` host qualification;
+8. `xgo_final_wave12`.
 
-1. Android topology/artifact checkpoint verification;
-2. Android lint;
-3. device instrumentation when a device is present;
-4. full `xdm_modern` host qualification;
-5. `xgo_final_wave12`.
+The focused RM05 precheck exists only to fail fast during repair cycles; it
+does not replace lint or the complete device suite.
 
 `./devtoolw gate-final` remains the from-scratch authoritative workflow.
