@@ -21,8 +21,10 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.espresso.Espresso
@@ -85,10 +87,7 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
                 CompositionLocalProvider(LocalXdmFocusRestorationController provides controller) {
                     Column(Modifier.fillMaxSize()) {
                         Button(
-                            onClick = {
-                                controller.markLastFocused("open-sheet")
-                                visible = true
-                            },
+                            onClick = { visible = true },
                             modifier = Modifier.xdmFocusRestorePoint("open-sheet"),
                         ) { Text("Open sheet") }
                         XdmAdaptiveSheet(
@@ -101,12 +100,28 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
                 }
             }
         }
-        composeRule.onNodeWithText("Open sheet").performClick()
+
+        val opener = composeRule.onNodeWithText("Open sheet")
+
+        // Model the actual accessibility contract: the opener really owns focus
+        // before the modal is shown. xdmFocusRestorePoint observes that focus and
+        // records it as the restoration target; the test must not fake controller
+        // state with markLastFocused().
+        opener.requestFocus()
+        opener.assertIsFocused()
+        opener.performClick()
+
         composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Focusable actions bottom sheet").assertIsDisplayed()
+
         Espresso.pressBack()
+        composeRule.waitUntilDoesNotExist(
+            hasTestTag(XdmTestTags.AdaptiveSheet),
+            timeoutMillis = 5_000L,
+        )
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Open sheet").assertIsFocused()
+
+        opener.assertIsFocused()
     }
 
     @Test

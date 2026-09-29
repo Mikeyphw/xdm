@@ -162,3 +162,33 @@ A green precheck must still proceed through authoritative lint, all 25 device
 instrumentation tests, desktop qualification, and the Wave-12 final verifier.
 
 Qualification remains deferred to `./devtoolw gate-final-continue`.
+
+## RM05 v5 — correct focus-test precondition and teardown synchronization
+
+The RM05 v4 fast precheck still reported only
+`adaptiveSheetRequestsFocusAndRestoresFocusToOpener` as failing. Review of the
+instrumentation itself found that the test did not establish the contract it was
+asserting: it clicked the opener and then manually called
+`markLastFocused("open-sheet")`. A Compose click is not proof that the opener
+owned focus before the modal opened, so the test was manufacturing restoration
+state rather than exercising the real focus lifecycle.
+
+RM05 v5 corrects the test rather than weakening or deleting the accessibility
+requirement. The test now:
+
+1. calls the Compose test `requestFocus()` action on the opener;
+2. proves the opener is focused before opening the sheet;
+3. opens the sheet without manually mutating the restoration controller;
+4. dismisses through Android back;
+5. waits until the adaptive-sheet semantics node no longer exists; and
+6. asserts that the same opener regained focus.
+
+The Phase-9 static validator now requires both `requestFocus()` and
+`waitUntilDoesNotExist`, preventing a return to the synthetic
+`markLastFocused()`-only setup. Production focus code and the
+`xgo_gate_final_continue` dependency graph are intentionally unchanged from v4;
+the existing single-method RM05 precheck remains the authoritative fast runtime
+check before lint and the complete 25-test instrumentation suite.
+
+Qualification remains pending until `./devtoolw gate-final-continue` passes on
+the Termux/emulator or device environment.

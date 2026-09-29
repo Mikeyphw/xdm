@@ -110,6 +110,8 @@ checks = [
         "largeFontRiskySurfacesRemainAddressableBySemantics",
         "highContrastPolicyCoversStatusWarningProgressDisabledAndSelectedStates",
         "assertIsFocused",
+        "requestFocus()",
+        "waitUntilDoesNotExist",
         "performClick",
     ]),
     ("app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt", [
