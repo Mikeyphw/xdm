@@ -324,3 +324,46 @@ The end-to-end device assertion is deliberately unchanged: after real Android
 Back dismissal and sheet teardown, the original opener must report Compose
 `Focused = true`. The existing `gate-final-continue` focused precheck remains the
 runtime authority before lint and the complete instrumentation suite.
+
+## RM05 v10 — AndroidComposeView owner-focus handoff
+
+The RM05 v9 focused precheck still failed only
+`adaptiveSheetRequestsFocusAndRestoresFocusToOpener`. The v9 transaction was
+correctly scoped to the captured opener and no longer depended on frame-count
+polling, but it still treated `View.hasWindowFocus()` as sufficient evidence
+that the surviving Compose focus owner was ready for child restoration.
+
+That assumption is too weak for Material3 `ModalBottomSheet` on Android. The
+sheet is hosted in a separate focus-owning modal Android host (dialog/application
+panel depending on the Material3 revision). When that modal host is dismissed,
+the activity window can regain window focus before its `AndroidComposeView` has
+re-entered the Android View focus hierarchy. AndroidComposeView's owner-focus
+path is distinct from window-focus notification, so an opener `FocusRequester`
+can be asked to restore before the surviving Compose owner is authoritative
+again.
+
+RM05 v10 makes restoration a two-stage host/child transaction:
+
+1. after the original activity window regains window focus, the controller
+   explicitly reacquires focus on the surviving host `AndroidComposeView`;
+2. only on a later traversal, after `view.isFocused` is true, does it request
+   focus on the exact captured opener `FocusRequester`;
+3. success still requires a fresh observed Compose focus acquisition and two
+   stable traversal checks; `requestFocus()` return values alone are not treated
+   as completion;
+4. restore-point observation now uses `FocusState.hasFocus`, which is the
+   correct contract for a restore modifier wrapping a Material component whose
+   concrete focus target may be a descendant; and
+5. bounded diagnostics record owner-focus and target-focus attempts and their
+   acceptance results.
+
+The Phase-9 instrumentation remains strict. It now additionally proves that the
+controller observed the real opener before the sheet opens and that dismissal
+published a restoration transaction. If final focus still fails, the assertion
+includes the controller's owner/target diagnostic state rather than another
+opaque `Focused=false` result.
+
+The Gate-12 continuation topology remains unchanged: the focused RM05 precheck
+must pass before lint and the complete instrumentation suite are allowed to run.
+Qualification remains deferred to `./devtoolw gate-final-continue` on the
+Termux/emulator or device environment.

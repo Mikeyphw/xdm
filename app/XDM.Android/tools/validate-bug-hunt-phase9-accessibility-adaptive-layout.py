@@ -53,11 +53,18 @@ checks = [
         "ViewTreeObserver.OnWindowFocusChangeListener",
         "onHostWindowFocusChanged",
         "postOnAnimation",
+        "view.isFocused",
+        "view.requestFocus()",
+        "ownerFocusAttempts",
+        "targetFocusAttempts",
+        "hasFocusedRestoreTarget",
+        "debugSummary",
         "MaximumRestoreAttempts",
         "RequiredStableTraversalChecks",
         "requestFocus() returning true is only admission",
         "requesters[key] !== requester",
         "capturedFocusAcquisition > focusAcquisitionGeneration",
+        "controller.updateFocused(key, requester, state.hasFocus)",
         "XdmTraversalOrder",
         "keyboardDpadSwitchAccessOrder",
         "object XdmContrastPolicy",
@@ -129,6 +136,9 @@ checks = [
         "@OptIn(ExperimentalTestApi::class)",
         "waitUntilDoesNotExist",
         "performClick",
+        'controller.hasFocusedRestoreTarget("open-sheet")',
+        "controller.restoreRequestGeneration > 0L",
+        "controller.debugSummary()",
     ]),
     ("app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt", [
         "matrixNamesCoverEveryRoadmapConfiguration",
@@ -155,9 +165,13 @@ if "useUnmergedTree = false" in test_data:
 
 accessibility_rel = "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAccessibility.kt"
 accessibility_data = text(accessibility_rel)
-for forbidden in ("repeat(90)", "stableFocusedFrames"):
+for forbidden in (
+    "repeat(90)",
+    "stableFocusedFrames",
+    "controller.updateFocused(key, requester, state.isFocused)",
+):
     if forbidden in accessibility_data:
-        missing.append(f"{accessibility_rel}: obsolete frame-polling focus heuristic remains: {forbidden!r}")
+        missing.append(f"{accessibility_rel}: obsolete focus-restoration contract remains: {forbidden!r}")
 
 primitives_rel = "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt"
 primitives_data = text(primitives_rel)

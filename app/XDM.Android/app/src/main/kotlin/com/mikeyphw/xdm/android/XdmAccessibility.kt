@@ -86,6 +86,10 @@ private data class XdmPendingFocusRestore(
     val baselineFocusAcquisition: Long,
     var observedFocusAcquisition: Long = 0L,
     var attempts: Int = 0,
+    var ownerFocusAttempts: Int = 0,
+    var targetFocusAttempts: Int = 0,
+    var lastOwnerFocusAccepted: Boolean? = null,
+    var lastTargetFocusAccepted: Boolean? = null,
     var stableChecks: Int = 0,
 )
 
@@ -101,6 +105,7 @@ class XdmFocusRestorationController {
     private var pendingRestore: XdmPendingFocusRestore? = null
     private var restoreAttemptScheduled: Boolean = false
     private var stabilityCheckScheduled: Boolean = false
+    private var lastRestoreResult: String = "none"
 
     internal var restoreRequestGeneration: Long = 0L
         private set
@@ -134,11 +139,43 @@ class XdmFocusRestorationController {
         return XdmFocusRestoreToken(key = key, capturedFocusAcquisition = focusAcquisitionGeneration)
     }
 
-    internal fun updateFocused(key: String, requester: FocusRequester, focused: Boolean) {
+    internal fun hasFocusedRestoreTarget(key: String): Boolean = focusedKey == key && key in requesters
+
+    internal fun debugSummary(): String {
+        val view = hostView
+        val pending = pendingRestore
+        return buildString {
+            append("focusedKey=").append(focusedKey)
+            append(", lastFocusedKey=").append(lastFocusedKey)
+            append(", focusAcquisitionGeneration=").append(focusAcquisitionGeneration)
+            append(", restoreRequestGeneration=").append(restoreRequestGeneration)
+            append(", hostWindowFocused=").append(hostWindowFocused)
+            append(", viewHasWindowFocus=").append(view?.hasWindowFocus())
+            append(", viewIsFocused=").append(view?.isFocused)
+            append(", viewHasFocus=").append(view?.hasFocus())
+            if (pending == null) {
+                append(", pending=none")
+            } else {
+                append(", pendingKey=").append(pending.key)
+                append(", pendingGeneration=").append(pending.requestGeneration)
+                append(", attempts=").append(pending.attempts)
+                append(", ownerFocusAttempts=").append(pending.ownerFocusAttempts)
+                append(", targetFocusAttempts=").append(pending.targetFocusAttempts)
+                append(", lastOwnerFocusAccepted=").append(pending.lastOwnerFocusAccepted)
+                append(", lastTargetFocusAccepted=").append(pending.lastTargetFocusAccepted)
+                append(", observedFocusAcquisition=").append(pending.observedFocusAcquisition)
+                append(", baselineFocusAcquisition=").append(pending.baselineFocusAcquisition)
+                append(", stableChecks=").append(pending.stableChecks)
+            }
+            append(", lastRestoreResult=").append(lastRestoreResult)
+        }
+    }
+
+    internal fun updateFocused(key: String, requester: FocusRequester, hasFocus: Boolean) {
         // Ignore callbacks from a restore point that has already been replaced by a
         // newer requester for the same logical key during adaptive recomposition.
         if (requesters[key] !== requester) return
-        if (focused) {
+        if (hasFocus) {
             focusAcquisitionGeneration += 1L
             focusedKey = key
             lastFocusedKey = key
@@ -169,6 +206,7 @@ class XdmFocusRestorationController {
             requestGeneration = restoreRequestGeneration,
             baselineFocusAcquisition = focusAcquisitionGeneration,
         )
+        lastRestoreResult = "pending(key=${target.key}, generation=$restoreRequestGeneration)"
         scheduleRestoreAttempt()
         return true
     }
@@ -232,18 +270,40 @@ class XdmFocusRestorationController {
             return
         }
 
-        val requester = requesters[pending.key]
         pending.attempts += 1
-        if (requester != null) {
-            // requestFocus() returning true is only admission, not completion. The
-            // onFocusChanged(true) event above is the authoritative success evidence.
-            runCatching { requester.requestFocus() }
+
+        // ModalBottomSheet owns a separate Android window. When that window is
+        // dismissed, hasWindowFocus() can become true before AndroidComposeView itself
+        // has View focus again. Compose's FocusOwner is entered from View.onFocusChanged,
+        // so child FocusRequester calls are not authoritative until the owner View has
+        // first re-entered the Android focus hierarchy. Reacquire the owner in one
+        // traversal, then target the captured opener in the next traversal.
+        if (!view.isFocused) {
+            pending.ownerFocusAttempts += 1
+            pending.lastOwnerFocusAccepted = runCatching { view.requestFocus() }.getOrDefault(false)
+            if (pendingRestore?.requestGeneration != pending.requestGeneration) return
+            if (pending.attempts >= MaximumRestoreAttempts) {
+                failPendingRestore(pending, "owner-focus-timeout")
+                return
+            }
+            scheduleRestoreAttempt()
+            return
+        }
+
+        val requester = requesters[pending.key]
+        pending.targetFocusAttempts += 1
+        pending.lastTargetFocusAccepted = if (requester == null) {
+            false
+        } else {
+            // requestFocus() returning true is only admission. updateFocused(hasFocus=true)
+            // below is the authoritative evidence that the captured opener owns focus.
+            runCatching { requester.requestFocus() }.getOrDefault(false)
         }
 
         if (pendingRestore?.requestGeneration != pending.requestGeneration) return
         if (pending.attempts >= MaximumRestoreAttempts) {
             if (focusedKey != pending.key || pending.observedFocusAcquisition <= pending.baselineFocusAcquisition) {
-                pendingRestore = null
+                failPendingRestore(pending, "target-focus-timeout")
             }
             return
         }
@@ -251,6 +311,15 @@ class XdmFocusRestorationController {
         if (focusedKey != pending.key || pending.observedFocusAcquisition <= pending.baselineFocusAcquisition) {
             scheduleRestoreAttempt()
         }
+    }
+
+    private fun failPendingRestore(pending: XdmPendingFocusRestore, reason: String) {
+        if (pendingRestore?.requestGeneration != pending.requestGeneration) return
+        lastRestoreResult =
+            "failed(reason=$reason,key=${pending.key},attempts=${pending.attempts}," +
+                "owner=${pending.ownerFocusAttempts}/${pending.lastOwnerFocusAccepted}," +
+                "target=${pending.targetFocusAttempts}/${pending.lastTargetFocusAccepted})"
+        pendingRestore = null
     }
 
     private fun scheduleStabilityCheck(requestGeneration: Long) {
@@ -276,6 +345,9 @@ class XdmFocusRestorationController {
 
             pending.stableChecks += 1
             if (pending.stableChecks >= RequiredStableTraversalChecks) {
+                lastRestoreResult =
+                    "success(key=${pending.key},generation=${pending.requestGeneration}," +
+                        "owner=${pending.ownerFocusAttempts},target=${pending.targetFocusAttempts})"
                 pendingRestore = null
             } else {
                 scheduleStabilityCheck(requestGeneration)
@@ -284,7 +356,7 @@ class XdmFocusRestorationController {
     }
 
     private companion object {
-        const val MaximumRestoreAttempts = 12
+        const val MaximumRestoreAttempts = 24
         const val RequiredStableTraversalChecks = 2
     }
 }
@@ -323,7 +395,7 @@ fun Modifier.xdmFocusRestorePoint(key: String): Modifier {
     }
 
     return focusRequester(requester).onFocusChanged { state ->
-        controller.updateFocused(key, requester, state.isFocused)
+        controller.updateFocused(key, requester, state.hasFocus)
     }
 }
 

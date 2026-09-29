@@ -82,8 +82,10 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun adaptiveSheetRequestsFocusAndRestoresFocusToOpener() {
+        lateinit var controller: XdmFocusRestorationController
+
         composeRule.setContent {
-            val controller = rememberXdmFocusRestorationController()
+            controller = rememberXdmFocusRestorationController()
             var visible by remember { mutableStateOf(false) }
             XdmTheme {
                 CompositionLocalProvider(LocalXdmFocusRestorationController provides controller) {
@@ -111,6 +113,12 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         // state with markLastFocused().
         opener.requestFocus()
         opener.assertIsFocused()
+        composeRule.runOnIdle {
+            assertTrue(
+                "focus restoration controller did not observe the real opener focus: ${controller.debugSummary()}",
+                controller.hasFocusedRestoreTarget("open-sheet"),
+            )
+        }
         opener.performClick()
 
         composeRule.onNodeWithTag(XdmTestTags.AdaptiveSheet).assertIsDisplayed()
@@ -123,7 +131,18 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         )
         composeRule.waitForIdle()
 
-        opener.assertIsFocused()
+        composeRule.runOnIdle {
+            assertTrue(
+                "sheet dismissal did not publish a focus restoration transaction: ${controller.debugSummary()}",
+                controller.restoreRequestGeneration > 0L,
+            )
+        }
+        try {
+            opener.assertIsFocused()
+        } catch (failure: AssertionError) {
+            val diagnostics = composeRule.runOnIdle { controller.debugSummary() }
+            throw AssertionError("opener focus restoration failed; $diagnostics", failure)
+        }
     }
 
     @Test
