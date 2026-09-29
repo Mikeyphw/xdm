@@ -3562,7 +3562,7 @@ ADB="$(command -v adb)"
 APP_APK="app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk"
 TEST_APK="app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
 RUNNER="com.mikeyphw.xdm.android.debug.test/androidx.test.runner.AndroidJUnitRunner"
-FILTER="com.mikeyphw.xdm.android.BrowserCaptureEnvelopeManagerInstrumentedTest#androidKeystoreOaepRoundTripUsesCurrentCaptureContract,com.mikeyphw.xdm.android.Phase9AccessibilityAdaptiveLayoutInstrumentedTest#adaptiveSheetRequestsFocusAndRestoresFocusToOpener"
+FILTER="com.mikeyphw.xdm.android.Phase9AccessibilityAdaptiveLayoutInstrumentedTest#adaptiveSheetRequestsFocusAndRestoresFocusToOpener"
 REPORT=".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt"
 
 mkdir -p "$(dirname "$REPORT")"
@@ -3570,7 +3570,7 @@ mkdir -p "$(dirname "$REPORT")"
 
 DEVICES="$("$ADB" devices | awk 'NR > 1 && $2 == "device" { print $1 }')"
 if [ -z "$DEVICES" ]; then
-    echo "RM05 residual precheck: SKIPPED (no authorized device; policy=when-device-present)" | tee -a "$REPORT"
+    echo "RM05 focus precheck: SKIPPED (no authorized device; policy=when-device-present)" | tee -a "$REPORT"
     exit 0
 fi
 
@@ -3586,20 +3586,20 @@ for SERIAL in $DEVICES; do
     printf '%s\n' "$OUTPUT" | tee -a "$REPORT"
 
     if [ "$RC" -ne 0 ]; then
-        echo "RM05 residual precheck command failed with exit $RC" | tee -a "$REPORT"
+        echo "RM05 focus precheck command failed with exit $RC" | tee -a "$REPORT"
         exit "$RC"
     fi
     if ! printf '%s\n' "$OUTPUT" | grep -q 'INSTRUMENTATION_CODE: -1'; then
-        echo "RM05 residual precheck did not report terminal code -1" | tee -a "$REPORT"
+        echo "RM05 focus precheck did not report terminal code -1" | tee -a "$REPORT"
         exit 1
     fi
     if printf '%s\n' "$OUTPUT" | grep -Eq 'Process crashed|FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_STATUS_CODE: -2'; then
-        echo "RM05 residual precheck reported a process/test failure" | tee -a "$REPORT"
+        echo "RM05 focus precheck reported a process/test failure" | tee -a "$REPORT"
         exit 1
     fi
 done
 
-echo "Gate-12 RM05 residual instrumentation precheck: PASS" | tee -a "$REPORT"
+echo "Gate-12 RM05 focus-restoration precheck: PASS" | tee -a "$REPORT"
 """
 inputs = [
   "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
@@ -3928,7 +3928,7 @@ aliases = ["final", "gate"]
 
 
 [wrapper.commands.gate-final-continue]
-description = "Resume Gate-12 after checkpointed XGO seal: rebuild Android, precheck RM05 residuals, then lint/full instrumentation/desktop/final"
+description = "Resume Gate-12 after checkpointed XGO seal: rebuild Android, precheck RM05 focus restoration, then lint/full instrumentation/desktop/final"
 workflow = "validate"
 target = "xgo_gate_final_continue"
 aliases = ["final-continue", "gate-continue"]

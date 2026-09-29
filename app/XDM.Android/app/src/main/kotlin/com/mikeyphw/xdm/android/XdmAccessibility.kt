@@ -3,9 +3,14 @@ package com.mikeyphw.xdm.android
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
@@ -77,20 +82,48 @@ object XdmTraversalOrder {
 class XdmFocusRestorationController {
     private val requesters = linkedMapOf<String, FocusRequester>()
     private var lastFocusedKey: String? = null
+    private var focusedKey by mutableStateOf<String?>(null)
+
+    internal var restoreRequestKey by mutableStateOf<String?>(null)
+        private set
+    internal var restoreRequestGeneration by mutableStateOf(0L)
+        private set
 
     fun register(key: String, requester: FocusRequester) { requesters[key] = requester }
 
     fun unregister(key: String, requester: FocusRequester) {
         if (requesters[key] === requester) requesters.remove(key)
+        if (focusedKey == key) focusedKey = null
         if (lastFocusedKey == key && key !in requesters) lastFocusedKey = null
     }
 
     fun markLastFocused(key: String) { lastFocusedKey = key }
 
-    fun restoreLastFocus(): Boolean {
-        val requester = lastFocusedKey?.let(requesters::get) ?: return false
-        return runCatching { requester.requestFocus() }.getOrDefault(false)
+    internal fun updateFocused(key: String, focused: Boolean) {
+        if (focused) {
+            focusedKey = key
+            lastFocusedKey = key
+        } else if (focusedKey == key) {
+            focusedKey = null
+        }
     }
+
+    internal fun isFocused(key: String): Boolean = focusedKey == key
+
+    /**
+     * Publish a restoration request for the surviving restore point. The request is
+     * fulfilled by xdmFocusRestorePoint() from the opener subtree after modal teardown.
+     */
+    fun requestRestoreLastFocus(): Boolean {
+        val key = lastFocusedKey ?: return false
+        if (key !in requesters) return false
+        restoreRequestKey = key
+        restoreRequestGeneration += 1L
+        return true
+    }
+
+    /** Compatibility entrypoint retained for existing callers/contracts. */
+    fun restoreLastFocus(): Boolean = requestRestoreLastFocus()
 }
 
 val LocalXdmFocusRestorationController = compositionLocalOf { XdmFocusRestorationController() }
@@ -102,11 +135,38 @@ fun rememberXdmFocusRestorationController(): XdmFocusRestorationController = rem
 fun Modifier.xdmFocusRestorePoint(key: String): Modifier {
     val controller = LocalXdmFocusRestorationController.current
     val requester = remember { FocusRequester() }
+    val restoreRequestKey = controller.restoreRequestKey
+    val restoreRequestGeneration = controller.restoreRequestGeneration
+
     DisposableEffect(key, requester, controller) {
         controller.register(key, requester)
         onDispose { controller.unregister(key, requester) }
     }
-    return focusRequester(requester).onFocusChanged { if (it.isFocused) controller.markLastFocused(key) }
+
+    LaunchedEffect(key, requester, controller, restoreRequestKey, restoreRequestGeneration) {
+        if (restoreRequestGeneration == 0L || restoreRequestKey != key) return@LaunchedEffect
+
+        // The modal/popup focus owner can finish releasing focus after dismissal.
+        // Fulfil the request from the surviving opener subtree and require focus to
+        // remain stable across two frames before stopping the bounded retry loop.
+        var stableFocusedFrames = 0
+        repeat(12) {
+            withFrameNanos { }
+            if (!controller.isFocused(key)) {
+                runCatching { requester.requestFocus() }
+            }
+            if (controller.isFocused(key)) {
+                stableFocusedFrames += 1
+                if (stableFocusedFrames >= 2) return@LaunchedEffect
+            } else {
+                stableFocusedFrames = 0
+            }
+        }
+    }
+
+    return focusRequester(requester).onFocusChanged { state ->
+        controller.updateFocused(key, state.isFocused)
+    }
 }
 
 fun Modifier.xdmTraversalOrder(order: Float): Modifier = semantics { traversalIndex = order }

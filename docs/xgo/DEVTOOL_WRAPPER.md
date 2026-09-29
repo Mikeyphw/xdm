@@ -39,13 +39,15 @@ RM05 edit. The continuation therefore runs:
 1. cheap Android topology sanity;
 2. app + instrumentation APK refresh and embedded-runtime verification;
 3. APK integrity/native/provenance artifact checkpoint;
-4. the two-test RM05 residual instrumentation precheck;
+4. the focused RM05 opener-restoration instrumentation precheck;
 5. authoritative Android lint;
 6. the complete device instrumentation suite when a device is present;
 7. full `xdm_modern` host qualification;
 8. `xgo_final_wave12`.
 
-The focused RM05 precheck exists only to fail fast during repair cycles; it
-does not replace lint or the complete device suite.
+The focused RM05 precheck exists only to fail fast during repair cycles. RM05 v3
+qualified the legacy-v2 OAEP residual on-device, so RM05 v4 prechecks only the
+remaining adaptive-sheet opener-restoration method before paying the lint cost.
+It does not replace lint or the complete device suite.
 
 `./devtoolw gate-final` remains the from-scratch authoritative workflow.

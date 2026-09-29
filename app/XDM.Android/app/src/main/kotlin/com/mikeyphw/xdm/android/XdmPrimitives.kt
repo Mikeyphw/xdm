@@ -66,7 +66,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
@@ -481,18 +480,19 @@ fun XdmAdaptiveSheet(
         if (visible) {
             restoreFocusAfterDismiss = true
         } else if (restoreFocusAfterDismiss) {
-            // Modal surfaces can release focus a frame later than their visibility state.
-            // Retry for a bounded number of frames so the opener wins after teardown,
-            // while keeping restoration truthful through FocusRequester.requestFocus().
-            repeat(4) {
-                withFrameNanos { }
-                focusRestorationController.restoreLastFocus()
-            }
+            // Publish one restoration request after the sheet leaves the visible state.
+            // The opener's xdmFocusRestorePoint owns the actual FocusRequester call so
+            // modal/popup teardown cannot steal focus back after this coroutine exits.
+            focusRestorationController.requestRestoreLastFocus()
             restoreFocusAfterDismiss = false
         }
     }
 
     if (!visible) return
+
+    fun dismissAndRestoreFocus() {
+        onDismissRequest()
+    }
 
     LaunchedEffect(title, visible) {
         runCatching { sheetFocusRequester.requestFocus() }
@@ -506,7 +506,7 @@ fun XdmAdaptiveSheet(
     }
     if (useDialog) {
         Dialog(
-            onDismissRequest = onDismissRequest,
+            onDismissRequest = { dismissAndRestoreFocus() },
             properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = true),
         ) {
             val foldAlignment = when (foldSafePane?.edge) {
@@ -551,7 +551,7 @@ fun XdmAdaptiveSheet(
         }
     } else {
         ModalBottomSheet(
-            onDismissRequest = onDismissRequest,
+            onDismissRequest = { dismissAndRestoreFocus() },
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,

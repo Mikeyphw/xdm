@@ -128,3 +128,37 @@ green precheck still proceeds through full lint and all 25 instrumentation tests
 it is not accepted as final evidence by itself.
 
 Qualification remains deferred to `./devtoolw gate-final-continue`.
+
+## RM05 v4 — surviving-opener focus ownership
+
+The RM05 v3 fast precheck qualified the legacy-v2 AndroidKeyStore OAEP fix on
+`emulator-5554`. Only the adaptive-sheet opener-focus assertion remained red.
+The precheck prevented the already-known focus defect from triggering another
+full lint run.
+
+The v3 implementation still issued `FocusRequester.requestFocus()` from the
+sheet teardown coroutine. Even with bounded frame retries, that request raced
+the modal/popup focus owner finishing disposal and could be cleared after the
+requester reported success.
+
+RM05 v4 moves fulfilment to the surviving opener subtree.
+`XdmFocusRestorationController` now publishes a keyed restoration generation.
+`xdmFocusRestorePoint()` observes that request on the registered opener, makes
+the focus request from that subtree, and retries for a bounded twelve frames
+until the controller observes focus stable across two frames. The controller
+tracks actual focused state through `onFocusChanged`, while `restoreLastFocus()`
+remains as a compatibility entrypoint that delegates to the new request model.
+
+`XdmAdaptiveSheet` publishes a single restoration request when visibility
+transitions from open to closed and restores the explicit
+`dismissAndRestoreFocus()` dismissal boundary used by the Phase-9 static
+contract. The production accessibility assertion is unchanged.
+
+The Gate-12 continuation remains fail-fast. Since the RM05 v3 precheck already
+qualified the OAEP method and v4 changes only the focus-restoration owner, the
+fast precheck now runs only
+`Phase9AccessibilityAdaptiveLayoutInstrumentedTest#adaptiveSheetRequestsFocusAndRestoresFocusToOpener`.
+A green precheck must still proceed through authoritative lint, all 25 device
+instrumentation tests, desktop qualification, and the Wave-12 final verifier.
+
+Qualification remains deferred to `./devtoolw gate-final-continue`.
