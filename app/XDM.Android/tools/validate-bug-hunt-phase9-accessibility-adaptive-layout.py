@@ -111,8 +111,9 @@ checks = [
         "highContrastPolicyCoversStatusWarningProgressDisabledAndSelectedStates",
         "assertIsFocused",
         "requestFocus()",
+        "ExperimentalTestApi",
+        "@OptIn(ExperimentalTestApi::class)",
         "waitUntilDoesNotExist",
-        "useUnmergedTree = false",
         "performClick",
     ]),
     ("app/src/test/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityGapClosurePolicyTest.kt", [
@@ -131,6 +132,11 @@ for rel, needles in checks:
     for needle in needles:
         if needle not in data:
             missing.append(f"{rel}: missing {needle!r}")
+
+test_rel = "app/src/androidTest/kotlin/com/mikeyphw/xdm/android/Phase9AccessibilityAdaptiveLayoutInstrumentedTest.kt"
+test_data = text(test_rel)
+if "useUnmergedTree = false" in test_data:
+    missing.append(f"{test_rel}: unsupported waitUntilDoesNotExist overload must not be used")
 
 if missing:
     raise SystemExit("Phase 9 accessibility/adaptive r2 validation failed:\n" + "\n".join(missing))

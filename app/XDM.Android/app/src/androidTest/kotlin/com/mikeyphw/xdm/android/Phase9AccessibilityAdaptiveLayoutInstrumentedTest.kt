@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsFocused
@@ -78,6 +79,7 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         }
     }
 
+    @OptIn(ExperimentalTestApi::class)
     @Test
     fun adaptiveSheetRequestsFocusAndRestoresFocusToOpener() {
         composeRule.setContent {
@@ -118,7 +120,6 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         composeRule.waitUntilDoesNotExist(
             hasTestTag(XdmTestTags.AdaptiveSheet),
             timeoutMillis = 5_000L,
-            useUnmergedTree = false,
         )
         composeRule.waitForIdle()
 

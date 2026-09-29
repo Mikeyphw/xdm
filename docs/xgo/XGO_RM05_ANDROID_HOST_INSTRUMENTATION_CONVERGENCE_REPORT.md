@@ -211,3 +211,25 @@ future edit cannot silently fall back to the experimental signature.
 
 Qualification remains pending until the Android test APK compiles and the
 existing `./devtoolw gate-final-continue` focus precheck passes.
+
+
+## RM05 v7 — explicit Compose ExperimentalTestApi opt-in
+
+The RM05 v6 Android-test rebuild proved that the Compose test library resolved by
+this repository does not provide the newer `waitUntilDoesNotExist(...,
+useUnmergedTree = ...)` overload. The compiler reported both that the available
+API remains experimental and that `useUnmergedTree` is not a recognized
+parameter.
+
+RM05 v7 therefore uses the repository's actual API surface: it restores the
+two-argument `waitUntilDoesNotExist(matcher, timeoutMillis)` call and explicitly
+opts only `adaptiveSheetRequestsFocusAndRestoresFocusToOpener` into
+`ExperimentalTestApi`. Production focus code, the accessibility assertion, and
+`xgo_gate_final_continue` remain unchanged.
+
+The Phase-9 validator now requires the explicit experimental opt-in and rejects
+the unsupported `useUnmergedTree = false` signature so this compatibility error
+cannot recur.
+
+Qualification remains pending until `:app:assembleDebugAndroidTest` compiles and
+the existing focused instrumentation precheck passes.
