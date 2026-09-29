@@ -70,3 +70,28 @@ RM05 does not modify XGO native/JNI code. The already-qualified Wave-12 XGO
 seal and RM04 native ABI remain checkpointed. Because RM05 changes Android app
 and androidTest sources, the invalidated boundary is Android package + lint +
 physical instrumentation, followed by desktop/final Gate-12 continuation.
+
+## RM05 v2 — residual instrumentation convergence
+
+RM05 v1 reduced the device suite from eleven failures to five. RM05 v2
+addresses those five observed residuals without changing XGO native/JNI code:
+
+- synchronize the Add Download smoke test with the current helper copy;
+- make the legacy-v2 RSA-OAEP self-test browser-faithful by encrypting with a
+  software/JCA public key reconstructed from exported SPKI while retaining
+  AndroidKeyStore private-key decryption;
+- preserve the MP4 extension on FFmpeg publication staging so muxer inference
+  matches the production media path;
+- restore opener focus one frame after the adaptive sheet leaves composition;
+- derive adaptive shell identity from `windowClass`, not navigation treatment.
+
+Because this remediation changes Android app and androidTest sources, it
+invalidates the Android package/artifact/lint/instrumentation checkpoint. The
+`xgo_gate_final_continue` workflow is therefore refreshed to begin with its
+cheap topology sanity check and then execute package refresh -> artifact
+verification -> lint -> all device instrumentation -> desktop host -> Wave-12
+final verifier. It deliberately does not replay the already-qualified
+`xgo_seal` or earlier Android unit/dependency phases.
+
+Qualification is deferred to `./devtoolw gate-final-continue`; this report does
+not claim the five failures are closed until that continuation is green.

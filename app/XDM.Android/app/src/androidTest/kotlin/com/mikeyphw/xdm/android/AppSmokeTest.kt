@@ -52,7 +52,7 @@ class AppSmokeTest {
         composeRule.openAddDownload()
 
         composeRule.onNode(hasText("Download link") and hasSetTextAction()).performTextInput("https://example.com/releases/app.apk")
-        composeRule.onNodeWithText("Optional. XDM infers a name from the link when left empty.").assertIsDisplayed()
+        composeRule.onNodeWithText("Optional • XDM will infer a name when left empty.").assertIsDisplayed()
         composeRule.onNodeWithText("Download").assertIsEnabled()
     }
 

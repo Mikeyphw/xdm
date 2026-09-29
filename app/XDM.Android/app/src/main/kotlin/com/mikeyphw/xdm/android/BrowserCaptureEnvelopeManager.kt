@@ -9,11 +9,13 @@ import com.mikeyphw.xdm.android.model.MediaThumbnailProvenance
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
+import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import java.security.spec.MGF1ParameterSpec
+import java.security.spec.X509EncodedKeySpec
 import android.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
@@ -109,8 +111,10 @@ class BrowserCaptureEnvelopeManager {
     fun selfTestKeyWrap(): Result<Unit> = runCatching {
         val clearKey = ByteArray(32).also(java.security.SecureRandom()::nextBytes)
         val spec = OAEPParameterSpec(oaepDigest, "MGF1", mgf1ParameterSpec, PSource.PSpecified.DEFAULT)
+        val browserSidePublicKey = KeyFactory.getInstance(KeyProperties.KEY_ALGORITHM_RSA)
+            .generatePublic(X509EncodedKeySpec(publicKey().encoded))
         val encrypt = Cipher.getInstance(RSA_TRANSFORMATION)
-        encrypt.init(Cipher.ENCRYPT_MODE, publicKey(), spec)
+        encrypt.init(Cipher.ENCRYPT_MODE, browserSidePublicKey, spec)
         val wrapped = encrypt.doFinal(clearKey)
         check(wrapped.size == expectedWrappedKeyBytes) { "RSA-OAEP produced an unexpected ciphertext size" }
         val decrypt = Cipher.getInstance(RSA_TRANSFORMATION)

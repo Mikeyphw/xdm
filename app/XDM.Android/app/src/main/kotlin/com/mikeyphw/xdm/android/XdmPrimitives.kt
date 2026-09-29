@@ -66,6 +66,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
@@ -472,13 +473,23 @@ fun XdmAdaptiveSheet(
     scrollContent: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    if (!visible) return
     val focusRestorationController = LocalXdmFocusRestorationController.current
     val sheetFocusRequester = remember { FocusRequester() }
-    fun dismissAndRestoreFocus() {
-        onDismissRequest()
-        focusRestorationController.restoreLastFocus()
+    var restoreFocusAfterDismiss by remember { mutableStateOf(false) }
+
+    LaunchedEffect(visible, focusRestorationController) {
+        if (visible) {
+            restoreFocusAfterDismiss = true
+        } else if (restoreFocusAfterDismiss) {
+            // Let the modal leave composition before asking the opener to retake focus.
+            withFrameNanos { }
+            focusRestorationController.restoreLastFocus()
+            restoreFocusAfterDismiss = false
+        }
     }
+
+    if (!visible) return
+
     LaunchedEffect(title, visible) {
         runCatching { sheetFocusRequester.requestFocus() }
     }
@@ -491,7 +502,7 @@ fun XdmAdaptiveSheet(
     }
     if (useDialog) {
         Dialog(
-            onDismissRequest = { dismissAndRestoreFocus() },
+            onDismissRequest = onDismissRequest,
             properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = true),
         ) {
             val foldAlignment = when (foldSafePane?.edge) {
@@ -536,7 +547,7 @@ fun XdmAdaptiveSheet(
         }
     } else {
         ModalBottomSheet(
-            onDismissRequest = { dismissAndRestoreFocus() },
+            onDismissRequest = onDismissRequest,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,

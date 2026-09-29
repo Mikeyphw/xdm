@@ -36,6 +36,7 @@ class BrowserCaptureEnvelopeManagerInstrumentedTest {
     fun androidKeystoreOaepRoundTripUsesCurrentCaptureContract() {
         val manager = BrowserCaptureEnvelopeManager()
 
+        // Model the real legacy-v2 boundary: browser/JCA public-key encryption, AndroidKeyStore private-key decryption.
         manager.selfTestKeyWrap().getOrThrow()
 
         assertTrue(manager.expectedWrappedKeyBytes >= 256)

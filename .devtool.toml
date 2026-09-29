@@ -3452,14 +3452,17 @@ validate = [
 #   xgo_seal
 #   xdm_android preflight
 #   xdm_android dependencies
-#   xdm_android compile
 #   xdm_android resources
 #   xdm_android unit tests
-#   xdm_android package / APK build
+#
+# RM05 v2 changes Android app + androidTest sources, so the retained APK/lint
+# evidence is intentionally invalidated. Resume from a cheap topology sanity
+# check, rebuild both APKs, re-check their payloads, rerun lint and all device
+# instrumentation, then continue to desktop and the final Wave-12 verifier.
 #
 # Resume boundary:
-#   corrected artifact contract -> lint -> device instrumentation
-#   -> desktop host -> final Wave-12 verifier
+#   topology -> package/APK refresh -> artifact checkpoint -> lint
+#   -> device instrumentation -> desktop host -> final Wave-12 verifier
 # ---------------------------------------------------------------------------
 
 [jobs.xgo-gate12-continue-android-topology]
@@ -3666,7 +3669,8 @@ outputs = [
 
 [targets.xgo_gate_final_continue.workflows]
 validate = [
-  { id = "android_package_refresh", ref = "job:xgo-gate12-continue-android-package-refresh", depends_on = [] },
+  { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = [] },
+  { id = "android_package_refresh", ref = "job:xgo-gate12-continue-android-package-refresh", depends_on = ["android_topology_sanity"] },
   { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["android_package_refresh"] },
   { id = "android_lint_remaining", ref = "job:xgo-gate12-continue-android-lint", depends_on = ["android_artifact_checkpoint"] },
   { id = "android_instrumentation_remaining", ref = "job:xgo-gate12-continue-android-instrumentation", depends_on = ["android_lint_remaining"] },
@@ -3865,7 +3869,7 @@ aliases = ["final", "gate"]
 
 
 [wrapper.commands.gate-final-continue]
-description = "Resume Gate-12 after passed XGO seal and passed Android build phases"
+description = "Resume Gate-12 after checkpointed XGO seal from the RM05-invalidated Android package/lint/instrumentation boundary"
 workflow = "validate"
 target = "xgo_gate_final_continue"
 aliases = ["final-continue", "gate-continue"]

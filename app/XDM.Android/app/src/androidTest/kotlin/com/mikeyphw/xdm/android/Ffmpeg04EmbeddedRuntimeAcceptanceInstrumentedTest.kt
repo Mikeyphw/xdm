@@ -43,6 +43,7 @@ class Ffmpeg04EmbeddedRuntimeAcceptanceInstrumentedTest {
                 fileName = "ff04-muxed-output.mp4",
                 mimeType = "video/mp4",
                 conflictPolicy = FilenameConflictPolicy.Overwrite,
+                stagingSuffix = ".xdm.part.mp4",
             ),
         )
         val staged = prepared.artifacts.stagingFile

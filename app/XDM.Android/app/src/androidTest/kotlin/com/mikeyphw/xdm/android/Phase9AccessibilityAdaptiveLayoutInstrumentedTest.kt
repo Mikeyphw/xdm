@@ -66,12 +66,10 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
             composeRule.runOnIdle { activeCase.value = case }
             composeRule.waitForIdle()
             composeRule.onRoot().captureToImage()
-            val shellTag = if (case.profile.usesNavigationSidebar) {
-                XdmScreenTags.ShellExpanded
-            } else if (case.profile.windowClass == XdmWindowClass.Compact) {
-                XdmScreenTags.ShellCompact
-            } else {
-                XdmScreenTags.ShellMedium
+            val shellTag = when (case.profile.windowClass) {
+                XdmWindowClass.Compact -> XdmScreenTags.ShellCompact
+                XdmWindowClass.Medium -> XdmScreenTags.ShellMedium
+                XdmWindowClass.Expanded -> XdmScreenTags.ShellExpanded
             }
             composeRule.onNodeWithTag(shellTag).assertIsDisplayed()
             assertTrue(Phase9AccessibilityRegressionContracts.coversScreenshotCase(case.name))
