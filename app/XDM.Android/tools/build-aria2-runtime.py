@@ -226,6 +226,28 @@ def guess_build_triplet(source_root: Path) -> str:
     raise SystemExit(f"could not resolve Autoconf build triplet from {source_root}")
 
 
+def android_cxx_runtime_link_dir(toolchain: Path) -> Path:
+    """Return the NDK libc++ library root needed by Termux-hosted Android clang++.
+
+    NDK compiler drivers normally discover this directory themselves.  XDM's
+    native-Termux fallback intentionally combines a runnable Termux clang driver
+    with an NDK sysroot/resource directory, so the host driver can otherwise
+    resolve the Android target and compiler-rt while still missing libc++ during
+    C++ link probes.  Keep the repair explicit and fail closed on an incomplete
+    NDK rather than falling back to Termux's host C++ runtime.
+    """
+    runtime = toolchain / "sysroot/usr/lib/aarch64-linux-android"
+    required = (runtime / "libc++_shared.so", runtime / "libc++_static.a")
+    missing = [str(candidate) for candidate in required if not candidate.is_file()]
+    if missing:
+        raise SystemExit(
+            "Android NDK libc++ runtime is incomplete; required aria2 C++ link inputs are missing: "
+            + ", ".join(missing)
+        )
+    print(f"Android libc++ link root: {runtime}", flush=True)
+    return runtime
+
+
 def android_bionic_autoconf_cache(cxx: Path, env: dict[str, str], build_root: Path) -> dict[str, str]:
     """Prove Bionic APIs with the Android C++ compiler, then seed safe Autoconf cache entries.
 
@@ -354,6 +376,7 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     cc, cxx, compiler_identity = authority.prepare_ffmpeg_compilers(
         toolchain=toolchain, bin_dir=bin_dir, build_root=build_root, api=api, backend=backend,
     )
+    cxx_runtime_link_dir = android_cxx_runtime_link_dir(toolchain)
 
     archives: dict[str, Path] = {}
     source_roots: dict[str, Path] = {}
@@ -373,7 +396,10 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     prefix.mkdir(parents=True, exist_ok=True)
     target = f"aarch64-linux-android{api}"
     common_cflags = "-O2 -fPIC -fPIE -fstack-protector-strong -D_FORTIFY_SOURCE=2"
-    common_ldflags = "-fPIE -pie -static-libstdc++ -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,-z,relro,-z,now"
+    common_ldflags = (
+        f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "
+        "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,-z,relro,-z,now"
+    )
     env = os.environ.copy()
     env.update({
         "ANDROID_NDK_ROOT": str(ndk),

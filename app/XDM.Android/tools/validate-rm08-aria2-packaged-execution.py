@@ -79,16 +79,27 @@ def main() -> int:
             "RM08 device target must validate through Devtool's Android instrumentation runner")
 
     source_target = targets.get("xgo_rm08_aria2_source") or {}
-    require(source_target.get("runner") == "android",
-            "RM08 source materialization must use the Android runner so Devtool owns SDK/NDK bootstrap")
-    source_tasks = source_target.get("tasks") or {}
-    require(source_tasks.get("build") == [":transfer-aria2:buildPinnedAria2Runtime"],
-            "RM08 source materialization must enter through the canonical Gradle buildPinnedAria2Runtime task")
+    require(source_target.get("runner") == "command" and source_target.get("platform") == "android",
+            "RM08 source materialization must use the Devtool command runner on the Android platform")
+    require(source_target.get("root") == "app/XDM.Android",
+            "RM08 source materialization must remain rooted at the Android project")
+    source_jobs = source_target.get("jobs") or {}
+    build_job = source_jobs.get("build_pinned") or {}
+    require(build_job.get("runner") == "command",
+            "RM08 pinned source build must be a Devtool-owned command job")
+    require(build_job.get("command") == [
+        "python3", "tools/build-aria2-runtime.py", "--build-pinned", "--jobs", "2",
+    ], "RM08 pinned source build must execute the direct bounded Python builder with two native jobs")
     source_workflow = ((source_target.get("workflows") or {}).get("validate") or [])
-    require(len(source_workflow) == 1 and source_workflow[0].get("ref") == "runner:android#build",
-            "RM08 source validate workflow must execute through Devtool's Android build runner")
-    require(not (source_target.get("jobs") or {}),
-            "RM08 source target must not bypass Devtool Android bootstrap with a generic command job")
+    require([node.get("id") for node in source_workflow] == ["android_toolchain_bootstrap", "build_pinned"],
+            "RM08 source workflow must bootstrap Android first and build pinned aria2 second")
+    require([node.get("ref") for node in source_workflow] == [
+        "target:xgo_rm08_aria2_contract#validate", "job:build_pinned",
+    ], "RM08 source workflow must use the Android-runner contract as bootstrap before the direct builder")
+    require(source_workflow[1].get("depends_on") == ["android_toolchain_bootstrap"],
+            "RM08 direct source build must depend on successful Devtool Android bootstrap")
+    require(not (source_target.get("tasks") or {}),
+            "RM08 long native source build must not re-enter a Gradle task/daemon")
     source_inputs = set(source_target.get("inputs") or [])
     require("tools/android_native_openssl.py" in source_inputs,
             "RM08 source target must fingerprint the shared OpenSSL authority")
@@ -103,6 +114,10 @@ def main() -> int:
             "aria2 source builder must explicitly separate Autoconf build and Android host identities")
     require("ANDROID_BIONIC_AUTOCONF_PROBES" in aria_builder and "android_bionic_autoconf_cache" in aria_builder,
             "aria2 source builder must prove Bionic libc capabilities before caching Autoconf answers")
+    require("android_cxx_runtime_link_dir" in aria_builder and '"libc++_shared.so"' in aria_builder and '"libc++_static.a"' in aria_builder,
+            "aria2 source builder must resolve the NDK libc++ link root explicitly")
+    require('f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "' in aria_builder,
+            "aria2 source builder must propagate the NDK libc++ root into C++ probe/configure/make linker flags")
     require("ANDROID_BIONIC_AUTOCONF_CACHEABLE" in aria_builder and "android_bionic_autoconf_cache(cxx" in aria_builder,
             "aria2 Bionic probes must use target C++ and separate upstream custom checks from cacheable checks")
     for capability in ("getaddrinfo", "gettimeofday", "gai_strerror", "localtime_r", "asctime_r", "poll"):

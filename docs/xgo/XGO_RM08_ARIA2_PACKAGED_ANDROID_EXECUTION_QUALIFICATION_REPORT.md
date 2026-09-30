@@ -11,10 +11,10 @@ RM08 closes the final aria2 embedding gap left after RM06 runtime/recovery conve
 ## Implemented contract
 
 - `xgo_rm08_aria2_contract` owns bounded apply-time validation through `:app:verifyRm08Aria2PackagedExecutionContract`; it does not trigger the expensive source build or device run.
-- `xgo_rm08_aria2_package` owns source materialization, Android packaging, and exact APK-byte attestation. Its `xgo_rm08_aria2_source` child is itself Android-runner-owned, so Devtool resolves/bootstrap the SDK and NDK before invoking `:transfer-aria2:buildPinnedAria2Runtime`; no generic command target directly launches the source builder.
+- `xgo_rm08_aria2_package` owns source materialization, Android packaging, and exact APK-byte attestation. Its `xgo_rm08_aria2_source` child first runs the bounded Android-runner contract so Devtool resolves/bootstrap the SDK and NDK, then launches `tools/build-aria2-runtime.py --build-pinned --jobs 2` as a Devtool-owned command job outside Gradle. The long native build therefore survives unrelated Gradle daemon shutdowns without giving up Android bootstrap authority.
 - `xgo_rm08_aria2_device` is a dedicated Android target with `policy = "required"` instrumentation.
 - `xgo_rm08_aria2` is the fresh Gate-12 aggregate Android host authority; gate composition remains canonical because every XGO cross-target edge references `#validate`.
-- Gate-12 package execution builds aria2 from the RM07 pinned source recipe before APK packaging, entering the build exclusively through Devtool -> Android runner -> Gradle -> `:transfer-aria2:buildPinnedAria2Runtime`.
+- Gate-12 package execution builds aria2 from the RM07 pinned source recipe before APK packaging. The authoritative path is Devtool -> RM08 Android bootstrap contract -> Devtool command job -> `tools/build-aria2-runtime.py --build-pinned --jobs 2`; Gradle resumes only for APK packaging/verification after the native runtime exists.
 - `tools/xgo/verify_rm08_aria2_package.py` requires schema-v3 `source-build` provenance, runs the strict aria2 ELF/APK verifier, and proves the APK's `lib/arm64-v8a/libaria2c.so` and embedded runtime lock match the source-tree attestation byte-for-byte.
 - Gate-12 device execution uses Devtool's Android instrumentation runner with a required-device policy rather than an ad-hoc ADB shell gate.
 - The instrumented test launches the actual executable from `ApplicationInfo.nativeLibraryDir`, verifies runtime-lock attestation and Android dependency policy, verifies authenticated RPC startup, rejects a TLS server signed by an untrusted test CA, downloads successfully from a loopback HTTPS server signed by the injected trusted test CA, checkpoints the aria2 session, performs clean daemon shutdown, restarts the packaged daemon, and proves an XDM-owned paused GID is recovered from the saved session.
@@ -38,7 +38,7 @@ A fresh `xgo_gate_final` run routes its Android host node through `target:xgo_rm
 - RM08 static contract validator: PASS.
 - Full XGO topology audit: PASS.
 - `xgo_gate_final_continue` target-ready topology audit: PASS.
-- RM08 source-bootstrap regression: PASS; source materialization is forbidden from using a generic `runner = "command"` job.
+- RM08 source-execution regression: PASS; source materialization must bootstrap through the Android runner first, then execute the long native build as a bounded Devtool command job outside Gradle.
 - Gate-12 auditor regressions: 5 passed.
 - Python compile checks for the new/changed Gate-12 verification scripts: PASS.
 
@@ -103,3 +103,38 @@ RM08 v6 repairs the configure boundary instead of patching generated compatibili
 - the deterministic aria2 source-build recipe records the explicit build triplet and both measured capability sets, so changing this configure authority invalidates the cached runtime/provenance lock.
 
 This remains an RM08 revision, not a new roadmap item or Gate-12 node. `xgo_gate_final_continue` already owns the authoritative `xgo_rm08_aria2_source` checkpoint, so the same continuation path exercises the corrected source builder without duplicating or reordering the gate DAG.
+
+
+## RM08 v7 Gradle-daemon lifetime decoupling
+
+The next Gate-12 continuation (`e13819d49cbe4a5698fc6d65f128ff2f`) confirmed that the v6 Autoconf repair is effective: Expat reported `checking whether we are cross compiling... yes`, the explicit `--build=aarch64-unknown-linux-gnu --host=aarch64-linux-android` split was active, and the previous Bionic compatibility-header collision did not recur before the run was interrupted. The failure was instead `DaemonStoppedException: Gradle build daemon has been stopped: stop command received` while the long native source subprocess was still executing. This is an execution-lifetime failure, not an aria2/Autoconf compilation failure.
+
+RM08 v7 separates Android environment bootstrap from the long native build without returning to the unbootstrapped v2 design:
+
+```text
+xgo_gate_final_continue
+  -> target:xgo_rm08_aria2_package#validate
+     -> target:xgo_rm08_aria2_source#validate
+        -> target:xgo_rm08_aria2_contract#validate
+           -> runner:android#test
+              # Devtool resolves/bootstrap SDK, NDK and Android toolchain
+        -> job:build_pinned
+           -> python3 tools/build-aria2-runtime.py --build-pinned --jobs 2
+              # long autotools/make build is not a child of a Gradle daemon
+     -> target:xgo_rm08_aria2_android_package#validate
+        -> runner:android#package
+     -> target:xgo_rm08_aria2_attest#validate
+```
+
+The source-build job remains fully Devtool-owned and retains the same declared inputs/outputs, shared OpenSSL authority, source pins, NDK/toolchain provenance, ELF policy, and lock generation. The direct build is bounded to two native jobs to reduce pressure on Termux while Gradle's own worker settings remain independent. No project script invokes raw `gradle`/`gradlew`; Gradle is still entered only through Devtool's Android runner for the bootstrap contract and later Android packaging/instrumentation boundaries.
+
+The static RM08 validator now fails closed unless the bootstrap node precedes the direct source job, the direct job uses the exact pinned builder command, and the source target contains no Gradle task mapping. This supersedes v3's stronger "no command target" rule while preserving the reason for that rule: a direct native builder is allowed only after Devtool has successfully established the Android SDK/NDK environment.
+
+### v7 pre-apply completion: NDK libc++ link-root repair
+
+A complete v6 Gate-12 log supplied before v7 was applied exposed a second failure that the original v7 daemon-lifetime-only payload would not have fixed. After the explicit Autoconf build/host split succeeded and the pinned C dependencies finished, the independent Android C++ capability probe stopped on `asctime_r` because `ld.lld` could not resolve `-lc++_shared`. The Termux-native compiler wrapper had the NDK sysroot and compiler-rt resource directory, but aria2's C++ probe/configure/make linker flags did not explicitly include the NDK libc++ root.
+
+The revised v7 therefore also resolves and validates `<NDK toolchain>/sysroot/usr/lib/aarch64-linux-android`, requires both `libc++_shared.so` and `libc++_static.a` to exist there, and prepends that directory to the common aria2 linker flags. The existing `-static-libstdc++` policy is retained, so release output still requests the static NDK libc++ variant rather than introducing a new packaged `libc++_shared.so` dependency. The same linker flags are consumed by the Bionic capability probes, pinned-dependency probes, upstream configure checks, and the final aria2 link, preventing the probe-only repair from diverging from the real build.
+
+The RM08 static contract validator now fails closed if this explicit libc++ authority disappears. This repair remains inside v7 because v7 had not yet been applied; there is no additional overlay or Gate-12 node.
+
