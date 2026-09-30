@@ -173,6 +173,47 @@ class Aria2ProcessManagerTest {
         newManager.stop()
     }
 
+
+    @Test
+    fun ownedOrphanCheckpointFailureLeavesDaemonRunningAndBlocksReplacementLaunch() = runTest {
+        val root = Files.createTempDirectory("aria2-orphan-checkpoint-failure").toFile()
+        val files = FakeRuntimeFiles(root)
+        val secrets = FakeRotatableSecretProvider()
+        val orphanProcess = FakeManagedProcess()
+        val orphanRpc = FakeRpcControl(orphanProcess, saveSessionResult = false)
+        files.runtimeLease = Aria2RuntimeLease(
+            endpoint = Aria2Endpoint(45678),
+            secretGeneration = secrets.generation(),
+            startedAtEpochMs = 1234L,
+        )
+        var replacementLaunches = 0
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = files,
+            secretProvider = secrets,
+            processLauncher = Aria2ProcessLauncher { replacementLaunches += 1; error("must not launch replacement") },
+            rpcFactory = Aria2RpcControlFactory { endpoint, _ ->
+                if (endpoint.port == 45678) orphanRpc else error("unexpected replacement RPC")
+            },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+            startupTimeoutMillis = 500,
+            shutdownTimeoutMillis = 500,
+            pollIntervalMillis = 1,
+        )
+
+        val result = manager.start()
+
+        assertFalse(result.started)
+        assertEquals(0, replacementLaunches)
+        assertTrue(orphanProcess.isAlive)
+        assertEquals(listOf("save"), orphanRpc.events)
+        assertEquals(45678, files.runtimeLease?.endpoint?.port)
+        val failed = result.state as Aria2ProcessState.Failed
+        assertEquals(Aria2StartupFailureKind.OrphanRecovery, failed.diagnostic?.kind)
+        assertTrue(failed.message.contains("checkpoint"))
+    }
+
     @Test
     fun unavailableRuntimeNeverLaunchesProcess() = runTest {
         val root = Files.createTempDirectory("aria2-unavailable-test").toFile()
@@ -195,6 +236,29 @@ class Aria2ProcessManagerTest {
         assertEquals(Aria2ProcessState.Unavailable(report), result.state)
     }
 
+
+    @Test
+    fun savedSessionSanitizerFailureStopsLaunchFailClosed() = runTest {
+        val root = Files.createTempDirectory("aria2-session-sanitize-failure").toFile()
+        var launches = 0
+        val manager = Aria2ProcessManager(
+            capabilityProbe = availableProbe(root),
+            sessionStore = FakeRuntimeFiles(root, sanitizeFailure = IllegalStateException("session unreadable")),
+            secretProvider = Aria2SecretProvider { Aria2RpcSecret.from("0123456789abcdef0123456789abcdef") },
+            processLauncher = Aria2ProcessLauncher { launches += 1; error("must not launch") },
+            rpcFactory = Aria2RpcControlFactory { _, _ -> error("must not create RPC") },
+            authenticationProbe = Aria2RpcAuthenticationProbe { true },
+            scope = this,
+        )
+
+        val result = manager.start()
+
+        assertFalse(result.started)
+        assertEquals(0, launches)
+        val failed = result.state as Aria2ProcessState.Failed
+        assertEquals(Aria2StartupFailureKind.OrphanRecovery, failed.diagnostic?.kind)
+        assertTrue(failed.message.contains("saved-session ownership reconciliation failed"))
+    }
 
     @Test
     fun preparationFailureReturnsSafeFailedStateWithoutLaunching() = runTest {
@@ -447,6 +511,7 @@ class Aria2ProcessManagerTest {
 private class FakeRuntimeFiles(
     override val rootDirectory: File,
     private val failPreparation: Boolean = false,
+    private val sanitizeFailure: Throwable? = null,
     private val deleteSucceeds: Boolean = true,
     private val runtimeLogTail: String? = null,
 ) : Aria2RuntimeFiles {
@@ -464,6 +529,11 @@ private class FakeRuntimeFiles(
 
     override fun cleanupTransientLaunchConfigurations(): Int {
         transientCleanupCalls += 1
+        return 0
+    }
+
+    override fun sanitizeSavedSessionToOwnedMetadata(): Int {
+        sanitizeFailure?.let { throw it }
         return 0
     }
 
@@ -524,7 +594,10 @@ private class FakeManagedProcess : Aria2ManagedProcess {
     fun complete(code: Int) { exit.complete(code) }
 }
 
-private class FakeRpcControl(private val process: FakeManagedProcess) : Aria2RpcControl {
+private class FakeRpcControl(
+    private val process: FakeManagedProcess,
+    private val saveSessionResult: Boolean = true,
+) : Aria2RpcControl {
     val events = mutableListOf<String>()
     var lastOptions: Aria2TaskOptions? = null
     private var status = Aria2TaskStatusValue.Paused
@@ -569,7 +642,7 @@ private class FakeRpcControl(private val process: FakeManagedProcess) : Aria2Rpc
     override suspend fun tellWaiting(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
     override suspend fun tellStopped(offset: Int, count: Int): List<Aria2TaskStatus> = emptyList()
     override suspend fun removeDownloadResult(gid: String) { events += "remove-result" }
-    override suspend fun saveSession(): Boolean { events += "save"; return true }
+    override suspend fun saveSession(): Boolean { events += "save"; return saveSessionResult }
     override suspend fun purgeSavedSession() { events += "purge-session" }
     override suspend fun shutdown(force: Boolean) { events += "shutdown"; process.complete(if (force) 137 else 0) }
 }

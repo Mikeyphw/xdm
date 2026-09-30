@@ -13,6 +13,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
+    private val trustBundleProvider = Aria2AndroidTrustBundleProvider(context)
     override val rootDirectory: File = File(context.filesDir, "aria2")
     override val sessionFile: File = File(rootDirectory, "xdm.session")
     val taskDirectory: File = File(rootDirectory, "tasks")
@@ -30,7 +31,6 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
         sessionFile.restrictToOwner()
         cleanupTransientLaunchConfigurations()
         rotateRuntimeLog()
-        sanitizeSavedSessionToOwnedMetadata()
     }
 
     override fun cleanupTransientLaunchConfigurations(): Int {
@@ -46,25 +46,17 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
         return removed
     }
 
-    override fun sanitizeSavedSessionToOwnedMetadata(): Int = runCatching {
-        if (!sessionFile.isFile || sessionFile.length() == 0L) return@runCatching 0
+    override fun sanitizeSavedSessionToOwnedMetadata(): Int {
+        if (!sessionFile.isFile || sessionFile.length() == 0L) return 0
         val ownedGids = taskDirectory.listFiles().orEmpty()
             .mapNotNull { directory -> File(directory, "ownership.json").takeIf(File::isFile)?.readText(Charsets.UTF_8) }
             .mapNotNull { payload -> Regex("\\\"gid\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(payload)?.groupValues?.get(1) }
             .toSet()
-        if (ownedGids.isEmpty()) {
-            val removed = sessionFile.readLines(Charsets.UTF_8).count { it.isNotBlank() }
-            if (removed > 0) atomicWrite(sessionFile, "")
-            return@runCatching removed
-        }
-        val original = sessionFile.readLines(Charsets.UTF_8)
-        val retained = original.filter { line ->
-            val trimmed = line.trim()
-            trimmed.isBlank() || ownedGids.any { gid -> trimmed.contains(gid) }
-        }
-        if (retained.size != original.size) atomicWrite(sessionFile, retained.joinToString("\n", postfix = if (retained.isEmpty()) "" else "\n"))
-        original.size - retained.size
-    }.getOrDefault(0)
+        val original = sessionFile.readText(Charsets.UTF_8)
+        val sanitized = Aria2SavedSession.retainOwned(original, ownedGids)
+        if (sanitized.text != original) atomicWrite(sessionFile, sanitized.text)
+        return sanitized.removedRecords
+    }
 
     override fun rotateRuntimeLog(maxBytes: Long): Boolean = runCatching {
         val file = File(logDirectory, "aria2-runtime.log")
@@ -145,6 +137,7 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
         val file = File(rootDirectory, "launch-${UUID.randomUUID()}.conf")
         val safeSession = sessionFile.safeConfigurationPath()
         val safeStaging = stagingDirectory.safeConfigurationPath()
+        val safeTrustBundle = trustBundleProvider.ensure().safeConfigurationPath()
         val contents = buildString {
             appendLine("enable-rpc=true")
             appendLine("rpc-listen-all=false")
@@ -163,6 +156,8 @@ class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
             appendLine("allow-overwrite=false")
             appendLine("auto-file-renaming=false")
             appendLine("file-allocation=none")
+            appendLine("check-certificate=true")
+            appendLine("ca-certificate=$safeTrustBundle")
             appendLine("console-log-level=warn")
             appendLine("summary-interval=0")
             appendLine("enable-color=false")

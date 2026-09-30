@@ -76,12 +76,21 @@ class Aria2ProcessManager(
         clearDeadProcess()
         sessionStore.cleanupTransientLaunchConfigurations()
         sessionStore.rotateRuntimeLog()
-        val prunedSessionRows = sessionStore.sanitizeSavedSessionToOwnedMetadata()
+        // A surviving XDM-owned aria2 may still be writing its save-session file. Prove
+        // ownership, save and stop that daemon before pruning durable session records.
         val persistedRuntime = reconcilePersistedRuntime()
         if (persistedRuntime.failure != null) {
             return@withLock failedStart(
                 "aria2 persisted-runtime recovery failed (${persistedRuntime.failure.kind.name}): ${persistedRuntime.failure.detail}",
                 persistedRuntime.failure,
+            )
+        }
+        val prunedSessionRows = try {
+            sessionStore.sanitizeSavedSessionToOwnedMetadata()
+        } catch (error: Throwable) {
+            return@withLock failedStart(
+                "aria2 saved-session ownership reconciliation failed; no process was started.",
+                diagnosticFor(error, kindOverride = Aria2StartupFailureKind.OrphanRecovery),
             )
         }
         val report = probe()
@@ -220,7 +229,12 @@ class Aria2ProcessManager(
         }
         stop()
         sessionStore.cleanupTransientLaunchConfigurations()
-        sessionStore.sanitizeSavedSessionToOwnedMetadata()
+        runCatching { sessionStore.sanitizeSavedSessionToOwnedMetadata() }.getOrElse { error ->
+            return failedStart(
+                "aria2 repair could not reconcile saved-session ownership safely.",
+                diagnosticFor(error, kindOverride = Aria2StartupFailureKind.OrphanRecovery),
+            )
+        }
         sessionStore.clearRuntimeLease()
         sessionStore.rotateRuntimeLog()
         val rotatable = secretProvider as? Aria2RotatableSecretProvider
@@ -489,6 +503,16 @@ class Aria2ProcessManager(
         // The daemon answered authenticated RPC using the still-current private secret and persisted
         // generation, which is the ownership proof available across an Android app-process restart.
         val sessionSaved = runCatching { rpc.saveSession() }.getOrDefault(false)
+        if (!sessionSaved) {
+            return PersistedRuntimeReconciliation(
+                failure = Aria2StartupDiagnostic(
+                    kind = Aria2StartupFailureKind.OrphanRecovery,
+                    detail = "XDM proved ownership of a persisted aria2 daemon but could not checkpoint its saved session; the daemon was left running.",
+                    logTail = safeLogTail(),
+                ),
+                sessionSaved = false,
+            )
+        }
         val shutdownRequested = runCatching { rpc.shutdown(force = false); true }.getOrDefault(false)
         if (!shutdownRequested) {
             return PersistedRuntimeReconciliation(

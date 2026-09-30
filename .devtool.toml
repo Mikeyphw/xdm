@@ -3864,3 +3864,56 @@ description = "Validate the repository-local Devtool wrapper contract without Gr
 workflow = "validate"
 target = "xgo_wrapper"
 aliases = ["wrapper-contract"]
+
+# ---------------------------------------------------------------------------
+# XGO-RM06 focused aria2 runtime/recovery remediation validation.
+# This deliberately runs only the changed Android module's JVM tests. Broader
+# package/lint/device qualification remains owned by the retained Gate-12 loop.
+# ---------------------------------------------------------------------------
+[targets.xgo_rm06_aria2]
+runner = "android"
+execution_environment = "native-termux"
+platform = "android"
+root = "app/XDM.Android"
+inputs = [
+  ".devtool.toml",
+  "app/XDM.Android/app/src/main/AndroidManifest.xml",
+  "app/XDM.Android/app/src/main/res/xml/network_security_config.xml",
+  "app/XDM.Android/transfer-aria2/**",
+  "docs/xgo/XGO_RM06_ARIA2_RUNTIME_RECOVERY_CONVERGENCE_REPORT.md",
+]
+outputs = [
+  "app/XDM.Android/transfer-aria2/build/test-results/**",
+  "app/XDM.Android/transfer-aria2/build/reports/tests/**",
+]
+
+[targets.xgo_rm06_aria2.android]
+variant = "debug"
+aapt2_provider = "termux"
+prefer_native_termux = true
+
+[targets.xgo_rm06_aria2.gradle]
+version = "9.7.1"
+provider = "auto"
+max_workers = 1
+structured_events = true
+no_daemon = true
+daemon_idle_timeout_ms = 900000
+parallel = false
+build_cache = true
+fail_fast = false
+offline = false
+args = [
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+]
+
+[targets.xgo_rm06_aria2.tasks]
+test = [":transfer-aria2:test"]
+
+[targets.xgo_rm06_aria2.workflows]
+validate = [
+  { id = "aria2_runtime_recovery_unit", ref = "runner:android#test", depends_on = [] },
+]
