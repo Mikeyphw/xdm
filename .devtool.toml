@@ -3420,6 +3420,8 @@ execution_environment = "native-termux"
 inputs = [
   ".devtool.toml",
   ".devtool/reports/xgo/seal/**",
+  ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+  "app/XDM.Android/.devtool/reports/android-instrumentation.json",
   "engine/testdata/seal/gate12-policy.json",
   "tools/xgo/audit_gate12.py",
 ]
@@ -3438,6 +3440,8 @@ command = [
 inputs = [
   ".devtool.toml",
   ".devtool/reports/xgo/seal/**",
+  ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+  "app/XDM.Android/.devtool/reports/android-instrumentation.json",
   "engine/testdata/seal/gate12-policy.json",
   "tools/xgo/audit_gate12.py",
 ]
@@ -3471,7 +3475,7 @@ outputs = [
 validate = [
   { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
   { id = "wave12_seal", ref = "target:xgo_seal#validate", depends_on = ["devtool_execution_policy"] },
-  { id = "android_host_final", ref = "target:xdm_android#validate", depends_on = ["wave12_seal"] },
+  { id = "android_host_final", ref = "target:xgo_rm08_aria2#validate", depends_on = ["wave12_seal"] },
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_host_final"] },
   { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
 ]
@@ -3513,20 +3517,37 @@ validate = [
 #   xdm_android resources
 #   xdm_android unit tests
 #
-# RM05 remediation changes Android app + androidTest sources, so the retained APK/lint
-# evidence is intentionally invalidated. Resume from a cheap topology sanity
-# policy check and topology sanity, rebuild both APKs through the native Devtool
-# Android package action, re-check their payloads, run a focused RM05 residual
-# device precheck, then rerun Devtool-owned lint + full instrumentation before
-# desktop and the final Wave-12 verifier.
+# RM05 and RM06..RM08 remediation changed Android app/native/runtime/androidTest
+# sources, so retained APK/lint/device evidence is intentionally invalidated. Resume
+# from topology sanity, materialize the RM07 source-built aria2 runtime through RM08,
+# rebuild/attest both APKs, retain the focused RM05 residual precheck, then rerun
+# Devtool-owned lint plus required RM08 instrumentation before desktop and the
+# final Wave-12 verifier.
 #
 # Resume boundary:
-#   Devtool execution policy -> topology -> Android package -> artifact checkpoint
-#   -> RM05 residual precheck -> Android lint -> Android instrumentation
+#   Devtool execution policy -> topology -> RM08 source-built aria2
+#   -> Android package -> RM08 packaged-byte attestation -> artifact checkpoint
+#   -> RM05 residual precheck -> Android lint -> required RM08 instrumentation
 #   -> desktop host -> final Wave-12 verifier
 # ---------------------------------------------------------------------------
 
-[jobs.xgo-gate12-continue-android-topology]
+[targets.xgo_gate_final_continue]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "engine/**",
+  "tools/xgo/**",
+  "app/XDM.Android/**",
+  "app/XDM/**",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/**",
+]
+
+[targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-topology]
 runner = "command"
 root = "."
 command = [
@@ -3545,7 +3566,7 @@ outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-topology.json",
 ]
 
-[jobs.xgo-gate12-continue-android-artifacts]
+[targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-artifacts]
 runner = "command"
 root = "."
 shell_command = """
@@ -3577,7 +3598,7 @@ outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-artifacts.sha256",
 ]
 
-[jobs.xgo-gate12-continue-android-rm05-precheck]
+[targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-rm05-precheck]
 runner = "command"
 root = "."
 shell_command = """
@@ -3634,31 +3655,15 @@ outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt",
 ]
 
-[targets.xgo_gate_final_continue]
-runner = "command"
-platform = "shared"
-root = "."
-execution_environment = "native-termux"
-inputs = [
-  ".devtool.toml",
-  "engine/**",
-  "tools/xgo/**",
-  "app/XDM.Android/**",
-  "app/XDM/**",
-]
-outputs = [
-  ".devtool/reports/xgo/gates/final-continue/**",
-]
-
 [targets.xgo_gate_final_continue.workflows]
 validate = [
   { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
   { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = ["devtool_execution_policy"] },
-  { id = "android_package_refresh", ref = "target:xdm_android#gate12_package", depends_on = ["android_topology_sanity"] },
+  { id = "android_package_refresh", ref = "target:xgo_rm08_aria2_package#validate", depends_on = ["android_topology_sanity"] },
   { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["android_package_refresh"] },
   { id = "android_rm05_residual_precheck", ref = "job:xgo-gate12-continue-android-rm05-precheck", depends_on = ["android_artifact_checkpoint"] },
-  { id = "android_lint_remaining", ref = "target:xdm_android#gate12_lint", depends_on = ["android_rm05_residual_precheck"] },
-  { id = "android_instrumentation_remaining", ref = "target:xdm_android#gate12_instrumentation", depends_on = ["android_lint_remaining"] },
+  { id = "android_lint_remaining", ref = "target:xgo_rm08_aria2_lint#validate", depends_on = ["android_rm05_residual_precheck"] },
+  { id = "android_instrumentation_remaining", ref = "target:xgo_rm08_aria2_device#validate", depends_on = ["android_lint_remaining"] },
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_instrumentation_remaining"] },
   { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
 ]
@@ -3984,3 +3989,357 @@ validate = [
 description = "Run XGO-RM07 aria2 native source/provenance qualification"
 workflow = "validate"
 target = "xgo_rm07_aria2"
+
+
+# ---------------------------------------------------------------------------
+# XGO-RM08 packaged aria2 Android execution qualification.
+# The contract target owns bounded overlay validation. Gate-12 composes only
+# canonical child `#validate` workflows for source materialization, packaging,
+# exact APK attestation, required Android device execution, and the fresh full
+# Android host boundary.
+# ---------------------------------------------------------------------------
+
+# Bounded apply-time contract target. This is the target RM08's overlay selects.
+[targets.xgo_rm08_aria2_contract]
+runner = "android"
+execution_environment = "native-termux"
+platform = "android"
+root = "app/XDM.Android"
+inputs = [
+  ".devtool.toml",
+  "engine/testdata/seal/gate12-policy.json",
+  "tools/xgo/audit_gate12.py",
+  "tools/xgo/verify_rm08_aria2_package.py",
+  "app/XDM.Android/app/src/androidTest/**",
+  "app/XDM.Android/transfer-aria2/**",
+  "app/XDM.Android/tools/validate-rm08-aria2-packaged-execution.py",
+  "app/XDM.Android/app/build.gradle.kts",
+]
+outputs = ["app/XDM.Android/app/build/**"]
+
+[targets.xgo_rm08_aria2_contract.android]
+variant = "debug"
+aapt2_provider = "termux"
+prefer_native_termux = true
+
+[targets.xgo_rm08_aria2_contract.gradle]
+version = "9.7.1"
+provider = "auto"
+max_workers = 1
+structured_events = true
+no_daemon = true
+daemon_idle_timeout_ms = 900000
+parallel = false
+build_cache = true
+fail_fast = false
+offline = false
+args = [
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+]
+
+[targets.xgo_rm08_aria2_contract.tasks]
+test = [":app:verifyRm08Aria2PackagedExecutionContract"]
+
+[targets.xgo_rm08_aria2_contract.workflows]
+validate = [
+  { id = "rm08_contract", ref = "runner:android#test", depends_on = [] },
+]
+
+# Pinned source materialization is one target-local operation so every XGO cross-target
+# edge stays `target:...#validate` and Devtool owns its output reservation/evidence.
+[targets.xgo_rm08_aria2_source]
+runner = "command"
+platform = "android"
+root = "app/XDM.Android"
+execution_environment = "native-termux"
+inputs = [
+  "tools/build-aria2-runtime.py",
+  "tools/android_elf_runtime.py",
+  "tools/install-ffmpeg-runtime.py",
+  "transfer-aria2/runtime/aria2-runtime.json",
+]
+outputs = [
+  "transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so",
+  "transfer-aria2/runtime/aria2-runtime.lock.json",
+]
+
+[targets.xgo_rm08_aria2_source.jobs.build_pinned]
+runner = "command"
+command = ["python3", "tools/build-aria2-runtime.py", "--build-pinned"]
+inputs = [
+  "tools/build-aria2-runtime.py",
+  "tools/android_elf_runtime.py",
+  "tools/install-ffmpeg-runtime.py",
+  "transfer-aria2/runtime/aria2-runtime.json",
+]
+outputs = [
+  "transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so",
+  "transfer-aria2/runtime/aria2-runtime.lock.json",
+]
+
+[targets.xgo_rm08_aria2_source.workflows]
+validate = [
+  { id = "build_pinned", ref = "job:build_pinned", depends_on = [] },
+]
+
+# Exact packaged-byte receipt. It consumes the APKs produced by the preceding Android
+# package/host target and the source-build lock emitted by xgo_rm08_aria2_source.
+[targets.xgo_rm08_aria2_attest]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  "tools/xgo/verify_rm08_aria2_package.py",
+  "app/XDM.Android/tools/verify-aria2-runtime.py",
+  "app/XDM.Android/tools/android_elf_runtime.py",
+  "app/XDM.Android/transfer-aria2/runtime/aria2-runtime.json",
+  "app/XDM.Android/transfer-aria2/runtime/aria2-runtime.lock.json",
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+]
+
+[targets.xgo_rm08_aria2_attest.jobs.package_attestation]
+runner = "command"
+command = [
+  "python3", "tools/xgo/verify_rm08_aria2_package.py",
+  "--apk", "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "--test-apk", "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+  "--output", ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+]
+inputs = [
+  "tools/xgo/verify_rm08_aria2_package.py",
+  "app/XDM.Android/tools/verify-aria2-runtime.py",
+  "app/XDM.Android/tools/android_elf_runtime.py",
+  "app/XDM.Android/transfer-aria2/runtime/aria2-runtime.json",
+  "app/XDM.Android/transfer-aria2/runtime/aria2-runtime.lock.json",
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+]
+
+[targets.xgo_rm08_aria2_attest.workflows]
+validate = [
+  { id = "package_attestation", ref = "job:package_attestation", depends_on = [] },
+]
+
+# Devtool Android package proxy used by the RM08 aggregate. Its canonical `validate`
+# workflow is the package action, keeping XGO cross-target refs on `#validate`.
+[targets.xgo_rm08_aria2_android_package]
+runner = "android"
+execution_environment = "native-termux"
+platform = "android"
+root = "app/XDM.Android"
+inputs = [
+  ".devtool.toml",
+  "app/XDM.Android/**",
+]
+outputs = [
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+
+[targets.xgo_rm08_aria2_android_package.android]
+variant = "debug"
+aapt2_provider = "termux"
+prefer_native_termux = true
+
+[targets.xgo_rm08_aria2_android_package.gradle]
+version = "9.7.1"
+provider = "auto"
+max_workers = 1
+structured_events = true
+no_daemon = true
+daemon_idle_timeout_ms = 900000
+parallel = false
+build_cache = true
+fail_fast = false
+offline = false
+args = [
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+]
+
+[targets.xgo_rm08_aria2_android_package.tasks]
+package = [
+  ":app:assembleDebugAndroidTest",
+  ":app:verifyFfmpegDebugApkRuntime",
+]
+
+[targets.xgo_rm08_aria2_android_package.artifacts]
+output_directory = "app/build/outputs/apk/debug"
+required = false
+external_verification = "required"
+verify = false
+paths = [
+  "app/build/outputs/apk/debug/app-debug.apk",
+  "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+recursive = true
+
+[targets.xgo_rm08_aria2_android_package.workflows]
+validate = [
+  { id = "android_package", ref = "runner:android#package", depends_on = [] },
+]
+
+# Gate-12 package boundary: source build -> Devtool Android package -> exact byte receipt.
+[targets.xgo_rm08_aria2_package]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "tools/xgo/verify_rm08_aria2_package.py",
+  "app/XDM.Android/**",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+]
+
+[targets.xgo_rm08_aria2_package.workflows]
+validate = [
+  { id = "source_runtime", ref = "target:xgo_rm08_aria2_source#validate", depends_on = [] },
+  { id = "android_package", ref = "target:xgo_rm08_aria2_android_package#validate", depends_on = ["source_runtime"] },
+  { id = "package_attestation", ref = "target:xgo_rm08_aria2_attest#validate", depends_on = ["android_package"] },
+]
+
+# Required-device boundary. Missing device is a Gate-12 failure, not a skip.
+
+# Canonical lint proxy for the Gate-12 continuation. XGO cross-target edges use
+# only target:<name>#validate; this proxy maps validate to the native Android
+# lint action without replaying the rest of xdm_android.
+[targets.xgo_rm08_aria2_lint]
+runner = "android"
+execution_environment = "native-termux"
+platform = "android"
+root = "app/XDM.Android"
+inputs = [
+  ".devtool.toml",
+  "app/XDM.Android/**",
+]
+outputs = [
+  "app/XDM.Android/app/build/reports/lint-results-debug.*",
+  "app/XDM.Android/app/build/intermediates/**",
+]
+
+[targets.xgo_rm08_aria2_lint.android]
+variant = "debug"
+aapt2_provider = "termux"
+prefer_native_termux = true
+
+[targets.xgo_rm08_aria2_lint.gradle]
+version = "9.7.1"
+provider = "auto"
+max_workers = 1
+structured_events = true
+no_daemon = true
+daemon_idle_timeout_ms = 900000
+parallel = false
+build_cache = true
+fail_fast = false
+offline = false
+args = [
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+]
+
+[targets.xgo_rm08_aria2_lint.tasks]
+lint = [":app:lintDebug"]
+
+[targets.xgo_rm08_aria2_lint.workflows]
+validate = [
+  { id = "android_lint", ref = "runner:android#lint", depends_on = [] },
+]
+
+[targets.xgo_rm08_aria2_device]
+runner = "android"
+execution_environment = "native-termux"
+platform = "android"
+root = "app/XDM.Android"
+inputs = [
+  ".devtool.toml",
+  "app/XDM.Android/app/src/androidTest/**",
+  "app/XDM.Android/transfer-aria2/**",
+]
+outputs = [
+  "app/XDM.Android/**/build/**",
+  "app/XDM.Android/.devtool/reports/android-instrumentation.json",
+]
+
+[targets.xgo_rm08_aria2_device.android]
+variant = "debug"
+aapt2_provider = "termux"
+prefer_native_termux = true
+
+[targets.xgo_rm08_aria2_device.android.instrumentation]
+policy = "required"
+variant = "debug"
+module = "app"
+test_runner = "com.mikeyphw.xdm.android.debug.test/androidx.test.runner.AndroidJUnitRunner"
+target_package = "com.mikeyphw.xdm.android.debug"
+
+[targets.xgo_rm08_aria2_device.gradle]
+version = "9.7.1"
+provider = "auto"
+max_workers = 1
+structured_events = true
+no_daemon = true
+daemon_idle_timeout_ms = 900000
+parallel = false
+build_cache = true
+fail_fast = false
+offline = false
+args = [
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+]
+
+[targets.xgo_rm08_aria2_device.workflows]
+validate = [
+  { id = "required_device", ref = "runner:android#instrumentation", depends_on = [] },
+]
+
+# Fresh Gate-12 Android host authority. Checkpoint continuation composes package/device
+# children separately so already-completed Android work is not replayed.
+[targets.xgo_rm08_aria2]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "tools/xgo/**",
+  "app/XDM.Android/**",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+  "app/XDM.Android/.devtool/reports/android-instrumentation.json",
+]
+
+[targets.xgo_rm08_aria2.workflows]
+validate = [
+  { id = "source_runtime", ref = "target:xgo_rm08_aria2_source#validate", depends_on = [] },
+  { id = "android_host", ref = "target:xdm_android#validate", depends_on = ["source_runtime"] },
+  { id = "package_attestation", ref = "target:xgo_rm08_aria2_attest#validate", depends_on = ["android_host"] },
+  { id = "required_device", ref = "target:xgo_rm08_aria2_device#validate", depends_on = ["package_attestation"] },
+]
+
+[wrapper.commands.rm08-aria2]
+description = "Run XGO-RM08 packaged aria2 Android execution contract"
+workflow = "validate"
+target = "xgo_rm08_aria2_contract"

@@ -12,8 +12,10 @@ import java.util.UUID
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-class Aria2SessionStore(context: Context) : Aria2RuntimeFiles {
-    private val trustBundleProvider = Aria2AndroidTrustBundleProvider(context)
+class Aria2SessionStore(
+    context: Context,
+    private val trustBundleProvider: Aria2TrustBundleProvider = Aria2AndroidTrustBundleProvider(context),
+) : Aria2RuntimeFiles {
     override val rootDirectory: File = File(context.filesDir, "aria2")
     override val sessionFile: File = File(rootDirectory, "xdm.session")
     val taskDirectory: File = File(rootDirectory, "tasks")

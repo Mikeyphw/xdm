@@ -32,31 +32,33 @@ It deliberately does **not** rerun:
 - Android dependency resolution;
 - the earlier Android unit-test qualification phases.
 
-RM05 remediation changes Android app and `androidTest` sources, so package/APK,
-artifact, lint, and device evidence are no longer treated as retained after an
-RM05 edit. The continuation therefore runs:
+RM05 through RM08 changed Android app, native-runtime, packaging, and
+`androidTest` sources. Retained APK/lint/device evidence is therefore invalidated,
+while the already-closed earlier Gate-12 checkpoints remain retained. The
+continuation now runs:
 
-1. the XGO Devtool-execution policy (no repository-owned raw Gradle launch);
+1. the XGO Devtool-execution policy;
 2. cheap Android topology sanity;
-3. app + instrumentation APK refresh and embedded-runtime verification through
-   the native `xdm_android` package action;
-4. APK integrity/native/provenance artifact checkpoint;
-5. the focused RM05 opener-restoration instrumentation precheck;
-6. authoritative Android lint through the native Android runner;
-7. the complete Devtool Android instrumentation action when a device is present;
-8. full `xdm_modern` host qualification;
-9. `xgo_final_wave12`.
+3. RM08's pinned/source-built aria2 materialization;
+4. Debug app + instrumentation APK refresh;
+5. RM08 packaged-byte attestation proving the APK's `libaria2c.so` matches the
+   source-build runtime lock;
+6. APK integrity/native/provenance artifact checkpoint;
+7. the focused RM05 opener-restoration precheck;
+8. authoritative Android lint;
+9. **required** RM08 Android instrumentation, including real packaged aria2
+   launch, authenticated loopback RPC, deterministic TLS rejection/success,
+   session save, stop/restart, and recovery;
+10. full `xdm_modern` host qualification;
+11. `xgo_final_wave12`, which consumes both RM08 host receipts.
 
-Package, lint, and complete instrumentation are intentionally composed as
-`target:xdm_android#...` workflow references. XGO gate jobs must not call
-`gradle`/`gradlew` directly or use a `gradle_tasks` workflow-job shortcut. The
-project wrapper may still appear inside Devtool's Android-runner log because
-Devtool itself owns and launches the underlying Gradle process after resolving
-SDK/JDK/AAPT2/provider/resource policy.
+The continuation's three local checkpoint/precheck jobs are target-local jobs of
+`xgo_gate_final_continue`; cross-target work is composed only through canonical
+`target:<name>#validate` references. XGO gate jobs must not call raw
+`gradle`/`gradlew`; Devtool owns the underlying Android/Gradle execution after
+resolving SDK/JDK/AAPT2/provider/resource policy.
 
-The focused RM05 precheck exists only to fail fast during repair cycles. RM05 v3
-qualified the legacy-v2 OAEP residual on-device, so RM05 v4 prechecks only the
-remaining adaptive-sheet opener-restoration method before paying the lint cost.
-It does not replace lint or the complete device suite.
+The focused RM05 precheck remains a fail-fast repair-cycle check only. It does
+not replace lint or RM08's required full device proof.
 
 `./devtoolw gate-final` remains the from-scratch authoritative workflow.

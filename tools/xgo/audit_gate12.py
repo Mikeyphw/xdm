@@ -55,7 +55,31 @@ def validate_topology(config: dict[str, Any], policy: dict[str, Any]) -> dict[st
     observed_ids = [str(node.get("id") or "") for node in seal_nodes]
     expected_ids = [str(v) for v in policy.get("expected_seal_nodes") or []]
     require(observed_ids == expected_ids, f"Wave 12 seal topology drifted: {observed_ids}")
-    return {"gate_node_count": len(observed_gate), "seal_node_count": len(seal_nodes), "gate_refs": refs}
+
+    rm08 = targets.get("xgo_rm08_aria2") or {}
+    rm08_nodes = ((rm08.get("workflows") or {}).get("validate") or [])
+    require([str(node.get("ref") or "") for node in rm08_nodes] == [
+        "target:xgo_rm08_aria2_source#validate",
+        "target:xdm_android#validate",
+        "target:xgo_rm08_aria2_attest#validate",
+        "target:xgo_rm08_aria2_device#validate",
+    ], "RM08 fresh Android host topology drifted")
+    device = targets.get("xgo_rm08_aria2_device") or {}
+    device_instrumentation = ((device.get("android") or {}).get("instrumentation") or {})
+    require(device.get("runner") == "android", "RM08 device target must use Android runner")
+    require(device_instrumentation.get("policy") == "required", "RM08 device target must require a device")
+    require(not device_instrumentation.get("runner_args"), "RM08 Gate-12 device run must not narrow the instrumentation suite")
+    device_nodes = ((device.get("workflows") or {}).get("validate") or [])
+    require(device_nodes == [{"id": "required_device", "ref": "runner:android#instrumentation", "depends_on": []}],
+            "RM08 device validation workflow drifted")
+
+    return {
+        "gate_node_count": len(observed_gate),
+        "seal_node_count": len(seal_nodes),
+        "gate_refs": refs,
+        "rm08_android_host_nodes": len(rm08_nodes),
+        "rm08_device_policy": device_instrumentation.get("policy"),
+    }
 
 
 def validate_reports(reports: dict[str, dict[str, Any]], policy: dict[str, Any]) -> dict[str, Any]:
@@ -135,9 +159,55 @@ def validate_reports(reports: dict[str, dict[str, Any]], policy: dict[str, Any])
     }
 
 
+def validate_host_evidence(policy: dict[str, Any]) -> dict[str, Any]:
+    declarations = policy.get("required_host_evidence") or []
+    require(len(declarations) == 2, "Gate-12 must require exactly the RM08 package and Android instrumentation receipts")
+    observed: dict[str, dict[str, Any]] = {}
+    for entry in declarations:
+        evidence_id = str(entry.get("id") or "")
+        path_text = str(entry.get("path") or "")
+        kind = str(entry.get("kind") or "")
+        require(evidence_id and path_text and kind, "invalid Gate-12 host-evidence declaration")
+        payload = load_json(ROOT / path_text)
+        if kind == "aria2_package":
+            require(payload.get("status") == "pass", "RM08 aria2 package attestation did not pass")
+            require(payload.get("claim") == "xgo-rm08-packaged-aria2", "RM08 package receipt has wrong claim identity")
+            require(payload.get("source_build") is True, "Gate-12 aria2 package is not source-built")
+            require(payload.get("binary_hash_matches_lock") is True, "Gate-12 packaged aria2 bytes do not match the runtime lock")
+            require(payload.get("packaged_lock_matches_source") is True, "Gate-12 packaged aria2 lock differs from source-tree attestation")
+            require(payload.get("dynamic_dependency_policy") == "android-unversioned-sonames-v1", "Gate-12 aria2 package lost Android dependency policy")
+            security = payload.get("elf_security") or {}
+            require(security.get("gnuRelro") is True and security.get("bindNow") is True and security.get("nonExecutableStack") is True,
+                    "Gate-12 aria2 package lost required ELF hardening")
+            require(int(security.get("requiredLoadAlignment") or 0) >= 16384,
+                    "Gate-12 aria2 package does not prove 16 KiB load alignment")
+        elif kind == "android_instrumentation":
+            rc = int(payload.get("returncode", 1))
+            failed = int(payload.get("failed", 0))
+            executed = int(payload.get("executed", payload.get("total", 0)) or 0)
+            status = str(payload.get("status") or "").lower()
+            reason = str(payload.get("reason") or "").lower()
+            require(rc == 0, "RM08 Android instrumentation returned failure")
+            require(failed == 0, "RM08 Android instrumentation reported failed tests")
+            require(executed > 0, "RM08 Android instrumentation executed zero tests")
+            require(status in {"", "pass", "passed", "success", "ok"}, f"RM08 Android instrumentation status is not successful: {status!r}")
+            require("skip" not in reason and "no device" not in reason,
+                    "RM08 Android instrumentation was skipped instead of proving packaged execution")
+        else:
+            raise Gate12Error(f"unknown Gate-12 host evidence kind: {kind}")
+        observed[evidence_id] = {
+            "kind": kind,
+            "path": path_text,
+            "fingerprint": canonical_hash(payload),
+        }
+    require(set(observed) == {"rm08_aria2_package", "rm08_android_instrumentation"},
+            "Gate-12 RM08 host evidence inventory drifted")
+    return observed
+
+
 def audit(policy_path: Path, output: Path) -> dict[str, Any]:
     policy = load_json(policy_path)
-    require(int(policy.get("schema_version") or 0) == 1, "unsupported Gate-12 policy schema")
+    require(int(policy.get("schema_version") or 0) == 2, "unsupported Gate-12 policy schema")
     with (ROOT / ".devtool.toml").open("rb") as fh:
         config = tomllib.load(fh)
     topology = validate_topology(config, policy)
@@ -153,17 +223,19 @@ def audit(policy_path: Path, output: Path) -> dict[str, Any]:
             "Gate-12 report inventory must cover exactly the ten Wave 12 seal nodes")
 
     summary = validate_reports(reports, policy)
+    host_evidence = validate_host_evidence(policy)
     report = {
         "schema_version": 1,
         "status": "pass",
         "policy": policy.get("policy"),
-        "scope": "Wave 12 only: XGO-81 through XGO-89 plus one direct Android host seal and one direct Desktop host seal. Historical gate workflows are intentionally not replayed.",
+        "scope": "Wave 12 only: XGO-81 through XGO-89, RM08 source-built packaged aria2/device qualification, one Android host seal, and one Desktop host seal. Historical gate workflows are intentionally not replayed.",
         "topology": topology,
         "wave12_report_count": len(reports),
         "wave12_reports": {key: {"status": value.get("status")} for key, value in sorted(reports.items())},
         "summary": summary,
+        "rm08_host_evidence": host_evidence,
         "host_final_seals": {
-            "android": "target:xdm_android#validate (dependency-completed before this verifier)",
+            "android": "target:xgo_rm08_aria2#validate (source build + Android host + package attestation + required device instrumentation)",
             "desktop": "target:xdm_modern#validate (dependency-completed before this verifier)",
         },
     }
@@ -171,6 +243,7 @@ def audit(policy_path: Path, output: Path) -> dict[str, Any]:
         "topology": topology,
         "summary": summary,
         "reports": sorted(reports),
+        "rm08_host_evidence": host_evidence,
         "scope": report["scope"],
     })
     output.parent.mkdir(parents=True, exist_ok=True)

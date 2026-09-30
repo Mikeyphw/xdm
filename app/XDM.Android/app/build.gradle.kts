@@ -531,6 +531,27 @@ val verifyRm04DiagnosticsReleaseFinalSeal = tasks.register<Exec>("verifyRm04Diag
     trackStaticValidation("rm04-diagnostics-release-final-seal")
 }
 
+val verifyRm08Aria2PackagedExecutionContract = tasks.register<Exec>("verifyRm08Aria2PackagedExecutionContract") {
+    group = "verification"
+    description = "Verify RM08 packaged aria2 Android execution, TLS, recovery, Gate-12 package/device evidence, and Devtool-native instrumentation wiring."
+    workingDir(repositoryRoot)
+    inputs.files(
+        rootProject.layout.projectDirectory.file("tools/validate-rm08-aria2-packaged-execution.py"),
+        rootProject.layout.projectDirectory.file("app/src/androidTest/kotlin/com/mikeyphw/xdm/android/Aria2Rm08PackagedRuntimeInstrumentedTest.kt"),
+        rootProject.layout.projectDirectory.file("app/src/androidTest/assets/rm08/trusted-ca.pem"),
+        rootProject.layout.projectDirectory.file("app/src/androidTest/assets/rm08/trusted-server.p12"),
+        rootProject.layout.projectDirectory.file("app/src/androidTest/assets/rm08/untrusted-ca.pem"),
+        rootProject.layout.projectDirectory.file("app/src/androidTest/assets/rm08/untrusted-server.p12"),
+        repositoryRoot.resolve(".devtool.toml"),
+        repositoryRoot.resolve("engine/testdata/seal/gate12-policy.json"),
+        repositoryRoot.resolve("tools/xgo/audit_gate12.py"),
+        repositoryRoot.resolve("tools/xgo/verify_rm08_aria2_package.py"),
+    )
+    commandLine(
+        "python3", "app/XDM.Android/tools/validate-rm08-aria2-packaged-execution.py",
+    )
+}
+
 val verifyPostRoadmapRuntimeHotfix = tasks.register<Exec>("verifyPostRoadmapRuntimeHotfix") {
     group = "verification"
     description = "Verify device-observed HLS total semantics, visible transfer notifications, Activity removal, and aria2 startup diagnostics."

@@ -80,3 +80,62 @@ def test_closure_zero_open_gaps_is_accepted():
     }
     result = mod.validate_reports(reports, policy)
     assert result["capability_count"] == 98
+
+
+def test_rm08_host_evidence_requires_source_built_package_and_real_device_run(tmp_path, monkeypatch):
+    package = tmp_path / "package.json"
+    package.write_text(
+        __import__("json").dumps({
+            "status": "pass",
+            "claim": "xgo-rm08-packaged-aria2",
+            "source_build": True,
+            "binary_hash_matches_lock": True,
+            "packaged_lock_matches_source": True,
+            "dynamic_dependency_policy": "android-unversioned-sonames-v1",
+            "elf_security": {
+                "gnuRelro": True,
+                "bindNow": True,
+                "nonExecutableStack": True,
+                "requiredLoadAlignment": 16384,
+            },
+        }),
+        encoding="utf-8",
+    )
+    instrumentation = tmp_path / "instrumentation.json"
+    instrumentation.write_text(
+        __import__("json").dumps({
+            "status": "passed",
+            "returncode": 0,
+            "executed": 7,
+            "failed": 0,
+            "reason": "",
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(mod, "ROOT", tmp_path)
+    policy = {"required_host_evidence": [
+        {"id": "rm08_aria2_package", "path": "package.json", "kind": "aria2_package"},
+        {"id": "rm08_android_instrumentation", "path": "instrumentation.json", "kind": "android_instrumentation"},
+    ]}
+    result = mod.validate_host_evidence(policy)
+    assert set(result) == {"rm08_aria2_package", "rm08_android_instrumentation"}
+
+
+def test_rm08_host_evidence_rejects_skipped_or_empty_instrumentation(tmp_path, monkeypatch):
+    package = tmp_path / "package.json"
+    package.write_text(
+        __import__("json").dumps({
+            "status": "pass", "claim": "xgo-rm08-packaged-aria2", "source_build": True,
+            "binary_hash_matches_lock": True, "packaged_lock_matches_source": True,
+            "dynamic_dependency_policy": "android-unversioned-sonames-v1",
+            "elf_security": {"gnuRelro": True, "bindNow": True, "nonExecutableStack": True, "requiredLoadAlignment": 16384},
+        }), encoding="utf-8")
+    instrumentation = tmp_path / "instrumentation.json"
+    instrumentation.write_text(__import__("json").dumps({"returncode": 0, "executed": 0, "failed": 0, "reason": "no device; skipped"}), encoding="utf-8")
+    monkeypatch.setattr(mod, "ROOT", tmp_path)
+    policy = {"required_host_evidence": [
+        {"id": "rm08_aria2_package", "path": "package.json", "kind": "aria2_package"},
+        {"id": "rm08_android_instrumentation", "path": "instrumentation.json", "kind": "android_instrumentation"},
+    ]}
+    with pytest.raises(mod.Gate12Error, match="executed zero tests"):
+        mod.validate_host_evidence(policy)

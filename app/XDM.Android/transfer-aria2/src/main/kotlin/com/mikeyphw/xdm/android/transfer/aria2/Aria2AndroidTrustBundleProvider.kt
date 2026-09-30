@@ -12,11 +12,15 @@ import java.util.Base64
  * aria2 remains configured with certificate verification enabled; this file only bridges
  * AndroidCAStore into the filesystem form expected by the native runtime.
  */
-internal class Aria2AndroidTrustBundleProvider(context: Context) {
+fun interface Aria2TrustBundleProvider {
+    fun ensure(): File
+}
+
+internal class Aria2AndroidTrustBundleProvider(context: Context) : Aria2TrustBundleProvider {
     private val outputFile = File(context.applicationContext.noBackupFilesDir, "aria2/trust/xdm-android-ca.pem")
 
     @Synchronized
-    fun ensure(): File {
+    override fun ensure(): File {
         val store = KeyStore.getInstance("AndroidCAStore").apply { load(null) }
         val aliases = store.aliases().asSequence().toList().sorted()
         require(aliases.isNotEmpty()) { "Android CA store is empty" }

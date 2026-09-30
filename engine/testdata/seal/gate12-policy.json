@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policy": "wave12-focused-final-gate",
   "gate_target": "xgo_gate_final",
   "expected_gate_nodes": [
@@ -17,7 +17,7 @@
     },
     {
       "id": "android_host_final",
-      "ref": "target:xdm_android#validate",
+      "ref": "target:xgo_rm08_aria2#validate",
       "depends_on": [
         "wave12_seal"
       ]
@@ -106,5 +106,17 @@
     "allow_unsupported_host_with_stress_fallback": true,
     "supported_status": "pass",
     "unsupported_status": "unsupported_on_host"
-  }
+  },
+  "required_host_evidence": [
+    {
+      "id": "rm08_aria2_package",
+      "path": ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+      "kind": "aria2_package"
+    },
+    {
+      "id": "rm08_android_instrumentation",
+      "path": "app/XDM.Android/.devtool/reports/android-instrumentation.json",
+      "kind": "android_instrumentation"
+    }
+  ]
 }
