@@ -4048,17 +4048,21 @@ validate = [
   { id = "rm08_contract", ref = "runner:android#test", depends_on = [] },
 ]
 
-# Pinned source materialization is one target-local operation so every XGO cross-target
-# edge stays `target:...#validate` and Devtool owns its output reservation/evidence.
+# Pinned source materialization is Android-runner-owned. This is required because
+# the Gradle task invokes the source builder only after Devtool has resolved and
+# bootstrapped the Android SDK/NDK/toolchain environment. XGO cross-target edges
+# remain canonical `target:...#validate` refs.
 [targets.xgo_rm08_aria2_source]
-runner = "command"
+runner = "android"
 platform = "android"
 root = "app/XDM.Android"
 execution_environment = "native-termux"
 inputs = [
+  ".devtool.toml",
   "tools/build-aria2-runtime.py",
   "tools/android_elf_runtime.py",
   "tools/install-ffmpeg-runtime.py",
+  "transfer-aria2/build.gradle.kts",
   "transfer-aria2/runtime/aria2-runtime.json",
 ]
 outputs = [
@@ -4066,23 +4070,35 @@ outputs = [
   "transfer-aria2/runtime/aria2-runtime.lock.json",
 ]
 
-[targets.xgo_rm08_aria2_source.jobs.build_pinned]
-runner = "command"
-command = ["python3", "tools/build-aria2-runtime.py", "--build-pinned"]
-inputs = [
-  "tools/build-aria2-runtime.py",
-  "tools/android_elf_runtime.py",
-  "tools/install-ffmpeg-runtime.py",
-  "transfer-aria2/runtime/aria2-runtime.json",
+[targets.xgo_rm08_aria2_source.android]
+variant = "debug"
+aapt2_provider = "termux"
+prefer_native_termux = true
+
+[targets.xgo_rm08_aria2_source.gradle]
+version = "9.7.1"
+provider = "auto"
+max_workers = 1
+structured_events = true
+no_daemon = true
+daemon_idle_timeout_ms = 900000
+parallel = false
+build_cache = true
+fail_fast = false
+offline = false
+args = [
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
 ]
-outputs = [
-  "transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so",
-  "transfer-aria2/runtime/aria2-runtime.lock.json",
-]
+
+[targets.xgo_rm08_aria2_source.tasks]
+build = [":transfer-aria2:buildPinnedAria2Runtime"]
 
 [targets.xgo_rm08_aria2_source.workflows]
 validate = [
-  { id = "build_pinned", ref = "job:build_pinned", depends_on = [] },
+  { id = "build_pinned", ref = "runner:android#build", depends_on = [] },
 ]
 
 # Exact packaged-byte receipt. It consumes the APKs produced by the preceding Android

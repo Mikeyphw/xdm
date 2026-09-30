@@ -73,6 +73,18 @@ def main() -> int:
     require((((device.get("workflows") or {}).get("validate") or [{}])[0].get("ref") == "runner:android#instrumentation"),
             "RM08 device target must validate through Devtool's Android instrumentation runner")
 
+    source_target = targets.get("xgo_rm08_aria2_source") or {}
+    require(source_target.get("runner") == "android",
+            "RM08 source materialization must use the Android runner so Devtool owns SDK/NDK bootstrap")
+    source_tasks = source_target.get("tasks") or {}
+    require(source_tasks.get("build") == [":transfer-aria2:buildPinnedAria2Runtime"],
+            "RM08 source materialization must enter through the canonical Gradle buildPinnedAria2Runtime task")
+    source_workflow = ((source_target.get("workflows") or {}).get("validate") or [])
+    require(len(source_workflow) == 1 and source_workflow[0].get("ref") == "runner:android#build",
+            "RM08 source validate workflow must execute through Devtool's Android build runner")
+    require(not (source_target.get("jobs") or {}),
+            "RM08 source target must not bypass Devtool Android bootstrap with a generic command job")
+
     package_target = targets.get("xgo_rm08_aria2_package") or {}
     package_nodes = ((package_target.get("workflows") or {}).get("validate") or [])
     require([node.get("id") for node in package_nodes] == ["source_runtime", "android_package", "package_attestation"],

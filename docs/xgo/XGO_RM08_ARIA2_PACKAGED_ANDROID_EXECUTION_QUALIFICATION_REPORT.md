@@ -11,10 +11,10 @@ RM08 closes the final aria2 embedding gap left after RM06 runtime/recovery conve
 ## Implemented contract
 
 - `xgo_rm08_aria2_contract` owns bounded apply-time validation through `:app:verifyRm08Aria2PackagedExecutionContract`; it does not trigger the expensive source build or device run.
-- `xgo_rm08_aria2_package` owns source materialization, Android packaging, and exact APK-byte attestation.
+- `xgo_rm08_aria2_package` owns source materialization, Android packaging, and exact APK-byte attestation. Its `xgo_rm08_aria2_source` child is itself Android-runner-owned, so Devtool resolves/bootstrap the SDK and NDK before invoking `:transfer-aria2:buildPinnedAria2Runtime`; no generic command target directly launches the source builder.
 - `xgo_rm08_aria2_device` is a dedicated Android target with `policy = "required"` instrumentation.
 - `xgo_rm08_aria2` is the fresh Gate-12 aggregate Android host authority; gate composition remains canonical because every XGO cross-target edge references `#validate`.
-- Gate-12 package execution builds aria2 from the RM07 pinned source recipe before APK packaging.
+- Gate-12 package execution builds aria2 from the RM07 pinned source recipe before APK packaging, entering the build exclusively through Devtool -> Android runner -> Gradle -> `:transfer-aria2:buildPinnedAria2Runtime`.
 - `tools/xgo/verify_rm08_aria2_package.py` requires schema-v3 `source-build` provenance, runs the strict aria2 ELF/APK verifier, and proves the APK's `lib/arm64-v8a/libaria2c.so` and embedded runtime lock match the source-tree attestation byte-for-byte.
 - Gate-12 device execution uses Devtool's Android instrumentation runner with a required-device policy rather than an ad-hoc ADB shell gate.
 - The instrumented test launches the actual executable from `ApplicationInfo.nativeLibraryDir`, verifies runtime-lock attestation and Android dependency policy, verifies authenticated RPC startup, rejects a TLS server signed by an untrusted test CA, downloads successfully from a loopback HTTPS server signed by the injected trusted test CA, checkpoints the aria2 session, performs clean daemon shutdown, restarts the packaged daemon, and proves an XDM-owned paused GID is recovered from the saved session.
@@ -38,7 +38,25 @@ A fresh `xgo_gate_final` run routes its Android host node through `target:xgo_rm
 - RM08 static contract validator: PASS.
 - Full XGO topology audit: PASS.
 - `xgo_gate_final_continue` target-ready topology audit: PASS.
+- RM08 source-bootstrap regression: PASS; source materialization is forbidden from using a generic `runner = "command"` job.
 - Gate-12 auditor regressions: 5 passed.
 - Python compile checks for the new/changed Gate-12 verification scripts: PASS.
 
 The actual source build, APK-byte receipt, and Android packaged-runtime execution are intentionally deferred to the existing authoritative Gate-12 host boundary.
+
+## RM08 v3 source-bootstrap repair
+
+The first Gate-12 continuation attempt after RM08 v2 exposed an ownership defect: `xgo_rm08_aria2_source` was a generic command target that invoked `tools/build-aria2-runtime.py --build-pinned` directly. That bypassed Devtool's Android environment/bootstrap layer, so SDK/NDK discovery could fail even though later Gradle/package nodes were correctly Android-runner-owned.
+
+RM08 v3 keeps the continuation graph unchanged but repairs the child boundary itself:
+
+```text
+xgo_gate_final_continue
+  -> target:xgo_rm08_aria2_package#validate
+     -> target:xgo_rm08_aria2_source#validate
+        -> runner:android#build
+           -> :transfer-aria2:buildPinnedAria2Runtime
+              -> tools/build-aria2-runtime.py --build-pinned
+```
+
+The static RM08 validator now fails closed if source materialization returns to a generic command job or stops using the exact Gradle task. This ensures Devtool resolves and bootstraps Android SDK/NDK/toolchain state before the source builder executes.
