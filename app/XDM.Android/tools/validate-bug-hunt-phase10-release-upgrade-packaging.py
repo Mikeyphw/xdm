@@ -63,7 +63,7 @@ for rules_name,rules in [('backup_rules', backup_rules),('data_extraction_rules'
         require(marker in rules, f'{rules_name} missing explicit {marker}')
 require('<cloud-backup' in data_rules and '<device-transfer>' in data_rules, 'data extraction rules must split cloud backup and device transfer')
 
-for needle in ['lintRelease','testReleaseUnitTest',':app:assembleRelease',':app:bundleRelease','build-apks','BUNDLETOOL_JAR','ensure-bundletool.py','--ks-key-alias','XDM_ARIA2_ARCHIVE_SHA256','--expected-archive-sha256','--require-trusted-digest','verify-aria2-runtime.py --require-payload --require-16kb-alignment','--require-trusted-archive-digest','install-ffmpeg-runtime.py --build-pinned','verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment','-Pxdm.requireFfmpegRuntime=true','verify-phase10-release-artifacts.py --require-16kb','--inventory tools/phase10-release-inventory.json','--apks','generate-phase10-publication-bundle.sh']:
+for needle in ['lintRelease','testReleaseUnitTest',':app:assembleRelease',':app:bundleRelease','build-apks','BUNDLETOOL_JAR','ensure-bundletool.py','--ks-key-alias','build-aria2-runtime.py --build-pinned','--require-source-build','verify-aria2-runtime.py --require-payload --require-16kb-alignment','install-ffmpeg-runtime.py --build-pinned','verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment','-Pxdm.requireFfmpegRuntime=true','verify-phase10-release-artifacts.py --require-16kb','--inventory tools/phase10-release-inventory.json','--apks','generate-phase10-publication-bundle.sh']:
     require(needle in gate, f'Phase10 release gate missing {needle}')
 for needle in ['apksigner','jarsigner','aapt2 or aapt','splitApksVerified','signer SHA-256','forbidden release APK payload','required inventory entry','unsupported native ABI','AAB missing BundleConfig.pb','PAGE_ALIGNMENT_16K','16 KB zip-aligned','debug.keystore','phase10-release-attestation.json']:
     require(needle in release_verifier, f'release verifier missing {needle}')
@@ -81,7 +81,7 @@ require(
     'Android workflow must run the retained Phase10 signed-release gate or the superseding XAR16 signed-release gate',
 )
 require('app/build/outputs/apk/release/*.apk' not in workflow.split('xdm-android-debug-artifacts',1)[0], 'debug validation job must not search release APK output')
-for needle in ['versionCode 22','versionName 0.21.0','APK-set','16 KB native alignment','device-to-device transfer','SBOM','provenance','checksum attestation','Phase 10 r2 gap closure','Room schema 17','XDM_ARIA2_ARCHIVE_SHA256']:
+for needle in ['versionCode 22','versionName 0.21.0','APK-set','16 KB native alignment','device-to-device transfer','SBOM','provenance','checksum attestation','Phase 10 r2 gap closure','Room schema 17','pinned aria2 source build']:
     require(needle in doc, f'Phase10 doc missing {needle}')
 for needle in ['Phase10ReleaseUpgradePackagingContractTest','releaseBuildRequiresSigningAndNamedUnsignedVariant','releaseGateBuildsSignedApkAndBundleBeforePublication','runtimeReleaseReadinessUsesCurrentSchemaAndBuildAttestation','cloudBackupAndDeviceTransferExcludeSensitiveState']:
     require(needle in contract, f'Phase10 contract test missing {needle}')
@@ -92,7 +92,7 @@ require(phase.get('release_signing_required') is True, 'manifest must require re
 require(phase.get('version_code') == 22 and phase.get('version_name') == '0.21.0', 'manifest must record Phase10 version bump')
 require(phase.get('room_schema_current', 0) >= 17 and project.get('database',{}).get('version', 0) >= 18, 'manifest must report current Room schema 21 or newer while retaining Phase 10 schema provenance')
 require(phase.get('supported_abis') == ['arm64-v8a'], 'manifest must truthfully scope supported ABIs to attested arm64-v8a')
-require(phase.get('aria2_archive_digest_required') is True, 'manifest must require pinned aria2 archive digest')
+require(phase.get('aria2_source_build_required') is True, 'manifest must require XDM source-built aria2 provenance')
 require('requiredApkEntries' in release_inventory and 'forbiddenNameFragments' in release_inventory, 'release inventory must define allow/deny entries')
 require(phase.get('backup_and_device_transfer_excluded') is True, 'manifest must record backup/D2D exclusions')
 require(phase.get('signed_checksums_required') is True, 'manifest must require signed/attested checksums')

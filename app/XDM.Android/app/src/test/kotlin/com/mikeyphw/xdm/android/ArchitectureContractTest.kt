@@ -394,6 +394,7 @@ class ArchitectureContractTest {
         val appBuild = File(root, "app/build.gradle.kts").readText()
         val aria2Build = File(root, "transfer-aria2/build.gradle.kts").readText()
         val verifier = File(root, "tools/verify-aria2-runtime.py").readText()
+        val elfPolicy = File(root, "tools/android_elf_runtime.py").readText()
         val alignmentDoc = File(root, "docs/architecture/ARIA2_RUNTIME_ALIGNMENT.md").readText()
         val resRoot = File(root, "app/src/main/res")
         val launcherPngs = resRoot.walkTopDown()
@@ -412,7 +413,8 @@ class ArchitectureContractTest {
         assertTrue("Default app lint must ignore optional upstream aria2 16 KB alignment", appBuild.contains("disable += \"Aligned16KB\""))
         assertTrue("Aria2 module lint must ignore optional upstream aria2 16 KB alignment", aria2Build.contains("disable += \"Aligned16KB\""))
         assertTrue("Strict aria2 builds must require payload and 16 KB alignment", aria2Build.contains("--require-16kb-alignment"))
-        assertTrue("Verifier must implement the 16 KB alignment gate", verifier.contains("assert_16kb_alignment") && verifier.contains("PT_LOAD"))
+        assertTrue("Verifier must require the shared ELF policy", verifier.contains("verify_elf_policy"))
+        assertTrue("Shared ELF policy must implement 16 KB PT_LOAD and GNU RELRO checks", elfPolicy.contains("PT_LOAD") && elfPolicy.contains("PT_GNU_RELRO") && elfPolicy.contains("require_16kb"))
         assertTrue("Alignment documentation must explain strict builds", alignmentDoc.contains("-Pxdm.requireAria2Runtime=true"))
     }
 

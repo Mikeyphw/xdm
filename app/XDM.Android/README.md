@@ -81,7 +81,7 @@ To build debug and official signed release APKs from the repository root, provid
 ./build-release-apk.sh
 ```
 
-Use `./build-release-apk.sh debug` for a debug APK without release signing, or `./build-release-apk.sh release` for only the canonical signed-release publication. Release accepts values from environment variables or `app/XDM.Android/release-signing.env`: `XDM_RELEASE_STORE_FILE`, `XDM_RELEASE_STORE_PASSWORD`, `XDM_RELEASE_KEY_ALIAS`, `XDM_RELEASE_KEY_PASSWORD`, `XDM_RELEASE_SIGNER_SHA256`, and `XDM_ARIA2_ARCHIVE_SHA256`. The signer pin is checked against the certificate loaded from the configured keystore before any publishable release packaging task can run. The release helper provisions the pinned native inputs and content-addressed bundletool, executes the same signed release gate as CI, and copies its verified publication directory to `dist/android/release/`. Direct Gradle release packaging is deliberately offline/fail-closed: required native payloads must already be installed and attested instead of being downloaded implicitly.
+Use `./build-release-apk.sh debug` for a debug APK without release signing, or `./build-release-apk.sh release` for only the canonical signed-release publication. Release accepts values from environment variables or `app/XDM.Android/release-signing.env`: `XDM_RELEASE_STORE_FILE`, `XDM_RELEASE_STORE_PASSWORD`, `XDM_RELEASE_KEY_ALIAS`, `XDM_RELEASE_KEY_PASSWORD`, and `XDM_RELEASE_SIGNER_SHA256`. The signer pin is checked against the certificate loaded from the configured keystore before any publishable release packaging task can run. The release helper provisions the pinned native inputs and content-addressed bundletool, executes the same signed release gate as CI, and copies its verified publication directory to `dist/android/release/`. Direct Gradle release packaging is deliberately offline/fail-closed: required native payloads must already be installed and attested instead of being downloaded implicitly.
 
 ## Implemented through Phase 7
 
@@ -117,10 +117,10 @@ Distribution builds should pass `-Pxdm.requireFfmpegRuntime=true`. `FfmpegLive` 
 
 ## Embedded aria2 runtime
 
-Phase 6 provides an operational on-device aria2 backend with durable Room-to-GID mappings, paused-before-ownership activation, authenticated loopback RPC, session reconciliation, and XDM-controlled completion promotion. The optional official ARM64 payload is installed and attested with:
+Phase 6 provides an operational on-device aria2 backend with durable Room-to-GID mappings, paused-before-ownership activation, authenticated loopback RPC, session reconciliation, and XDM-controlled completion promotion. The release-qualified ARM64 payload is built from pinned source and attested with:
 
 ```bash
-python3 tools/install-aria2-runtime.py --download-official
+python3 tools/build-aria2-runtime.py --build-pinned
 python3 tools/verify-aria2-runtime.py --require-payload
 ```
 

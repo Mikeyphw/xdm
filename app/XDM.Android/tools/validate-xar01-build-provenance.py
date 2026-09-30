@@ -53,12 +53,13 @@ require("if (requireAlignedAria2Runtime.get())" in aria_gradle, "aria2 packaging
 require('mustRunAfter(":media-ffmpeg:installPinnedFfmpegRuntime")' in app_gradle, "explicit FFmpeg APK verification ordering is missing")
 require('dependsOn(":media-ffmpeg:installPinnedFfmpegRuntime")' not in app_gradle.split('tasks.matching { it.name == "assembleDebug" }',1)[-1].split('}',1)[0], "ordinary assembleDebug still forces FFmpeg source installation")
 
-# S01-03: distributable aria2 bytes require an externally trusted digest.
-for needle in ["XDM_ARIA2_ARCHIVE_SHA256", "--require-trusted-digest", "trustedAria2ArchiveSha256"]:
-    require(needle in aria_gradle or needle in aria_install, f"aria2 trusted-digest contract missing {needle}")
-require("expected_hash" in aria_install and "cached_download_path(manifest, cache_dir, expected_hash)" in aria_install, "aria2 cache identity is not bound to the trusted digest")
-require("verifyAria2ReleaseRuntime" in aria_gradle and "--require-trusted-archive-digest" in aria_gradle and "trustedAria2ArchiveSha256" in aria_gradle, "direct release packaging is not fail-closed on a trusted aria2 digest")
+# S01-03: distributable aria2 bytes are XDM source-built with measured toolchain provenance.
+for needle in ["buildPinnedAria2Runtime", "build-aria2-runtime.py", "--build-pinned", "--require-source-build"]:
+    require(needle in aria_gradle or needle in aria_install or needle in aria_verify, f"aria2 source-build contract missing {needle}")
+require("XDM_ARIA2_ARCHIVE_SHA256" not in aria_gradle, "aria2 Gradle release path still trusts a third-party binary digest")
+require("verifyAria2ReleaseRuntime" in aria_gradle and "--require-source-build" in aria_gradle, "direct release packaging is not fail-closed on source-built aria2 provenance")
 require('tasks.matching { it.name == "preReleaseBuild" }' in aria_gradle and "dependsOn(verifyAria2ReleaseRuntime)" in aria_gradle, "preReleaseBuild does not enforce strict aria2 provenance")
+require('lock.get("schemaVersion") != 3' in aria_verify and "toolchainIdentity" in aria_verify and "buildRecipeSha256" in aria_verify, "aria2 verifier does not require schema-v3 source/toolchain provenance")
 
 # S01-04: stable verifier reads the active root workflow.
 require('File(repositoryRoot, ".github/workflows/android.yml")' in root_gradle, "stable toolchain verifier still targets the nested/inactive workflow")
@@ -70,7 +71,7 @@ require('--extension-version "$ext_version" --app-version "$app_ver"' in browser
 
 # S01-06: advertised helper is the canonical signed-release path.
 require("run-bug-hunt-phase10-release-gate.sh" in helper, "release helper does not run the canonical release gate")
-for env_name in ["XDM_RELEASE_SIGNER_SHA256", "XDM_ARIA2_ARCHIVE_SHA256"]:
+for env_name in ["XDM_RELEASE_SIGNER_SHA256"]:
     require(env_name in helper, f"release helper does not require {env_name}")
 require("lintRelease testReleaseUnitTest assembleRelease" not in helper, "release helper still owns a weaker parallel release recipe")
 

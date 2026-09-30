@@ -33,8 +33,9 @@ class Phase10ReleaseUpgradePackagingContractTest {
         assertTrue(gate.contains(":app:bundleRelease"))
         assertTrue(gate.contains("verify-phase10-release-artifacts.py"))
         assertTrue(gate.contains("--require-16kb"))
-        assertTrue(gate.contains("XDM_ARIA2_ARCHIVE_SHA256"))
-        assertTrue(gate.contains("--expected-archive-sha256"))
+        assertTrue(gate.contains("build-aria2-runtime.py --build-pinned"))
+        assertTrue(gate.contains("--require-source-build"))
+        assertFalse(gate.contains("XDM_ARIA2_ARCHIVE_SHA256"))
     }
 
     @Test

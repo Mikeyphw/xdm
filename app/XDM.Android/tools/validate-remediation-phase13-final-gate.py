@@ -160,10 +160,10 @@ require(
 )
 for marker in (":app:compileDebugKotlin", ":core-model:test", ":media:test", ":app:testDebugUnitTest", ":app:lintDebug", "assembleDebug", ":app:assembleDebugAndroidTest", ":browser-extension:validateFirefoxExtension"):
     require(marker in common_validation_script, f"Overlay-13 common validation omits {marker}")
-require('XDM_ARIA2_ARCHIVE_SHA256: ${{ secrets.XDM_ARIA2_ARCHIVE_SHA256 }}' in workflow, "signed CI does not expose the pinned aria2 digest")
-require('Install pinned official ARM64 aria2 runtime' in workflow and '--require-trusted-digest' in workflow, "signed CI installs aria2 before pin verification")
+require('XDM_ARIA2_ARCHIVE_SHA256' not in workflow, "signed CI still depends on a third-party aria2 binary digest")
+require('Build pinned ARM64 aria2 runtime from source' in workflow and 'build-aria2-runtime.py --build-pinned' in workflow, "signed CI does not build pinned aria2 sources")
 require('-Pxdm.validation.aria2PayloadVerified=true' in publication_script, "signed release build does not carry earned aria2 verification evidence")
-require('verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest' in publication_script, "signed release does not verify pinned aria2 before compile")
+require('verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-source-build' in publication_script, "signed release does not verify pinned aria2 before compile")
 require(':browser-extension:packageFirefoxExtensionDark' in publication_script and ':browser-extension:packageFirefoxExtensionAmoled' in publication_script and ':browser-extension:verifyFirefoxExtensionReleaseArtifacts' in publication_script, "signed publication does not package/verify keyless Firefox release artifacts")
 for legacy_marker in (
     'XDM_CAPTURE_KEY_ID',

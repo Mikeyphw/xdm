@@ -40,7 +40,7 @@ class GradleTaskGraphOptimizationContractTest {
         val devtool = repo(".devtool.toml")
         assertFalse(aria.contains("outputs.upToDateWhen { false }"))
         assertTrue(aria.contains("outputs.files("))
-        assertTrue(aria.contains("dependsOn(installOfficialAria2Runtime)"))
+        assertTrue(aria.contains("dependsOn(buildPinnedAria2Runtime)"))
         assertTrue(browser.contains("test-results/jsTest/success.marker"))
         assertTrue(browser.contains("validation/firefox-extension.success"))
         assertTrue(android("media-ffmpeg/build.gradle.kts").contains("verifyFfmpegRuntime.success"))

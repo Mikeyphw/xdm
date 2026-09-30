@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify source payload attestation and, optionally, its exact APK entry."""
+"""Verify aria2 source-build provenance and, optionally, the exact APK entry."""
 from __future__ import annotations
 
 import argparse
@@ -13,9 +13,12 @@ from pathlib import Path
 from android_elf_runtime import ElfPolicyError, validate_android_runtime_elf
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = json.loads((ROOT / "transfer-aria2/runtime/aria2-runtime.json").read_text(encoding="utf-8"))
+MANIFEST_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.json"
+MANIFEST = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 LOCK_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.lock.json"
 TARGET = ROOT / MANIFEST["packagedPath"]
+BUILD_SCRIPT = ROOT / "tools/build-aria2-runtime.py"
+TOOLCHAIN_AUTHORITY = ROOT / "tools/install-ffmpeg-runtime.py"
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -24,14 +27,25 @@ def digest_bytes(data: bytes) -> str:
 
 
 def digest(path: Path) -> str:
-    value = hashlib.sha256()
+    h = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            value.update(chunk)
-    return value.hexdigest()
+            h.update(chunk)
+    return h.hexdigest()
 
 
-def validate_elf(data: bytes) -> None:
+def elf_policy() -> dict:
+    return {
+        "required_load_alignment": int(MANIFEST["requiredLoadAlignment"]),
+        "require_pie": True,
+        "require_gnu_relro": bool(MANIFEST["requireGnuRelro"]),
+        "require_bind_now": bool(MANIFEST["requireBindNow"]),
+        "require_non_executable_stack": bool(MANIFEST["requireNonExecutableStack"]),
+        "expected_interpreter": MANIFEST["expectedInterpreter"],
+    }
+
+
+def validate_elf(data: bytes, *, strict: bool) -> dict:
     if len(data) < 20 or data[:4] != b"\x7fELF":
         raise SystemExit("packaged aria2 runtime is not an ELF executable")
     if data[4] != MANIFEST["elfClass"] or data[5] != MANIFEST["elfData"]:
@@ -40,116 +54,110 @@ def validate_elf(data: bytes) -> None:
         raise SystemExit("packaged aria2 runtime does not target the required Android ABI")
     if len(data) < MANIFEST["minimumBinaryBytes"]:
         raise SystemExit("packaged aria2 runtime is unexpectedly small")
+    try:
+        return validate_android_runtime_elf(data, **(elf_policy() if strict else {}))
+    except ElfPolicyError as error:
+        raise SystemExit(f"aria2 Android ELF policy failed: {error}") from error
 
 
-def assert_16kb_alignment(data: bytes) -> None:
-    if data[:4] != b"\x7fELF":
-        raise SystemExit("packaged aria2 runtime is not an ELF executable")
-    endian = "<" if data[5] == 1 else ">"
-    if data[4] == 2:
-        phoff = struct.unpack_from(endian + "Q", data, 32)[0]
-        phentsize = struct.unpack_from(endian + "H", data, 54)[0]
-        phnum = struct.unpack_from(endian + "H", data, 56)[0]
-        align_offset = 48
-        offset_offset = 8
-        vaddr_offset = 16
-    elif data[4] == 1:
-        phoff = struct.unpack_from(endian + "I", data, 28)[0]
-        phentsize = struct.unpack_from(endian + "H", data, 42)[0]
-        phnum = struct.unpack_from(endian + "H", data, 44)[0]
-        align_offset = 28
-        offset_offset = 4
-        vaddr_offset = 8
-    else:
-        raise SystemExit("packaged aria2 runtime has an unsupported ELF class")
-
-    bad_segments: list[str] = []
-    for index in range(phnum):
-        start = phoff + index * phentsize
-        if start + phentsize > len(data):
-            raise SystemExit("packaged aria2 runtime has truncated ELF program headers")
-        program_type = struct.unpack_from(endian + "I", data, start)[0]
-        if program_type != 1:  # PT_LOAD
-            continue
-        if data[4] == 2:
-            offset = struct.unpack_from(endian + "Q", data, start + offset_offset)[0]
-            vaddr = struct.unpack_from(endian + "Q", data, start + vaddr_offset)[0]
-            align = struct.unpack_from(endian + "Q", data, start + align_offset)[0]
-        else:
-            offset = struct.unpack_from(endian + "I", data, start + offset_offset)[0]
-            vaddr = struct.unpack_from(endian + "I", data, start + vaddr_offset)[0]
-            align = struct.unpack_from(endian + "I", data, start + align_offset)[0]
-        if align < 16_384 or (offset % 16_384) != (vaddr % 16_384):
-            bad_segments.append(f"PT_LOAD[{index}] align=0x{align:x} offset=0x{offset:x} vaddr=0x{vaddr:x}")
-    if bad_segments:
-        raise SystemExit("aria2 runtime is not 16 KB ELF-page aligned: " + "; ".join(bad_segments))
+def require_sha(value: object, name: str) -> str:
+    text = str(value or "").lower()
+    if not SHA256_PATTERN.fullmatch(text):
+        raise SystemExit(f"aria2 runtime lock has no valid {name} SHA-256")
+    return text
 
 
-def verify_payload(required: bool, require_16kb_alignment: bool) -> dict | None:
-    target_present = TARGET.is_file()
-    lock_present = LOCK_PATH.is_file()
+def verify_source_lock(lock: dict, metadata: dict) -> None:
+    if lock.get("schemaVersion") != 3:
+        raise SystemExit("release-qualified aria2 lock must use schemaVersion 3")
+    expected = {
+        "component": MANIFEST["component"], "version": MANIFEST["version"], "releaseTag": MANIFEST["releaseTag"],
+        "abi": MANIFEST["abi"], "androidApi": MANIFEST["androidApi"], "ndkVersion": MANIFEST["ndkVersion"],
+        "buildProfile": MANIFEST["buildProfile"], "sourceKind": "source-build",
+        "dynamicDependencyPolicy": MANIFEST["dynamicDependencyPolicy"],
+        "sources": MANIFEST["sources"], "configureFlags": MANIFEST["configureFlags"],
+    }
+    for key, value in expected.items():
+        if lock.get(key) != value:
+            raise SystemExit(f"aria2 source-build lock field {key} does not match the manifest")
+    if require_sha(lock.get("buildRecipeSha256"), "build recipe") != digest(BUILD_SCRIPT):
+        raise SystemExit("aria2 build recipe changed after the runtime was built")
+    if require_sha(lock.get("toolchainAuthoritySha256"), "toolchain authority") != digest(TOOLCHAIN_AUTHORITY):
+        raise SystemExit("aria2 native toolchain authority changed after the runtime was built")
+    require_sha(lock.get("buildCacheIdentitySha256"), "build cache identity")
+    require_sha(lock.get("ndkSourcePropertiesSha256"), "NDK source.properties")
+    if lock.get("ndkRevision") != MANIFEST["ndkVersion"]:
+        raise SystemExit("aria2 source-build lock measured NDK revision differs from the pinned NDK")
+    tools = (lock.get("toolchainIdentity") or {}).get("tools") or {}
+    if not tools:
+        raise SystemExit("aria2 source-build lock has no measured native toolchain")
+    for name, info in tools.items():
+        require_sha((info or {}).get("sha256"), f"toolchain {name}")
+        if not (info or {}).get("version"):
+            raise SystemExit(f"aria2 toolchain fingerprint has no version for {name}")
+    compiler = lock.get("compilerIdentity") or {}
+    if not compiler.get("backend"):
+        raise SystemExit("aria2 source-build lock has no measured compiler backend")
+    cc = compiler.get("cc") or {}
+    require_sha(cc.get("sha256"), "C compiler")
+    if not cc.get("version"):
+        raise SystemExit("aria2 source-build lock C compiler fingerprint has no version")
+    cxx = compiler.get("cxx")
+    if isinstance(cxx, dict):
+        require_sha(cxx.get("sha256"), "C++ compiler")
+        if not cxx.get("version"):
+            raise SystemExit("aria2 source-build lock C++ compiler fingerprint has no version")
+    security = lock.get("elfSecurity") or {}
+    expected_security = {
+        "elfType": MANIFEST["elfType"],
+        "requiredLoadAlignment": MANIFEST["requiredLoadAlignment"],
+        "gnuRelro": True,
+        "bindNow": True,
+        "nonExecutableStack": True,
+    }
+    if security != expected_security:
+        raise SystemExit("aria2 source-build lock ELF security metadata is incomplete/stale")
+    if list(lock.get("neededLibraries", [])) != list(metadata["needed"]):
+        raise SystemExit("aria2 runtime lock DT_NEEDED list differs from the packaged ELF")
+    if lock.get("elfInterpreter") != metadata["interpreter"]:
+        raise SystemExit("aria2 runtime lock ELF interpreter differs from the packaged ELF")
+
+
+def verify_payload(required: bool, strict: bool, require_source_build: bool) -> dict | None:
+    target_present, lock_present = TARGET.is_file(), LOCK_PATH.is_file()
     if target_present != lock_present:
         raise SystemExit("aria2 runtime payload and attestation lock must either both exist or both be absent")
     if not target_present:
         if required:
-            raise SystemExit("attested ARM64 aria2 runtime is required; run tools/install-aria2-runtime.py")
-        print("aria2 runtime not installed; native-only source build remains valid")
+            raise SystemExit("attested ARM64 aria2 runtime is required; run tools/build-aria2-runtime.py --build-pinned")
+        print("aria2 runtime not installed; source-only validation remains valid")
         return None
 
     lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
     data = TARGET.read_bytes()
-    validate_elf(data)
-    try:
-        runtime_metadata = validate_android_runtime_elf(data)
-    except ElfPolicyError as error:
-        raise SystemExit(f"aria2 Android dependency policy failed: {error}") from error
-    if require_16kb_alignment:
-        assert_16kb_alignment(data)
-
-    required_metadata = {
-        "schemaVersion": MANIFEST["schemaVersion"],
-        "component": MANIFEST["component"],
-        "version": MANIFEST["version"],
-        "releaseTag": MANIFEST["releaseTag"],
-        "abi": MANIFEST["abi"],
-        "archiveName": MANIFEST["archiveName"],
-        "sourceUrl": MANIFEST["officialUrl"],
-        "dynamicDependencyPolicy": MANIFEST.get("dynamicDependencyPolicy", "android-unversioned-sonames-v1"),
-    }
-    for key, expected in required_metadata.items():
-        if lock.get(key) != expected:
-            raise SystemExit(f"aria2 runtime lock field {key} does not match the manifest")
-
-    if list(lock.get("neededLibraries", [])) != list(runtime_metadata["needed"]):
-        raise SystemExit("aria2 runtime lock DT_NEEDED list differs from the packaged ELF")
-    if lock.get("elfInterpreter") != runtime_metadata["interpreter"]:
-        raise SystemExit("aria2 runtime lock ELF interpreter differs from the packaged ELF")
-
-    archive_hash = str(lock.get("archiveSha256", "")).lower()
-    binary_hash = str(lock.get("binarySha256", "")).lower()
-    if not SHA256_PATTERN.fullmatch(archive_hash):
-        raise SystemExit("aria2 runtime lock has no valid archive SHA-256 attestation")
-    if not SHA256_PATTERN.fullmatch(binary_hash):
-        raise SystemExit("aria2 runtime lock has no valid binary SHA-256 attestation")
+    metadata = validate_elf(data, strict=strict)
+    binary_hash = require_sha(lock.get("binarySha256"), "binary")
     if lock.get("binarySize") != len(data) or binary_hash != digest(TARGET):
-        raise SystemExit("aria2 runtime bytes do not match their source attestation")
+        raise SystemExit("aria2 runtime bytes do not match their attestation lock")
 
-    notice_paths = {
-        "license": ROOT / MANIFEST["licenseAsset"],
-        "sourceNotice": ROOT / MANIFEST["sourceNoticeAsset"],
-    }
+    if require_source_build:
+        verify_source_lock(lock, metadata)
+    else:
+        # Compatibility installs remain useful for local development, but must never be
+        # accepted by a release-qualified verifier.
+        if lock.get("sourceKind") == "source-build":
+            verify_source_lock(lock, metadata)
+        elif lock.get("sourceKind") not in {"raw-elf", "zip", "prebuilt-compatibility"}:
+            raise SystemExit("aria2 runtime lock has an unknown sourceKind")
+
+    notice_paths = {"license": ROOT / MANIFEST["licenseAsset"], "sourceNotice": ROOT / MANIFEST["sourceNoticeAsset"]}
     for name, path in notice_paths.items():
         if not path.is_file():
             raise SystemExit(f"aria2 {name} asset is missing: {path}")
-        key = f"{name}Sha256"
-        if not SHA256_PATTERN.fullmatch(str(lock.get(key, ""))) or digest(path) != lock[key]:
+        if require_sha(lock.get(f"{name}Sha256"), name) != digest(path):
             raise SystemExit(f"aria2 {name} asset differs from runtime lock")
 
-    trusted_hash = MANIFEST.get("archiveSha256")
-    if trusted_hash and archive_hash != trusted_hash.lower():
-        raise SystemExit("aria2 archive SHA-256 differs from the trusted manifest value")
-
-    print(f"aria2 {lock['version']} ARM64 runtime verified: {binary_hash}")
+    print(f"aria2 {lock['version']} ARM64 runtime verified: {binary_hash} ({lock.get('sourceKind')})")
     return lock
 
 
@@ -157,23 +165,26 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--require-payload", action="store_true")
     parser.add_argument("--require-16kb-alignment", action="store_true")
+    parser.add_argument("--require-source-build", action="store_true")
     parser.add_argument("--apk", type=Path)
+    parser.add_argument("--success-marker", type=Path)
+    # Retained as a compatibility parser surface for historical scripts. It does not make
+    # a third-party prebuilt release-eligible under schema v3.
     parser.add_argument("--expected-archive-sha256", default=None)
     parser.add_argument("--require-trusted-archive-digest", action="store_true")
     args = parser.parse_args()
+    if args.require_trusted_archive_digest:
+        raise SystemExit("third-party archive-digest qualification is obsolete; use --require-source-build")
 
+    strict = args.require_16kb_alignment or args.require_source_build
     try:
-        lock = verify_payload(args.require_payload, args.require_16kb_alignment)
+        lock = verify_payload(args.require_payload, strict, args.require_source_build)
     except SystemExit as error:
-        if args.require_payload or args.apk or args.require_trusted_archive_digest:
+        if args.require_payload or args.apk or args.require_source_build:
             raise
         print(f"aria2 runtime is installed but stale for source-only validation: {error}")
         lock = None
-    expected_archive_sha256 = args.expected_archive_sha256 or MANIFEST.get("archiveSha256")
-    if args.require_trusted_archive_digest and (lock is not None or args.require_payload) and not expected_archive_sha256:
-        raise SystemExit("strict release verification requires a pinned aria2 archive SHA-256")
-    if lock is not None and expected_archive_sha256 and lock.get("archiveSha256", "").lower() != expected_archive_sha256.lower():
-        raise SystemExit("aria2 runtime archive SHA-256 does not match the pinned release digest")
+
     if args.apk:
         if lock is None:
             raise SystemExit("cannot inspect APK without an installed runtime")
@@ -185,29 +196,24 @@ def main() -> None:
                 data = apk.read(member)
             except KeyError as error:
                 raise SystemExit(f"{member} is missing from {args.apk}") from error
-            notice_entries = {
-                "license": "assets/licenses/GPL-2.0.txt",
-                "sourceNotice": "assets/licenses/SOURCE-NOTICE.txt",
-            }
-            for name, notice_member in notice_entries.items():
+            notices = {"license": "assets/licenses/GPL-2.0.txt", "sourceNotice": "assets/licenses/SOURCE-NOTICE.txt"}
+            for name, member_name in notices.items():
                 try:
-                    notice_data = apk.read(notice_member)
+                    notice_data = apk.read(member_name)
                 except KeyError as error:
-                    raise SystemExit(f"{notice_member} is missing from {args.apk}") from error
+                    raise SystemExit(f"{member_name} is missing from {args.apk}") from error
                 if digest_bytes(notice_data) != lock[f"{name}Sha256"]:
                     raise SystemExit(f"APK aria2 {name} differs from the attested notice asset")
-        validate_elf(data)
-        try:
-            apk_runtime_metadata = validate_android_runtime_elf(data)
-        except ElfPolicyError as error:
-            raise SystemExit(f"APK aria2 Android dependency policy failed: {error}") from error
-        if list(lock.get("neededLibraries", [])) != list(apk_runtime_metadata["needed"]):
+        metadata = validate_elf(data, strict=strict)
+        if list(lock.get("neededLibraries", [])) != list(metadata["needed"]):
             raise SystemExit("APK aria2 DT_NEEDED list differs from the attested runtime")
-        if args.require_16kb_alignment:
-            assert_16kb_alignment(data)
         if len(data) != lock["binarySize"] or digest_bytes(data) != lock["binarySha256"]:
-            raise SystemExit("APK aria2 payload differs from the attested source payload")
-        print(f"APK payload verified: {args.apk}")
+            raise SystemExit("APK aria2 payload differs from the attested source-built payload")
+        print(f"APK source-built aria2 payload verified: {args.apk}")
+
+    if args.success_marker:
+        args.success_marker.parent.mkdir(parents=True, exist_ok=True)
+        args.success_marker.write_text("ok\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

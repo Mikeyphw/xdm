@@ -91,7 +91,7 @@ need('assembleDebug' in build_block, "Devtool build phase no longer assembles de
 need(re.search(r'"clean"\s*,\s*"assembleDebug"', build_block) is not None, "Devtool build phase must clean stale outputs immediately before assembleDebug")
 need('clean' not in package_block, "Devtool package phase must not repeat clean during Android-test/APK attestation work")
 need(':app:lintDebug' in array_block(validation_phase_section, "lint") and '"lintDebug"' not in array_block(validation_phase_section, "lint"), "Devtool still invokes the root lintDebug aggregate instead of the app-scoped lint gate")
-need('installOfficialAria2Runtime' not in build_block + package_block, "Devtool still schedules aria2 installer redundantly across split phases")
+need('buildPinnedAria2Runtime' not in build_block + package_block, "Devtool still schedules aria2 installer redundantly across split phases")
 need('installPinnedFfmpegRuntime' not in build_block + package_block, "Devtool still schedules FFmpeg installer redundantly across split phases")
 need(':app:assembleDebugAndroidTest' in package_block and ':app:verifyFfmpegDebugApkRuntime' in package_block,
      "Devtool package phase lost Android-test/APK runtime attestation")
@@ -125,11 +125,11 @@ need(not (ANDROID / "transfer-native/transfer-native").exists(),
 
 # aria2 now behaves like the FFmpeg installer: declared inputs/outputs plus packaging ownership.
 need('outputs.upToDateWhen { false }' not in aria_gradle, "aria2 installer is still forced dirty")
-need(has(aria_gradle, 'inputs.files(', 'runtime/aria2-runtime.json', 'tools/install-aria2-runtime.py',
-         'outputs.files(', 'libaria2c.so', 'aria2-runtime.lock.json', 'dependsOn(installOfficialAria2Runtime)'),
+need(has(aria_gradle, 'inputs.files(', 'runtime/aria2-runtime.json', 'tools/build-aria2-runtime.py',
+         'outputs.files(', 'libaria2c.so', 'aria2-runtime.lock.json', 'dependsOn(buildPinnedAria2Runtime)'),
      "aria2 installer lacks incremental inputs/outputs or JNI packaging ownership")
-need(has(aria_installer, 'default_cache_dir', 'cached_download_path', 'cached_payload_usable', 'Discarding unusable cached aria2 payload', 'Reusing cached aria2 payload', '--no-download-cache'),
-     "aria2 installer lacks deterministic self-healing download-cache reuse")
+need(has(read(ANDROID / 'tools/build-aria2-runtime.py'), 'CACHE_ROOT', 'buildCacheIdentitySha256', 'toolchainAuthoritySha256', 'sourceKind', 'source-build'),
+     "aria2 source builder lacks deterministic cache/provenance ownership")
 
 
 # Runtime verification is also incremental across Devtool split phases; exact runtime/APK bytes
@@ -139,7 +139,7 @@ need(has(ffmpeg_gradle, 'verifyFfmpegRuntime.success', 'inputs.property("require
          'dependsOn(installPinnedFfmpegRuntime)'),
      "FFmpeg runtime verification lacks incremental tracking or an explicit installer dependency")
 need(has(aria_gradle, 'verifyAria2Runtime.success', 'inputs.property("requireAlignedAria2Runtime"', 'tools/verify-aria2-runtime.py',
-         'dependsOn(installOfficialAria2Runtime)'),
+         'dependsOn(buildPinnedAria2Runtime)'),
      "aria2 runtime verification lacks incremental tracking or an explicit installer dependency")
 need(has(app_gradle, 'verifyFfmpegDebugApkRuntime.success', 'outputs/apk/debug/app-debug.apk', 'media-ffmpeg/runtime/ffmpeg-runtime.lock.json'),
      "APK FFmpeg attestation lacks incremental input/output tracking")

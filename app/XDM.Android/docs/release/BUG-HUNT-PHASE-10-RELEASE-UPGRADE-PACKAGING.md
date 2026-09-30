@@ -33,7 +33,7 @@ Phase 10 r2 closes the promise-audit gaps found after the first overlay:
 
 - Runtime readiness reports Room schema 17 and signer/build attestation fields, never `!BuildConfig.DEBUG`.
 - The release contract test is valid Kotlin and checks the runtime attestation wiring.
-- The publishable release gate requires `XDM_ARIA2_ARCHIVE_SHA256`; unpinned official downloads are rejected.
+- The publishable release gate requires `pinned aria2 source build`; unpinned source-build inputs are rejected.
 - Supported native ABI scope is truthfully limited to the attested `arm64-v8a` payload until additional signed runtime payloads are added.
 - APK verification now requires apksigner, APK manifest inspection, inventory allow/deny checks, supported ABI enforcement, and pinned signer continuity.
 - AAB verification now requires jarsigner and bundletool config inspection with `PAGE_ALIGNMENT_16K`.

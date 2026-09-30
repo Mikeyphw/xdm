@@ -5,26 +5,11 @@ plugins {
 val requireAlignedAria2Runtime = providers.gradleProperty("xdm.requireAria2Runtime")
     .map(String::toBoolean)
     .orElse(false)
-val trustedAria2ArchiveSha256 = providers.gradleProperty("xdm.aria2.archiveSha256")
-    .orElse(providers.environmentVariable("XDM_ARIA2_ARCHIVE_SHA256"))
-
-val installOfficialAria2Runtime = tasks.register<Exec>("installOfficialAria2Runtime") {
+val installCompatibilityAria2Runtime = tasks.register<Exec>("installCompatibilityAria2Runtime") {
     group = "build setup"
-    description = "Installs the pinned official ARM64 aria2 runtime payload incrementally."
+    description = "Installs the pinned legacy aria2 Android prebuilt for non-release compatibility only."
     workingDir(rootProject.projectDir)
-    val trustedDigestProvider = trustedAria2ArchiveSha256
-    inputs.property("trustedAria2ArchiveSha256Override", trustedDigestProvider.orElse(""))
-    doFirst {
-        val arguments = mutableListOf(
-            "python3", "tools/install-aria2-runtime.py",
-            "--download-official", "--require-trusted-digest",
-        )
-        trustedDigestProvider.orNull?.let { trustedDigest ->
-            require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
-            arguments += listOf("--expected-archive-sha256", trustedDigest)
-        }
-        commandLine(*arguments.toTypedArray())
-    }
+    commandLine("python3", "tools/install-aria2-runtime.py", "--download-official", "--require-trusted-digest")
     inputs.files(
         layout.projectDirectory.file("runtime/aria2-runtime.json"),
         rootProject.layout.projectDirectory.file("tools/install-aria2-runtime.py"),
@@ -33,10 +18,28 @@ val installOfficialAria2Runtime = tasks.register<Exec>("installOfficialAria2Runt
     outputs.files(
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
         layout.projectDirectory.file("runtime/aria2-runtime.lock.json"),
-        layout.projectDirectory.file("runtime/licenses/GPL-2.0.txt"),
-        layout.projectDirectory.file("runtime/licenses/SOURCE-NOTICE.txt"),
     )
 }
+
+val buildPinnedAria2Runtime = tasks.register<Exec>("buildPinnedAria2Runtime") {
+    group = "build setup"
+    description = "Builds XDM's release-qualified ARM64 aria2 runtime from pinned sources."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/build-aria2-runtime.py", "--build-pinned")
+    inputs.files(
+        layout.projectDirectory.file("runtime/aria2-runtime.json"),
+        layout.projectDirectory.file("runtime/licenses/GPL-2.0.txt"),
+        layout.projectDirectory.file("runtime/licenses/SOURCE-NOTICE.txt"),
+        rootProject.layout.projectDirectory.file("tools/build-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/install-ffmpeg-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
+    )
+    outputs.files(
+        layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
+        layout.projectDirectory.file("runtime/aria2-runtime.lock.json"),
+    )
+}
+
 
 android {
     namespace = "com.mikeyphw.xdm.android.transfer.aria2"
@@ -85,7 +88,7 @@ if (requireAlignedAria2Runtime.get()) {
     tasks.matching { task ->
         task.name.startsWith("merge") && task.name.contains("JniLib", ignoreCase = true)
     }.configureEach {
-        dependsOn(installOfficialAria2Runtime)
+        dependsOn(buildPinnedAria2Runtime)
     }
 }
 
@@ -105,12 +108,10 @@ dependencies {
 
 val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
     group = "verification"
-    if (requireAlignedAria2Runtime.get()) dependsOn(installOfficialAria2Runtime)
-    mustRunAfter(installOfficialAria2Runtime)
+    if (requireAlignedAria2Runtime.get()) dependsOn(buildPinnedAria2Runtime)
+    mustRunAfter(buildPinnedAria2Runtime)
     description = "Verifies the attested ARM64 aria2 runtime when present or required."
     workingDir(rootProject.projectDir)
-    val requireRuntimeProvider = requireAlignedAria2Runtime
-    val trustedDigestProvider = trustedAria2ArchiveSha256
     inputs.files(
         layout.projectDirectory.file("runtime/aria2-runtime.json"),
         layout.projectDirectory.file("runtime/aria2-runtime.lock.json"),
@@ -118,38 +119,26 @@ val verifyAria2Runtime = tasks.register<Exec>("verifyAria2Runtime") {
         rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
         rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
-    inputs.property("requireAlignedAria2Runtime", requireRuntimeProvider)
-    inputs.property("trustedAria2ArchiveSha256Override", trustedDigestProvider.orElse(""))
+    inputs.property("requireAlignedAria2Runtime", requireAlignedAria2Runtime)
     val successMarker = layout.buildDirectory.file("validation/verifyAria2Runtime.success")
     outputs.file(successMarker)
-    doFirst {
-        val arguments = mutableListOf("python3", "tools/verify-aria2-runtime.py")
-        if (requireRuntimeProvider.get()) {
-            arguments += listOf(
-                "--require-payload", "--require-16kb-alignment",
-                "--require-trusted-archive-digest",
-            )
-            trustedDigestProvider.orNull?.let { trustedDigest ->
-                require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
-                arguments += listOf("--expected-archive-sha256", trustedDigest)
-            }
-        }
-        commandLine(*arguments.toTypedArray())
+    val verificationCommand = mutableListOf(
+        "python3", "tools/verify-aria2-runtime.py",
+        "--success-marker", successMarker.get().asFile.absolutePath,
+    )
+    if (requireAlignedAria2Runtime.get()) {
+        verificationCommand += listOf("--require-payload", "--require-16kb-alignment", "--require-source-build")
     }
-    doLast {
-        val marker = successMarker.get().asFile
-        marker.parentFile.mkdirs()
-        marker.writeText("ok\n")
-    }
+    commandLine(verificationCommand)
 }
+
 
 val verifyAria2ReleaseRuntime = tasks.register<Exec>("verifyAria2ReleaseRuntime") {
     group = "verification"
-    if (requireAlignedAria2Runtime.get()) dependsOn(installOfficialAria2Runtime)
-    mustRunAfter(installOfficialAria2Runtime)
-    description = "Requires an already-installed aria2 payload bound to the trusted release digest; never downloads during direct release packaging."
+    if (requireAlignedAria2Runtime.get()) dependsOn(buildPinnedAria2Runtime)
+    mustRunAfter(buildPinnedAria2Runtime)
+    description = "Requires XDM source-built aria2 bytes with schema-v3 native provenance."
     workingDir(rootProject.projectDir)
-    val trustedDigestProvider = trustedAria2ArchiveSha256
     inputs.files(
         layout.projectDirectory.file("runtime/aria2-runtime.json"),
         layout.projectDirectory.file("runtime/aria2-runtime.lock.json"),
@@ -157,22 +146,30 @@ val verifyAria2ReleaseRuntime = tasks.register<Exec>("verifyAria2ReleaseRuntime"
         layout.projectDirectory.file("runtime/licenses/SOURCE-NOTICE.txt"),
         layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libaria2c.so"),
         rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/build-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/install-ffmpeg-runtime.py"),
         rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
     )
-    inputs.property("trustedAria2ArchiveSha256Override", trustedDigestProvider.orElse(""))
-    doFirst {
-        val arguments = mutableListOf(
-            "python3", "tools/verify-aria2-runtime.py",
-            "--require-payload", "--require-16kb-alignment",
-            "--require-trusted-archive-digest",
-        )
-        trustedDigestProvider.orNull?.let { trustedDigest ->
-            require(Regex("^[0-9A-Fa-f]{64}$").matches(trustedDigest)) { "Trusted aria2 archive SHA-256 must be 64 hex characters" }
-            arguments += listOf("--expected-archive-sha256", trustedDigest)
-        }
-        commandLine(*arguments.toTypedArray())
-    }
+    commandLine(
+        "python3", "tools/verify-aria2-runtime.py",
+        "--require-payload", "--require-16kb-alignment", "--require-source-build",
+    )
 }
+
+val verifyRm07Aria2NativeRuntime = tasks.register<Exec>("verifyRm07Aria2NativeRuntime") {
+    group = "verification"
+    description = "Runs XGO-RM07 source/provenance and ELF-policy regressions without building the network payload."
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "tools/test-rm07-aria2-native-runtime.py")
+    inputs.files(
+        layout.projectDirectory.file("runtime/aria2-runtime.json"),
+        rootProject.layout.projectDirectory.file("tools/build-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/android_elf_runtime.py"),
+        layout.projectDirectory.file("build.gradle.kts"),
+    )
+}
+
 
 tasks.matching { it.name == "preDebugBuild" }.configureEach {
     dependsOn(verifyAria2Runtime)

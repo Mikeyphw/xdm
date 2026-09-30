@@ -10,7 +10,6 @@ variant="${1:-release}"
 : "${XDM_RELEASE_KEY_PASSWORD:?release key password required}"
 : "${XDM_RELEASE_SIGNER_SHA256:?pinned release signer SHA-256 required}"
 : "${XDM_RELEASE_CERTIFICATE_NOT_AFTER:?release certificate expiry ISO/date required}"
-: "${XDM_ARIA2_ARCHIVE_SHA256:?trusted aria2 archive SHA-256 required}"
 if [[ -z "${BUNDLETOOL_JAR:-}" ]]; then
   BUNDLETOOL_JAR="$(python3 tools/ensure-bundletool.py --print-path)"
   export BUNDLETOOL_JAR
@@ -21,8 +20,8 @@ RUN_ID="${XDM_XAR16_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short=1
 export XDM_XAR16_RUN_ID="$RUN_ID"
 EVIDENCE_DIR="build/xar16/evidence/$RUN_ID"
 mkdir -p "$EVIDENCE_DIR"
-python3 tools/install-aria2-runtime.py --download-official --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --require-trusted-digest
-python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" | tee "$EVIDENCE_DIR/aria2-runtime.txt"
+python3 tools/build-aria2-runtime.py --build-pinned
+python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-source-build | tee "$EVIDENCE_DIR/aria2-runtime.txt"
 python3 tools/install-ffmpeg-runtime.py --build-pinned
 python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment | tee "$EVIDENCE_DIR/ffmpeg-runtime.txt"
 bash tools/run-final-common-validation.sh | tee "$EVIDENCE_DIR/final-common-validation.txt"
@@ -52,7 +51,7 @@ java -jar "$BUNDLETOOL_JAR" build-apks \
   --ks-key-alias "$XDM_RELEASE_KEY_ALIAS" \
   --key-pass "pass:$XDM_RELEASE_KEY_PASSWORD"
 python3 tools/verify-phase10-release-artifacts.py --require-16kb --bundletool-jar "$BUNDLETOOL_JAR" --inventory tools/phase10-release-inventory.json --apk "$APK" --aab "$AAB" --apks "$APKS" --out "$EVIDENCE_DIR/phase10-release-attestation.json"
-python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --apk "$APK" | tee "$EVIDENCE_DIR/aria2-release-apk.txt"
+python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-source-build --apk "$APK" | tee "$EVIDENCE_DIR/aria2-release-apk.txt"
 python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment --apk "$APK" | tee "$EVIDENCE_DIR/ffmpeg-release-apk.txt"
 sha256sum "$APK" "$AAB" "$APKS" > "$EVIDENCE_DIR/artifacts.sha256"
 python3 - "$EVIDENCE_DIR" "$APK" "$AAB" "$APKS" <<'PY'

@@ -64,6 +64,14 @@ def atomic_json_write(path: Path, value: dict) -> None:
         temporary.unlink(missing_ok=True)
 
 
+
+def compatibility_source(manifest: dict) -> dict:
+    source = manifest.get("compatibilityPrebuilt")
+    if isinstance(source, dict):
+        return source
+    # Backward-compatible helper shape for focused cache tests and historical local manifests.
+    return {"url": manifest["officialUrl"], "sha256": manifest.get("archiveSha256")}
+
 def filename_from_url(url: str) -> str:
     parsed = urllib.parse.urlparse(url)
     name = Path(urllib.parse.unquote(parsed.path)).name
@@ -77,15 +85,15 @@ def default_cache_dir() -> Path:
 
 
 def cached_download_path(manifest: dict, cache_dir: Path, expected_hash: str | None = None) -> Path:
-    archive_name = manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])
+    archive_name = manifest.get("archiveName") or filename_from_url(compatibility_source(manifest)["url"])
     identity = "\n".join(
         [
             str(manifest.get("component", "aria2c")),
             str(manifest.get("version", "")),
             str(manifest.get("releaseTag", "")),
-            str(manifest["officialUrl"]),
+            str(compatibility_source(manifest)["url"]),
             archive_name,
-            (expected_hash or manifest.get("archiveSha256") or "UNPINNED").lower(),
+            (expected_hash or compatibility_source(manifest).get("sha256") or "UNPINNED").lower(),
         ]
     )
     key = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
@@ -95,11 +103,11 @@ def cached_download_path(manifest: dict, cache_dir: Path, expected_hash: str | N
 def cached_payload_usable(path: Path, manifest: dict, expected_hash: str | None = None) -> bool:
     if not path.is_file() or path.stat().st_size < manifest["minimumBinaryBytes"]:
         return False
-    trusted_hash = expected_hash or manifest.get("archiveSha256")
+    trusted_hash = expected_hash or compatibility_source(manifest).get("sha256")
     if trusted_hash:
         return sha256(path).lower() == str(trusted_hash).lower()
 
-    archive_name = str(manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])).lower()
+    archive_name = str(manifest.get("archiveName") or filename_from_url(compatibility_source(manifest)["url"])).lower()
     if archive_name.endswith(".zip"):
         if not zipfile.is_zipfile(path):
             return False
@@ -119,11 +127,11 @@ def cached_payload_usable(path: Path, manifest: dict, expected_hash: str | None 
 
 
 def download_official(manifest: dict, cache_dir: Path, use_cache: bool, expected_hash: str | None = None) -> Path:
-    archive_name = manifest.get("archiveName") or filename_from_url(manifest["officialUrl"])
+    archive_name = manifest.get("archiveName") or filename_from_url(compatibility_source(manifest)["url"])
     if not use_cache:
         directory = Path(tempfile.mkdtemp(prefix="xdm-aria2-download-"))
         target = directory / archive_name
-        request = urllib.request.Request(manifest["officialUrl"], headers={"User-Agent": "XDM-Android-runtime-installer/1"})
+        request = urllib.request.Request(compatibility_source(manifest)["url"], headers={"User-Agent": "XDM-Android-runtime-installer/1"})
         with urllib.request.urlopen(request, timeout=120) as response:
             copy_stream_to_path(response, target)
         return target
@@ -141,7 +149,7 @@ def download_official(manifest: dict, cache_dir: Path, use_cache: bool, expected
     os.close(descriptor)
     temporary = Path(temporary_name)
     try:
-        request = urllib.request.Request(manifest["officialUrl"], headers={"User-Agent": "XDM-Android-runtime-installer/1"})
+        request = urllib.request.Request(compatibility_source(manifest)["url"], headers={"User-Agent": "XDM-Android-runtime-installer/1"})
         with urllib.request.urlopen(request, timeout=120) as response:
             copy_stream_to_path(response, temporary)
         temporary.replace(target)
@@ -213,7 +221,7 @@ def main() -> None:
     args = parser.parse_args()
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    expected_hash = args.expected_archive_sha256 or manifest.get("archiveSha256")
+    expected_hash = args.expected_archive_sha256 or compatibility_source(manifest).get("sha256")
     if args.require_trusted_digest and not expected_hash:
         raise SystemExit("a pinned aria2 archive SHA-256 is required for strict release installation")
     download_directory: Path | None = None
@@ -259,11 +267,14 @@ def main() -> None:
             raise SystemExit("aria2 license/source notice assets are required before runtime installation")
 
         lock = {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "component": manifest["component"],
             "version": manifest["version"],
             "releaseTag": manifest["releaseTag"],
             "abi": manifest["abi"],
+            "androidApi": manifest["androidApi"],
+            "ndkVersion": manifest["ndkVersion"],
+            "buildProfile": manifest["buildProfile"],
             "archiveName": manifest.get("archiveName") or archive.name,
             "archiveMember": installed_member or manifest.get("archiveMember"),
             "archiveSha256": archive_hash,
@@ -272,8 +283,9 @@ def main() -> None:
             "dynamicDependencyPolicy": manifest.get("dynamicDependencyPolicy", "android-unversioned-sonames-v1"),
             "neededLibraries": list(runtime_metadata["needed"]),
             "elfInterpreter": runtime_metadata["interpreter"],
-            "sourceUrl": manifest["officialUrl"],
-            "sourceKind": "zip" if installed_member else "raw-elf",
+            "sourceUrl": compatibility_source(manifest)["url"],
+            "sourceKind": "prebuilt-compatibility",
+            "releaseEligible": False,
             "licenseSha256": sha256(license_path),
             "sourceNoticeSha256": sha256(source_notice_path),
         }

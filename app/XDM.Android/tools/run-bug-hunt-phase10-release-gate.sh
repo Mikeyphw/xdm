@@ -10,9 +10,8 @@ fi
 bash tools/run-final-release-gate.sh --ci
 python3 tools/validate-bug-hunt-phase10-release-upgrade-packaging.py
 python3 tools/verify-phase10-backup-policy.py
-: "${XDM_ARIA2_ARCHIVE_SHA256:?XDM_ARIA2_ARCHIVE_SHA256 pins the trusted aria2 official archive digest}"
-python3 tools/install-aria2-runtime.py --download-official --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --require-trusted-digest
-python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256"
+python3 tools/build-aria2-runtime.py --build-pinned
+python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-source-build
 python3 tools/install-ffmpeg-runtime.py --build-pinned
 python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment
 if [[ -z "${BUNDLETOOL_JAR:-}" ]]; then
@@ -37,7 +36,7 @@ APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -pri
 AAB="$(find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -print -quit)"
 test -n "$APK"
 test -n "$AAB"
-python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-trusted-archive-digest --expected-archive-sha256 "$XDM_ARIA2_ARCHIVE_SHA256" --apk "$APK"
+python3 tools/verify-aria2-runtime.py --require-payload --require-16kb-alignment --require-source-build --apk "$APK"
 python3 tools/verify-ffmpeg-runtime.py --require-payload --require-16kb-alignment --apk "$APK"
 APKS="build/outputs/apks/release/xdm-release.apks"
 mkdir -p "$(dirname "$APKS")"

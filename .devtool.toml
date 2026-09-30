@@ -3917,3 +3917,70 @@ test = [":transfer-aria2:test"]
 validate = [
   { id = "aria2_runtime_recovery_unit", ref = "runner:android#test", depends_on = [] },
 ]
+
+# ---------------------------------------------------------------------------
+# XGO-RM07 aria2 native runtime/provenance qualification.
+# Network-heavy source compilation remains a release/Gate-12 packaging boundary;
+# this focused remediation target proves pinned source ownership, recipe/toolchain
+# attestation and adversarial ELF policy before that expensive build is attempted.
+# ---------------------------------------------------------------------------
+[targets.xgo_rm07_aria2]
+runner = "android"
+execution_environment = "native-termux"
+platform = "android"
+root = "app/XDM.Android"
+inputs = [
+  ".devtool.toml",
+  ".github/workflows/android.yml",
+  "build-release-apk.sh",
+  "app/XDM.Android/transfer-aria2/**",
+  "app/XDM.Android/tools/android_elf_runtime.py",
+  "app/XDM.Android/tools/build-aria2-runtime.py",
+  "app/XDM.Android/tools/install-aria2-runtime.py",
+  "app/XDM.Android/tools/install-ffmpeg-runtime.py",
+  "app/XDM.Android/tools/verify-aria2-runtime.py",
+  "app/XDM.Android/tools/test-rm07-aria2-native-runtime.py",
+  "app/XDM.Android/tools/run-bug-hunt-phase10-release-gate.sh",
+  "app/XDM.Android/tools/build-xar16-release-artifacts.sh",
+  "app/XDM.Android/tools/validate-xar01-build-provenance.py",
+  "docs/xgo/XGO_RM07_ARIA2_NATIVE_RUNTIME_PROVENANCE_QUALIFICATION_REPORT.md",
+]
+outputs = [
+  "app/XDM.Android/transfer-aria2/build/**",
+]
+
+[targets.xgo_rm07_aria2.android]
+variant = "debug"
+aapt2_provider = "termux"
+prefer_native_termux = true
+
+[targets.xgo_rm07_aria2.gradle]
+version = "9.7.1"
+provider = "auto"
+max_workers = 1
+structured_events = true
+no_daemon = true
+daemon_idle_timeout_ms = 900000
+parallel = false
+build_cache = true
+fail_fast = false
+offline = false
+args = [
+  "-Dorg.gradle.parallel=false",
+  "-Dorg.gradle.vfs.watch=false",
+  "-Pkotlin.incremental=true",
+  "-Pkotlin.compiler.execution.strategy=in-process",
+]
+
+[targets.xgo_rm07_aria2.tasks]
+test = [":transfer-aria2:verifyRm07Aria2NativeRuntime"]
+
+[targets.xgo_rm07_aria2.workflows]
+validate = [
+  { id = "aria2_native_provenance", ref = "runner:android#test", depends_on = [] },
+]
+
+[wrapper.commands.rm07-aria2]
+description = "Run XGO-RM07 aria2 native source/provenance qualification"
+workflow = "validate"
+target = "xgo_rm07_aria2"

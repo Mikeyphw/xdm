@@ -22,7 +22,6 @@ Required release variables:
   XDM_RELEASE_KEY_ALIAS        Signing key alias
   XDM_RELEASE_KEY_PASSWORD     Signing key password
   XDM_RELEASE_SIGNER_SHA256    SHA-256 fingerprint of the configured signing certificate
-  XDM_ARIA2_ARCHIVE_SHA256     SHA-256 of the pinned upstream aria2 release payload
 
 Optional variables:
   XDM_RELEASE_OUT_DIR          Output directory, default: dist/android
@@ -68,8 +67,7 @@ require_release_inputs() {
     XDM_RELEASE_STORE_PASSWORD \
     XDM_RELEASE_KEY_ALIAS \
     XDM_RELEASE_KEY_PASSWORD \
-    XDM_RELEASE_SIGNER_SHA256 \
-    XDM_ARIA2_ARCHIVE_SHA256; do
+    XDM_RELEASE_SIGNER_SHA256; do
     [[ -n "${!name:-}" ]] || missing+=("$name")
   done
   if (( ${#missing[@]} > 0 )); then
@@ -79,9 +77,8 @@ require_release_inputs() {
   fi
   [[ -f "$XDM_RELEASE_STORE_FILE" ]] || { echo "Release keystore not found: $XDM_RELEASE_STORE_FILE" >&2; exit 2; }
   [[ "$XDM_RELEASE_SIGNER_SHA256" =~ ^[0-9A-Fa-f]{64}$ ]] || { echo "XDM_RELEASE_SIGNER_SHA256 must be 64 hex characters" >&2; exit 2; }
-  [[ "$XDM_ARIA2_ARCHIVE_SHA256" =~ ^[0-9A-Fa-f]{64}$ ]] || { echo "XDM_ARIA2_ARCHIVE_SHA256 must be 64 hex characters" >&2; exit 2; }
   export XDM_RELEASE_STORE_FILE XDM_RELEASE_STORE_PASSWORD XDM_RELEASE_KEY_ALIAS XDM_RELEASE_KEY_PASSWORD
-  export XDM_RELEASE_SIGNER_SHA256 XDM_ARIA2_ARCHIVE_SHA256
+  export XDM_RELEASE_SIGNER_SHA256
 }
 
 build_release() {
