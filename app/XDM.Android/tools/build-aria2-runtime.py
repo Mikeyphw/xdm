@@ -230,7 +230,7 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         aria_env["ARIA2_STATIC"] = "yes"
         aria_env["LIBS"] = "-ldl -lm"
         run(["./configure", *configure], aria, aria_env, label="aria2 configure")
-        run(["make", f"-j{jobs}", "aria2c"], aria, aria_env, label="aria2 build")
+        run(["make", f"-j{jobs}"], aria, aria_env, label="aria2 build")
         if not binary.is_file():
             raise SystemExit("aria2 source build completed without src/aria2c")
         atomic_json(aria_marker, recipe)

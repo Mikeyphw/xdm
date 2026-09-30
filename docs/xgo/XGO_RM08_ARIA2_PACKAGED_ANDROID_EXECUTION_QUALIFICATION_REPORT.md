@@ -80,3 +80,11 @@ Migration is deliberately restart-safe. Before compiling OpenSSL, the authority:
 The migration never copies the consumer's whole native prefix: zlib, c-ares, Expat, libssh2 and FFmpeg/aria2 outputs remain consumer-owned. This prevents cross-component dependency leakage while still eliminating the duplicate OpenSSL build.
 
 Focused validation covers shared identity convergence, API/toolchain invalidation, selective legacy-prefix import, pkg-config prefix rewriting, shared dependency provenance, RM07 aria2 source/ELF contracts, FF01/FF04 native-runtime seals, XAR01 provenance, Phase-10 packaging, Phase-13 final-gate contracts, Gradle task-graph optimization, full XGO topology, and the `xgo_gate_final_continue` target-ready topology.
+
+## RM08 v5 aria2 top-level build-target repair
+
+The first Gate-12 continuation after the shared OpenSSL convergence proved that the new dependency authority works in the live Termux/Devtool path: the aria2 build adopted the completed legacy FFmpeg OpenSSL cache and seeded the pinned OpenSSL source archive without recompiling OpenSSL. The continuation then failed later because `tools/build-aria2-runtime.py` invoked `make -jN aria2c` from aria2's top-level source directory. aria2 1.37.0 does not expose a top-level `aria2c` make target; its supported source-package build contract is the default top-level `make`, which produces `src/aria2c`.
+
+RM08 v5 changes only that source-build boundary: the builder now runs the upstream top-level default `make -jN`, then retains the existing fail-closed check that `src/aria2c` exists before stripping, attesting and packaging it. RM07 and RM08 static regressions now reject a return to the nonexistent top-level `aria2c` target.
+
+The Gate-12 continuation graph does not need another structural rewrite for this repair. It already routes Android package refresh through `xgo_rm08_aria2_package -> xgo_rm08_aria2_source -> runner:android#build -> :transfer-aria2:buildPinnedAria2Runtime`, so the corrected builder is automatically exercised at the same authoritative continuation checkpoint.

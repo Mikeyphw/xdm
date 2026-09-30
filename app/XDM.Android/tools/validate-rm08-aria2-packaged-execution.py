@@ -95,6 +95,10 @@ def main() -> int:
 
     require("build_or_reuse_shared_openssl" in aria_builder and "sharedOpenSslAuthoritySha256" in aria_builder,
             "aria2 source builder is not bound to shared OpenSSL")
+    require('run(["make", f"-j{jobs}"], aria, aria_env, label="aria2 build")' in aria_builder,
+            "aria2 source builder must use the upstream top-level default make target")
+    require('run(["make", f"-j{jobs}", "aria2c"]' not in aria_builder,
+            "aria2 source builder must not request nonexistent top-level make target aria2c")
     require("build_or_reuse_shared_openssl" in ffmpeg_builder and '"sharedOpenSsl": shared_openssl' in ffmpeg_builder,
             "FFmpeg builder is not bound to the same shared OpenSSL dependency")
     require("XDM_ANDROID_NATIVE_DEPS_CACHE" in shared_openssl and "xdm-android-shared-openssl" in shared_openssl,

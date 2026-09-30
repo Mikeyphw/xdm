@@ -127,6 +127,10 @@ def main() -> None:
             "shared OpenSSL cache cannot adopt/resume pre-v4 native work")
     require('"sourceKind": "source-build"' in builder, "builder does not attest source-build identity")
     require("-static-libstdc++" in builder and "-z,relro,-z,now" in builder, "builder lost static C++ runtime / RELRO+NOW linkage")
+    require('run(["make", f"-j{jobs}"], aria, aria_env, label="aria2 build")' in builder,
+            "aria2 builder must invoke the upstream top-level default make target")
+    require('run(["make", f"-j{jobs}", "aria2c"]' not in builder,
+            "aria2 builder must not request nonexistent top-level make target aria2c")
     require('lock.get("schemaVersion") != 3' in verifier, "verifier does not fail closed on schema-v3 source provenance")
     require("buildRecipeSha256" in verifier and "toolchainAuthoritySha256" in verifier, "verifier does not bind recipe/toolchain authority")
     require("sharedOpenSslAuthoritySha256" in verifier and "dependencyIdentitySha256" in verifier,
