@@ -88,3 +88,18 @@ The first Gate-12 continuation after the shared OpenSSL convergence proved that 
 RM08 v5 changes only that source-build boundary: the builder now runs the upstream top-level default `make -jN`, then retains the existing fail-closed check that `src/aria2c` exists before stripping, attesting and packaging it. RM07 and RM08 static regressions now reject a return to the nonexistent top-level `aria2c` target.
 
 The Gate-12 continuation graph does not need another structural rewrite for this repair. It already routes Android package refresh through `xgo_rm08_aria2_package -> xgo_rm08_aria2_source -> runner:android#build -> :transfer-aria2:buildPinnedAria2Runtime`, so the corrected builder is automatically exercised at the same authoritative continuation checkpoint.
+
+## RM08 v6 native-Termux Autoconf/Bionic capability repair
+
+The next authoritative Gate-12 continuation (`b85f0fad272c416a8a65fe58ef7791f0`) proved both preceding repairs: the shared OpenSSL cache was reused directly and the aria2 builder entered the supported top-level `make -jN` build. The failure moved into real aria2 C++ compilation. `configure` had reported `checking whether we are cross compiling... no` even though the target is `aarch64-linux-android`, then falsely reported Android/Bionic APIs such as `getaddrinfo` and `gettimeofday` as absent. aria2 therefore enabled its bundled compatibility headers, which collided with NDK 29/API-26 Bionic declarations (`struct addrinfo`, `getnameinfo`, and `gettimeofday`). The same configure pass also falsely reported pinned dependency functions such as OpenSSL `EVP_DigestInit_ex`/`EVP_sha*`, zlib `gzbuffer`/`gzsetparams`, and c-ares `ares_set_servers` as absent.
+
+RM08 v6 repairs the configure boundary instead of patching generated compatibility headers or suppressing compiler diagnostics:
+
+- the builder follows aria2's own Android configuration model and always supplies both an explicit Linux build triplet from the pinned source's `config.guess` and `--host=aarch64-linux-android`; this prevents native Termux from being mistaken for a non-cross build merely because an ARM64 Android probe executable can run on the ARM64 Android host;
+- before aria2 configure, the exact measured Android C++ compiler compile-links header-correct Bionic probes without executing the target binaries;
+- only ordinary `AC_CHECK_FUNCS` results are cache-seeded from those successful probes; aria2's custom header-aware `asctime_r` and `localtime_r` checks are deliberately left to upstream configure and are independently verified afterward;
+- the exact pinned zlib, shared OpenSSL, and c-ares libraries are separately compile-linked before their observed false-negative Autoconf answers are cache-seeded;
+- after configure and before the expensive `make`, the builder requires the Android libc capability macros that prevent aria2's conflicting compatibility headers from being enabled. A disagreement between the independent target probe and upstream configure now fails immediately at the configure boundary rather than several minutes into C++ compilation;
+- the deterministic aria2 source-build recipe records the explicit build triplet and both measured capability sets, so changing this configure authority invalidates the cached runtime/provenance lock.
+
+This remains an RM08 revision, not a new roadmap item or Gate-12 node. `xgo_gate_final_continue` already owns the authoritative `xgo_rm08_aria2_source` checkpoint, so the same continuation path exercises the corrected source builder without duplicating or reordering the gate DAG.

@@ -131,6 +131,20 @@ def main() -> None:
             "aria2 builder must invoke the upstream top-level default make target")
     require('run(["make", f"-j{jobs}", "aria2c"]' not in builder,
             "aria2 builder must not request nonexistent top-level make target aria2c")
+    require("guess_build_triplet" in builder and 'f"--build={build_triplet}"' in builder,
+            "aria2 Android source builder must force an explicit Autoconf build/host split")
+    require("ANDROID_BIONIC_AUTOCONF_PROBES" in builder and "android_bionic_autoconf_cache" in builder,
+            "aria2 Android source builder must prove Bionic capabilities before seeding Autoconf")
+    require("ANDROID_BIONIC_AUTOCONF_CACHEABLE" in builder and "android_bionic_autoconf_cache(cxx" in builder,
+            "aria2 Bionic probes must use the Android C++ compiler and keep custom checks out of the generic cache")
+    for capability in ("getaddrinfo", "gettimeofday", "gai_strerror", "localtime_r", "asctime_r", "poll"):
+        require(f'"{capability}"' in builder, f"aria2 Android capability cache lost {capability}")
+    require("ANDROID_DEPENDENCY_AUTOCONF_PROBES" in builder and "android_dependency_autoconf_cache" in builder,
+            "aria2 builder must prove dependency functions before correcting Autoconf false negatives")
+    for capability in ("gzbuffer", "EVP_DigestInit_ex", "EVP_sha256", "ares_set_servers"):
+        require(f'"{capability}"' in builder, f"aria2 dependency capability cache lost {capability}")
+    require("require_config_macros" in builder and '"HAVE_GETADDRINFO"' in builder and '"HAVE_GETTIMEOFDAY"' in builder,
+            "aria2 builder must fail before make if configure re-enables bundled libc replacements")
     require('lock.get("schemaVersion") != 3' in verifier, "verifier does not fail closed on schema-v3 source provenance")
     require("buildRecipeSha256" in verifier and "toolchainAuthoritySha256" in verifier, "verifier does not bind recipe/toolchain authority")
     require("sharedOpenSslAuthoritySha256" in verifier and "dependencyIdentitySha256" in verifier,

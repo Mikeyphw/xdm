@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -29,6 +30,87 @@ LOCK_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.lock.json"
 CACHE_ROOT = Path(os.environ.get("XDM_ARIA2_SOURCE_CACHE_DIR", Path.home() / ".cache/xdm/aria2-source-build")).expanduser()
 TOOLCHAIN_AUTHORITY = ROOT / "tools/install-ffmpeg-runtime.py"
 SHARED_OPENSSL_AUTHORITY = ROOT / "tools/android_native_openssl.py"
+
+ANDROID_BIONIC_AUTOCONF_PROBES = {
+    "asctime_r": """#include <time.h>
+int main(void) { struct tm tm = {0}; char buf[64]; return asctime_r(&tm, buf) == 0; }
+""",
+    "basename": """#include <libgen.h>
+int main(void) { char path[] = "/"; return basename(path) == 0; }
+""",
+    "daemon": """#include <unistd.h>
+int main(void) { return daemon(1, 1); }
+""",
+    "gai_strerror": """#include <netdb.h>
+int main(void) { return gai_strerror(0) == 0; }
+""",
+    "getaddrinfo": """#include <netdb.h>
+int main(void) { struct addrinfo *out = 0; int rc = getaddrinfo("localhost", 0, 0, &out); if (out) freeaddrinfo(out); return rc; }
+""",
+    "gettimeofday": """#include <sys/time.h>
+int main(void) { struct timeval tv; return gettimeofday(&tv, 0); }
+""",
+    "localtime_r": """#include <time.h>
+int main(void) { time_t t = 0; struct tm out; return localtime_r(&t, &out) == 0; }
+""",
+    "poll": """#include <poll.h>
+int main(void) { return poll(0, 0, 0); }
+""",
+    "strptime": """#define _XOPEN_SOURCE 700
+#include <time.h>
+int main(void) { struct tm out = {0}; return strptime("1970", "%Y", &out) == 0; }
+""",
+    "timegm": """#define _GNU_SOURCE 1
+#include <time.h>
+int main(void) { struct tm value = {0}; return timegm(&value) == (time_t)-1; }
+""",
+}
+
+# aria2 has custom header-aware AC_LINK_IFELSE probes for asctime_r/localtime_r.
+# The remaining entries are ordinary AC_CHECK_FUNCS and can be safely seeded only
+# after the same Android C++ toolchain has independently compile+link proved them.
+ANDROID_BIONIC_AUTOCONF_CACHEABLE = tuple(
+    name for name in ANDROID_BIONIC_AUTOCONF_PROBES
+    if name not in {"asctime_r", "localtime_r"}
+)
+
+# The live Termux run also showed false-negative AC_CHECK_FUNCS results for
+# already-built pinned dependencies.  These are probed against the exact static
+# libraries before their Autoconf cache entries are seeded.
+ANDROID_DEPENDENCY_AUTOCONF_PROBES = {
+    "gzbuffer": (
+        "#include <zlib.h>\nint main(void) { auto p = &gzbuffer; return p == nullptr; }\n",
+        ("-lz",),
+    ),
+    "gzsetparams": (
+        "#include <zlib.h>\nint main(void) { auto p = &gzsetparams; return p == nullptr; }\n",
+        ("-lz",),
+    ),
+    "EVP_DigestInit_ex": (
+        "#include <openssl/evp.h>\nint main(void) { auto p = &EVP_DigestInit_ex; return p == nullptr; }\n",
+        ("-lssl", "-lcrypto", "-ldl", "-pthread"),
+    ),
+    "EVP_sha224": (
+        "#include <openssl/evp.h>\nint main(void) { auto p = &EVP_sha224; return p == nullptr; }\n",
+        ("-lssl", "-lcrypto", "-ldl", "-pthread"),
+    ),
+    "EVP_sha256": (
+        "#include <openssl/evp.h>\nint main(void) { auto p = &EVP_sha256; return p == nullptr; }\n",
+        ("-lssl", "-lcrypto", "-ldl", "-pthread"),
+    ),
+    "EVP_sha384": (
+        "#include <openssl/evp.h>\nint main(void) { auto p = &EVP_sha384; return p == nullptr; }\n",
+        ("-lssl", "-lcrypto", "-ldl", "-pthread"),
+    ),
+    "EVP_sha512": (
+        "#include <openssl/evp.h>\nint main(void) { auto p = &EVP_sha512; return p == nullptr; }\n",
+        ("-lssl", "-lcrypto", "-ldl", "-pthread"),
+    ),
+    "ares_set_servers": (
+        "#include <ares.h>\nint main(void) { auto p = &ares_set_servers; return p == nullptr; }\n",
+        ("-lcares",),
+    ),
+}
 
 
 def sha256(path: Path) -> str:
@@ -111,6 +193,136 @@ def safe_extract(archive: Path, destination: Path) -> Path:
 def run(command: list[str], cwd: Path, env: dict[str, str], *, label: str) -> None:
     print(f"{label}: {' '.join(command)}", flush=True)
     subprocess.run(command, cwd=cwd, env=env, check=True)
+
+
+def guess_build_triplet(source_root: Path) -> str:
+    """Resolve the build-machine triplet without confusing native Termux with the Android target.
+
+    aria2's upstream Android build always passes both --build and --host.  This is
+    essential on native ARM64 Termux: an Android target probe can execute on the
+    build device, so Autoconf's implicit host-only heuristic may incorrectly decide
+    that it is not cross compiling.
+    """
+    candidates = (source_root / "build-aux/config.guess", source_root / "config.guess")
+    for guess in candidates:
+        if not guess.is_file():
+            continue
+        commands = ([str(guess)], ["sh", str(guess)])
+        for command in commands:
+            try:
+                result = subprocess.run(
+                    command, cwd=source_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    text=True, check=False, timeout=30,
+                )
+            except (OSError, subprocess.SubprocessError):
+                continue
+            triplet = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else ""
+            if result.returncode == 0 and triplet.count("-") >= 2 and not any(ch.isspace() for ch in triplet):
+                if "android" in triplet.lower():
+                    raise SystemExit(
+                        f"config.guess unexpectedly identified the build machine as Android target: {triplet}"
+                    )
+                return triplet
+    raise SystemExit(f"could not resolve Autoconf build triplet from {source_root}")
+
+
+def android_bionic_autoconf_cache(cxx: Path, env: dict[str, str], build_root: Path) -> dict[str, str]:
+    """Prove Bionic APIs with the Android C++ compiler, then seed safe Autoconf cache entries.
+
+    aria2 switches Autoconf to C++ before these checks.  Native Termux can execute
+    Android-target binaries, while Autoconf's generic C++ function probes can also
+    mis-detect Bionic declarations.  Reproduce the target side with the exact measured
+    Android C++ compiler and compile+link only; never execute the target probe.
+
+    asctime_r/localtime_r are intentionally *not* cache-seeded because aria2 uses
+    custom header-aware AC_LINK_IFELSE checks for them.  Their independent probes
+    below still prove the NDK capability, and require_config_macros() verifies that
+    upstream configure reached the same answer before make is allowed to start.
+    """
+    probe_root = build_root / "aria2-autoconf-probes"
+    probe_root.mkdir(parents=True, exist_ok=True)
+    cache: dict[str, str] = {}
+    common = [
+        *shlex.split(env.get("CPPFLAGS", "")),
+        *shlex.split(env.get("CXXFLAGS", "")),
+    ]
+    link = [
+        *shlex.split(env.get("LDFLAGS", "")),
+        *shlex.split(env.get("LIBS", "")),
+    ]
+    for name, source_text in ANDROID_BIONIC_AUTOCONF_PROBES.items():
+        source = probe_root / f"{name}.cpp"
+        output = probe_root / f"{name}.elf"
+        source.write_text(source_text, encoding="utf-8")
+        output.unlink(missing_ok=True)
+        result = subprocess.run(
+            [str(cxx), *common, str(source), "-o", str(output), *link],
+            cwd=probe_root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, check=False,
+        )
+        if result.returncode != 0 or not output.is_file():
+            raise SystemExit(
+                f"Android libc C++ capability probe failed for {name}; refusing to configure aria2.\n"
+                f"{result.stdout.strip()}"
+            )
+        if name in ANDROID_BIONIC_AUTOCONF_CACHEABLE:
+            cache[f"ac_cv_func_{name}"] = "yes"
+    print(
+        "aria2 Android libc C++ probes: " + ", ".join(sorted(ANDROID_BIONIC_AUTOCONF_PROBES)),
+        flush=True,
+    )
+    print(
+        "aria2 Autoconf cache seeded from proven Bionic APIs: "
+        + ", ".join(sorted(ANDROID_BIONIC_AUTOCONF_CACHEABLE)),
+        flush=True,
+    )
+    return cache
+
+
+def android_dependency_autoconf_cache(cxx: Path, env: dict[str, str], build_root: Path) -> dict[str, str]:
+    """Prove pinned zlib/OpenSSL/c-ares symbols before correcting their Autoconf cache."""
+    probe_root = build_root / "aria2-dependency-autoconf-probes"
+    probe_root.mkdir(parents=True, exist_ok=True)
+    cache: dict[str, str] = {}
+    common = [
+        *shlex.split(env.get("CPPFLAGS", "")),
+        *shlex.split(env.get("CXXFLAGS", "")),
+    ]
+    ldflags = shlex.split(env.get("LDFLAGS", ""))
+    trailing_libs = shlex.split(env.get("LIBS", ""))
+    for name, (source_text, libraries) in ANDROID_DEPENDENCY_AUTOCONF_PROBES.items():
+        source = probe_root / f"{name}.cpp"
+        output = probe_root / f"{name}.elf"
+        source.write_text(source_text, encoding="utf-8")
+        output.unlink(missing_ok=True)
+        result = subprocess.run(
+            [str(cxx), *common, str(source), "-o", str(output), *ldflags, *libraries, *trailing_libs],
+            cwd=probe_root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, check=False,
+        )
+        if result.returncode != 0 or not output.is_file():
+            raise SystemExit(
+                f"Android dependency C++ capability probe failed for {name}; refusing to seed Autoconf cache.\n"
+                f"{result.stdout.strip()}"
+            )
+        cache[f"ac_cv_func_{name}"] = "yes"
+    print(
+        "aria2 dependency Autoconf cache seeded from linked symbols: "
+        + ", ".join(sorted(ANDROID_DEPENDENCY_AUTOCONF_PROBES)),
+        flush=True,
+    )
+    return cache
+
+
+def require_config_macros(config: Path, macros: tuple[str, ...]) -> None:
+    if not config.is_file():
+        raise SystemExit(f"aria2 configure did not produce {config}")
+    configured = config.read_text(encoding="utf-8", errors="replace")
+    missing = [macro for macro in macros if f"#define {macro} 1" not in configured]
+    if missing:
+        raise SystemExit(
+            "aria2 configure lost required Android libc capabilities: " + ", ".join(missing)
+        )
 
 
 def configure_make_install(src: Path, prefix: Path, env: dict[str, str], args: list[str], jobs: int, *, label: str, required_rel: str) -> None:
@@ -212,16 +424,29 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         atomic_json(zmarker, zrecipe)
 
     host = "aarch64-linux-android"
-    configure_make_install(source_roots["expat"], prefix, env, [f"--host={host}", f"--prefix={prefix}", "--disable-shared", "--enable-static", "--without-xmlwf", "--without-docbook", "--without-tests", "--without-examples"], jobs, label="Expat", required_rel="lib/libexpat.a")
-    configure_make_install(source_roots["cares"], prefix, env, [f"--host={host}", f"--prefix={prefix}", "--disable-shared", "--enable-static", "--disable-tests"], jobs, label="c-ares", required_rel="lib/libcares.a")
-    configure_make_install(source_roots["libssh2"], prefix, env, [f"--host={host}", f"--prefix={prefix}", "--disable-shared", "--enable-static", "--with-openssl", "--with-libz", "--disable-examples-build"], jobs, label="libssh2", required_rel="lib/libssh2.a")
+    build_triplet = guess_build_triplet(source_roots["aria2"])
+    autoconf_triplets = [f"--build={build_triplet}", f"--host={host}"]
+    configure_make_install(source_roots["expat"], prefix, env, [*autoconf_triplets, f"--prefix={prefix}", "--disable-shared", "--enable-static", "--without-xmlwf", "--without-docbook", "--without-tests", "--without-examples"], jobs, label="Expat", required_rel="lib/libexpat.a")
+    configure_make_install(source_roots["cares"], prefix, env, [*autoconf_triplets, f"--prefix={prefix}", "--disable-shared", "--enable-static", "--disable-tests"], jobs, label="c-ares", required_rel="lib/libcares.a")
+    configure_make_install(source_roots["libssh2"], prefix, env, [*autoconf_triplets, f"--prefix={prefix}", "--disable-shared", "--enable-static", "--with-openssl", "--with-libz", "--disable-examples-build"], jobs, label="libssh2", required_rel="lib/libssh2.a")
 
     aria = source_roots["aria2"]
     aria_marker = aria / ".xdm-aria2-built.json"
     configure = [
-        f"--host={host}", f"--prefix={prefix}", *manifest["configureFlags"],
+        *autoconf_triplets, f"--prefix={prefix}", *manifest["configureFlags"],
     ]
-    recipe = {"schemaVersion": 1, "configure": configure, "cflags": env["CFLAGS"], "ldflags": env["LDFLAGS"], "toolchain": toolchain_identity, "compiler": compiler_identity}
+    recipe = {
+        "schemaVersion": 2,
+        "configure": configure,
+        "buildTriplet": build_triplet,
+        "androidAutoconfCapabilities": sorted(ANDROID_BIONIC_AUTOCONF_PROBES),
+        "androidAutoconfCachedCapabilities": sorted(ANDROID_BIONIC_AUTOCONF_CACHEABLE),
+        "dependencyAutoconfCapabilities": sorted(ANDROID_DEPENDENCY_AUTOCONF_PROBES),
+        "cflags": env["CFLAGS"],
+        "ldflags": env["LDFLAGS"],
+        "toolchain": toolchain_identity,
+        "compiler": compiler_identity,
+    }
     binary = aria / "src/aria2c"
     if not (binary.is_file() and aria_marker.is_file() and json.loads(aria_marker.read_text(encoding="utf-8")) == recipe):
         if (aria / "Makefile").is_file():
@@ -229,7 +454,32 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         aria_env = env.copy()
         aria_env["ARIA2_STATIC"] = "yes"
         aria_env["LIBS"] = "-ldl -lm"
+        aria_env.update(android_bionic_autoconf_cache(cxx, aria_env, build_root))
+        aria_env.update(android_dependency_autoconf_cache(cxx, aria_env, build_root))
         run(["./configure", *configure], aria, aria_env, label="aria2 configure")
+        require_config_macros(
+            aria / "config.h",
+            (
+                "HAVE_ASCTIME_R",
+                "HAVE_BASENAME",
+                "HAVE_DAEMON",
+                "HAVE_GAI_STRERROR",
+                "HAVE_GETADDRINFO",
+                "HAVE_GETTIMEOFDAY",
+                "HAVE_LOCALTIME_R",
+                "HAVE_POLL",
+                "HAVE_STRPTIME",
+                "HAVE_TIMEGM",
+                "HAVE_GZBUFFER",
+                "HAVE_GZSETPARAMS",
+                "HAVE_EVP_DIGESTINIT_EX",
+                "HAVE_EVP_SHA224",
+                "HAVE_EVP_SHA256",
+                "HAVE_EVP_SHA384",
+                "HAVE_EVP_SHA512",
+                "HAVE_ARES_SET_SERVERS",
+            ),
+        )
         run(["make", f"-j{jobs}"], aria, aria_env, label="aria2 build")
         if not binary.is_file():
             raise SystemExit("aria2 source build completed without src/aria2c")

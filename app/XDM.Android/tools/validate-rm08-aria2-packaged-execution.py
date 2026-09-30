@@ -99,6 +99,20 @@ def main() -> int:
             "aria2 source builder must use the upstream top-level default make target")
     require('run(["make", f"-j{jobs}", "aria2c"]' not in aria_builder,
             "aria2 source builder must not request nonexistent top-level make target aria2c")
+    require("guess_build_triplet" in aria_builder and 'f"--build={build_triplet}"' in aria_builder,
+            "aria2 source builder must explicitly separate Autoconf build and Android host identities")
+    require("ANDROID_BIONIC_AUTOCONF_PROBES" in aria_builder and "android_bionic_autoconf_cache" in aria_builder,
+            "aria2 source builder must prove Bionic libc capabilities before caching Autoconf answers")
+    require("ANDROID_BIONIC_AUTOCONF_CACHEABLE" in aria_builder and "android_bionic_autoconf_cache(cxx" in aria_builder,
+            "aria2 Bionic probes must use target C++ and separate upstream custom checks from cacheable checks")
+    for capability in ("getaddrinfo", "gettimeofday", "gai_strerror", "localtime_r", "asctime_r", "poll"):
+        require(f'"{capability}"' in aria_builder, f"aria2 Android capability cache lost {capability}")
+    require("ANDROID_DEPENDENCY_AUTOCONF_PROBES" in aria_builder and "android_dependency_autoconf_cache" in aria_builder,
+            "aria2 source builder must prove pinned dependency functions before caching Autoconf answers")
+    for capability in ("gzbuffer", "EVP_DigestInit_ex", "EVP_sha256", "ares_set_servers"):
+        require(f'"{capability}"' in aria_builder, f"aria2 dependency capability cache lost {capability}")
+    require("require_config_macros" in aria_builder and '"HAVE_GETADDRINFO"' in aria_builder and '"HAVE_GETTIMEOFDAY"' in aria_builder,
+            "aria2 source builder must fail before compilation if Android libc replacement guards regress")
     require("build_or_reuse_shared_openssl" in ffmpeg_builder and '"sharedOpenSsl": shared_openssl' in ffmpeg_builder,
             "FFmpeg builder is not bound to the same shared OpenSSL dependency")
     require("XDM_ANDROID_NATIVE_DEPS_CACHE" in shared_openssl and "xdm-android-shared-openssl" in shared_openssl,
