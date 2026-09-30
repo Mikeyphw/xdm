@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -29,6 +30,10 @@ def main() -> int:
     package_verifier = text(ROOT / "tools/xgo/verify_rm08_aria2_package.py")
     gate_audit = text(ROOT / "tools/xgo/audit_gate12.py")
     app_gradle = text(ANDROID / "app/build.gradle.kts")
+    shared_openssl = text(ANDROID / "tools/android_native_openssl.py")
+    aria_builder = text(ANDROID / "tools/build-aria2-runtime.py")
+    aria_verifier = text(ANDROID / "tools/verify-aria2-runtime.py")
+    ffmpeg_builder = text(ANDROID / "tools/install-ffmpeg-runtime.py")
     policy = json.loads(text(ROOT / "engine/testdata/seal/gate12-policy.json"))
     with (ROOT / ".devtool.toml").open("rb") as fh:
         config = tomllib.load(fh)
@@ -84,6 +89,25 @@ def main() -> int:
             "RM08 source validate workflow must execute through Devtool's Android build runner")
     require(not (source_target.get("jobs") or {}),
             "RM08 source target must not bypass Devtool Android bootstrap with a generic command job")
+    source_inputs = set(source_target.get("inputs") or [])
+    require("tools/android_native_openssl.py" in source_inputs,
+            "RM08 source target must fingerprint the shared OpenSSL authority")
+
+    require("build_or_reuse_shared_openssl" in aria_builder and "sharedOpenSslAuthoritySha256" in aria_builder,
+            "aria2 source builder is not bound to shared OpenSSL")
+    require("build_or_reuse_shared_openssl" in ffmpeg_builder and '"sharedOpenSsl": shared_openssl' in ffmpeg_builder,
+            "FFmpeg builder is not bound to the same shared OpenSSL dependency")
+    require("XDM_ANDROID_NATIVE_DEPS_CACHE" in shared_openssl and "xdm-android-shared-openssl" in shared_openssl,
+            "shared OpenSSL authority lacks a consumer-neutral cache contract")
+    require("out-of-tree" in shared_openssl and "resuming compatible in-progress" in shared_openssl and "adopted completed" in shared_openssl,
+            "shared OpenSSL authority lacks immutable-source/resume/legacy-adoption semantics")
+    require("sharedOpenSslAuthoritySha256" in aria_verifier and "dependencyIdentitySha256" in aria_verifier,
+            "aria2 verifier does not fail closed on shared OpenSSL provenance")
+    require('tools/test-shared-openssl-cache.py' in app_gradle,
+            "RM08 Gradle contract does not fingerprint the shared OpenSSL regression suite")
+    shared_test = subprocess.run([sys.executable, str(ANDROID / "tools/test-shared-openssl-cache.py")], cwd=ANDROID, text=True, capture_output=True)
+    require(shared_test.returncode == 0,
+            "shared OpenSSL regression suite failed: " + (shared_test.stderr or shared_test.stdout).strip())
 
     package_target = targets.get("xgo_rm08_aria2_package") or {}
     package_nodes = ((package_target.get("workflows") or {}).get("validate") or [])

@@ -33,6 +33,7 @@ app_gradle = read(ROOT / "app/build.gradle.kts")
 ff_gradle = read(ROOT / "media-ffmpeg/build.gradle.kts")
 aria_gradle = read(ROOT / "transfer-aria2/build.gradle.kts")
 ff_install = read(ROOT / "tools/install-ffmpeg-runtime.py")
+shared_openssl = read(ROOT / "tools/android_native_openssl.py")
 ff_verify = read(ROOT / "tools/verify-ffmpeg-runtime.py")
 aria_install = read(ROOT / "tools/install-aria2-runtime.py")
 aria_verify = read(ROOT / "tools/verify-aria2-runtime.py")
@@ -60,6 +61,12 @@ require("XDM_ARIA2_ARCHIVE_SHA256" not in aria_gradle, "aria2 Gradle release pat
 require("verifyAria2ReleaseRuntime" in aria_gradle and "--require-source-build" in aria_gradle, "direct release packaging is not fail-closed on source-built aria2 provenance")
 require('tasks.matching { it.name == "preReleaseBuild" }' in aria_gradle and "dependsOn(verifyAria2ReleaseRuntime)" in aria_gradle, "preReleaseBuild does not enforce strict aria2 provenance")
 require('lock.get("schemaVersion") != 3' in aria_verify and "toolchainIdentity" in aria_verify and "buildRecipeSha256" in aria_verify, "aria2 verifier does not require schema-v3 source/toolchain provenance")
+require("build_or_reuse_shared_openssl" in ff_install and "build_or_reuse_shared_openssl" in read(ROOT / "tools/build-aria2-runtime.py"),
+        "FFmpeg and aria2 do not converge on one shared OpenSSL dependency authority")
+require("dependencyIdentitySha256" in shared_openssl and "resuming compatible in-progress" in shared_openssl,
+        "shared OpenSSL provenance/resume contract is incomplete")
+require("sharedOpenSslAuthoritySha256" in aria_verify,
+        "aria2 verifier does not bind the shared OpenSSL authority")
 
 # S01-04: stable verifier reads the active root workflow.
 require('File(repositoryRoot, ".github/workflows/android.yml")' in root_gradle, "stable toolchain verifier still targets the nested/inactive workflow")

@@ -21,12 +21,14 @@ import urllib.request
 from pathlib import Path
 
 from android_elf_runtime import ElfPolicyError, validate_android_runtime_file
+from android_native_openssl import build_or_reuse_shared_openssl
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.json"
 LOCK_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.lock.json"
 CACHE_ROOT = Path(os.environ.get("XDM_ARIA2_SOURCE_CACHE_DIR", Path.home() / ".cache/xdm/aria2-source-build")).expanduser()
 TOOLCHAIN_AUTHORITY = ROOT / "tools/install-ffmpeg-runtime.py"
+SHARED_OPENSSL_AUTHORITY = ROOT / "tools/android_native_openssl.py"
 
 
 def sha256(path: Path) -> str:
@@ -129,7 +131,7 @@ def configure_make_install(src: Path, prefix: Path, env: dict[str, str], args: l
     atomic_json(marker, recipe)
 
 
-def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, dict, dict, dict]:
+def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, dict, dict, dict, dict]:
     authority = load_toolchain_authority()
     ndk = authority.detect_ndk(manifest["ndkVersion"])
     ndk_info = authority.ndk_provenance(ndk, manifest["ndkVersion"])
@@ -146,6 +148,8 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     source_root = build_root / "src"
     source_root.mkdir(parents=True, exist_ok=True)
     for name, source in manifest["sources"].items():
+        if name == "openssl":
+            continue
         suffix = ".tar.xz" if source["url"].endswith(".tar.xz") else ".tar.gz"
         archive = download(source, CACHE_ROOT / "downloads" / f"{name}-{source['version']}{suffix}")
         archives[name] = archive
@@ -171,19 +175,28 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         "PKG_CONFIG_PATH": "", "PKG_CONFIG_LIBDIR": str(prefix / "lib/pkgconfig"),
     })
 
-    openssl_manifest = {
-        "opensslVersion": manifest["sources"]["openssl"]["version"],
-        "opensslSourceSha256": manifest["sources"]["openssl"]["sha256"],
-        "androidApi": api,
-    }
+    openssl_source = manifest["sources"]["openssl"]
     openssl_env = authority.prepare_openssl_environment(
         env=env, build_root=build_root, toolchain=toolchain, bin_dir=bin_dir, api=api, backend=backend,
     )
-    authority.build_openssl(
-        manifest=openssl_manifest, ssl_src=source_roots["openssl"], openssl_prefix=prefix,
-        env=openssl_env, jobs=jobs, heartbeat_seconds=30, verbose_make=False,
+    openssl_prefix, _openssl_source_root, shared_openssl = build_or_reuse_shared_openssl(
+        version=openssl_source["version"],
+        source_url=openssl_source["url"],
+        source_sha256=openssl_source["sha256"],
+        android_api=api,
+        ndk_version=manifest["ndkVersion"],
+        ndk_provenance=ndk_info,
         toolchain_identity=toolchain_identity,
+        env=openssl_env,
+        jobs=jobs,
+        heartbeat_seconds=30,
+        verbose_make=False,
     )
+    # aria2's other dependencies remain consumer-owned, but TLS headers/static libraries
+    # come from the shared qualified OpenSSL prefix.
+    env["CPPFLAGS"] = f"-I{prefix / 'include'} -I{openssl_prefix / 'include'}"
+    env["LDFLAGS"] = f"-L{prefix / 'lib'} -L{openssl_prefix / 'lib'} {common_ldflags}"
+    env["PKG_CONFIG_LIBDIR"] = f"{prefix / 'lib/pkgconfig'}:{openssl_prefix / 'lib/pkgconfig'}"
 
     # zlib uses its compact configure script rather than autoconf --host.
     zlib = source_roots["zlib"]
@@ -226,7 +239,7 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     stripped = build_root / "libaria2c.so"
     shutil.copyfile(binary, stripped)
     subprocess.run([str(strip), "--strip-unneeded", str(stripped)], check=True)
-    return stripped, ndk_info, toolchain_identity, compiler_identity
+    return stripped, ndk_info, toolchain_identity, compiler_identity, shared_openssl
 
 
 def elf_requirements(manifest: dict) -> dict:
@@ -276,6 +289,7 @@ def main() -> None:
         "configureFlags": manifest["configureFlags"],
         "recipeSha256": sha256(Path(__file__)),
         "toolchainAuthoritySha256": sha256(TOOLCHAIN_AUTHORITY),
+        "sharedOpenSslAuthoritySha256": sha256(SHARED_OPENSSL_AUTHORITY),
     }
     build_key = stable_hash(cache_identity)[:16]
     build_root = CACHE_ROOT / f"build-{build_key}"
@@ -283,7 +297,7 @@ def main() -> None:
         shutil.rmtree(build_root, ignore_errors=True)
     build_root.mkdir(parents=True, exist_ok=True)
 
-    built, ndk_info, toolchain_identity, compiler_identity = build_sources(manifest, build_root, args.jobs)
+    built, ndk_info, toolchain_identity, compiler_identity, shared_openssl = build_sources(manifest, build_root, args.jobs)
     if built.stat().st_size < manifest["minimumBinaryBytes"]:
         raise SystemExit("source-built aria2 runtime is unexpectedly small")
     try:
@@ -312,6 +326,8 @@ def main() -> None:
         "buildProfile": manifest["buildProfile"], "sourceKind": "source-build",
         "sources": manifest["sources"], "configureFlags": manifest["configureFlags"],
         "buildRecipeSha256": sha256(Path(__file__)), "toolchainAuthoritySha256": sha256(TOOLCHAIN_AUTHORITY),
+        "sharedOpenSslAuthoritySha256": sha256(SHARED_OPENSSL_AUTHORITY),
+        "sharedOpenSsl": shared_openssl,
         "buildCacheIdentitySha256": stable_hash(cache_identity),
         "ndkRevision": ndk_info["revision"], "ndkSourcePropertiesSha256": ndk_info["sourcePropertiesSha256"],
         "toolchainIdentity": toolchain_identity, "compilerIdentity": compiler_identity,

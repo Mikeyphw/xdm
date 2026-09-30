@@ -537,6 +537,11 @@ val verifyRm08Aria2PackagedExecutionContract = tasks.register<Exec>("verifyRm08A
     workingDir(repositoryRoot)
     inputs.files(
         rootProject.layout.projectDirectory.file("tools/validate-rm08-aria2-packaged-execution.py"),
+        rootProject.layout.projectDirectory.file("tools/android_native_openssl.py"),
+        rootProject.layout.projectDirectory.file("tools/test-shared-openssl-cache.py"),
+        rootProject.layout.projectDirectory.file("tools/build-aria2-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/install-ffmpeg-runtime.py"),
+        rootProject.layout.projectDirectory.file("tools/verify-aria2-runtime.py"),
         rootProject.layout.projectDirectory.file("app/src/androidTest/kotlin/com/mikeyphw/xdm/android/Aria2Rm08PackagedRuntimeInstrumentedTest.kt"),
         rootProject.layout.projectDirectory.file("app/src/androidTest/assets/rm08/trusted-ca.pem"),
         rootProject.layout.projectDirectory.file("app/src/androidTest/assets/rm08/trusted-server.p12"),

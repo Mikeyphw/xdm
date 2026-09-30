@@ -42,7 +42,9 @@ for key in ("ffmpegSourceSha256", "opensslSourceSha256"):
     need(bool(re.fullmatch(r"[0-9a-f]{64}", str(manifest.get(key, "")))), f"{key} must be a pinned SHA-256")
 
 installer = text("tools/install-ffmpeg-runtime.py")
-need(has(installer, "download(manifest[\"ffmpegSourceUrl\"]", "download(manifest[\"opensslSourceUrl\"]"), "installer must download only manifest-pinned FFmpeg/OpenSSL sources")
+shared_openssl = text("tools/android_native_openssl.py")
+need("download(manifest[\"ffmpegSourceUrl\"]" in installer and "build_or_reuse_shared_openssl" in installer and "source_sha256=manifest[\"opensslSourceSha256\"]" in installer, "FFmpeg builder must route manifest-pinned OpenSSL through the shared dependency authority")
+need(has(shared_openssl, "_download(source_url", "OpenSSL source SHA-256 mismatch", "safe_extract", "archive_tree_matches"), "shared OpenSSL authority must digest-check and safely extract the pinned source")
 need(has(installer, "source digest mismatch", "safe_extract", "ensure_pie"), "installer must hash-check, safe-extract, and verify PIE output")
 need("aarch64-linux-android" in installer and "max-page-size=16384" in installer, "installer must cross-build AArch64 with 16 KB linker alignment")
 need("COPYING.LGPLv2.1" in installer and "LICENSE.txt" in installer, "installer must preserve upstream license texts")

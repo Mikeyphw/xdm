@@ -4013,6 +4013,11 @@ inputs = [
   "app/XDM.Android/app/src/androidTest/**",
   "app/XDM.Android/transfer-aria2/**",
   "app/XDM.Android/tools/validate-rm08-aria2-packaged-execution.py",
+  "app/XDM.Android/tools/android_native_openssl.py",
+  "app/XDM.Android/tools/test-shared-openssl-cache.py",
+  "app/XDM.Android/tools/build-aria2-runtime.py",
+  "app/XDM.Android/tools/install-ffmpeg-runtime.py",
+  "app/XDM.Android/tools/verify-aria2-runtime.py",
   "app/XDM.Android/app/build.gradle.kts",
 ]
 outputs = ["app/XDM.Android/app/build/**"]
@@ -4061,6 +4066,8 @@ inputs = [
   ".devtool.toml",
   "tools/build-aria2-runtime.py",
   "tools/android_elf_runtime.py",
+  "tools/android_native_openssl.py",
+  "tools/test-shared-openssl-cache.py",
   "tools/install-ffmpeg-runtime.py",
   "transfer-aria2/build.gradle.kts",
   "transfer-aria2/runtime/aria2-runtime.json",

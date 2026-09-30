@@ -19,6 +19,7 @@ LOCK_PATH = ROOT / "transfer-aria2/runtime/aria2-runtime.lock.json"
 TARGET = ROOT / MANIFEST["packagedPath"]
 BUILD_SCRIPT = ROOT / "tools/build-aria2-runtime.py"
 TOOLCHAIN_AUTHORITY = ROOT / "tools/install-ffmpeg-runtime.py"
+SHARED_OPENSSL_AUTHORITY = ROOT / "tools/android_native_openssl.py"
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -84,6 +85,28 @@ def verify_source_lock(lock: dict, metadata: dict) -> None:
         raise SystemExit("aria2 build recipe changed after the runtime was built")
     if require_sha(lock.get("toolchainAuthoritySha256"), "toolchain authority") != digest(TOOLCHAIN_AUTHORITY):
         raise SystemExit("aria2 native toolchain authority changed after the runtime was built")
+    if require_sha(lock.get("sharedOpenSslAuthoritySha256"), "shared OpenSSL authority") != digest(SHARED_OPENSSL_AUTHORITY):
+        raise SystemExit("aria2 shared OpenSSL authority changed after the runtime was built")
+    shared = lock.get("sharedOpenSsl") or {}
+    if shared.get("component") != "xdm-android-shared-openssl":
+        raise SystemExit("aria2 source-build lock is missing shared OpenSSL provenance")
+    identity = shared.get("dependencyIdentity") or {}
+    openssl = MANIFEST["sources"]["openssl"]
+    expected_shared = {
+        "version": openssl["version"],
+        "sourceSha256": openssl["sha256"],
+        "androidApi": MANIFEST["androidApi"],
+        "ndkVersion": MANIFEST["ndkVersion"],
+        "toolchainIdentity": lock.get("toolchainIdentity"),
+    }
+    for key, value in expected_shared.items():
+        if identity.get(key) != value:
+            raise SystemExit(f"aria2 shared OpenSSL identity mismatch for {key}")
+    shared_identity_sha = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if require_sha(shared.get("dependencyIdentitySha256"), "shared OpenSSL identity") != shared_identity_sha:
+        raise SystemExit("aria2 shared OpenSSL identity digest is stale")
+    require_sha(shared.get("libsslSha256"), "shared libssl")
+    require_sha(shared.get("libcryptoSha256"), "shared libcrypto")
     require_sha(lock.get("buildCacheIdentitySha256"), "build cache identity")
     require_sha(lock.get("ndkSourcePropertiesSha256"), "NDK source.properties")
     if lock.get("ndkRevision") != MANIFEST["ndkVersion"]:

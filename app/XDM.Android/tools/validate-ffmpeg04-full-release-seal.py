@@ -64,6 +64,7 @@ need("--disable-avdevice" in manifest.get("configureFlags", []), "unused FFmpeg 
 need(manifest.get("ffmpegVersion") == "9.0.1" and "--disable-postproc" not in manifest.get("configureFlags", []), "FFmpeg 9.0.1 removed libpostproc; obsolete --disable-postproc must not be passed")
 
 installer = text("tools/install-ffmpeg-runtime.py")
+shared_openssl = text("tools/android_native_openssl.py")
 verifier = text("tools/verify-ffmpeg-runtime.py")
 runtime = text("media-ffmpeg/src/main/kotlin/com/mikeyphw/xdm/android/media/ffmpeg/EmbeddedFfmpegRuntime.kt")
 models = text("media-ffmpeg/src/main/kotlin/com/mikeyphw/xdm/android/media/ffmpeg/FfmpegRuntimeModels.kt")
@@ -76,13 +77,18 @@ need(manifest.get("opensslSourceUrl") == "https://github.com/openssl/openssl/rel
 need("openssl-library.org/source/openssl-3.5.8.tar.gz" not in json.dumps(manifest, sort_keys=True), "obsolete OpenSSL source URL must not return to the runtime manifest")
 need(has(installer, "ensure_host_build_tools", "XDM_FFMPEG_AUTO_INSTALL_HOST_TOOLS", 'pkg, "install", "-y"', '"perl": "perl"', '"make": "make"', '"pkg-config": "pkg-config"'), "native Termux runtime builder must bootstrap OpenSSL/FFmpeg host tools instead of failing when Perl is absent")
 need('-D__ANDROID_API__={api}' not in installer, "OpenSSL builder must not redundantly redefine __ANDROID_API__; Android clang owns that API macro")
-need(has(installer, ".xdm-openssl-configured.json", ".xdm-openssl-installed.json", ".xdm-ffmpeg-configured.json", "marker_matches", "atomic_json(configured_marker"), "native builder lacks persistent configure/install markers for interrupted-build resume")
-need(has(installer, "build_cache_lock", "LOCK_EX", "build_libs", 'return ["make"] if verbose_make else ["make", "-s"]', "XDM_FFMPEG_VERBOSE_MAKE", "XDM_FFMPEG_BUILD_HEARTBEAT_SECONDS"), "native builder lacks serialized quiet/resumable compilation with visible heartbeat and verbose escape hatch")
+need(has(installer, ".xdm-ffmpeg-configured.json", "marker_matches", "atomic_json(configured_marker") and has(shared_openssl, ".xdm-openssl-configured.json", ".xdm-openssl-installed.json", "configuration marker matches; resuming shared object tree"), "native builders lack persistent FFmpeg/shared-OpenSSL markers for interrupted-build resume")
+need(has(installer, "build_cache_lock", "LOCK_EX", "XDM_FFMPEG_VERBOSE_MAKE", "XDM_FFMPEG_BUILD_HEARTBEAT_SECONDS") and has(shared_openssl, "cache_lock", "LOCK_EX", "build_libs", "make", "-s", "heartbeat_seconds"), "native builders lack serialized quiet/resumable compilation with visible heartbeat and verbose escape hatch")
 need(has(installer, "build_cache_manifest_payload", "cache_identity", "toolchain_identity", "buildCacheIdentitySha256", "archive_tree_matches"), "FF04/XAR01 must invalidate native build caches when pinned sources, measured NDK, or compiler/binutils provenance changes")
 need(has(installer, "validate_ffmpeg_profile_flags", '["./configure", *flags, "--help"]', "rejected the pinned configure ", "profile before native compilation"), "FF04 v7 must preflight the exact pinned profile through the real FFmpeg configure parser before compiling")
 
 builder_regression = ROOT / "tools/test-ffmpeg-runtime-builder-resume.py"
 need(builder_regression.is_file(), "FF04 v7 runtime-builder resume/configure-surface regression test is missing")
+shared_regression = ROOT / "tools/test-shared-openssl-cache.py"
+need(shared_regression.is_file(), "shared OpenSSL dependency regression test is missing")
+if shared_regression.is_file():
+    result = subprocess.run([sys.executable, str(shared_regression)], cwd=ROOT, text=True, capture_output=True)
+    need(result.returncode == 0, "shared OpenSSL dependency regression failed: " + (result.stderr or result.stdout).strip())
 if builder_regression.is_file():
     result = subprocess.run([sys.executable, str(builder_regression)], cwd=ROOT, text=True, capture_output=True)
     need(result.returncode == 0, "FF04 v7 runtime-builder resume/configure-surface regression failed: " + (result.stderr or result.stdout).strip())

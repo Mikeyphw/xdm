@@ -60,3 +60,23 @@ xgo_gate_final_continue
 ```
 
 The static RM08 validator now fails closed if source materialization returns to a generic command job or stops using the exact Gradle task. This ensures Devtool resolves and bootstraps Android SDK/NDK/toolchain state before the source builder executes.
+
+## RM08 v4 shared OpenSSL dependency cache
+
+The first Android-runner-owned continuation reached the pinned aria2 source build correctly, but then spent several minutes compiling OpenSSL even though XGO's FFmpeg runtime pins the exact same OpenSSL 3.5.8 source, Android API 26, NDK 29.0.14206865 and measured ARM64 toolchain authority. RM08 v4 removes that duplicated native dependency build.
+
+`tools/android_native_openssl.py` is now the consumer-neutral OpenSSL authority. Its cache identity binds the exact OpenSSL source digest/URL, ABI, Android API, measured NDK provenance, configure profile and measured toolchain identity. FFmpeg and aria2 both call `build_or_reuse_shared_openssl()` and record the resulting `dependencyIdentitySha256`, `libssl.a` digest and `libcrypto.a` digest in their own provenance surfaces; aria2's release verifier fails closed if the shared authority or identity is stale.
+
+The shared cache lives under `~/.cache/xdm/android-native-deps/openssl/<version>-<identity>/` by default and is process-locked. Fresh construction uses OpenSSL's supported out-of-tree build mode: the pinned source extraction remains immutable/verifiable while Configure output and native objects live under a separate `build/` directory. Interrupted fresh shared builds therefore resume without invalidating the source-tree digest contract.
+
+Migration is deliberately restart-safe. Before compiling OpenSSL, the authority:
+
+1. reuses an already-qualified shared cache when present;
+2. adopts a compatible completed legacy FFmpeg or aria2 OpenSSL install when available;
+3. otherwise resumes a compatible pre-v4 in-progress legacy object tree (including the interrupted RM08 aria2 build), completes `build_libs`/`install_sw` in place once, then imports only OpenSSL headers/static libraries/pkg-config metadata into the shared prefix;
+4. seeds the pinned source archive from the existing FFmpeg/aria2 download caches before using the network;
+5. falls back to a new out-of-tree shared build only when no qualified/adoptable cache exists.
+
+The migration never copies the consumer's whole native prefix: zlib, c-ares, Expat, libssh2 and FFmpeg/aria2 outputs remain consumer-owned. This prevents cross-component dependency leakage while still eliminating the duplicate OpenSSL build.
+
+Focused validation covers shared identity convergence, API/toolchain invalidation, selective legacy-prefix import, pkg-config prefix rewriting, shared dependency provenance, RM07 aria2 source/ELF contracts, FF01/FF04 native-runtime seals, XAR01 provenance, Phase-10 packaging, Phase-13 final-gate contracts, Gradle task-graph optimization, full XGO topology, and the `xgo_gate_final_continue` target-ready topology.

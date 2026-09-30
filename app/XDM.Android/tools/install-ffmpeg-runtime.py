@@ -31,6 +31,11 @@ from pathlib import Path
 from typing import Iterator
 
 from android_elf_runtime import ElfPolicyError, validate_android_runtime_file
+from android_native_openssl import (
+    build_or_reuse_shared_openssl,
+    legacy_configuration_payload as shared_legacy_openssl_configuration_payload,
+    install_complete as shared_openssl_install_complete,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "media-ffmpeg/runtime/ffmpeg-runtime.json"
@@ -768,62 +773,12 @@ def ensure_pie(path: Path) -> None:
 
 
 def openssl_configuration_payload(manifest: dict, openssl_prefix: Path, toolchain_identity: dict) -> dict:
-    # Do NOT pass -D__ANDROID_API__. The NDK clang driver already defines it from
-    # aarch64-linux-android<api>, and redefining it caused one warning per translation unit.
-    options = [
-        "android-arm64",
-        "no-shared",
-        "no-tests",
-        "no-apps",
-        "no-module",
-        "no-legacy",
-        f"--prefix={openssl_prefix}",
-        f"--openssldir={openssl_prefix / 'ssl'}",
-        "-fPIC",
-        "-fstack-protector-strong",
-        "-D_FORTIFY_SOURCE=2",
-    ]
-    return {
-        "schemaVersion": 2,
-        "component": "openssl-configure",
-        "opensslVersion": manifest["opensslVersion"],
-        "opensslSourceSha256": manifest["opensslSourceSha256"],
-        "androidApi": int(manifest["androidApi"]),
-        "target": "android-arm64",
-        "options": options,
-        "toolchainIdentity": toolchain_identity,
-        "toolchainAdapter": (
-            "termux-standalone-v1"
-            if toolchain_identity.get("backend") == "termux-native-llvm"
-            else "ndk-native"
-        ),
-    }
-
-
-def openssl_install_payload(configuration: dict, openssl_prefix: Path) -> dict:
-    artifacts = {
-        "lib/libssl.a": openssl_prefix / "lib/libssl.a",
-        "lib/libcrypto.a": openssl_prefix / "lib/libcrypto.a",
-        "include/openssl/ssl.h": openssl_prefix / "include/openssl/ssl.h",
-        "lib/pkgconfig/libssl.pc": openssl_prefix / "lib/pkgconfig/libssl.pc",
-    }
-    return {
-        "schemaVersion": 2,
-        "component": "openssl-install",
-        "configuration": configuration,
-        "artifactSha256": {name: sha256(path) for name, path in artifacts.items()},
-    }
+    """Compatibility facade for the pre-shared-cache focused regression surface."""
+    return shared_legacy_openssl_configuration_payload(manifest, openssl_prefix, toolchain_identity)
 
 
 def openssl_install_complete(openssl_prefix: Path) -> bool:
-    required = (
-        openssl_prefix / "lib/libssl.a",
-        openssl_prefix / "lib/libcrypto.a",
-        openssl_prefix / "include/openssl/ssl.h",
-        openssl_prefix / "lib/pkgconfig/libssl.pc",
-    )
-    return all(path.is_file() and path.stat().st_size > 0 for path in required)
-
+    return shared_openssl_install_complete(openssl_prefix)
 
 def ffmpeg_configuration_payload(
     configure: list[str],
@@ -929,62 +884,6 @@ def quiet_make_prefix(verbose_make: bool) -> list[str]:
     # GNU make -s suppresses echoing every compiler command but leaves compiler/linker
     # diagnostics visible. XDM_FFMPEG_VERBOSE_MAKE=1 restores the full command stream.
     return ["make"] if verbose_make else ["make", "-s"]
-
-
-def build_openssl(
-    *,
-    manifest: dict,
-    ssl_src: Path,
-    openssl_prefix: Path,
-    env: dict[str, str],
-    jobs: int,
-    heartbeat_seconds: int,
-    verbose_make: bool,
-    toolchain_identity: dict,
-) -> None:
-    configuration = openssl_configuration_payload(manifest, openssl_prefix, toolchain_identity)
-    configured_marker = ssl_src / ".xdm-openssl-configured.json"
-    installed_marker = ssl_src / ".xdm-openssl-installed.json"
-
-    if openssl_install_complete(openssl_prefix):
-        current_install = openssl_install_payload(configuration, openssl_prefix)
-        if marker_matches(configured_marker, configuration) and marker_matches(installed_marker, current_install):
-            print("OpenSSL: reusing provenance-verified deterministic cache.", flush=True)
-            return
-        print("OpenSSL cache provenance mismatch; rebuilding instead of self-attesting existing bytes.", flush=True)
-        shutil.rmtree(openssl_prefix, ignore_errors=True)
-
-    if not marker_matches(configured_marker, configuration):
-        if (ssl_src / "Makefile").is_file():
-            subprocess.run(["make", "clean"], cwd=ssl_src, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
-        print("OpenSSL: configuring pinned Android profile.", flush=True)
-        run(["perl", "./Configure", *configuration["options"]], ssl_src, env)
-        # Persist immediately after Configure succeeds. An interrupted compile therefore
-        # resumes with make and does not repeat Configure merely because libssl is absent.
-        atomic_json(configured_marker, configuration)
-    else:
-        print("OpenSSL: configuration marker matches; resuming existing object tree.", flush=True)
-
-    make = quiet_make_prefix(verbose_make)
-    # build_libs is sufficient for XDM's static TLS client dependency and avoids spending
-    # time on OpenSSL command-line applications/tests, which are already disabled.
-    run(
-        [*make, f"-j{jobs}", "build_libs"],
-        ssl_src,
-        env,
-        label="OpenSSL library build",
-        heartbeat_seconds=heartbeat_seconds,
-    )
-    run(
-        [*make, "install_sw"],
-        ssl_src,
-        env,
-        label="OpenSSL install_sw",
-        heartbeat_seconds=heartbeat_seconds,
-    )
-    if not openssl_install_complete(openssl_prefix):
-        raise SystemExit("OpenSSL install_sw completed but required static libraries/headers/pkg-config metadata are missing")
-    atomic_json(installed_marker, openssl_install_payload(configuration, openssl_prefix))
 
 
 def build_ffmpeg(
@@ -1144,16 +1043,12 @@ def main() -> None:
         )
 
         ff_archive = download(manifest["ffmpegSourceUrl"], CACHE_ROOT / f"ffmpeg-{manifest['ffmpegVersion']}.tar.xz", manifest["ffmpegSourceSha256"])
-        ssl_archive = download(manifest["opensslSourceUrl"], CACHE_ROOT / f"openssl-{manifest['opensslVersion']}.tar.gz", manifest["opensslSourceSha256"])
 
         source_root = build_root / "src"
-        openssl_prefix = build_root / "openssl-prefix"
         ff_src = source_root / f"ffmpeg-{manifest['ffmpegVersion']}"
-        ssl_src = source_root / f"openssl-{manifest['opensslVersion']}"
-        # Reuse only source trees whose original archive members still match the pinned
-        # source archives. Generated build products are allowed, modified source inputs are not.
+        # FFmpeg remains consumer-owned. OpenSSL is built through the shared native-dependency
+        # cache below so aria2 and FFmpeg consume one qualified static TLS build.
         ensure_verified_source_tree(ff_archive, source_root, ff_src, "configure")
-        ensure_verified_source_tree(ssl_archive, source_root, ssl_src, "Configure")
 
         env = os.environ.copy()
         env.update({
@@ -1174,15 +1069,18 @@ def main() -> None:
             api=api,
             backend=toolchain_backend,
         )
-        build_openssl(
-            manifest=manifest,
-            ssl_src=ssl_src,
-            openssl_prefix=openssl_prefix,
+        openssl_prefix, ssl_src, shared_openssl = build_or_reuse_shared_openssl(
+            version=manifest["opensslVersion"],
+            source_url=manifest["opensslSourceUrl"],
+            source_sha256=manifest["opensslSourceSha256"],
+            android_api=api,
+            ndk_version=manifest["ndkVersion"],
+            ndk_provenance=measured_ndk,
+            toolchain_identity=toolchain_identity,
             env=openssl_env,
             jobs=args.jobs,
             heartbeat_seconds=args.heartbeat_seconds,
             verbose_make=args.verbose_make,
-            toolchain_identity=toolchain_identity,
         )
         ffmpeg_bin, ffprobe_bin = build_ffmpeg(
             manifest=manifest,
@@ -1250,6 +1148,7 @@ def main() -> None:
             "buildCacheIdentitySha256": hashlib.sha256(json.dumps(cache_identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
             "ffmpegSourceSha256": manifest["ffmpegSourceSha256"],
             "opensslSourceSha256": manifest["opensslSourceSha256"],
+            "sharedOpenSsl": shared_openssl,
             "ffmpegBinarySha256": sha256(targets["ffmpeg"]),
             "ffprobeBinarySha256": sha256(targets["ffprobe"]),
             "ffmpegBinaryBytes": targets["ffmpeg"].stat().st_size,

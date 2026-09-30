@@ -117,11 +117,20 @@ def main() -> None:
 
     builder = (ROOT / "tools/build-aria2-runtime.py").read_text()
     verifier = (ROOT / "tools/verify-aria2-runtime.py").read_text()
+    shared_openssl = (ROOT / "tools/android_native_openssl.py").read_text()
     require("toolchainAuthoritySha256" in builder and "buildCacheIdentitySha256" in builder, "builder does not attest toolchain/cache authority")
+    require("build_or_reuse_shared_openssl" in builder and "sharedOpenSslAuthoritySha256" in builder and '"sharedOpenSsl": shared_openssl' in builder,
+            "aria2 builder does not consume/attest the shared OpenSSL dependency")
+    require("xdm-android-shared-openssl" in shared_openssl and "XDM_ANDROID_NATIVE_DEPS_CACHE" in shared_openssl,
+            "shared OpenSSL authority is missing consumer-neutral cache identity")
+    require("resuming compatible in-progress" in shared_openssl and "adopted completed" in shared_openssl,
+            "shared OpenSSL cache cannot adopt/resume pre-v4 native work")
     require('"sourceKind": "source-build"' in builder, "builder does not attest source-build identity")
     require("-static-libstdc++" in builder and "-z,relro,-z,now" in builder, "builder lost static C++ runtime / RELRO+NOW linkage")
     require('lock.get("schemaVersion") != 3' in verifier, "verifier does not fail closed on schema-v3 source provenance")
     require("buildRecipeSha256" in verifier and "toolchainAuthoritySha256" in verifier, "verifier does not bind recipe/toolchain authority")
+    require("sharedOpenSslAuthoritySha256" in verifier and "dependencyIdentitySha256" in verifier,
+            "aria2 verifier does not fail closed on shared OpenSSL provenance")
 
     release_gate = (ROOT / "tools/run-bug-hunt-phase10-release-gate.sh").read_text()
     workflow = (ROOT.parent.parent / ".github/workflows/android.yml").read_text()
