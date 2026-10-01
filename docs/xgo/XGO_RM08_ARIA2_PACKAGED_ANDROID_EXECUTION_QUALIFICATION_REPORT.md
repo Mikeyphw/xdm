@@ -153,3 +153,8 @@ The live v8.1 continuation proved that `--no-default-config` alone does not cont
 RM08 v9 makes the existing static-runtime policy explicit at the linker boundary. The builder now requires the attested NDK libc++ directory to contain `libc++_static.a`, `libc++abi.a`, and `libc++_shared.so`; passes `-nostdlib++` to suppress automatic C++ standard-library injection; and explicitly links `-lc++_static -lc++abi` from that NDK directory. This is consumed uniformly by the Bionic capability probes, dependency probes, upstream configure, and final aria2 build. The prior `-static-libstdc++` flag is removed from this hybrid path because v8.1 demonstrated that it did not prevent the Termux driver from selecting `-lc++_shared`.
 
 This remains an RM08 remediation. It does not bypass the NDK, copy Termux's libc++ into the artifact, or weaken provenance. The static contract validator fails closed unless the explicit NDK static-runtime authority is present.
+
+
+## Post-v9 Android static-link mode remediation (v10)
+
+Post-v9 native evidence reached the final aria2 executable link and failed only because upstream aria2's `ARIA2_STATIC=yes` generic Unix policy appended standalone `-lpthread` and `-lrt`. Android/Bionic has neither standalone library; pthread and realtime facilities are provided by libc. RM08 does not require a fully static platform executable: it requires a normal Android PIE with pinned third-party dependencies embedded from static archives. The source-build recipe therefore leaves `ARIA2_STATIC=no`, explicitly runs pkg-config in `--static` mode to retain private static dependency closure, and keeps the Android baseline libraries at `-ldl -lm`. The pinned aria2 source remains unmodified.

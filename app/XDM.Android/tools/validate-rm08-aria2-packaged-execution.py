@@ -122,6 +122,12 @@ def main() -> int:
             "aria2 source builder must suppress host-driver STL injection and explicitly link the attested static NDK libc++ runtime")
     require("-static-libstdc++" not in aria_builder,
             "aria2 source builder must not rely on Termux clang++ interpreting -static-libstdc++")
+    require('aria_env["ARIA2_STATIC"] = "no"' in aria_builder,
+            "aria2 Android PIE must not enable upstream fully-static Unix link policy")
+    require('aria_env["PKG_CONFIG"] = f"{pkg_config} --static"' in aria_builder,
+            "aria2 Android PIE must retain static pkg-config dependency closure independently of ARIA2_STATIC")
+    require('aria_env["LIBS"] = "-ldl -lm"' in aria_builder,
+            "aria2 Android link baseline must remain Bionic-compatible")
     require("ANDROID_BIONIC_AUTOCONF_CACHEABLE" in aria_builder and "android_bionic_autoconf_cache(cxx" in aria_builder,
             "aria2 Bionic probes must use target C++ and separate upstream custom checks from cacheable checks")
     for capability in ("getaddrinfo", "gettimeofday", "gai_strerror", "localtime_r", "asctime_r", "poll"):

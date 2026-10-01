@@ -467,7 +467,7 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         *autoconf_triplets, f"--prefix={prefix}", *manifest["configureFlags"],
     ]
     recipe = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "configure": configure,
         "buildTriplet": build_triplet,
         "androidAutoconfCapabilities": sorted(ANDROID_BIONIC_AUTOCONF_PROBES),
@@ -483,7 +483,17 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         if (aria / "Makefile").is_file():
             subprocess.run(["make", "distclean"], cwd=aria, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         aria_env = env.copy()
-        aria_env["ARIA2_STATIC"] = "yes"
+        # ARIA2_STATIC means a fully static host executable to upstream aria2.
+        # Its generic Unix branch therefore injects -lpthread and -lrt, but
+        # Android/Bionic provides both facilities directly from libc and has no
+        # standalone libpthread/librt. RM08 builds a normal Android PIE while
+        # embedding its third-party dependencies as static archives. Keep the
+        # static pkg-config dependency closure without enabling that host policy.
+        aria_env["ARIA2_STATIC"] = "no"
+        pkg_config = shutil.which("pkg-config", path=aria_env.get("PATH"))
+        if not pkg_config:
+            raise SystemExit("pkg-config is required for the aria2 Android source build")
+        aria_env["PKG_CONFIG"] = f"{pkg_config} --static"
         aria_env["LIBS"] = "-ldl -lm"
         aria_env.update(android_bionic_autoconf_cache(cxx, aria_env, build_root))
         aria_env.update(android_dependency_autoconf_cache(cxx, aria_env, build_root))
