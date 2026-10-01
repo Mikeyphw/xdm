@@ -3651,58 +3651,32 @@ outputs = [
 [targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-rm05-precheck]
 runner = "command"
 root = "."
-shell_command = """
-set -eu
-
-ADB="$(command -v adb)"
-APP_APK="app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk"
-TEST_APK="app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
-RUNNER="com.mikeyphw.xdm.android.debug.test/androidx.test.runner.AndroidJUnitRunner"
-FILTER="com.mikeyphw.xdm.android.Phase9AccessibilityAdaptiveLayoutInstrumentedTest#adaptiveSheetRequestsFocusAndRestoresFocusToOpener"
-REPORT=".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt"
-
-mkdir -p "$(dirname "$REPORT")"
-: > "$REPORT"
-
-DEVICES="$("$ADB" devices | awk 'NR > 1 && $2 == "device" { print $1 }')"
-if [ -z "$DEVICES" ]; then
-    echo "RM05 focus precheck: SKIPPED (no authorized device; policy=when-device-present)" | tee -a "$REPORT"
-    exit 0
-fi
-
-for SERIAL in $DEVICES; do
-    echo "=== device: $SERIAL ===" | tee -a "$REPORT"
-    "$ADB" -s "$SERIAL" install -r -t "$APP_APK" | tee -a "$REPORT"
-    "$ADB" -s "$SERIAL" install -r -t "$TEST_APK" | tee -a "$REPORT"
-
-    set +e
-    OUTPUT="$("$ADB" -s "$SERIAL" shell am instrument -w -r -e class "$FILTER" "$RUNNER" 2>&1)"
-    RC=$?
-    set -e
-    printf '%s\n' "$OUTPUT" | tee -a "$REPORT"
-
-    if [ "$RC" -ne 0 ]; then
-        echo "RM05 focus precheck command failed with exit $RC" | tee -a "$REPORT"
-        exit "$RC"
-    fi
-    if ! printf '%s\n' "$OUTPUT" | grep -q 'INSTRUMENTATION_CODE: -1'; then
-        echo "RM05 focus precheck did not report terminal code -1" | tee -a "$REPORT"
-        exit 1
-    fi
-    if printf '%s\n' "$OUTPUT" | grep -Eq 'Process crashed|FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_STATUS_CODE: -2'; then
-        echo "RM05 focus precheck reported a process/test failure" | tee -a "$REPORT"
-        exit 1
-    fi
-done
-
-echo "Gate-12 RM05 focus-restoration precheck: PASS" | tee -a "$REPORT"
-"""
+command = ["python3", "tools/xgo/run_gate12_rm05_precheck.py"]
 inputs = [
+  "tools/xgo/gate12_android_device.py",
+  "tools/xgo/run_gate12_rm05_precheck.py",
   "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
   "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
 ]
 outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt",
+]
+
+[targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-instrumentation-reuse]
+runner = "command"
+root = "."
+command = ["python3", "tools/xgo/run_gate12_instrumentation_reuse.py"]
+inputs = [
+  "tools/xgo/gate12_android_device.py",
+  "tools/xgo/run_gate12_instrumentation_reuse.py",
+  ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
+  ".devtool/reports/xgo/gates/final-continue/android-artifacts.sha256",
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  "app/XDM.Android/.devtool/reports/android-instrumentation.json",
+  ".devtool/reports/xgo/gates/final-continue/android-instrumentation-reuse.json",
 ]
 
 [targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-devtool-registry-bypass-receipt]
@@ -3752,7 +3726,7 @@ registry_bypass = [
   { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["package_attestation"] },
   { id = "android_rm05_residual_precheck", ref = "job:xgo-gate12-continue-android-rm05-precheck", depends_on = ["android_artifact_checkpoint"] },
   { id = "android_lint_remaining", ref = "target:xgo_rm08_aria2_lint#validate", depends_on = ["android_rm05_residual_precheck"] },
-  { id = "android_instrumentation_remaining", ref = "target:xgo_rm08_aria2_device#validate", depends_on = ["android_lint_remaining"] },
+  { id = "android_instrumentation_remaining", ref = "job:xgo-gate12-continue-android-instrumentation-reuse", depends_on = ["android_lint_remaining"] },
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_instrumentation_remaining"] },
   { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
 ]
@@ -3770,7 +3744,12 @@ inputs = [
   ".devtool.toml",
   "tools/xgo/record_gate12_registry_bypass.py",
   "tools/xgo/validate_gate12_registry_bypass.py",
+  "tools/xgo/gate12_android_device.py",
+  "tools/xgo/run_gate12_rm05_precheck.py",
+  "tools/xgo/run_gate12_instrumentation_reuse.py",
+  "tools/xgo/validate_gate12_instrumentation_reuse.py",
   "docs/xgo/XGO_GATE12_DEVTOOL_ARTIFACT_REGISTRY_BYPASS.md",
+  "docs/xgo/XGO_GATE12_ANDROID_INSTRUMENTATION_REUSE_V13_REPORT.md",
 ]
 
 [targets.xgo_gate12_registry_bypass_contract.jobs.contract]
@@ -3780,6 +3759,10 @@ inputs = [
   ".devtool.toml",
   "tools/xgo/record_gate12_registry_bypass.py",
   "tools/xgo/validate_gate12_registry_bypass.py",
+  "tools/xgo/gate12_android_device.py",
+  "tools/xgo/run_gate12_rm05_precheck.py",
+  "tools/xgo/run_gate12_instrumentation_reuse.py",
+  "tools/xgo/validate_gate12_instrumentation_reuse.py",
 ]
 
 [targets.xgo_gate12_registry_bypass_contract.workflows]

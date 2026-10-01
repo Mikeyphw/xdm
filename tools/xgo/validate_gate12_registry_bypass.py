@@ -31,7 +31,7 @@ BYPASS = [
     ("android_artifact_checkpoint", "job:xgo-gate12-continue-android-artifacts", ["package_attestation"]),
     ("android_rm05_residual_precheck", "job:xgo-gate12-continue-android-rm05-precheck", ["android_artifact_checkpoint"]),
     ("android_lint_remaining", "target:xgo_rm08_aria2_lint#validate", ["android_rm05_residual_precheck"]),
-    ("android_instrumentation_remaining", "target:xgo_rm08_aria2_device#validate", ["android_lint_remaining"]),
+    ("android_instrumentation_remaining", "job:xgo-gate12-continue-android-instrumentation-reuse", ["android_lint_remaining"]),
     ("desktop_host_final", "target:xdm_modern#validate", ["android_instrumentation_remaining"]),
     ("wave12_final_gate", "target:xgo_final_wave12#validate", ["desktop_host_final"]),
 ]
@@ -80,6 +80,10 @@ def main() -> None:
         fail("bypass lane still enters broken package/host boundary: " + ", ".join(leaked))
     if "target:xgo_rm08_aria2_attest#validate" not in refs:
         fail("bypass lane must retain exact RM08 packaged-byte attestation")
+    if "target:xgo_rm08_aria2_device#validate" in refs:
+        fail("bypass lane must not re-enter rebuilding Android instrumentation target")
+    if "job:xgo-gate12-continue-android-instrumentation-reuse" not in refs:
+        fail("bypass lane must consume the exact qualified APK pair through reuse job")
 
     refresh = targets.get("xgo_rm05_focus_test_refresh")
     if not isinstance(refresh, dict):

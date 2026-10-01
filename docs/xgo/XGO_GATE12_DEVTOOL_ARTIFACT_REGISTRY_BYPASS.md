@@ -12,7 +12,7 @@ The bypass skips only the failing `xgo_rm08_aria2_android_package#validate` regi
 
 When Android instrumentation source changes while this workaround is active, the lane first refreshes the androidTest APK through the dedicated Devtool-owned `xgo_rm05_focus_test_refresh` Android test action. This deliberately avoids the broken Android package artifact-publication edge while still preserving Devtool SDK/JDK/AAPT2/Gradle ownership.
 
-After that refresh and evidence exist, the workflow resumes the existing Android artifact checkpoint, RM05 residual precheck, lint, required-device instrumentation, desktop host validation, and final Wave-12 verifier.
+After that refresh and evidence exist, the workflow resumes the Android artifact checkpoint, RM05 residual precheck, and lint. The temporary lane then runs required-device instrumentation through `run_gate12_instrumentation_reuse.py`: it hash-verifies the already-qualified APK pair, stages only those exact bytes for Devtool's `--skip-build` instrumentation engine, and uses the same canonical device identity as the RM05 precheck. This avoids the redundant second Gradle build and prevents stale/copied APK discovery by mtime. Desktop host validation and the final Wave-12 verifier remain downstream.
 
 ## Invocation
 
@@ -25,4 +25,4 @@ devtool --yes --copy \
 
 ## Removal condition
 
-Remove this workflow, its receipt job/script, and its contract target after Devtool repairs Android package artifact publication such that a successful discovered/copied APK is durably registered instead of producing `ARTIFACT_MISSING` / an empty registry.
+Remove this workflow, its receipt/reuse/device-alias helpers, and its contract target after Devtool repairs Android package artifact publication and the canonical Android instrumentation path can reuse an exact hash-qualified ArtifactPair/DeviceLease without rebuilding or filesystem-mtime rediscovery.
