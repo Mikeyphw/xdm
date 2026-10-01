@@ -32,7 +32,7 @@ if mode_pos < 0 or focus_pos < 0 or mode_pos > focus_pos:
 
 refresh_target = "[targets.xgo_rm05_focus_test_refresh]"
 require(config, refresh_target, ".devtool.toml", errors)
-require(config, 'test = [":app:assembleDebugAndroidTest"]', ".devtool.toml", errors)
+require(config, 'test = [":app:assembleDebug", ":app:assembleDebugAndroidTest"]', ".devtool.toml", errors)
 require(config, 'ref = "runner:android#test"', ".devtool.toml", errors)
 
 start = config.find("registry_bypass = [")
@@ -41,13 +41,14 @@ if start < 0 or end < 0:
     errors.append(".devtool.toml: registry_bypass workflow not found")
 else:
     bypass = config[start:end]
-    refresh = bypass.find('id = "android_test_refresh"')
+    refresh = bypass.find('id = "android_pair_refresh"')
+    signers = bypass.find('id = "android_pair_signers"')
     receipt = bypass.find('id = "devtool_registry_bypass_receipt"')
     precheck = bypass.find('id = "android_rm05_residual_precheck"')
-    if min(refresh, receipt, precheck) < 0:
-        errors.append(".devtool.toml: registry_bypass is missing refresh/receipt/precheck nodes")
-    elif not (refresh < receipt < precheck):
-        errors.append(".devtool.toml: registry_bypass must refresh androidTest before receipt and RM05 precheck")
+    if min(refresh, signers, receipt, precheck) < 0:
+        errors.append(".devtool.toml: registry_bypass is missing pair-refresh/signer/receipt/precheck nodes")
+    elif not (refresh < signers < receipt < precheck):
+        errors.append(".devtool.toml: registry_bypass must refresh and signer-qualify the APK pair before receipt and RM05 precheck")
     if 'target:xgo_rm05_focus_test_refresh#validate' not in bypass:
         errors.append(".devtool.toml: registry_bypass does not use the Devtool-owned RM05 test refresh target")
 

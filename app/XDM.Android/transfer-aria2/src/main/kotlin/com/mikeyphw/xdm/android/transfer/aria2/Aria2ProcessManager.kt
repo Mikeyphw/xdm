@@ -676,13 +676,16 @@ class Aria2ProcessManager(
             logTail.looksLikeBinaryLoadFailure() -> Aria2StartupFailureKind.BinaryLoadFailure
             logTail.looksLikeInvalidConfiguration() -> Aria2StartupFailureKind.ConfigurationInvalid
             logTail.looksLikePortFailure() -> Aria2StartupFailureKind.PortUnavailable
+            // If the managed native process has already exited, that is the
+            // authoritative startup failure. A final socket refusal is only a
+            // symptom of the dead child and must not hide its real exit code.
+            exitCode != null -> Aria2StartupFailureKind.ProcessExited
             error is Aria2RpcProtocolException -> Aria2StartupFailureKind.MalformedResponse
             error is ConnectException -> Aria2StartupFailureKind.ConnectionRefused
             error is SocketTimeoutException -> Aria2StartupFailureKind.Timeout
             error is Aria2RpcException && error.code == 1 && error.message.orEmpty().contains("unauthor", ignoreCase = true) -> Aria2StartupFailureKind.Unauthorized
             error is Aria2RpcException -> Aria2StartupFailureKind.RpcFailure
             error?.message.orEmpty().contains("RPC HTTP", ignoreCase = true) -> Aria2StartupFailureKind.HttpFailure
-            exitCode != null -> Aria2StartupFailureKind.ProcessExited
             timedOut -> Aria2StartupFailureKind.Timeout
             else -> Aria2StartupFailureKind.Unknown
         }
