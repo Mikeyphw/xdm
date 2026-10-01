@@ -25,8 +25,9 @@ CANONICAL = [
 BYPASS = [
     ("devtool_execution_policy", "target:xgo_devtool_policy#validate", []),
     ("android_topology_sanity", "job:xgo-gate12-continue-android-topology", ["devtool_execution_policy"]),
-    ("android_test_refresh", "target:xgo_rm05_focus_test_refresh#validate", ["android_topology_sanity"]),
-    ("devtool_registry_bypass_receipt", "job:xgo-gate12-continue-devtool-registry-bypass-receipt", ["android_test_refresh"]),
+    ("android_pair_refresh", "target:xgo_rm05_focus_test_refresh#validate", ["android_topology_sanity"]),
+    ("android_pair_signers", "job:xgo-gate12-continue-android-apk-signers", ["android_pair_refresh"]),
+    ("devtool_registry_bypass_receipt", "job:xgo-gate12-continue-devtool-registry-bypass-receipt", ["android_pair_signers"]),
     ("package_attestation", "target:xgo_rm08_aria2_attest#validate", ["devtool_registry_bypass_receipt"]),
     ("android_artifact_checkpoint", "job:xgo-gate12-continue-android-artifacts", ["package_attestation"]),
     ("android_rm05_residual_precheck", "job:xgo-gate12-continue-android-rm05-precheck", ["android_artifact_checkpoint"]),
@@ -92,14 +93,22 @@ def main() -> None:
     if normalize(refresh_workflows.get("validate")) != [
         ("android_test_apk_refresh", "runner:android#test", [])
     ]:
-        fail("RM05 focused androidTest refresh workflow is malformed")
+        fail("RM05/Gate-12 APK pair refresh workflow is malformed")
     refresh_tasks = refresh.get("tasks") or {}
-    if refresh_tasks.get("test") != [":app:assembleDebugAndroidTest"]:
-        fail("RM05 focused androidTest refresh must build only :app:assembleDebugAndroidTest")
+    if refresh_tasks.get("test") != [":app:assembleDebug", ":app:assembleDebugAndroidTest"]:
+        fail("Gate-12 refresh must build target and androidTest APKs together in one Devtool Gradle invocation")
 
     jobs = cont.get("jobs")
     if not isinstance(jobs, dict):
         fail("missing continuation jobs")
+    signer_job = jobs.get("xgo-gate12-continue-android-apk-signers")
+    if not isinstance(signer_job, dict):
+        fail("missing APK signer compatibility job")
+    if signer_job.get("command") != [
+        "python3", "tools/xgo/verify_gate12_apk_signers.py",
+        "--output", ".devtool/reports/xgo/gates/final-continue/android-apk-signers.json",
+    ]:
+        fail("APK signer compatibility job command is malformed")
     receipt_job = jobs.get("xgo-gate12-continue-devtool-registry-bypass-receipt")
     if not isinstance(receipt_job, dict):
         fail("missing explicit bypass receipt job")

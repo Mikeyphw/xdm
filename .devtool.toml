@@ -3507,11 +3507,11 @@ validate = [
 ]
 
 
-# RM05 v12 focused androidTest refresh. The focused instrumentation source changed
-# after the retained Gate-12 APKs were built, so the temporary registry-bypass
-# lane must rebuild the androidTest APK through Devtool before executing it.
-# Use the Android test action rather than package so this source refresh does not
-# depend on the currently broken post-package artifact-registry publication edge.
+# RM05/Gate-12 compatible APK-pair refresh. The focused instrumentation source changed
+# after the retained Gate-12 APKs were built, so the temporary registry-bypass lane
+# must refresh both the target app APK and androidTest APK together through one
+# Devtool-owned Gradle invocation. This keeps their debug signing certificate and
+# build context aligned without re-entering the broken package artifact-registry edge.
 [targets.xgo_rm05_focus_test_refresh]
 runner = "android"
 execution_environment = "native-termux"
@@ -3550,7 +3550,7 @@ args = [
 ]
 
 [targets.xgo_rm05_focus_test_refresh.tasks]
-test = [":app:assembleDebugAndroidTest"]
+test = [":app:assembleDebug", ":app:assembleDebugAndroidTest"]
 
 [targets.xgo_rm05_focus_test_refresh.workflows]
 validate = [
@@ -3671,12 +3671,30 @@ inputs = [
   "tools/xgo/run_gate12_instrumentation_reuse.py",
   ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
   ".devtool/reports/xgo/gates/final-continue/android-artifacts.sha256",
+  ".devtool/reports/xgo/gates/final-continue/android-apk-signers.json",
   "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
   "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
 ]
 outputs = [
   "app/XDM.Android/.devtool/reports/android-instrumentation.json",
   ".devtool/reports/xgo/gates/final-continue/android-instrumentation-reuse.json",
+]
+
+[targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-apk-signers]
+runner = "command"
+root = "."
+command = [
+  "python3", "tools/xgo/verify_gate12_apk_signers.py",
+  "--output", ".devtool/reports/xgo/gates/final-continue/android-apk-signers.json",
+]
+inputs = [
+  "tools/xgo/verify_gate12_apk_signers.py",
+  "app/XDM.Android/local.properties",
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/android-apk-signers.json",
 ]
 
 [targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-devtool-registry-bypass-receipt]
@@ -3720,8 +3738,9 @@ validate = [
 registry_bypass = [
   { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
   { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = ["devtool_execution_policy"] },
-  { id = "android_test_refresh", ref = "target:xgo_rm05_focus_test_refresh#validate", depends_on = ["android_topology_sanity"] },
-  { id = "devtool_registry_bypass_receipt", ref = "job:xgo-gate12-continue-devtool-registry-bypass-receipt", depends_on = ["android_test_refresh"] },
+  { id = "android_pair_refresh", ref = "target:xgo_rm05_focus_test_refresh#validate", depends_on = ["android_topology_sanity"] },
+  { id = "android_pair_signers", ref = "job:xgo-gate12-continue-android-apk-signers", depends_on = ["android_pair_refresh"] },
+  { id = "devtool_registry_bypass_receipt", ref = "job:xgo-gate12-continue-devtool-registry-bypass-receipt", depends_on = ["android_pair_signers"] },
   { id = "package_attestation", ref = "target:xgo_rm08_aria2_attest#validate", depends_on = ["devtool_registry_bypass_receipt"] },
   { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["package_attestation"] },
   { id = "android_rm05_residual_precheck", ref = "job:xgo-gate12-continue-android-rm05-precheck", depends_on = ["android_artifact_checkpoint"] },
@@ -3747,9 +3766,11 @@ inputs = [
   "tools/xgo/gate12_android_device.py",
   "tools/xgo/run_gate12_rm05_precheck.py",
   "tools/xgo/run_gate12_instrumentation_reuse.py",
+  "tools/xgo/verify_gate12_apk_signers.py",
   "tools/xgo/validate_gate12_instrumentation_reuse.py",
   "docs/xgo/XGO_GATE12_DEVTOOL_ARTIFACT_REGISTRY_BYPASS.md",
   "docs/xgo/XGO_GATE12_ANDROID_INSTRUMENTATION_REUSE_V13_REPORT.md",
+  "docs/xgo/XGO_GATE12_APK_PAIR_SIGNING_V15_REPORT.md",
 ]
 
 [targets.xgo_gate12_registry_bypass_contract.jobs.contract]
@@ -3762,6 +3783,7 @@ inputs = [
   "tools/xgo/gate12_android_device.py",
   "tools/xgo/run_gate12_rm05_precheck.py",
   "tools/xgo/run_gate12_instrumentation_reuse.py",
+  "tools/xgo/verify_gate12_apk_signers.py",
   "tools/xgo/validate_gate12_instrumentation_reuse.py",
 ]
 

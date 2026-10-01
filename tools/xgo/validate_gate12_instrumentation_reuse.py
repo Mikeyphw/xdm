@@ -12,7 +12,8 @@ CONFIG = ROOT / ".devtool.toml"
 DEVICE = ROOT / "tools/xgo/gate12_android_device.py"
 PRECHECK = ROOT / "tools/xgo/run_gate12_rm05_precheck.py"
 REUSE = ROOT / "tools/xgo/run_gate12_instrumentation_reuse.py"
-DOC = ROOT / "docs/xgo/XGO_GATE12_ANDROID_INSTRUMENTATION_REUSE_V14_REPORT.md"
+DOC = ROOT / "docs/xgo/XGO_GATE12_APK_PAIR_SIGNING_V15_REPORT.md"
+SIGNER = ROOT / "tools/xgo/verify_gate12_apk_signers.py"
 
 
 def fail(message: str) -> None:
@@ -44,6 +45,12 @@ def main() -> None:
     precheck = jobs.get("xgo-gate12-continue-android-rm05-precheck") or {}
     if precheck.get("command") != ["python3", "tools/xgo/run_gate12_rm05_precheck.py"]:
         fail("RM05 precheck is not using the canonical device-alias resolver")
+    signer_job = jobs.get("xgo-gate12-continue-android-apk-signers") or {}
+    if signer_job.get("command") != [
+        "python3", "tools/xgo/verify_gate12_apk_signers.py",
+        "--output", ".devtool/reports/xgo/gates/final-continue/android-apk-signers.json",
+    ]:
+        fail("APK signer compatibility job command is malformed")
     reuse_job = jobs.get("xgo-gate12-continue-android-instrumentation-reuse") or {}
     if reuse_job.get("command") != ["python3", "tools/xgo/run_gate12_instrumentation_reuse.py"]:
         fail("instrumentation reuse job command is malformed")
@@ -51,7 +58,8 @@ def main() -> None:
     text = REUSE.read_text(encoding="utf-8")
     for token in (
         "--skip-build", "devtool.android_instrumentation", "rm08-aria2-package.json",
-        "android-artifacts.sha256", "stage_exact_pair", "verify_result_pair",
+        "android-artifacts.sha256", "android-apk-signers.json", "signer receipt",
+        "stage_exact_pair", "verify_result_pair",
     ):
         if token not in text:
             fail(f"reuse runner missing required token: {token}")
@@ -83,8 +91,21 @@ def main() -> None:
     if set(collapsed[0].aliases) != {"emulator-5554", "localhost:5555"}:
         fail("device alias evidence lost during collapse")
 
+
+    signer_text = SIGNER.read_text(encoding="utf-8")
+    for token in ("apksigner", "certificate SHA-256 digest", "app-debug.apk", "app-debug-androidTest.apk"):
+        if token not in signer_text:
+            fail(f"signer verifier missing required token: {token}")
+    if "app_signers != test_signers" not in signer_text:
+        fail("signer verifier does not fail closed on target/test certificate mismatch")
+
+    refresh = targets.get("xgo_rm05_focus_test_refresh") or {}
+    tasks = refresh.get("tasks") or {}
+    if tasks.get("test") != [":app:assembleDebug", ":app:assembleDebugAndroidTest"]:
+        fail("pair refresh is not a single target+androidTest producer invocation")
+
     if not DOC.is_file():
-        fail("missing v14 instrumentation reuse report")
+        fail("missing v15 APK pair/signing report")
     print("XGO Gate-12 instrumentation reuse contract: PASS")
 
 

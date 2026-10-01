@@ -24,6 +24,7 @@ APP_APK = ANDROID / "app/build/outputs/apk/debug/app-debug.apk"
 TEST_APK = ANDROID / "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
 ATTEST = ROOT / ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json"
 CHECKPOINT = ROOT / ".devtool/reports/xgo/gates/final-continue/android-artifacts.sha256"
+SIGNERS = ROOT / ".devtool/reports/xgo/gates/final-continue/android-apk-signers.json"
 REPORT = ANDROID / ".devtool/reports/android-instrumentation.json"
 REUSE_RECEIPT = ROOT / ".devtool/reports/xgo/gates/final-continue/android-instrumentation-reuse.json"
 STAGE_ROOT = ANDROID / "app/build/devtool-gate12-instrumentation-reuse/project"
@@ -62,6 +63,15 @@ def load_qualified_pair() -> dict[str, str]:
     checkpoint = CHECKPOINT.read_text(encoding="utf-8")
     for digest, path in ((actual["app"], APP_APK), (actual["test"], TEST_APK)):
         require(digest in checkpoint and str(path.relative_to(ROOT)) in checkpoint, f"checkpoint does not bind {path}")
+
+    require(SIGNERS.is_file(), f"missing Gate-12 signer compatibility receipt: {SIGNERS}")
+    signer_receipt = json.loads(SIGNERS.read_text(encoding="utf-8"))
+    require(signer_receipt.get("status") == "pass", "Gate-12 signer compatibility receipt is not passing")
+    signer_app = signer_receipt.get("app_apk") or {}
+    signer_test = signer_receipt.get("android_test_apk") or {}
+    require(str(signer_app.get("sha256") or "") == actual["app"], "signer receipt app APK hash drift")
+    require(str(signer_test.get("sha256") or "") == actual["test"], "signer receipt test APK hash drift")
+    require(bool(signer_receipt.get("signer_sha256")), "signer receipt lacks certificate digest evidence")
     return actual
 
 
