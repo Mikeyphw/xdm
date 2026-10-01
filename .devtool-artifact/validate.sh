@@ -7,3 +7,4 @@ python3 tools/xgo/validate_gate12_instrumentation_reuse.py
 python3 tools/xgo/validate_rm08_packaged_runtime_instrumentation_v16.py
 python3 tools/xgo/validate_rm08_android_process_environment_v17.py
 python3 tools/xgo/validate_rm08_android_bionic_linkage_v18.py
+python3 tools/xgo/validate_gate12_source_runtime_lineage_v19.py

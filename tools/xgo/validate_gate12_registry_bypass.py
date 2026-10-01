@@ -25,7 +25,8 @@ CANONICAL = [
 BYPASS = [
     ("devtool_execution_policy", "target:xgo_devtool_policy#validate", []),
     ("android_topology_sanity", "job:xgo-gate12-continue-android-topology", ["devtool_execution_policy"]),
-    ("android_pair_refresh", "target:xgo_rm05_focus_test_refresh#validate", ["android_topology_sanity"]),
+    ("aria2_source_runtime", "target:xgo_rm08_aria2_source#validate", ["android_topology_sanity"]),
+    ("android_pair_refresh", "target:xgo_rm05_focus_test_refresh#validate", ["aria2_source_runtime"]),
     ("android_pair_signers", "job:xgo-gate12-continue-android-apk-signers", ["android_pair_refresh"]),
     ("devtool_registry_bypass_receipt", "job:xgo-gate12-continue-devtool-registry-bypass-receipt", ["android_pair_signers"]),
     ("package_attestation", "target:xgo_rm08_aria2_attest#validate", ["devtool_registry_bypass_receipt"]),
@@ -79,6 +80,8 @@ def main() -> None:
     leaked = sorted(refs & forbidden)
     if leaked:
         fail("bypass lane still enters broken package/host boundary: " + ", ".join(leaked))
+    if "target:xgo_rm08_aria2_source#validate" not in refs:
+        fail("bypass lane must materialize the current RM08 source runtime before APK refresh")
     if "target:xgo_rm08_aria2_attest#validate" not in refs:
         fail("bypass lane must retain exact RM08 packaged-byte attestation")
     if "target:xgo_rm08_aria2_device#validate" in refs:

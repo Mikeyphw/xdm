@@ -3738,7 +3738,8 @@ validate = [
 registry_bypass = [
   { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
   { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = ["devtool_execution_policy"] },
-  { id = "android_pair_refresh", ref = "target:xgo_rm05_focus_test_refresh#validate", depends_on = ["android_topology_sanity"] },
+  { id = "aria2_source_runtime", ref = "target:xgo_rm08_aria2_source#validate", depends_on = ["android_topology_sanity"] },
+  { id = "android_pair_refresh", ref = "target:xgo_rm05_focus_test_refresh#validate", depends_on = ["aria2_source_runtime"] },
   { id = "android_pair_signers", ref = "job:xgo-gate12-continue-android-apk-signers", depends_on = ["android_pair_refresh"] },
   { id = "devtool_registry_bypass_receipt", ref = "job:xgo-gate12-continue-devtool-registry-bypass-receipt", depends_on = ["android_pair_signers"] },
   { id = "package_attestation", ref = "target:xgo_rm08_aria2_attest#validate", depends_on = ["devtool_registry_bypass_receipt"] },
