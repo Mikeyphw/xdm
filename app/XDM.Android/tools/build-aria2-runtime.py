@@ -365,6 +365,69 @@ def configure_make_install(src: Path, prefix: Path, env: dict[str, str], args: l
     atomic_json(marker, recipe)
 
 
+def require_dynamic_bionic_linkage(metadata: dict[str, object], *, label: str) -> None:
+    needed = list(metadata.get("needed") or [])
+    if "libc.so" not in needed:
+        raise SystemExit(
+            f"{label} is not dynamically linked to Android/Bionic libc.so; "
+            f"DT_NEEDED={needed!r}. Refusing a zero-Bionic/static-libc runtime."
+        )
+    if "libc++_shared.so" in needed:
+        raise SystemExit(
+            f"{label} unexpectedly depends on libc++_shared.so; RM08 requires "
+            "the C++ runtime to remain embedded statically."
+        )
+
+
+def prove_android_bionic_link_model(cxx: Path, env: dict[str, str], build_root: Path) -> dict[str, object]:
+    probe_root = build_root / "aria2-android-link-model-probe"
+    probe_root.mkdir(parents=True, exist_ok=True)
+    source = probe_root / "probe.cpp"
+    output = probe_root / "probe"
+    source.write_text(
+        "#include <netdb.h>\n"
+        "#include <string>\n"
+        "int main() { struct addrinfo* out = nullptr; std::string host = \"localhost\"; "
+        "int rc = getaddrinfo(host.c_str(), nullptr, nullptr, &out); "
+        "if (out) freeaddrinfo(out); return rc == EAI_SYSTEM ? 2 : 0; }\n",
+        encoding="utf-8",
+    )
+    output.unlink(missing_ok=True)
+    command = [
+        str(cxx),
+        *shlex.split(env.get("CPPFLAGS", "")),
+        *shlex.split(env.get("CXXFLAGS", "")),
+        str(source),
+        "-o", str(output),
+        *shlex.split(env.get("LDFLAGS", "")),
+        "-ldl", "-lm",
+    ]
+    result = subprocess.run(
+        command, cwd=probe_root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, check=False,
+    )
+    if result.returncode != 0 or not output.is_file():
+        raise SystemExit(
+            "Android aria2 link-model probe failed before the native build.\n"
+            + result.stdout.strip()
+        )
+    try:
+        metadata = validate_android_runtime_file(
+            output,
+            require_pie=True,
+            expected_interpreter="/system/bin/linker64",
+        )
+    except ElfPolicyError as error:
+        raise SystemExit(f"Android aria2 link-model probe ELF qualification failed: {error}") from error
+    require_dynamic_bionic_linkage(metadata, label="Android aria2 link-model probe")
+    print(
+        "aria2 Android link model: dynamic Bionic libc + static libc++ "
+        f"(DT_NEEDED={metadata['needed']})",
+        flush=True,
+    )
+    return metadata
+
+
 def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, dict, dict, dict, dict]:
     authority = load_toolchain_authority()
     ndk = authority.detect_ndk(manifest["ndkVersion"])
@@ -396,13 +459,15 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     prefix.mkdir(parents=True, exist_ok=True)
     target = f"aarch64-linux-android{api}"
     common_cflags = "-O2 -fPIC -fPIE -fstack-protector-strong -D_FORTIFY_SOURCE=2"
-    # The Termux-hosted clang++ driver is an Android-native compiler whose own
-    # C++ runtime policy is for the Termux prefix.  Even with an explicit NDK
-    # sysroot it may auto-inject -lc++_shared.  RM08 ships one executable and
-    # intentionally uses the static NDK libc++ runtime, so suppress driver STL
-    # injection and name the attested NDK static runtime explicitly.
+    # Match aria2's maintained Android/NDK link model: third-party dependencies
+    # and libc++ are embedded statically, but Android/Bionic itself remains a
+    # normal dynamic dependency.  Fully freezing Bionic into a packaged command
+    # binary is unsafe for networking/pthread-heavy code and produced an RM08
+    # startup SIGSEGV (exit 139) on-device.  Keep the explicit NDK libc++ search
+    # root for native-Termux compiler wrappers, but let the Android driver own
+    # static libc++ selection through -static-libstdc++.
     common_ldflags = (
-        f"-L{cxx_runtime_link_dir} -fPIE -pie -nostdlib++ -lc++_static -lc++abi "
+        f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "
         "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,-z,relro,-z,now"
     )
     env = os.environ.copy()
@@ -441,6 +506,8 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     env["LDFLAGS"] = f"-L{prefix / 'lib'} -L{openssl_prefix / 'lib'} {common_ldflags}"
     env["PKG_CONFIG_LIBDIR"] = f"{prefix / 'lib/pkgconfig'}:{openssl_prefix / 'lib/pkgconfig'}"
 
+    prove_android_bionic_link_model(cxx, env, build_root)
+
     # zlib uses its compact configure script rather than autoconf --host.
     zlib = source_roots["zlib"]
     zmarker = zlib / ".xdm-aria2-dependency-installed.json"
@@ -467,7 +534,7 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         *autoconf_triplets, f"--prefix={prefix}", *manifest["configureFlags"],
     ]
     recipe = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "configure": configure,
         "buildTriplet": build_triplet,
         "androidAutoconfCapabilities": sorted(ANDROID_BIONIC_AUTOCONF_PROBES),
@@ -595,6 +662,7 @@ def main() -> None:
         metadata = validate_android_runtime_file(built, **elf_requirements(manifest))
     except ElfPolicyError as error:
         raise SystemExit(f"source-built aria2 ELF qualification failed: {error}") from error
+    require_dynamic_bionic_linkage(metadata, label="source-built aria2 runtime")
 
     target = ROOT / manifest["packagedPath"]
     target.parent.mkdir(parents=True, exist_ok=True)

@@ -56,9 +56,24 @@ def validate_elf(data: bytes, *, strict: bool) -> dict:
     if len(data) < MANIFEST["minimumBinaryBytes"]:
         raise SystemExit("packaged aria2 runtime is unexpectedly small")
     try:
-        return validate_android_runtime_elf(data, **(elf_policy() if strict else {}))
+        metadata = validate_android_runtime_elf(data, **(elf_policy() if strict else {}))
     except ElfPolicyError as error:
         raise SystemExit(f"aria2 Android ELF policy failed: {error}") from error
+    if strict:
+        require_dynamic_bionic_linkage(metadata, label="packaged aria2 runtime")
+    return metadata
+
+
+def require_dynamic_bionic_linkage(metadata: dict, *, label: str) -> None:
+    needed = list(metadata.get("needed") or [])
+    if "libc.so" not in needed:
+        raise SystemExit(
+            f"{label} is missing required Android/Bionic libc.so DT_NEEDED linkage: {needed!r}"
+        )
+    if "libc++_shared.so" in needed:
+        raise SystemExit(
+            f"{label} unexpectedly depends on libc++_shared.so; the RM08 C++ runtime must be embedded statically"
+        )
 
 
 def require_sha(value: object, name: str) -> str:

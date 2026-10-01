@@ -118,10 +118,16 @@ def main() -> int:
             "aria2 source builder must resolve the complete NDK libc++ static-link authority explicitly")
     require('"--no-default-config"' in ffmpeg_builder and "host-driver config" in ffmpeg_builder,
             "Termux Android compiler wrappers must suppress host clang config before applying the NDK target contract")
-    require('f"-L{cxx_runtime_link_dir} -fPIE -pie -nostdlib++ -lc++_static -lc++abi "' in aria_builder,
-            "aria2 source builder must suppress host-driver STL injection and explicitly link the attested static NDK libc++ runtime")
-    require("-static-libstdc++" not in aria_builder,
-            "aria2 source builder must not rely on Termux clang++ interpreting -static-libstdc++")
+    require('f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "' in aria_builder,
+            "aria2 source builder must use the Android/NDK static-libc++ driver contract while keeping Bionic dynamic")
+    require("-nostdlib++ -lc++_static -lc++abi" not in aria_builder,
+            "aria2 source builder must not bypass the Android compiler driver's libc++/Bionic link policy")
+    require("prove_android_bionic_link_model" in aria_builder and "require_dynamic_bionic_linkage" in aria_builder,
+            "aria2 source builder must prove dynamic Bionic linkage before the full native build")
+    require('"libc.so" not in needed' in aria_builder,
+            "aria2 source builder must fail closed when Android/Bionic libc.so is absent from DT_NEEDED")
+    require("require_dynamic_bionic_linkage" in aria_verifier and '"libc.so" not in needed' in aria_verifier,
+            "aria2 release verifier must reject zero-Bionic DT_NEEDED payloads")
     require('aria_env["ARIA2_STATIC"] = "no"' in aria_builder,
             "aria2 Android PIE must not enable upstream fully-static Unix link policy")
     require('aria_env["PKG_CONFIG"] = f"{pkg_config} --static"' in aria_builder,
