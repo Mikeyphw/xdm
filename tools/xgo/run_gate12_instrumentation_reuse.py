@@ -12,7 +12,6 @@ from __future__ import annotations
 from pathlib import Path
 import hashlib
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -73,11 +72,11 @@ def stage_exact_pair(hashes: dict[str, str]) -> tuple[Path, Path]:
     stage_test = STAGE_ROOT / "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
     stage_app.parent.mkdir(parents=True, exist_ok=True)
     stage_test.parent.mkdir(parents=True, exist_ok=True)
+    # Native Termux Python may omit hard-link support entirely. A normal byte copy is
+    # portable and keeps this temporary staging boundary independent of hard-link
+    # support; the hashes below prove the staged bytes are the qualified bytes.
     for source, dest in ((APP_APK, stage_app), (TEST_APK, stage_test)):
-        try:
-            os.link(source, dest)
-        except OSError:
-            shutil.copy2(source, dest)
+        shutil.copy2(source, dest)
     require(sha256(stage_app) == hashes["app"], "staged app APK hash mismatch")
     require(sha256(stage_test) == hashes["test"], "staged test APK hash mismatch")
     return stage_app, stage_test

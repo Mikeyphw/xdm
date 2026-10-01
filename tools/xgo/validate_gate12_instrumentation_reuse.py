@@ -12,7 +12,7 @@ CONFIG = ROOT / ".devtool.toml"
 DEVICE = ROOT / "tools/xgo/gate12_android_device.py"
 PRECHECK = ROOT / "tools/xgo/run_gate12_rm05_precheck.py"
 REUSE = ROOT / "tools/xgo/run_gate12_instrumentation_reuse.py"
-DOC = ROOT / "docs/xgo/XGO_GATE12_ANDROID_INSTRUMENTATION_REUSE_V13_REPORT.md"
+DOC = ROOT / "docs/xgo/XGO_GATE12_ANDROID_INSTRUMENTATION_REUSE_V14_REPORT.md"
 
 
 def fail(message: str) -> None:
@@ -55,9 +55,11 @@ def main() -> None:
     ):
         if token not in text:
             fail(f"reuse runner missing required token: {token}")
-    for forbidden in ("gradlew", "assembleDebug", "assembleDebugAndroidTest"):
+    for forbidden in ("gradlew", "assembleDebug", "assembleDebugAndroidTest", "os.link"):
         if forbidden in text:
-            fail(f"reuse runner must not rebuild Gradle tasks: {forbidden}")
+            fail(f"reuse runner contains forbidden rebuild/non-portable primitive: {forbidden}")
+    if "shutil.copy2(source, dest)" not in text:
+        fail("reuse runner does not use portable exact-pair staging copy")
 
     precheck_text = PRECHECK.read_text(encoding="utf-8")
     if "resolve_unique_device" not in precheck_text:
@@ -82,7 +84,7 @@ def main() -> None:
         fail("device alias evidence lost during collapse")
 
     if not DOC.is_file():
-        fail("missing v13 instrumentation reuse report")
+        fail("missing v14 instrumentation reuse report")
     print("XGO Gate-12 instrumentation reuse contract: PASS")
 
 
