@@ -52,8 +52,10 @@ def main() -> int:
         "AndroidAria2CapabilityProbe", "attestationVerified", "nativeLibraryDir",
         "untrusted-server.p12", "Aria2TaskStatusValue.Error",
         "trusted-server.p12", "Aria2TaskStatusValue.Complete",
-        "rpc.saveSession()", "manager.stop()", "manager.start()", "tellStatus(recoveryGid)",
-        "xgo_rm08_aria2",
+        "rpc.saveSession()", "manager.stop()", "manager.start()",
+        "awaitSessionRecord(", "assertSessionRecord(store.sessionFile, gid, sourceUrl)",
+        "recoveredRpc::tellStatus", 'label = "recovered owned session"',
+        "awaitSessionRecordAbsent(", "xgo_rm08_aria2",
     ):
         require(token in test, f"RM08 instrumented lifecycle contract lost {token}")
     for asset in (
