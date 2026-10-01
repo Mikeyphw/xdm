@@ -3655,6 +3655,26 @@ outputs = [
   ".devtool/reports/xgo/gates/final-continue/android-rm05-residual-precheck.txt",
 ]
 
+[targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-devtool-registry-bypass-receipt]
+runner = "command"
+root = "."
+command = [
+  "python3", "tools/xgo/record_gate12_registry_bypass.py",
+  "--output", ".devtool/reports/xgo/gates/final-continue/devtool-artifact-registry-bypass.json",
+]
+inputs = [
+  "tools/xgo/record_gate12_registry_bypass.py",
+  "app/XDM.Android/tools/verify-aria2-runtime.py",
+  "app/XDM.Android/tools/verify-ffmpeg-runtime.py",
+  "app/XDM.Android/transfer-aria2/runtime/aria2-runtime.lock.json",
+  "app/XDM.Android/media-ffmpeg/runtime/ffmpeg-runtime.lock.json",
+  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
+  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+]
+outputs = [
+  ".devtool/reports/xgo/gates/final-continue/devtool-artifact-registry-bypass.json",
+]
+
 [targets.xgo_gate_final_continue.workflows]
 validate = [
   { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
@@ -3666,6 +3686,54 @@ validate = [
   { id = "android_instrumentation_remaining", ref = "target:xgo_rm08_aria2_device#validate", depends_on = ["android_lint_remaining"] },
   { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_instrumentation_remaining"] },
   { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
+]
+
+# TEMPORARY: bypass only Devtool's broken post-package artifact-registry edge.
+# This lane consumes the already-built APKs, independently re-verifies their
+# native payloads, records explicit workaround evidence, and then resumes the
+# canonical post-package Gate-12 boundaries. Remove when Devtool registry
+# publication is repaired. The canonical `validate` workflow above is unchanged.
+registry_bypass = [
+  { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
+  { id = "android_topology_sanity", ref = "job:xgo-gate12-continue-android-topology", depends_on = ["devtool_execution_policy"] },
+  { id = "devtool_registry_bypass_receipt", ref = "job:xgo-gate12-continue-devtool-registry-bypass-receipt", depends_on = ["android_topology_sanity"] },
+  { id = "package_attestation", ref = "target:xgo_rm08_aria2_attest#validate", depends_on = ["devtool_registry_bypass_receipt"] },
+  { id = "android_artifact_checkpoint", ref = "job:xgo-gate12-continue-android-artifacts", depends_on = ["package_attestation"] },
+  { id = "android_rm05_residual_precheck", ref = "job:xgo-gate12-continue-android-rm05-precheck", depends_on = ["android_artifact_checkpoint"] },
+  { id = "android_lint_remaining", ref = "target:xgo_rm08_aria2_lint#validate", depends_on = ["android_rm05_residual_precheck"] },
+  { id = "android_instrumentation_remaining", ref = "target:xgo_rm08_aria2_device#validate", depends_on = ["android_lint_remaining"] },
+  { id = "desktop_host_final", ref = "target:xdm_modern#validate", depends_on = ["android_instrumentation_remaining"] },
+  { id = "wave12_final_gate", ref = "target:xgo_final_wave12#validate", depends_on = ["desktop_host_final"] },
+]
+
+
+# Static qualification for the temporary Gate-12 registry bypass. This target is
+# intentionally non-Gradle and exists so the overlay can validate its graph
+# without executing the workaround itself during apply.
+[targets.xgo_gate12_registry_bypass_contract]
+runner = "command"
+platform = "shared"
+root = "."
+execution_environment = "native-termux"
+inputs = [
+  ".devtool.toml",
+  "tools/xgo/record_gate12_registry_bypass.py",
+  "tools/xgo/validate_gate12_registry_bypass.py",
+  "docs/xgo/XGO_GATE12_DEVTOOL_ARTIFACT_REGISTRY_BYPASS.md",
+]
+
+[targets.xgo_gate12_registry_bypass_contract.jobs.contract]
+runner = "command"
+command = ["python3", "tools/xgo/validate_gate12_registry_bypass.py"]
+inputs = [
+  ".devtool.toml",
+  "tools/xgo/record_gate12_registry_bypass.py",
+  "tools/xgo/validate_gate12_registry_bypass.py",
+]
+
+[targets.xgo_gate12_registry_bypass_contract.workflows]
+validate = [
+  { id = "contract", ref = "job:contract", depends_on = [] },
 ]
 
 [wrapper]
