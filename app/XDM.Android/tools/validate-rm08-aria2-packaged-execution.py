@@ -114,12 +114,14 @@ def main() -> int:
             "aria2 source builder must explicitly separate Autoconf build and Android host identities")
     require("ANDROID_BIONIC_AUTOCONF_PROBES" in aria_builder and "android_bionic_autoconf_cache" in aria_builder,
             "aria2 source builder must prove Bionic libc capabilities before caching Autoconf answers")
-    require("android_cxx_runtime_link_dir" in aria_builder and '"libc++_shared.so"' in aria_builder and '"libc++_static.a"' in aria_builder,
-            "aria2 source builder must resolve the NDK libc++ link root explicitly")
+    require("android_cxx_runtime_link_dir" in aria_builder and '"libc++_shared.so"' in aria_builder and '"libc++_static.a"' in aria_builder and '"libc++abi.a"' in aria_builder,
+            "aria2 source builder must resolve the complete NDK libc++ static-link authority explicitly")
     require('"--no-default-config"' in ffmpeg_builder and "host-driver config" in ffmpeg_builder,
             "Termux Android compiler wrappers must suppress host clang config before applying the NDK target contract")
-    require('f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "' in aria_builder,
-            "aria2 source builder must propagate the NDK libc++ root into C++ probe/configure/make linker flags")
+    require('f"-L{cxx_runtime_link_dir} -fPIE -pie -nostdlib++ -lc++_static -lc++abi "' in aria_builder,
+            "aria2 source builder must suppress host-driver STL injection and explicitly link the attested static NDK libc++ runtime")
+    require("-static-libstdc++" not in aria_builder,
+            "aria2 source builder must not rely on Termux clang++ interpreting -static-libstdc++")
     require("ANDROID_BIONIC_AUTOCONF_CACHEABLE" in aria_builder and "android_bionic_autoconf_cache(cxx" in aria_builder,
             "aria2 Bionic probes must use target C++ and separate upstream custom checks from cacheable checks")
     for capability in ("getaddrinfo", "gettimeofday", "gai_strerror", "localtime_r", "asctime_r", "poll"):

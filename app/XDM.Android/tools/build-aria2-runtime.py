@@ -237,7 +237,7 @@ def android_cxx_runtime_link_dir(toolchain: Path) -> Path:
     NDK rather than falling back to Termux's host C++ runtime.
     """
     runtime = toolchain / "sysroot/usr/lib/aarch64-linux-android"
-    required = (runtime / "libc++_shared.so", runtime / "libc++_static.a")
+    required = (runtime / "libc++_shared.so", runtime / "libc++_static.a", runtime / "libc++abi.a")
     missing = [str(candidate) for candidate in required if not candidate.is_file()]
     if missing:
         raise SystemExit(
@@ -396,8 +396,13 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     prefix.mkdir(parents=True, exist_ok=True)
     target = f"aarch64-linux-android{api}"
     common_cflags = "-O2 -fPIC -fPIE -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    # The Termux-hosted clang++ driver is an Android-native compiler whose own
+    # C++ runtime policy is for the Termux prefix.  Even with an explicit NDK
+    # sysroot it may auto-inject -lc++_shared.  RM08 ships one executable and
+    # intentionally uses the static NDK libc++ runtime, so suppress driver STL
+    # injection and name the attested NDK static runtime explicitly.
     common_ldflags = (
-        f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "
+        f"-L{cxx_runtime_link_dir} -fPIE -pie -nostdlib++ -lc++_static -lc++abi "
         "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,-z,relro,-z,now"
     )
     env = os.environ.copy()
