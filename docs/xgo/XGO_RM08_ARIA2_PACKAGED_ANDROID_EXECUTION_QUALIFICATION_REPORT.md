@@ -138,3 +138,9 @@ The revised v7 therefore also resolves and validates `<NDK toolchain>/sysroot/us
 
 The RM08 static contract validator now fails closed if this explicit libc++ authority disappears. This repair remains inside v7 because v7 had not yet been applied; there is no additional overlay or Gate-12 node.
 
+
+### Post-v7 live continuation: Termux clang host-config leakage and v8 repair
+
+The first live Gate-12 continuation after v7 proved that resolving the NDK libc++ directory was necessary but not sufficient. The independent `asctime_r` C++ probe still failed because LLD was asked for `-lc++_shared`. That spelling came from the native Termux `clang++` driver's default host configuration, not from aria2 or the NDK-target linker flags. Adding the NDK library directory therefore could not make the wrapper a clean Android cross driver.
+
+RM08 v8 fixes the owning toolchain boundary in `tools/install-ffmpeg-runtime.py`: Termux-backed Android compiler wrappers now begin with `--no-default-config` before the explicit Android target, NDK sysroot, NDK Clang resource directory, compiler-rt, libunwind, AArch64 runtime directory, and LLD selections. This prevents Termux host-driver runtime policy from leaking into Android probes/builds while retaining the already-attested NDK inputs. The RM08 contract validator asserts this isolation so a future wrapper refactor cannot silently reintroduce host `clang.cfg` behavior.

@@ -436,7 +436,12 @@ def resolve_toolchain(ndk: Path, api: int, build_root: Path, identity: dict) -> 
     resource_dir = ndk_android_resource_dir(sysroot_owner)
     target_runtime_dir = resource_dir / "lib/linux/aarch64"
 
+    # Termux clang/clang++ ship host-driver config that can inject host runtime
+    # choices (notably -lc++_shared).  These wrappers are an explicit Android NDK
+    # cross-driver contract, so do not inherit that config: every target/runtime
+    # input below is supplied from the attested NDK instead.
     compiler_args = [
+        "--no-default-config",
         f"--target={target}",
         f"--sysroot={sysroot}",
         f"-resource-dir={resource_dir}",

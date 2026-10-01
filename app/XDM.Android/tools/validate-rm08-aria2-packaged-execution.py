@@ -116,6 +116,8 @@ def main() -> int:
             "aria2 source builder must prove Bionic libc capabilities before caching Autoconf answers")
     require("android_cxx_runtime_link_dir" in aria_builder and '"libc++_shared.so"' in aria_builder and '"libc++_static.a"' in aria_builder,
             "aria2 source builder must resolve the NDK libc++ link root explicitly")
+    require('"--no-default-config"' in ffmpeg_builder and "host-driver config" in ffmpeg_builder,
+            "Termux Android compiler wrappers must suppress host clang config before applying the NDK target contract")
     require('f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "' in aria_builder,
             "aria2 source builder must propagate the NDK libc++ root into C++ probe/configure/make linker flags")
     require("ANDROID_BIONIC_AUTOCONF_CACHEABLE" in aria_builder and "android_bionic_autoconf_cache(cxx" in aria_builder,
