@@ -1,5 +1,6 @@
 package com.mikeyphw.xdm.android
 
+import android.content.Context
 import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -23,7 +24,7 @@ import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,21 +38,35 @@ class Aria2Rm08PackagedRuntimeInstrumentedTest {
     @Test
     fun packagedRuntimeEnforcesTlsAndRecoversSavedOwnedSession() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val context = instrumentation.targetContext
-        val testContext = instrumentation.context
-        resetRuntimeState(context)
+        val fixture = Fixture(
+            context = instrumentation.targetContext,
+            testContext = instrumentation.context,
+        )
 
-        val trustedCa = testContext.assets.open("rm08/trusted-ca.pem").use { it.readBytes() }
-        val trustFile = File(context.noBackupFilesDir, "aria2/rm08/trusted-ca.pem")
-        val trustProvider = Aria2TrustBundleProvider {
-            trustFile.parentFile?.mkdirs()
-            trustFile.writeBytes(trustedCa)
-            assertTrue("RM08 trust bundle must be app-private and non-empty", trustFile.isFile && trustFile.length() > 0L)
-            trustFile
+        try {
+            fixture.reset()
+            verifyPackagedRuntimeAndTls(fixture)
+
+            fixture.reset()
+            verifyOwnedSessionRecovery(fixture)
+
+            instrumentation.sendStatus(
+                2,
+                Bundle().apply {
+                    putString("xgo_rm08_aria2", "pass")
+                    putString("xgo_rm08_claims", "packaged-bytes,rpc-auth,tls-reject,tls-success,session-restart-recovery")
+                },
+            )
+        } finally {
+            fixture.stopQuietly()
+            fixture.reset()
         }
-        val store = Aria2SessionStore(context, trustProvider)
-        val secretProvider = AppPrivateAria2SecretProvider(context)
-        var manager = newManager(context, store, secretProvider)
+    }
+
+    private suspend fun verifyPackagedRuntimeAndTls(fixture: Fixture) {
+        val store = fixture.newStore()
+        val manager = fixture.newManager(store)
+        fixture.manager = manager
 
         try {
             val capability = manager.probe()
@@ -59,9 +74,12 @@ class Aria2Rm08PackagedRuntimeInstrumentedTest {
             assertTrue("installed aria2 must match the packaged runtime lock", capability.attestationVerified)
             assertNotNull(capability.binary)
             val descriptor = requireNotNull(capability.binary)
-            assertEquals(context.applicationInfo.nativeLibraryDir, descriptor.file.parentFile?.absolutePath)
+            assertEquals(fixture.context.applicationInfo.nativeLibraryDir, descriptor.file.parentFile?.absolutePath)
             assertEquals("android-unversioned-sonames-v1", descriptor.dependencyPolicy)
-            assertFalse("packaged aria2 must not depend on versioned Linux SONAMEs", descriptor.neededLibraries.any { it.matches(Regex("^lib[^/]+\\.so\\.\\d+.*$")) })
+            assertFalse(
+                "packaged aria2 must not depend on versioned Linux SONAMEs",
+                descriptor.neededLibraries.any { it.matches(Regex("^lib[^/]+\\.so\\.\\d+.*$")) },
+            )
 
             val started = manager.start()
             assertTrue("packaged aria2 failed to start: ${started.state}", started.started)
@@ -70,8 +88,8 @@ class Aria2Rm08PackagedRuntimeInstrumentedTest {
             assertTrue("authenticated RPC must return an aria2 version", rpc.getVersion().version.isNotBlank())
 
             val untrustedPayload = "XDM RM08 untrusted TLS must fail\n".toByteArray()
-            TlsProbeServer(testContext, "rm08/untrusted-server.p12", untrustedPayload).use { server ->
-                val output = File(context.cacheDir, "rm08-untrusted-${System.nanoTime()}.bin")
+            TlsProbeServer(fixture.testContext, "rm08/untrusted-server.p12", untrustedPayload).use { server ->
+                val output = File(fixture.context.cacheDir, "rm08-untrusted-${System.nanoTime()}.bin")
                 val gid = rpc.addUri(
                     listOf(server.url("untrusted")),
                     Aria2TaskOptions(
@@ -83,16 +101,31 @@ class Aria2Rm08PackagedRuntimeInstrumentedTest {
                         maxConnectionsPerServer = 1,
                     ),
                 )
-                val terminal = awaitTerminal(rpc::tellStatus, gid)
-                assertEquals("untrusted TLS must be rejected by aria2/OpenSSL", Aria2TaskStatusValue.Error, terminal.status)
-                assertFalse("untrusted TLS must not publish payload bytes", output.exists() && output.length() > 0L)
-                runCatching { rpc.removeDownloadResult(gid) }
-                output.delete()
+                try {
+                    val terminal = awaitStatus(
+                        status = rpc::tellStatus,
+                        gid = gid,
+                        accepted = TERMINAL_STATES,
+                        timeoutMillis = 20_000L,
+                        label = "untrusted TLS transfer",
+                    )
+                    assertEquals(
+                        "untrusted TLS must be rejected by aria2/OpenSSL (error=${terminal.errorMessage.orEmpty()})",
+                        Aria2TaskStatusValue.Error,
+                        terminal.status,
+                    )
+                    assertFalse("untrusted TLS must not publish payload bytes", output.exists() && output.length() > 0L)
+                } finally {
+                    runCatching { rpc.remove(gid, force = true) }
+                    runCatching { rpc.removeDownloadResult(gid) }
+                    output.delete()
+                    File(output.parentFile, output.name + ".aria2").delete()
+                }
             }
 
             val trustedPayload = "XDM RM08 trusted HTTPS payload\n".toByteArray()
-            TlsProbeServer(testContext, "rm08/trusted-server.p12", trustedPayload).use { server ->
-                val output = File(context.cacheDir, "rm08-trusted-${System.nanoTime()}.bin")
+            TlsProbeServer(fixture.testContext, "rm08/trusted-server.p12", trustedPayload).use { server ->
+                val output = File(fixture.context.cacheDir, "rm08-trusted-${System.nanoTime()}.bin")
                 val gid = rpc.addUri(
                     listOf(server.url("trusted")),
                     Aria2TaskOptions(
@@ -104,50 +137,98 @@ class Aria2Rm08PackagedRuntimeInstrumentedTest {
                         maxConnectionsPerServer = 1,
                     ),
                 )
-                val terminal = awaitTerminal(rpc::tellStatus, gid)
-                assertEquals("trusted test CA must permit HTTPS transfer", Aria2TaskStatusValue.Complete, terminal.status)
-                assertTrue("trusted HTTPS transfer did not create output", output.isFile)
-                assertArrayEquals(trustedPayload, output.readBytes())
-                assertTrue("aria2.saveSession must succeed after HTTPS transfer", rpc.saveSession())
-                rpc.removeDownloadResult(gid)
-                output.delete()
+                try {
+                    val terminal = awaitStatus(
+                        status = rpc::tellStatus,
+                        gid = gid,
+                        accepted = TERMINAL_STATES,
+                        timeoutMillis = 20_000L,
+                        label = "trusted TLS transfer",
+                    )
+                    assertEquals(
+                        "trusted test CA must permit HTTPS transfer (error=${terminal.errorMessage.orEmpty()})",
+                        Aria2TaskStatusValue.Complete,
+                        terminal.status,
+                    )
+                    assertTrue("trusted HTTPS transfer did not create output", output.isFile)
+                    assertArrayEquals(trustedPayload, output.readBytes())
+                } finally {
+                    runCatching { rpc.removeDownloadResult(gid) }
+                    output.delete()
+                    File(output.parentFile, output.name + ".aria2").delete()
+                }
+            }
 
-                val recoveryOutput = File(context.cacheDir, "rm08-recovery-${System.nanoTime()}.bin")
-                val recoveryGid = rpc.addUri(
-                    listOf(server.url("recovery")),
+            assertTrue("aria2.saveSession must succeed after TLS qualification", rpc.saveSession())
+            val stopped = manager.stop()
+            fixture.manager = null
+            assertTrue("aria2 shutdown after TLS qualification must save its session", stopped.sessionSaved)
+            assertTrue("aria2 shutdown after TLS qualification must be clean", stopped.clean)
+        } finally {
+            fixture.stopQuietly()
+        }
+    }
+
+    private suspend fun verifyOwnedSessionRecovery(fixture: Fixture) {
+        val store = fixture.newStore()
+        var manager = fixture.newManager(store)
+        fixture.manager = manager
+        var taskFiles: com.mikeyphw.xdm.android.transfer.aria2.Aria2TaskFiles? = null
+        var recoveryOutput: File? = null
+
+        val payload = "XDM RM08 owned-session recovery payload\n".toByteArray()
+        TlsProbeServer(fixture.testContext, "rm08/trusted-server.p12", payload).use { server ->
+            try {
+                val started = manager.start()
+                assertTrue("aria2 recovery fixture failed to start: ${started.state}", started.started)
+                val rpc = manager.rpc()
+
+                val output = File(fixture.context.cacheDir, "rm08-recovery-${System.nanoTime()}.bin")
+                recoveryOutput = output
+                val sourceUrl = server.url("recovery")
+                val gid = rpc.addUri(
+                    listOf(sourceUrl),
                     Aria2TaskOptions(
-                        directory = recoveryOutput.parentFile!!.canonicalPath,
-                        outputName = recoveryOutput.name,
+                        directory = output.parentFile!!.canonicalPath,
+                        outputName = output.name,
                         pause = true,
-                        continueDownload = true,
+                        continueDownload = false,
                         split = 1,
                         maxConnectionsPerServer = 1,
                     ),
                 )
-                val created = rpc.tellStatus(recoveryGid)
-                assertTrue(
-                    "recovery fixture must be durably paused before shutdown (status=${created.status})",
-                    created.status == Aria2TaskStatusValue.Paused || created.status == Aria2TaskStatusValue.Waiting,
+                val paused = awaitStatus(
+                    status = rpc::tellStatus,
+                    gid = gid,
+                    accepted = PAUSED_STATES,
+                    timeoutMillis = 10_000L,
+                    label = "owned recovery fixture",
                 )
-                val taskFiles = store.taskFiles("rm08-recovery", recoveryOutput)
+                assertTrue(
+                    "recovery fixture must be paused before checkpoint (status=${paused.status})",
+                    paused.status in PAUSED_STATES,
+                )
+
+                val files = store.taskFiles("rm08-recovery", output)
+                taskFiles = files
                 val now = System.currentTimeMillis()
                 store.writeOwnershipMetadata(
-                    taskFiles,
+                    files,
                     Aria2TaskMapping(
                         downloadId = "rm08-recovery",
-                        gid = recoveryGid,
-                        sourceUrl = server.url("recovery"),
+                        gid = gid,
+                        sourceUrl = sourceUrl,
                         mirrorUrls = emptyList(),
-                        destinationUri = recoveryOutput.toURI().toString(),
+                        destinationUri = output.toURI().toString(),
                         destinationKey = "rm08-recovery",
-                        fileName = recoveryOutput.name,
+                        fileName = output.name,
                         conflictPolicy = "Overwrite",
                         mimeType = "application/octet-stream",
-                        outputPath = recoveryOutput.canonicalPath,
-                        controlPath = taskFiles.control.canonicalPath,
-                        ownershipMetadataPath = taskFiles.ownershipMetadata.canonicalPath,
-                        sessionFilePath = taskFiles.session.canonicalPath,
-                        expectedLength = trustedPayload.size.toLong(),
+                        outputPath = output.canonicalPath,
+                        controlPath = files.control.canonicalPath,
+                        ownershipMetadataPath = files.ownershipMetadata.canonicalPath,
+                        sessionFilePath = files.session.canonicalPath,
+                        expectedLength = payload.size.toLong(),
                         ownershipGeneration = 1L,
                         backendInstanceId = "rm08-device",
                         backendSessionId = "rm08-device-session",
@@ -157,75 +238,162 @@ class Aria2Rm08PackagedRuntimeInstrumentedTest {
                         lastSynchronizedAtEpochMs = now,
                     ),
                 )
-                assertTrue("session checkpoint before process restart failed", rpc.saveSession())
-                val stopped = manager.stop()
-                assertTrue("aria2 shutdown must save its session", stopped.sessionSaved)
-                assertTrue("aria2 shutdown must be clean for Gate-12", stopped.clean)
-                assertTrue("saved session must retain the XDM-owned GID", store.sessionFile.readText().contains(recoveryGid))
+                assertTrue("session checkpoint before restart failed", rpc.saveSession())
+                awaitSessionRecord(
+                    sessionFile = store.sessionFile,
+                    gid = gid,
+                    sourceUrl = sourceUrl,
+                    timeoutMillis = 10_000L,
+                )
 
-                manager = newManager(context, store, secretProvider)
+                val stopped = manager.stop()
+                fixture.manager = null
+                assertTrue("aria2 shutdown must save its owned session", stopped.sessionSaved)
+                assertTrue("aria2 shutdown must be clean for Gate-12", stopped.clean)
+                assertSessionRecord(store.sessionFile, gid, sourceUrl)
+
+                manager = fixture.newManager(store)
+                fixture.manager = manager
                 val restarted = manager.start()
                 assertTrue("aria2 restart from saved session failed: ${restarted.state}", restarted.started)
-                val recovered = manager.rpc().tellStatus(recoveryGid)
-                assertTrue(
-                    "saved owned task was not recovered after daemon restart (status=${recovered.status})",
-                    recovered.status == Aria2TaskStatusValue.Paused || recovered.status == Aria2TaskStatusValue.Waiting,
+                val recoveredRpc = manager.rpc()
+                val recovered = awaitStatus(
+                    status = recoveredRpc::tellStatus,
+                    gid = gid,
+                    accepted = PAUSED_STATES,
+                    timeoutMillis = 10_000L,
+                    label = "recovered owned session",
                 )
-                runCatching { manager.rpc().remove(recoveryGid, force = true) }
-                runCatching { manager.rpc().removeDownloadResult(recoveryGid) }
-                store.deleteTaskMetadata(taskFiles)
-                recoveryOutput.delete()
-            }
+                assertTrue(
+                    "saved owned task was not recovered as paused/waiting (status=${recovered.status})",
+                    recovered.status in PAUSED_STATES,
+                )
 
-            instrumentation.sendStatus(
-                2,
-                Bundle().apply {
-                    putString("xgo_rm08_aria2", "pass")
-                    putString("xgo_rm08_claims", "packaged-bytes,rpc-auth,tls-reject,tls-success,session-restart-recovery")
-                },
-            )
-        } finally {
-            runCatching { manager.stop() }
-            resetRuntimeState(context)
+                runCatching { recoveredRpc.remove(gid, force = true) }
+                runCatching { recoveredRpc.removeDownloadResult(gid) }
+                assertTrue("session cleanup checkpoint failed", recoveredRpc.saveSession())
+                awaitSessionRecordAbsent(store.sessionFile, gid, timeoutMillis = 10_000L)
+                store.deleteTaskMetadata(files)
+                taskFiles = null
+                val finalStop = manager.stop()
+                fixture.manager = null
+                assertTrue("aria2 final recovery shutdown must save its session", finalStop.sessionSaved)
+                assertTrue("aria2 final recovery shutdown must be clean", finalStop.clean)
+            } finally {
+                taskFiles?.let(store::deleteTaskMetadata)
+                recoveryOutput?.let { output ->
+                    output.delete()
+                    File(output.parentFile, output.name + ".aria2").delete()
+                }
+                fixture.stopQuietly()
+            }
         }
     }
 
-    private fun newManager(
-        context: android.content.Context,
-        store: Aria2SessionStore,
-        secretProvider: AppPrivateAria2SecretProvider,
-    ): Aria2ProcessManager = Aria2ProcessManager(
-        capabilityProbe = AndroidAria2CapabilityProbe(context, store),
-        sessionStore = store,
-        secretProvider = secretProvider,
-        startupTimeoutMillis = 10_000L,
-        shutdownTimeoutMillis = 5_000L,
-        pollIntervalMillis = 50L,
-    )
-
-    private suspend fun awaitTerminal(
+    private suspend fun awaitStatus(
         status: suspend (String) -> Aria2TaskStatus,
         gid: String,
-    ): Aria2TaskStatus = withTimeout(30_000L) {
-        while (true) {
-            val current = status(gid)
-            if (current.status in setOf(Aria2TaskStatusValue.Complete, Aria2TaskStatusValue.Error, Aria2TaskStatusValue.Removed)) {
-                return@withTimeout current
+        accepted: Set<Aria2TaskStatusValue>,
+        timeoutMillis: Long,
+        label: String,
+    ): Aria2TaskStatus {
+        var last: Aria2TaskStatus? = null
+        val result = withTimeoutOrNull(timeoutMillis) {
+            while (true) {
+                runCatching { status(gid) }.getOrNull()?.let { current ->
+                    last = current
+                    if (current.status in accepted) return@withTimeoutOrNull current
+                }
+                delay(50L)
             }
-            delay(50L)
+            @Suppress("UNREACHABLE_CODE")
+            null
         }
-        @Suppress("UNREACHABLE_CODE")
-        error("unreachable")
+        return result ?: error("$label did not reach ${accepted.joinToString()} within ${timeoutMillis}ms (last=${last?.status}, error=${last?.errorMessage.orEmpty()})")
     }
 
-    private fun resetRuntimeState(context: android.content.Context) {
-        File(context.filesDir, "aria2").deleteRecursively()
-        File(context.noBackupFilesDir, "aria2").deleteRecursively()
-        context.getSharedPreferences("aria2-runtime", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+    private suspend fun awaitSessionRecord(
+        sessionFile: File,
+        gid: String,
+        sourceUrl: String,
+        timeoutMillis: Long,
+    ) {
+        val ready = withTimeoutOrNull(timeoutMillis) {
+            while (true) {
+                val text = runCatching { sessionFile.readText(Charsets.UTF_8) }.getOrDefault("")
+                if (text.contains("gid=$gid") && text.contains(sourceUrl)) return@withTimeoutOrNull true
+                delay(50L)
+            }
+            @Suppress("UNREACHABLE_CODE")
+            false
+        } ?: false
+        assertTrue("saved session did not durably contain owned gid=$gid and its source URI", ready)
+    }
+
+    private fun assertSessionRecord(sessionFile: File, gid: String, sourceUrl: String) {
+        assertTrue("saved aria2 session file is missing", sessionFile.isFile)
+        val text = sessionFile.readText(Charsets.UTF_8)
+        assertTrue("saved session must retain the XDM-owned GID", text.contains("gid=$gid"))
+        assertTrue("saved session must retain the XDM-owned source URI", text.contains(sourceUrl))
+    }
+
+    private suspend fun awaitSessionRecordAbsent(sessionFile: File, gid: String, timeoutMillis: Long) {
+        val removed = withTimeoutOrNull(timeoutMillis) {
+            while (true) {
+                val text = runCatching { sessionFile.readText(Charsets.UTF_8) }.getOrDefault("")
+                if (!text.contains("gid=$gid")) return@withTimeoutOrNull true
+                delay(50L)
+            }
+            @Suppress("UNREACHABLE_CODE")
+            false
+        } ?: false
+        assertTrue("removed recovery task remained in aria2 saved session", removed)
+    }
+
+    private class Fixture(
+        val context: Context,
+        val testContext: Context,
+    ) {
+        private val trustedCa: ByteArray = testContext.assets.open("rm08/trusted-ca.pem").use { it.readBytes() }
+        var manager: Aria2ProcessManager? = null
+
+        fun newStore(): Aria2SessionStore {
+            val trustFile = File(context.noBackupFilesDir, "aria2/rm08/trusted-ca.pem")
+            val trustProvider = Aria2TrustBundleProvider {
+                trustFile.parentFile?.mkdirs()
+                trustFile.writeBytes(trustedCa)
+                check(trustFile.isFile && trustFile.length() > 0L) { "RM08 trust bundle must be app-private and non-empty" }
+                trustFile
+            }
+            return Aria2SessionStore(context, trustProvider)
+        }
+
+        fun newManager(store: Aria2SessionStore): Aria2ProcessManager = Aria2ProcessManager(
+            capabilityProbe = AndroidAria2CapabilityProbe(context, store),
+            sessionStore = store,
+            secretProvider = AppPrivateAria2SecretProvider(context),
+            startupTimeoutMillis = 10_000L,
+            shutdownTimeoutMillis = 5_000L,
+            pollIntervalMillis = 50L,
+        )
+
+        suspend fun stopQuietly() {
+            manager?.let { current -> runCatching { current.stop() } }
+            manager = null
+        }
+
+        fun reset() {
+            File(context.filesDir, "aria2").deleteRecursively()
+            File(context.noBackupFilesDir, "aria2").deleteRecursively()
+            context.getSharedPreferences("aria2-runtime", Context.MODE_PRIVATE).edit().clear().commit()
+            context.cacheDir.listFiles().orEmpty()
+                .filter { it.name.startsWith("rm08-") }
+                .forEach { it.deleteRecursively() }
+        }
     }
 
     private class TlsProbeServer(
-        context: android.content.Context,
+        context: Context,
         asset: String,
         private val payload: ByteArray,
     ) : AutoCloseable {
@@ -295,5 +463,17 @@ class Aria2Rm08PackagedRuntimeInstrumentedTest {
             runCatching { server.close() }
             runCatching { thread.join(2_000L) }
         }
+    }
+
+    private companion object {
+        val TERMINAL_STATES = setOf(
+            Aria2TaskStatusValue.Complete,
+            Aria2TaskStatusValue.Error,
+            Aria2TaskStatusValue.Removed,
+        )
+        val PAUSED_STATES = setOf(
+            Aria2TaskStatusValue.Paused,
+            Aria2TaskStatusValue.Waiting,
+        )
     }
 }
