@@ -10,9 +10,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertHeightIsAtLeast
@@ -79,13 +83,15 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         }
     }
 
-    @OptIn(ExperimentalTestApi::class)
+    @OptIn(ExperimentalTestApi::class, ExperimentalComposeUiApi::class)
     @Test
     fun adaptiveSheetRequestsFocusAndRestoresFocusToOpener() {
         lateinit var controller: XdmFocusRestorationController
+        lateinit var inputModeManager: InputModeManager
 
         composeRule.setContent {
             controller = rememberXdmFocusRestorationController()
+            inputModeManager = LocalInputModeManager.current
             var visible by remember { mutableStateOf(false) }
             XdmTheme {
                 CompositionLocalProvider(LocalXdmFocusRestorationController provides controller) {
@@ -106,6 +112,18 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
         }
 
         val opener = composeRule.onNodeWithText("Open sheet")
+
+        // This is a keyboard/DPAD/switch-access focus contract. Material clickables
+        // are not keyboard-focusable while Android reports touch input mode, so make
+        // the test input modality explicit before requesting focus. Do not force this
+        // mode in production: touch users should remain in touch mode.
+        composeRule.runOnIdle {
+            assertTrue(
+                "instrumentation could not enter keyboard input mode",
+                inputModeManager.requestInputMode(InputMode.Keyboard),
+            )
+        }
+        composeRule.waitForIdle()
 
         // Model the actual accessibility contract: the opener really owns focus
         // before the modal is shown. xdmFocusRestorePoint observes that focus and
@@ -138,8 +156,14 @@ class Phase9AccessibilityAdaptiveLayoutInstrumentedTest {
             )
         }
         try {
+            // The controller intentionally crosses Android host-view traversal
+            // boundaries after the modal window is gone. Wait for the observable
+            // focus condition instead of assuming waitForIdle owns View.postOnAnimation.
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                runCatching { opener.assertIsFocused() }.isSuccess
+            }
             opener.assertIsFocused()
-        } catch (failure: AssertionError) {
+        } catch (failure: Throwable) {
             val diagnostics = composeRule.runOnIdle { controller.debugSummary() }
             throw AssertionError("opener focus restoration failed; $diagnostics", failure)
         }

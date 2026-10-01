@@ -133,8 +133,13 @@ checks = [
         "assertIsFocused",
         "requestFocus()",
         "ExperimentalTestApi",
-        "@OptIn(ExperimentalTestApi::class)",
+        "ExperimentalComposeUiApi",
+        "LocalInputModeManager",
+        "InputMode.Keyboard",
+        "requestInputMode(InputMode.Keyboard)",
+        "@OptIn(ExperimentalTestApi::class, ExperimentalComposeUiApi::class)",
         "waitUntilDoesNotExist",
+        "waitUntil(timeoutMillis = 5_000L)",
         "performClick",
         'controller.hasFocusedRestoreTarget("open-sheet")',
         "controller.restoreRequestGeneration > 0L",
@@ -162,6 +167,17 @@ test_data = text(test_rel)
 if "useUnmergedTree = false" in test_data:
     missing.append(f"{test_rel}: unsupported waitUntilDoesNotExist overload must not be used")
 
+keyboard_mode_pos = test_data.find("requestInputMode(InputMode.Keyboard)")
+opener_focus_pos = test_data.find("opener.requestFocus()")
+if keyboard_mode_pos < 0 or opener_focus_pos < 0 or keyboard_mode_pos > opener_focus_pos:
+    missing.append(f"{test_rel}: keyboard input mode must be established before opener.requestFocus()")
+
+for production_rel in (
+    "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAccessibility.kt",
+    "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmPrimitives.kt",
+):
+    if "requestInputMode(InputMode.Keyboard)" in text(production_rel):
+        missing.append(f"{production_rel}: production focus restoration must not force keyboard input mode")
 
 accessibility_rel = "app/src/main/kotlin/com/mikeyphw/xdm/android/XdmAccessibility.kt"
 accessibility_data = text(accessibility_rel)

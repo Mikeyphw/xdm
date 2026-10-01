@@ -25,7 +25,8 @@ CANONICAL = [
 BYPASS = [
     ("devtool_execution_policy", "target:xgo_devtool_policy#validate", []),
     ("android_topology_sanity", "job:xgo-gate12-continue-android-topology", ["devtool_execution_policy"]),
-    ("devtool_registry_bypass_receipt", "job:xgo-gate12-continue-devtool-registry-bypass-receipt", ["android_topology_sanity"]),
+    ("android_test_refresh", "target:xgo_rm05_focus_test_refresh#validate", ["android_topology_sanity"]),
+    ("devtool_registry_bypass_receipt", "job:xgo-gate12-continue-devtool-registry-bypass-receipt", ["android_test_refresh"]),
     ("package_attestation", "target:xgo_rm08_aria2_attest#validate", ["devtool_registry_bypass_receipt"]),
     ("android_artifact_checkpoint", "job:xgo-gate12-continue-android-artifacts", ["package_attestation"]),
     ("android_rm05_residual_precheck", "job:xgo-gate12-continue-android-rm05-precheck", ["android_artifact_checkpoint"]),
@@ -79,6 +80,18 @@ def main() -> None:
         fail("bypass lane still enters broken package/host boundary: " + ", ".join(leaked))
     if "target:xgo_rm08_aria2_attest#validate" not in refs:
         fail("bypass lane must retain exact RM08 packaged-byte attestation")
+
+    refresh = targets.get("xgo_rm05_focus_test_refresh")
+    if not isinstance(refresh, dict):
+        fail("missing RM05 focused androidTest refresh target")
+    refresh_workflows = refresh.get("workflows") or {}
+    if normalize(refresh_workflows.get("validate")) != [
+        ("android_test_apk_refresh", "runner:android#test", [])
+    ]:
+        fail("RM05 focused androidTest refresh workflow is malformed")
+    refresh_tasks = refresh.get("tasks") or {}
+    if refresh_tasks.get("test") != [":app:assembleDebugAndroidTest"]:
+        fail("RM05 focused androidTest refresh must build only :app:assembleDebugAndroidTest")
 
     jobs = cont.get("jobs")
     if not isinstance(jobs, dict):

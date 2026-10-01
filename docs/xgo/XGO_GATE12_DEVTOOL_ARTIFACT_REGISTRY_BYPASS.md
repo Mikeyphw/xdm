@@ -10,7 +10,9 @@ The workaround does **not** change the canonical `xgo_gate_final_continue#valida
 
 The bypass skips only the failing `xgo_rm08_aria2_android_package#validate` registry/publication boundary. Before any downstream Gate-12 work proceeds, the retained APKs are independently checked for ZIP integrity and expected native members; repository-owned aria2 and FFmpeg/FFprobe APK verifiers are rerun; an explicit JSON bypass receipt captures APK sizes and SHA-256 digests; and the canonical `xgo_rm08_aria2_attest#validate` exact packaged-byte receipt still runs.
 
-After that evidence exists, the workflow resumes the existing Android artifact checkpoint, RM05 residual precheck, lint, required-device instrumentation, desktop host validation, and final Wave-12 verifier.
+When Android instrumentation source changes while this workaround is active, the lane first refreshes the androidTest APK through the dedicated Devtool-owned `xgo_rm05_focus_test_refresh` Android test action. This deliberately avoids the broken Android package artifact-publication edge while still preserving Devtool SDK/JDK/AAPT2/Gradle ownership.
+
+After that refresh and evidence exist, the workflow resumes the existing Android artifact checkpoint, RM05 residual precheck, lint, required-device instrumentation, desktop host validation, and final Wave-12 verifier.
 
 ## Invocation
 

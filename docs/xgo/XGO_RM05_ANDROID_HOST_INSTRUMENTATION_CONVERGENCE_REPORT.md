@@ -412,3 +412,48 @@ because Devtool itself ultimately launches Gradle.
 continuation requalifies the invalidated Android/desktop/final-wave boundary;
 it does not replace a later from-scratch `./devtoolw gate-final` when full
 Gate-12 closure is required.
+
+## RM05 v12 — deterministic keyboard input mode for focus instrumentation
+
+The post-RM08-v10 Gate-12 bypass finally reached the focused RM05 precheck with
+the source-built aria2 and FFmpeg payloads independently verified. The focused
+test then failed at line 115 **before opening the adaptive sheet**: after the
+Compose test `requestFocus()` action, the `Open sheet` Material button still
+reported `Focused = false`. This is distinct from the earlier v8-v10
+post-dismissal restoration residuals.
+
+Upstream Compose semantics explain the environment sensitivity. Material
+clickables participate in keyboard focus only in non-touch input mode, and
+AndroidX's own focus/clickable instrumentation explicitly requests
+`InputMode.Keyboard` before calling a `FocusRequester`. Android's keyboard-focus
+testing guidance likewise requires tests to call
+`LocalInputModeManager.current.requestInputMode(InputMode.Keyboard)` when no
+physical keyboard is attached. The RM05 test was therefore depending on whatever
+input mode the emulator happened to expose, which made its precondition
+non-deterministic.
+
+RM05 v12 fixes the test harness, not production focus behavior:
+
+1. the instrumentation captures `LocalInputModeManager`;
+2. it explicitly requests `InputMode.Keyboard` and requires that request to
+   succeed before requesting opener focus;
+3. it still proves the real opener is focused and observed by
+   `XdmFocusRestorationController` before opening the sheet;
+4. after Android Back and sheet removal, it waits on the observable focused
+   semantics condition with a bounded wall-clock timeout before the unchanged
+   final `assertIsFocused()`; and
+5. production `XdmAdaptiveSheet` / `XdmFocusRestorationController` code does not
+   request or force an input mode. Touch users therefore remain in touch mode.
+
+Because this source change invalidates the retained androidTest APK used by the
+temporary Devtool artifact-registry bypass, the bypass lane now runs a narrow
+Devtool Android `test` action whose sole Gradle task is
+`:app:assembleDebugAndroidTest` before the retained-APK receipt and focused
+precheck. This preserves Devtool SDK/JDK/AAPT2/Gradle ownership while avoiding
+the confirmed broken post-package artifact-registry publication edge. The
+canonical `xgo_gate_final_continue#validate` workflow remains unchanged.
+
+The Phase-9 static validator now requires explicit keyboard input-mode setup
+before `opener.requestFocus()`, requires the bounded observable-focus wait, and
+rejects production code that tries to force keyboard input mode.
+

@@ -1,3 +1,5 @@
 #!/usr/bin/env sh
 set -eu
 python3 tools/xgo/validate_gate12_registry_bypass.py
+python3 app/XDM.Android/tools/validate-bug-hunt-phase9-accessibility-adaptive-layout.py
+python3 tools/xgo/validate_rm05_focus_input_mode.py
