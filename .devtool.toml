@@ -4126,7 +4126,7 @@ target = "xgo_rm07_aria2"
 
 # Bounded apply-time contract target. This is the target RM08's overlay selects.
 [targets.xgo_rm08_aria2_contract]
-runner = "android"
+runner = "command"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -4145,45 +4145,21 @@ inputs = [
   "app/XDM.Android/tools/verify-aria2-runtime.py",
   "app/XDM.Android/app/build.gradle.kts",
 ]
-outputs = ["app/XDM.Android/app/build/**"]
 
-[targets.xgo_rm08_aria2_contract.android]
-variant = "debug"
-aapt2_provider = "termux"
-prefer_native_termux = true
-
-[targets.xgo_rm08_aria2_contract.gradle]
-version = "9.7.1"
-provider = "auto"
-max_workers = 1
-structured_events = true
-no_daemon = true
-daemon_idle_timeout_ms = 900000
-parallel = false
-build_cache = true
-fail_fast = false
-offline = false
-args = [
-  "-Dorg.gradle.parallel=false",
-  "-Dorg.gradle.vfs.watch=false",
-  "-Pkotlin.incremental=true",
-  "-Pkotlin.compiler.execution.strategy=in-process",
-]
-
-[targets.xgo_rm08_aria2_contract.tasks]
-test = [":app:verifyRm08Aria2PackagedExecutionContract"]
+[targets.xgo_rm08_aria2_contract.jobs.rm08_contract]
+runner = "command"
+command = ["python3", "tools/validate-rm08-aria2-packaged-execution.py"]
 
 [targets.xgo_rm08_aria2_contract.workflows]
 validate = [
-  { id = "rm08_contract", ref = "runner:android#test", depends_on = [] },
+  { id = "rm08_contract", ref = "job:rm08_contract", depends_on = [] },
 ]
 
-# Pinned source materialization is split across two Devtool-owned boundaries.
-# First, the existing bounded RM08 Android contract runs through the Android
-# runner so Devtool resolves/bootstrap the SDK, NDK and toolchain environment.
-# Only after that succeeds does a command job launch the long native source
-# builder directly.  This keeps the 8-10 minute autotools/make subprocess out
-# of a disposable Gradle daemon while preserving Android bootstrap authority.
+# Pinned source materialization is split across two Devtool-owned command boundaries.
+# First, the bounded RM08 static contract runs directly in Python.  Only after
+# that succeeds does the long native source builder run.  The native builder
+# owns NDK/toolchain discovery and fails closed when its pinned Android toolchain
+# is unavailable, avoiding a disposable Gradle daemon for a Python-only check.
 [targets.xgo_rm08_aria2_source]
 runner = "command"
 platform = "android"
@@ -4221,8 +4197,8 @@ outputs = [
 
 [targets.xgo_rm08_aria2_source.workflows]
 validate = [
-  { id = "android_toolchain_bootstrap", ref = "target:xgo_rm08_aria2_contract#validate", depends_on = [] },
-  { id = "build_pinned", ref = "job:build_pinned", depends_on = ["android_toolchain_bootstrap"] },
+  { id = "rm08_contract", ref = "target:xgo_rm08_aria2_contract#validate", depends_on = [] },
+  { id = "build_pinned", ref = "job:build_pinned", depends_on = ["rm08_contract"] },
 ]
 
 # Exact packaged-byte receipt. It consumes the APKs produced by the preceding Android

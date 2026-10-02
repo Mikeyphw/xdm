@@ -68,9 +68,22 @@ def main() -> int:
 
     targets = config.get("targets") or {}
     contract = targets.get("xgo_rm08_aria2_contract") or {}
-    require(contract.get("runner") == "android", "xgo_rm08_aria2_contract must use the Android runner")
-    require(((contract.get("tasks") or {}).get("test") or []) == [":app:verifyRm08Aria2PackagedExecutionContract"],
-            "RM08 overlay validation must stay bounded to its static contract")
+    require(contract.get("runner") == "command" and contract.get("platform") == "android",
+            "xgo_rm08_aria2_contract must be a direct Devtool command boundary on the Android platform")
+    require(not (contract.get("tasks") or {}),
+            "RM08 static contract must not re-enter Gradle through target tasks")
+    require(not (contract.get("android") or {}) and not (contract.get("gradle") or {}),
+            "RM08 static contract must not own Android/Gradle runner configuration")
+    require(not (contract.get("outputs") or []),
+            "RM08 static contract must remain output-free")
+    contract_jobs = contract.get("jobs") or {}
+    contract_job = contract_jobs.get("rm08_contract") or {}
+    require(contract_job.get("runner") == "command" and contract_job.get("command") == [
+        "python3", "tools/validate-rm08-aria2-packaged-execution.py",
+    ], "RM08 static contract must execute the canonical Python verifier directly")
+    contract_workflow = ((contract.get("workflows") or {}).get("validate") or [])
+    require(contract_workflow == [{"id": "rm08_contract", "ref": "job:rm08_contract", "depends_on": []}],
+            "RM08 static contract workflow must contain only the direct Python verifier")
 
     device = targets.get("xgo_rm08_aria2_device") or {}
     require(device.get("runner") == "android", "xgo_rm08_aria2_device must use the Android runner")
@@ -93,13 +106,13 @@ def main() -> int:
         "python3", "tools/build-aria2-runtime.py", "--build-pinned", "--jobs", "2",
     ], "RM08 pinned source build must execute the direct bounded Python builder with two native jobs")
     source_workflow = ((source_target.get("workflows") or {}).get("validate") or [])
-    require([node.get("id") for node in source_workflow] == ["android_toolchain_bootstrap", "build_pinned"],
-            "RM08 source workflow must bootstrap Android first and build pinned aria2 second")
+    require([node.get("id") for node in source_workflow] == ["rm08_contract", "build_pinned"],
+            "RM08 source workflow must prove the static contract first and build pinned aria2 second")
     require([node.get("ref") for node in source_workflow] == [
         "target:xgo_rm08_aria2_contract#validate", "job:build_pinned",
-    ], "RM08 source workflow must use the Android-runner contract as bootstrap before the direct builder")
-    require(source_workflow[1].get("depends_on") == ["android_toolchain_bootstrap"],
-            "RM08 direct source build must depend on successful Devtool Android bootstrap")
+    ], "RM08 source workflow must use the direct static contract before the native builder")
+    require(source_workflow[1].get("depends_on") == ["rm08_contract"],
+            "RM08 direct source build must depend on successful static contract qualification")
     require(not (source_target.get("tasks") or {}),
             "RM08 long native source build must not re-enter a Gradle task/daemon")
     source_inputs = set(source_target.get("inputs") or [])
@@ -120,8 +133,12 @@ def main() -> int:
             "aria2 source builder must resolve the complete NDK libc++ static-link authority explicitly")
     require('"--no-default-config"' in ffmpeg_builder and "host-driver config" in ffmpeg_builder,
             "Termux Android compiler wrappers must suppress host clang config before applying the NDK target contract")
-    require('f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "' in aria_builder,
-            "aria2 source builder must use the Android/NDK static-libc++ driver contract while keeping Bionic dynamic")
+    require('"-fPIE -pie -static-libstdc++ "' in aria_builder,
+            "aria2 source builder must keep static libc++ driver-owned while keeping Bionic dynamic")
+    require('f"-L{cxx_runtime_link_dir}' not in aria_builder and 'f"-L{android_cxx_runtime_link_dir' not in aria_builder,
+            "aria2 source builder must not prepend the version-generic NDK runtime directory ahead of API-specific system stubs")
+    require("Clang must own search ordering" in aria_builder and "version-generic NDK runtime" in aria_builder,
+            "aria2 source builder lost the v22 API-specific NDK library precedence contract")
     require("-nostdlib++ -lc++_static -lc++abi" not in aria_builder,
             "aria2 source builder must not bypass the Android compiler driver's libc++/Bionic link policy")
     require("prove_android_bionic_link_model" in aria_builder and "require_dynamic_bionic_linkage" in aria_builder,
