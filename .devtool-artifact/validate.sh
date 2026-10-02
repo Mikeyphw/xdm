@@ -9,3 +9,4 @@ python3 tools/xgo/validate_rm08_android_process_environment_v17.py
 python3 tools/xgo/validate_rm08_android_bionic_linkage_v18.py
 python3 tools/xgo/validate_gate12_source_runtime_lineage_v19.py
 python3 tools/xgo/validate_rm08_contract_reconciliation_v20.py
+python3 tools/xgo/validate_rm08_effective_android_link_contract_v21.py

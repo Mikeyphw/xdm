@@ -365,6 +365,32 @@ def configure_make_install(src: Path, prefix: Path, env: dict[str, str], args: l
     atomic_json(marker, recipe)
 
 
+def isolate_android_compiler_default_config(compiler: Path, build_root: Path, role: str) -> Path:
+    """Wrap the selected Android compiler so host/default Clang configs cannot alter RM08 linkage."""
+    wrapper_root = build_root / "aria2-compiler-contract-bin"
+    wrapper_root.mkdir(parents=True, exist_ok=True)
+    wrapper = wrapper_root / role
+    command = " ".join(shlex.quote(str(part)) for part in [compiler, "--no-default-config"])
+    wrapper.write_text(f"#!/bin/sh\nexec {command} \"$@\"\n", encoding="utf-8")
+    wrapper.chmod(0o755)
+    return wrapper
+
+
+def android_link_trace(command: list[str], cwd: Path, env: dict[str, str]) -> str:
+    """Return Clang's effective linker plan without executing it."""
+    traced = [command[0], "-###", *command[1:]]
+    result = subprocess.run(
+        traced,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip()
+
+
 def require_dynamic_bionic_linkage(metadata: dict[str, object], *, label: str) -> None:
     needed = list(metadata.get("needed") or [])
     if "libc.so" not in needed:
@@ -419,7 +445,13 @@ def prove_android_bionic_link_model(cxx: Path, env: dict[str, str], build_root: 
         )
     except ElfPolicyError as error:
         raise SystemExit(f"Android aria2 link-model probe ELF qualification failed: {error}") from error
-    require_dynamic_bionic_linkage(metadata, label="Android aria2 link-model probe")
+    try:
+        require_dynamic_bionic_linkage(metadata, label="Android aria2 link-model probe")
+    except SystemExit as error:
+        trace = android_link_trace(command, probe_root, env)
+        raise SystemExit(
+            f"{error}\nEffective Android C++ link plan (-###):\n{trace or '<no driver trace>'}"
+        ) from error
     print(
         "aria2 Android link model: dynamic Bionic libc + static libc++ "
         f"(DT_NEEDED={metadata['needed']})",
@@ -439,6 +471,14 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     cc, cxx, compiler_identity = authority.prepare_ffmpeg_compilers(
         toolchain=toolchain, bin_dir=bin_dir, build_root=build_root, api=api, backend=backend,
     )
+    # prepare_ffmpeg_compilers() may select the runnable NDK C driver through a
+    # hybrid wrapper even when the owning authority is the Termux fallback.  That
+    # path previously bypassed v20's --no-default-config protection.  Apply the
+    # isolation to the *effective* compiler pair consumed by aria2 and its probes.
+    cc = isolate_android_compiler_default_config(cc, build_root, "aarch64-linux-android-clang")
+    cxx = isolate_android_compiler_default_config(cxx, build_root, "aarch64-linux-android-clang++")
+    compiler_identity = dict(compiler_identity)
+    compiler_identity["defaultConfigIsolation"] = "--no-default-config"
     cxx_runtime_link_dir = android_cxx_runtime_link_dir(toolchain)
 
     archives: dict[str, Path] = {}
@@ -468,6 +508,10 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     # static libc++ selection through -static-libstdc++.
     common_ldflags = (
         f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "
+        # Static libc++ must not leak Bstatic state into Android platform libs.
+        # Force Bionic back to dynamic selection and retain libc.so explicitly;
+        # the final ELF qualification still proves that this produced DT_NEEDED.
+        "-Wl,-Bdynamic -Wl,--no-as-needed -lc -Wl,--as-needed "
         "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,-z,relro,-z,now"
     )
     env = os.environ.copy()
@@ -534,7 +578,7 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         *autoconf_triplets, f"--prefix={prefix}", *manifest["configureFlags"],
     ]
     recipe = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "configure": configure,
         "buildTriplet": build_triplet,
         "androidAutoconfCapabilities": sorted(ANDROID_BIONIC_AUTOCONF_PROBES),
