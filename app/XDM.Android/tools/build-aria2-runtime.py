@@ -479,7 +479,9 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     cxx = isolate_android_compiler_default_config(cxx, build_root, "aarch64-linux-android-clang++")
     compiler_identity = dict(compiler_identity)
     compiler_identity["defaultConfigIsolation"] = "--no-default-config"
-    cxx_runtime_link_dir = android_cxx_runtime_link_dir(toolchain)
+    # Validate that the NDK carries the expected libc++ runtime assets, but do not
+    # inject its version-generic directory into LDFLAGS; Clang must own search ordering.
+    android_cxx_runtime_link_dir(toolchain)
 
     archives: dict[str, Path] = {}
     source_roots: dict[str, Path] = {}
@@ -501,13 +503,13 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
     common_cflags = "-O2 -fPIC -fPIE -fstack-protector-strong -D_FORTIFY_SOURCE=2"
     # Match aria2's maintained Android/NDK link model: third-party dependencies
     # and libc++ are embedded statically, but Android/Bionic itself remains a
-    # normal dynamic dependency.  Fully freezing Bionic into a packaged command
-    # binary is unsafe for networking/pthread-heavy code and produced an RM08
-    # startup SIGSEGV (exit 139) on-device.  Keep the explicit NDK libc++ search
-    # root for native-Termux compiler wrappers, but let the Android driver own
-    # static libc++ selection through -static-libstdc++.
+    # normal dynamic dependency.  Do NOT prepend the version-generic NDK runtime
+    # directory to the linker search path.  That directory contains libc.a and,
+    # if searched before usr/lib/<triple>/<API>, causes -lc to bind the static
+    # archive before Clang's API-specific libc.so stub.  Let the Android Clang
+    # driver own NDK library ordering and static libc++ selection.
     common_ldflags = (
-        f"-L{cxx_runtime_link_dir} -fPIE -pie -static-libstdc++ "
+        "-fPIE -pie -static-libstdc++ "
         # Static libc++ must not leak Bstatic state into Android platform libs.
         # Force Bionic back to dynamic selection and retain libc.so explicitly;
         # the final ELF qualification still proves that this produced DT_NEEDED.
@@ -578,7 +580,7 @@ def build_sources(manifest: dict, build_root: Path, jobs: int) -> tuple[Path, di
         *autoconf_triplets, f"--prefix={prefix}", *manifest["configureFlags"],
     ]
     recipe = {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "configure": configure,
         "buildTriplet": build_triplet,
         "androidAutoconfCapabilities": sorted(ANDROID_BIONIC_AUTOCONF_PROBES),
