@@ -1,0 +1,59 @@
+name: Devtool XGO Go engine candidate
+on:
+  push:
+    paths:
+      - 'engine/**'
+      - 'scripts/devtool_actions_contract.py'
+      - '.devtool.toml'
+      - '.github/workflows/devtool-xgo-engine.yml'
+  pull_request:
+    paths:
+      - 'engine/**'
+      - 'scripts/devtool_actions_contract.py'
+      - '.devtool.toml'
+      - '.github/workflows/devtool-xgo-engine.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xgo-engine-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source contract and DAG definitions
+        run: python3 scripts/devtool_actions_contract.py
+      - name: Commit identity
+        run: git rev-parse HEAD
+  engine:
+    needs: source
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+      - name: Go test
+        run: go test ./...
+      - name: Go vet
+        run: go vet ./...
+      - name: Go build
+        run: go build ./...
+      - name: Compile Go smoke candidate
+        run: |
+          mkdir -p ../artifacts/xgo-candidate
+          go build -trimpath -o ../artifacts/xgo-candidate/xgo-smoke ./cmd/xgo-smoke
+          cd ../artifacts/xgo-candidate
+          sha256sum xgo-smoke > SHA256SUMS
+          printf '%s\n' "${GITHUB_SHA}" > SOURCE_COMMIT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-engine-smoke-candidate
+          path: artifacts/xgo-candidate/
+          if-no-files-found: error

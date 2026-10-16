@@ -3794,7 +3794,7 @@ validate = [
 ]
 
 [wrapper]
-schema = 1
+schema = 2
 default_command = "android"
 
 [wrapper.commands.android]
@@ -4459,3 +4459,65 @@ validate = [
 description = "Run XGO-RM08 packaged aria2 Android execution contract"
 workflow = "validate"
 target = "xgo_rm08_aria2_contract"
+
+[targets.xgo_ci]
+runner = "command"
+root = "."
+execution_environment = "host"
+inputs = [".devtool.toml", "engine/**", "scripts/devtool_actions_contract.py"]
+outputs = []
+
+[targets.xgo_ci.jobs.ci-source]
+runner = "command"
+root = "."
+command = ["python3", "scripts/devtool_actions_contract.py"]
+inputs = [".devtool.toml", "scripts/devtool_actions_contract.py"]
+outputs = []
+[targets.xgo_ci.jobs.ci-source.metadata]
+read_only = true
+
+[targets.xgo_ci.jobs.ci-go-unit]
+runner = "command"
+root = "engine"
+command = ["go", "test", "./..."]
+inputs = ["engine/**", "engine/go.mod", "engine/go.sum"]
+outputs = []
+[targets.xgo_ci.jobs.ci-go-unit.metadata]
+read_only = true
+
+[targets.xgo_ci.jobs.ci-go-vet]
+runner = "command"
+root = "engine"
+command = ["go", "vet", "./..."]
+inputs = ["engine/**", "engine/go.mod", "engine/go.sum"]
+outputs = []
+[targets.xgo_ci.jobs.ci-go-vet.metadata]
+read_only = true
+
+[targets.xgo_ci.workflows]
+ci-preflight = [
+  {id = "source", ref = "job:ci-source", depends_on = []},
+]
+ci-local = [
+  {id = "source", ref = "job:ci-source", depends_on = []},
+  {id = "foundation", ref = "target:xgo_foundation#validate", depends_on = ["source"]},
+  {id = "unit", ref = "job:ci-go-unit", depends_on = ["source"]},
+  {id = "vet", ref = "job:ci-go-vet", depends_on = ["unit"]},
+  {id = "joined", ref = "target:xgo_security#validate", depends_on = ["foundation", "vet"]},
+]
+
+
+[wrapper.commands.ci-preflight]
+description = "Read-only multi-product source and DAG contract"
+target = "xgo_ci"
+workflow = "ci-preflight"
+
+[wrapper.commands.ci-local]
+description = "Go unit/vet and existing XGO foundation/security gates as DAG"
+target = "xgo_ci"
+workflow = "ci-local"
+
+[wrapper.commands.ci-candidate-info]
+description = "Source-only candidate and CI preflight (no GitHub dispatch)"
+target = "xgo_ci"
+workflow = "ci-preflight"
