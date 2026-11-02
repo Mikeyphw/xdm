@@ -45,7 +45,12 @@ inputs = [
 [jobs.xdm-rem18-firefox-audit]
 runner = "python"
 root = "."
-shell_command = "python3 app/XDM/eng/validate-xfe01-single-firefox-extension.py 2>&1 | tee artifacts/rem18-final-seal/single-firefox-extension-audit.log"
+shell_command = """
+python3 app/XDM/eng/validate-xfe01-single-firefox-extension.py > artifacts/rem18-final-seal/single-firefox-extension-audit.log 2>&1
+status=$?
+cat artifacts/rem18-final-seal/single-firefox-extension-audit.log
+exit "$status"
+"""
 outputs = ["artifacts/rem18-final-seal/single-firefox-extension-audit.log"]
 inputs = [
     "app/XDM/eng/validate-xfe01-single-firefox-extension.py",
@@ -155,18 +160,18 @@ root = "app/XDM.Android"
 execution_environment = "native-termux"
 chroot_name = "androidos"
 inputs = [
-    ".devtool.toml",
-    "go.work",
-    "engine/**",
-    "tools/xgo/build_android_xdmcore.py",
-    "app/XDM.Android/**",
+    "../../.devtool.toml",
+    "../../go.work",
+    "../../engine/**",
+    "../../tools/xgo/build_android_xdmcore.py",
+    "**",
 ]
 outputs = [
-    "app/XDM.Android/**/build/**",
-    "app/XDM.Android/artifacts/**",
-    "app/XDM.Android/app/src/main/jniLibs/arm64-v8a/libxdmcore.so",
-    "app/XDM.Android/app/src/main/jniLibs/arm64-v8a/libxdmcore.h",
-    "app/XDM.Android/app/src/main/assets/xdmcore/xdmcore-provenance.json",
+    "**/build/**",
+    "artifacts/**",
+    "app/src/main/jniLibs/arm64-v8a/libxdmcore.so",
+    "app/src/main/jniLibs/arm64-v8a/libxdmcore.h",
+    "app/src/main/assets/xdmcore/xdmcore-provenance.json",
 ]
 runner = "android"
 platform = "android"
@@ -441,7 +446,7 @@ vet = true
 
 [targets.xgo_foundation.jobs.foundation_tests]
 runner = "command"
-command = ["python3", "-m", "unittest", "discover", "-s", "tools/xgo/tests", "-p", "test_*.py"]
+command = ["python3", "-m", "pytest", "-q", "tools/xgo/tests"]
 inputs = [
   "tools/xgo/**",
 ]
@@ -3518,12 +3523,12 @@ execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
 inputs = [
-  ".devtool.toml",
-  "app/XDM.Android/app/src/main/**",
-  "app/XDM.Android/app/src/androidTest/**",
+  "../../.devtool.toml",
+  "app/src/main/**",
+  "app/src/androidTest/**",
 ]
 outputs = [
-  "app/XDM.Android/**/build/**",
+  "**/build/**",
 ]
 
 [targets.xgo_rm05_focus_test_refresh.android]
@@ -4006,15 +4011,15 @@ execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
 inputs = [
-  ".devtool.toml",
-  "app/XDM.Android/app/src/main/AndroidManifest.xml",
-  "app/XDM.Android/app/src/main/res/xml/network_security_config.xml",
-  "app/XDM.Android/transfer-aria2/**",
-  "docs/xgo/XGO_RM06_ARIA2_RUNTIME_RECOVERY_CONVERGENCE_REPORT.md",
+  "../../.devtool.toml",
+  "app/src/main/AndroidManifest.xml",
+  "app/src/main/res/xml/network_security_config.xml",
+  "transfer-aria2/**",
+  "../../docs/xgo/XGO_RM06_ARIA2_RUNTIME_RECOVERY_CONVERGENCE_REPORT.md",
 ]
 outputs = [
-  "app/XDM.Android/transfer-aria2/build/test-results/**",
-  "app/XDM.Android/transfer-aria2/build/reports/tests/**",
+  "transfer-aria2/build/test-results/**",
+  "transfer-aria2/build/reports/tests/**",
 ]
 
 [targets.xgo_rm06_aria2.android]
@@ -4060,23 +4065,23 @@ execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
 inputs = [
-  ".devtool.toml",
-  ".github/workflows/android.yml",
-  "build-release-apk.sh",
-  "app/XDM.Android/transfer-aria2/**",
-  "app/XDM.Android/tools/android_elf_runtime.py",
-  "app/XDM.Android/tools/build-aria2-runtime.py",
-  "app/XDM.Android/tools/install-aria2-runtime.py",
-  "app/XDM.Android/tools/install-ffmpeg-runtime.py",
-  "app/XDM.Android/tools/verify-aria2-runtime.py",
-  "app/XDM.Android/tools/test-rm07-aria2-native-runtime.py",
-  "app/XDM.Android/tools/run-bug-hunt-phase10-release-gate.sh",
-  "app/XDM.Android/tools/build-xar16-release-artifacts.sh",
-  "app/XDM.Android/tools/validate-xar01-build-provenance.py",
-  "docs/xgo/XGO_RM07_ARIA2_NATIVE_RUNTIME_PROVENANCE_QUALIFICATION_REPORT.md",
+  "../../.devtool.toml",
+  "../../.github/workflows/android.yml",
+  "../../build-release-apk.sh",
+  "transfer-aria2/**",
+  "tools/android_elf_runtime.py",
+  "tools/build-aria2-runtime.py",
+  "tools/install-aria2-runtime.py",
+  "tools/install-ffmpeg-runtime.py",
+  "tools/verify-aria2-runtime.py",
+  "tools/test-rm07-aria2-native-runtime.py",
+  "tools/run-bug-hunt-phase10-release-gate.sh",
+  "tools/build-xar16-release-artifacts.sh",
+  "tools/validate-xar01-build-provenance.py",
+  "../../docs/xgo/XGO_RM07_ARIA2_NATIVE_RUNTIME_PROVENANCE_QUALIFICATION_REPORT.md",
 ]
 outputs = [
-  "app/XDM.Android/transfer-aria2/build/**",
+  "transfer-aria2/build/**",
 ]
 
 [targets.xgo_rm07_aria2.android]
@@ -4131,19 +4136,19 @@ execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
 inputs = [
-  ".devtool.toml",
-  "engine/testdata/seal/gate12-policy.json",
-  "tools/xgo/audit_gate12.py",
-  "tools/xgo/verify_rm08_aria2_package.py",
-  "app/XDM.Android/app/src/androidTest/**",
-  "app/XDM.Android/transfer-aria2/**",
-  "app/XDM.Android/tools/validate-rm08-aria2-packaged-execution.py",
-  "app/XDM.Android/tools/android_native_openssl.py",
-  "app/XDM.Android/tools/test-shared-openssl-cache.py",
-  "app/XDM.Android/tools/build-aria2-runtime.py",
-  "app/XDM.Android/tools/install-ffmpeg-runtime.py",
-  "app/XDM.Android/tools/verify-aria2-runtime.py",
-  "app/XDM.Android/app/build.gradle.kts",
+  "../../.devtool.toml",
+  "../../engine/testdata/seal/gate12-policy.json",
+  "../../tools/xgo/audit_gate12.py",
+  "../../tools/xgo/verify_rm08_aria2_package.py",
+  "app/src/androidTest/**",
+  "transfer-aria2/**",
+  "tools/validate-rm08-aria2-packaged-execution.py",
+  "tools/android_native_openssl.py",
+  "tools/test-shared-openssl-cache.py",
+  "tools/build-aria2-runtime.py",
+  "tools/install-ffmpeg-runtime.py",
+  "tools/verify-aria2-runtime.py",
+  "app/build.gradle.kts",
 ]
 
 [targets.xgo_rm08_aria2_contract.jobs.rm08_contract]
@@ -4255,12 +4260,12 @@ execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
 inputs = [
-  ".devtool.toml",
-  "app/XDM.Android/**",
+  "../../.devtool.toml",
+  "**",
 ]
 outputs = [
-  "app/XDM.Android/app/build/outputs/apk/debug/app-debug.apk",
-  "app/XDM.Android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+  "app/build/outputs/apk/debug/app-debug.apk",
+  "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
 ]
 
 [targets.xgo_rm08_aria2_android_package.android]
@@ -4341,12 +4346,12 @@ execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
 inputs = [
-  ".devtool.toml",
-  "app/XDM.Android/**",
+  "../../.devtool.toml",
+  "**",
 ]
 outputs = [
-  "app/XDM.Android/app/build/reports/lint-results-debug.*",
-  "app/XDM.Android/app/build/intermediates/**",
+  "app/build/reports/lint-results-debug.*",
+  "app/build/intermediates/**",
 ]
 
 [targets.xgo_rm08_aria2_lint.android]
@@ -4386,13 +4391,13 @@ execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
 inputs = [
-  ".devtool.toml",
-  "app/XDM.Android/app/src/androidTest/**",
-  "app/XDM.Android/transfer-aria2/**",
+  "../../.devtool.toml",
+  "app/src/androidTest/**",
+  "transfer-aria2/**",
 ]
 outputs = [
-  "app/XDM.Android/**/build/**",
-  "app/XDM.Android/.devtool/reports/android-instrumentation.json",
+  "**/build/**",
+  ".devtool/reports/android-instrumentation.json",
 ]
 
 [targets.xgo_rm08_aria2_device.android]
@@ -4480,7 +4485,7 @@ read_only = true
 runner = "command"
 root = "engine"
 command = ["go", "test", "./..."]
-inputs = ["engine/**", "engine/go.mod", "engine/go.sum"]
+inputs = ["**", "go.mod", "go.sum"]
 outputs = []
 [targets.xgo_ci.jobs.ci-go-unit.metadata]
 read_only = true
@@ -4489,7 +4494,7 @@ read_only = true
 runner = "command"
 root = "engine"
 command = ["go", "vet", "./..."]
-inputs = ["engine/**", "engine/go.mod", "engine/go.sum"]
+inputs = ["**", "go.mod", "go.sum"]
 outputs = []
 [targets.xgo_ci.jobs.ci-go-vet.metadata]
 read_only = true

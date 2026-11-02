@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import posixpath
 import re
 import tomllib
 from pathlib import Path
@@ -77,6 +78,57 @@ def _audit_artifact_paths(target_name: str, target: dict[str, Any]) -> None:
             check(f"paths[{index}]", value)
 
 
+
+def _audit_io_paths(config_path: Path, target_name: str, target: dict[str, Any]) -> None:
+    """Validate actual Devtool scope roots, including target-local jobs.
+
+    A target-local job with explicit root uses a repository-relative job root;
+    one without a root inherits its target root. Both follow Devtool's loader.
+    Outputs may be generated and need not exist. Parent-relative inputs inside
+    the repository are intentional and allowed.
+    """
+    repo = config_path.resolve().parent
+    target_root = str(target.get("root") or ".").replace("\\", "/").rstrip("/") or "."
+
+    def check(base: str, context: str, entry: dict[str, Any]) -> None:
+        for field in ("inputs", "outputs"):
+            paths = entry.get(field) or []
+            if not isinstance(paths, list):
+                raise TopologyError(f"{context}.{field} must be a list")
+            for raw in paths:
+                if not isinstance(raw, str) or not raw.strip():
+                    raise TopologyError(f"{context}.{field} contains an invalid path")
+                path = raw.strip().replace("\\", "/")
+                normalized = posixpath.normpath(posixpath.join(base, path))
+                if normalized == ".." or normalized.startswith("../"):
+                    raise TopologyError(f"{context}.{field}: path escapes checkout: {path!r}")
+                if base != "." and (path == base or path.startswith(base + "/")):
+                    raise TopologyError(
+                        f"{context}.{field}: repeated execution root {base!r} in {path!r}; "
+                        "use target/job-root-relative paths"
+                    )
+                # If a source exists ONLY as a repo-relative path, a target-
+                # rooted literal input is probably not pointing to that source.
+                if field == "inputs" and not any(c in path for c in "*?["):
+                    intended = repo / normalized
+                    mistaken = repo / path
+                    if not intended.exists() and mistaken.is_file():
+                        raise TopologyError(
+                            f"{context}.inputs: {path!r} is a repository-relative file "
+                            f"but is declared relative to {base!r}; use ../ prefixes"
+                        )
+
+    check(target_root, f"{target_name}", target)
+    jobs = target.get("jobs") or {}
+    if not isinstance(jobs, dict):
+        raise TopologyError(f"{target_name}.jobs must be a table")
+    for job_name, job in jobs.items():
+        if isinstance(job, dict):
+            # Explicit root is relative to the repository, not to target root.
+            job_root = str(job.get("root") or target_root).replace("\\", "/").rstrip("/") or "."
+            check(job_root, f"{target_name}.jobs.{job_name}", job)
+
+
 def _steps(target_name: str, target: dict[str, Any]) -> list[dict[str, Any]]:
     workflows = target.get("workflows")
     if not isinstance(workflows, dict):
@@ -146,6 +198,7 @@ def audit(config_path: Path, output: Path | None, only_target: str = "") -> dict
     for target_name, target_value in targets.items():
         if isinstance(target_value, dict):
             _audit_artifact_paths(str(target_name), target_value)
+            _audit_io_paths(config_path, str(target_name), target_value)
 
     inspected: dict[str, Any] = {}
     names = [only_target] if only_target else expected

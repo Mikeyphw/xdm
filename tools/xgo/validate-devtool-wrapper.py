@@ -53,6 +53,15 @@ EXPECTED: dict[str, tuple[str, str, str]] = {
     "gate-final": ("xgo_gate_final", "workflow", "validate"),
     "gate-final-continue": ("xgo_gate_final_continue", "workflow", "validate"),
 
+    # Active focused Android remediation targets.
+    "rm07-aria2": ("xgo_rm07_aria2", "workflow", "validate"),
+    "rm08-aria2": ("xgo_rm08_aria2_contract", "workflow", "validate"),
+
+    # Source/CI contracts. These are existing commands, not new CI behaviors.
+    "ci-preflight": ("xgo_ci", "workflow", "ci-preflight"),
+    "ci-local": ("xgo_ci", "workflow", "ci-local"),
+    "ci-candidate-info": ("xgo_ci", "workflow", "ci-preflight"),
+
     # Wrapper's own cheap contract.
     "wrapper-check": ("xgo_wrapper", "workflow", "validate"),
 }
@@ -77,8 +86,8 @@ def main() -> None:
     wrapper = data.get("wrapper")
     if not isinstance(wrapper, dict):
         fail("missing [wrapper]")
-    if wrapper.get("schema") != 1:
-        fail("[wrapper].schema must be 1")
+    if wrapper.get("schema") != 2:
+        fail("[wrapper].schema must be 2")
     if wrapper.get("default_command") != "android":
         fail("default command must be android")
 
@@ -127,7 +136,7 @@ def main() -> None:
     required_launcher_fragments = (
         "# DEVTOOL_WRAPPER_LAUNCHER=1",
         'repo_root=$(CDPATH= cd -- "$script_dir"',
-        'exec devtool --repo "$repo_root" wrapper exec "$@"',
+        'exec "$(command -v devtool)" --repo "$repo_root" wrapper exec "$@"',
     )
     for fragment in required_launcher_fragments:
         if fragment not in launcher:
