@@ -32,6 +32,11 @@ outputs = [
 ]
 runner = "dotnet"
 platform = "desktop"
+
+[targets.xdm_modern.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [jobs.xdm-rem18-prepare-evidence]
 runner = "command"
 root = "."
@@ -175,6 +180,11 @@ outputs = [
 ]
 runner = "android"
 platform = "android"
+
+
+[targets.xdm_android.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xdm_android.android]
 variant = "debug"
@@ -438,6 +448,11 @@ outputs = [
   ".devtool/build/go/**",
   ".devtool/reports/xgo/foundation/**",
 ]
+
+
+[targets.xgo_foundation.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_foundation.go]
 packages = ["./..."]
@@ -720,6 +735,11 @@ outputs = [
   ".devtool/build/go/**",
   ".devtool/reports/xgo/store/**",
 ]
+
+
+[targets.xgo_store.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_store.go]
 packages = ["./engine/store/...", "./engine/domain/backend", "./engine/internal/archtest"]
@@ -1005,6 +1025,11 @@ outputs = [
   ".devtool/reports/xgo/security/**",
 ]
 
+
+[targets.xgo_security.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_security.go]
 packages = [
   "./engine/domain/request",
@@ -1225,6 +1250,11 @@ outputs = [
   ".devtool/build/go/**",
   ".devtool/reports/xgo/transfer/**",
 ]
+
+
+[targets.xgo_transfer.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_transfer.go]
 packages = [
@@ -1490,6 +1520,11 @@ outputs = [
   ".devtool/reports/xgo/backends/**",
 ]
 
+
+[targets.xgo_backends.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_backends.go]
 packages = [
   "./engine/backends/...",
@@ -1729,6 +1764,11 @@ outputs = [
   ".devtool/reports/xgo/scheduler/**",
 ]
 
+
+[targets.xgo_scheduler.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_scheduler.go]
 packages = [
   "./engine/scheduler",
@@ -1870,6 +1910,11 @@ outputs = [
   ".devtool/build/go/**",
   ".devtool/reports/xgo/media/**",
 ]
+
+
+[targets.xgo_media.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_media.go]
 packages = [
@@ -2182,6 +2227,11 @@ outputs = [
   ".devtool/reports/xgo/ops/**",
 ]
 
+
+[targets.xgo_ops.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_ops.go]
 packages = [
   "./engine/ops",
@@ -2290,6 +2340,11 @@ outputs = [
   "app/XDM.Android/app/src/main/jniLibs/arm64-v8a/libxdmcore.h",
   "app/XDM.Android/app/src/main/assets/xdmcore/xdmcore-provenance.json",
 ]
+
+
+[targets.xgo_android.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_android.jobs.bootstrap_contract]
 runner = "command"
@@ -2590,6 +2645,11 @@ outputs = [
   ".devtool/build/xgo/abi/**",
 ]
 
+
+[targets.xgo_desktop.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_desktop.jobs.bootstrap_contract]
 runner = "command"
 command = [
@@ -2684,6 +2744,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/seal/**",
 ]
+
+
+[targets.xgo_seal.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_seal.jobs.bootstrap_contract]
 runner = "command"
@@ -2982,6 +3047,11 @@ outputs = [
   ".devtool/reports/xgo/gates/spec/**",
 ]
 
+
+[targets.xgo_gate_spec.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_gate_spec.workflows]
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] }
@@ -3000,6 +3070,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/foundation/**",
 ]
+
+
+[targets.xgo_gate_foundation.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate_foundation.workflows]
 validate = [
@@ -3022,6 +3097,11 @@ outputs = [
 
 
 
+
+[targets.xgo_gate_durable.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_gate_durable.workflows]
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
@@ -3041,6 +3121,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/security/**",
 ]
+
+
+[targets.xgo_gate_security.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate_security.workflows]
 validate = [
@@ -3063,6 +3148,11 @@ outputs = [
   ".devtool/reports/xgo/gates/transfer/**",
 ]
 
+
+[targets.xgo_gate_transfer.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_gate_transfer.workflows]
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
@@ -3084,6 +3174,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/backends/**",
 ]
+
+
+[targets.xgo_gate_backends.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate_backends.workflows]
 validate = [
@@ -3108,6 +3203,11 @@ outputs = [
   ".devtool/reports/xgo/gates/scheduler/**",
 ]
 
+
+[targets.xgo_gate_scheduler.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_gate_scheduler.workflows]
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
@@ -3131,6 +3231,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/media_identity/**",
 ]
+
+
+[targets.xgo_gate_media_identity.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate_media_identity.workflows]
 validate = [
@@ -3157,6 +3262,11 @@ outputs = [
   ".devtool/reports/xgo/gates/media_exec/**",
 ]
 
+
+[targets.xgo_gate_media_exec.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_gate_media_exec.workflows]
 validate = [
   { id = "foundation", ref = "target:xgo_foundation#validate", depends_on = [] },
@@ -3181,6 +3291,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/ops/**",
 ]
+
+
+[targets.xgo_gate_ops.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate_ops.workflows]
 validate = [
@@ -3208,6 +3323,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/android/**",
 ]
+
+
+[targets.xgo_gate_android.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate_android.jobs.gofmt_check]
 runner = "command"
@@ -3373,6 +3493,11 @@ outputs = [
   ".devtool/reports/xgo/gates/cross_host/**",
 ]
 
+
+[targets.xgo_gate_cross_host.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_gate_cross_host.workflows]
 validate = [
   { id = "android", ref = "target:xgo_android#validate", depends_on = [] },
@@ -3393,6 +3518,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/policy/**",
 ]
+
+
+[targets.xgo_devtool_policy.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_devtool_policy.jobs.no_raw_gradle]
 runner = "command"
@@ -3433,6 +3563,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/final/**",
 ]
+
+
+[targets.xgo_final_wave12.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_final_wave12.jobs.wave12_final_gate]
 runner = "command"
@@ -3476,6 +3611,11 @@ outputs = [
   ".devtool/reports/xgo/gates/final/**",
 ]
 
+
+[targets.xgo_gate_final.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_gate_final.workflows]
 validate = [
   { id = "devtool_execution_policy", ref = "target:xgo_devtool_policy#validate", depends_on = [] },
@@ -3496,6 +3636,11 @@ inputs = [
   "tools/xgo/validate-devtool-wrapper.py",
   "docs/xgo/DEVTOOL_WRAPPER.md",
 ]
+
+
+[targets.xgo_wrapper.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_wrapper.jobs.contract]
 runner = "command"
@@ -3530,6 +3675,11 @@ inputs = [
 outputs = [
   "**/build/**",
 ]
+
+
+[targets.xgo_rm05_focus_test_refresh.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_rm05_focus_test_refresh.android]
 variant = "debug"
@@ -3601,6 +3751,11 @@ inputs = [
 outputs = [
   ".devtool/reports/xgo/gates/final-continue/**",
 ]
+
+
+[targets.xgo_gate_final_continue.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-topology]
 runner = "command"
@@ -3778,6 +3933,11 @@ inputs = [
   "docs/xgo/XGO_GATE12_ANDROID_INSTRUMENTATION_REUSE_V13_REPORT.md",
   "docs/xgo/XGO_GATE12_APK_PAIR_SIGNING_V15_REPORT.md",
 ]
+
+
+[targets.xgo_gate12_registry_bypass_contract.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_gate12_registry_bypass_contract.jobs.contract]
 runner = "command"
@@ -4022,6 +4182,11 @@ outputs = [
   "transfer-aria2/build/reports/tests/**",
 ]
 
+
+[targets.xgo_rm06_aria2.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_rm06_aria2.android]
 variant = "debug"
 aapt2_provider = "termux"
@@ -4083,6 +4248,11 @@ inputs = [
 outputs = [
   "transfer-aria2/build/**",
 ]
+
+
+[targets.xgo_rm07_aria2.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_rm07_aria2.android]
 variant = "debug"
@@ -4151,6 +4321,11 @@ inputs = [
   "app/build.gradle.kts",
 ]
 
+
+[targets.xgo_rm08_aria2_contract.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_rm08_aria2_contract.jobs.rm08_contract]
 runner = "command"
 command = ["python3", "tools/validate-rm08-aria2-packaged-execution.py"]
@@ -4183,6 +4358,11 @@ outputs = [
   "transfer-aria2/src/main/jniLibs/arm64-v8a/libaria2c.so",
   "transfer-aria2/runtime/aria2-runtime.lock.json",
 ]
+
+
+[targets.xgo_rm08_aria2_source.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_source.jobs.build_pinned]
 runner = "command"
@@ -4226,6 +4406,11 @@ outputs = [
   ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
 ]
 
+
+[targets.xgo_rm08_aria2_attest.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_rm08_aria2_attest.jobs.package_attestation]
 runner = "command"
 command = [
@@ -4267,6 +4452,11 @@ outputs = [
   "app/build/outputs/apk/debug/app-debug.apk",
   "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
 ]
+
+
+[targets.xgo_rm08_aria2_android_package.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_android_package.android]
 variant = "debug"
@@ -4328,6 +4518,11 @@ outputs = [
   ".devtool/reports/xgo/gates/final-continue/rm08-aria2-package.json",
 ]
 
+
+[targets.xgo_rm08_aria2_package.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_rm08_aria2_package.workflows]
 validate = [
   { id = "source_runtime", ref = "target:xgo_rm08_aria2_source#validate", depends_on = [] },
@@ -4353,6 +4548,11 @@ outputs = [
   "app/build/reports/lint-results-debug.*",
   "app/build/intermediates/**",
 ]
+
+
+[targets.xgo_rm08_aria2_lint.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_lint.android]
 variant = "debug"
@@ -4399,6 +4599,11 @@ outputs = [
   "**/build/**",
   ".devtool/reports/android-instrumentation.json",
 ]
+
+
+[targets.xgo_rm08_aria2_device.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_device.android]
 variant = "debug"
@@ -4452,6 +4657,11 @@ outputs = [
   "app/XDM.Android/.devtool/reports/android-instrumentation.json",
 ]
 
+
+[targets.xgo_rm08_aria2.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
+
 [targets.xgo_rm08_aria2.workflows]
 validate = [
   { id = "source_runtime", ref = "target:xgo_rm08_aria2_source#validate", depends_on = [] },
@@ -4471,6 +4681,11 @@ root = "."
 execution_environment = "host"
 inputs = [".devtool.toml", "engine/**", "scripts/devtool_actions_contract.py"]
 outputs = []
+
+
+[targets.xgo_ci.metadata]
+# Phase 2: execution root is not an affected-file ownership wildcard.
+affected_ownership = "explicit"
 
 [targets.xgo_ci.jobs.ci-source]
 runner = "command"
