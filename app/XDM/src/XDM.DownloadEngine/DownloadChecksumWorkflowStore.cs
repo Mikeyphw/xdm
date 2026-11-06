@@ -39,7 +39,9 @@ public sealed class DownloadChecksumWorkflowStore
                 path,
                 FileMode.Open,
                 FileAccess.Read,
-                FileShare.Read,
+                // A rejected sidecar must be renamed to quarantine even on
+                // Windows, where an open handle otherwise prevents File.Move.
+                FileShare.Read | FileShare.Delete,
                 16 * 1024,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
             DownloadChecksumWorkflowState? state = await JsonSerializer.DeserializeAsync<DownloadChecksumWorkflowState>(

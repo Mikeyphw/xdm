@@ -60,7 +60,7 @@ for needle in ["buildPinnedAria2Runtime", "build-aria2-runtime.py", "--build-pin
 require("XDM_ARIA2_ARCHIVE_SHA256" not in aria_gradle, "aria2 Gradle release path still trusts a third-party binary digest")
 require("verifyAria2ReleaseRuntime" in aria_gradle and "--require-source-build" in aria_gradle, "direct release packaging is not fail-closed on source-built aria2 provenance")
 require('tasks.matching { it.name == "preReleaseBuild" }' in aria_gradle and "dependsOn(verifyAria2ReleaseRuntime)" in aria_gradle, "preReleaseBuild does not enforce strict aria2 provenance")
-require('lock.get("schemaVersion") != 3' in aria_verify and "toolchainIdentity" in aria_verify and "buildRecipeSha256" in aria_verify, "aria2 verifier does not require schema-v3 source/toolchain provenance")
+require('MANIFEST.get("schemaVersion") != 3' in aria_verify and 'lock.get("schemaVersion") != MANIFEST["schemaVersion"]' in aria_verify and "toolchainIdentity" in aria_verify and "buildRecipeSha256" in aria_verify, "aria2 verifier does not bind schema-v3 manifest and lock to source/toolchain provenance")
 require("build_or_reuse_shared_openssl" in ff_install and "build_or_reuse_shared_openssl" in read(ROOT / "tools/build-aria2-runtime.py"),
         "FFmpeg and aria2 do not converge on one shared OpenSSL dependency authority")
 require("dependencyIdentitySha256" in shared_openssl and "resuming compatible in-progress" in shared_openssl,

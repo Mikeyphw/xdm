@@ -78,7 +78,7 @@ public sealed class SingleInstanceCoordinator : IDisposable
                 _lockFilePath,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
-                OperatingSystem.IsMacOS() ? FileShare.None : FileShare.ReadWrite,
+                OperatingSystem.IsMacOS() ? FileShare.None : FileShare.ReadWrite | FileShare.Delete,
                 bufferSize: 1,
                 FileOptions.DeleteOnClose);
             try
@@ -239,7 +239,14 @@ public sealed class SingleInstanceCoordinator : IDisposable
     {
         try
         {
-            return File.ReadAllText(_lockFilePath).Trim();
+            // Windows requires sharing both writes and delete disposition while the
+            // primary owns the file. File.ReadAllText uses FileShare.Read, which
+            // cannot coexist with a write handle and breaks activation on Windows.
+            using FileStream stream = new(
+                _lockFilePath, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using StreamReader reader = new(stream);
+            return reader.ReadToEnd().Trim();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
