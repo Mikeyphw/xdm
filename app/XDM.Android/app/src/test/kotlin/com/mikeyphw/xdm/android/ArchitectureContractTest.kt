@@ -416,7 +416,13 @@ class ArchitectureContractTest {
         assertTrue("Verifier must enforce the shared ELF policy in strict runtime mode",
             verifier.contains("validate_android_runtime_elf(data, **(elf_policy() if strict else {}))") &&
                 verifier.contains("require_dynamic_bionic_linkage(metadata, label=\"packaged aria2 runtime\")"))
-        assertTrue("Shared ELF policy must implement 16 KB PT_LOAD and GNU RELRO checks", elfPolicy.contains("PT_LOAD") && elfPolicy.contains("PT_GNU_RELRO") && elfPolicy.contains("require_16kb"))
+        assertTrue("Shared ELF policy must implement 16 KB PT_LOAD and GNU RELRO checks",
+            elfPolicy.contains("PT_LOAD") &&
+                elfPolicy.contains("PT_GNU_RELRO") &&
+                elfPolicy.contains("required_load_alignment: int | None = None") &&
+                elfPolicy.contains("ph[\"align\"] < required_load_alignment") &&
+                elfPolicy.contains("ph[\"offset\"] % required_load_alignment != ph[\"vaddr\"] % required_load_alignment") &&
+                elfPolicy.contains("if require_gnu_relro and not metadata[\"gnuRelro\"]:"))
         assertTrue("Alignment documentation must explain strict builds", alignmentDoc.contains("-Pxdm.requireAria2Runtime=true"))
     }
 

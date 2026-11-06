@@ -21,7 +21,7 @@ internal static class Program
     {
         if (args.Contains("--validate-bootstrap", StringComparer.Ordinal))
         {
-            return ValidateBootstrap();
+            return ValidateBootstrapAsync().GetAwaiter().GetResult();
         }
 
         App.LaunchOptions = StartupOptions.Parse(args);
@@ -52,7 +52,7 @@ internal static class Program
             .WithInterFont()
             .LogToTrace();
 
-    private static int ValidateBootstrap()
+    private static async Task<int> ValidateBootstrapAsync()
     {
         // The bootstrap verifies actual DI services and icon geometry, not a
         // mocked dashboard. Supply Avalonia's headless rendering backend before
@@ -60,7 +60,8 @@ internal static class Program
         AppBuilder.Configure<BootstrapValidationApplication>()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions())
             .SetupWithoutStarting();
-        using ServiceProvider services = App.ConfigureServices();
+        // DesktopGoEngineHost is async-disposable; DI must use DisposeAsync.
+        await using ServiceProvider services = App.ConfigureServices();
         MainWindowViewModel viewModel = services.GetRequiredService<MainWindowViewModel>();
         IApplicationState state = services.GetRequiredService<IApplicationState>();
         IDownloadManager downloadManager = services.GetRequiredService<IDownloadManager>();
