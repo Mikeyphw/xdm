@@ -363,7 +363,9 @@ fun Exec.trackStaticValidation(stampName: String) {
     val stampFile = project.layout.buildDirectory.file("validation/$stampName.stamp")
     outputs.file(stampFile)
     doLast {
-        val stamp = stampFile.get().asFile
+        // Read the task's own declared output at execution time. Capturing a
+        // provider from the Gradle Kotlin script breaks configuration cache.
+        val stamp = outputs.files.singleFile
         stamp.parentFile.mkdirs()
         stamp.writeText("ok\n")
     }

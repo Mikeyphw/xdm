@@ -88,7 +88,11 @@ internal static class Program
             && section.IconData.Bounds.Height > 0);
         bool selectedSectionReady = viewModel.SelectedSection is not null;
         bool dashboardSummaryReady = viewModel.IsDashboardSummaryVisible;
-        bool coreReady = state.Current.CoreReady;
+        // This bootstrap deliberately does not start the Go engine or perform the
+        // desktop startup sequence. The application state must therefore remain
+        // NOT ready until real startup has initialized all required services.
+        // Checking for an already-ready flag here would conceal premature startup.
+        bool startupStateIsSafe = !state.Current.CoreReady;
         bool coreStatusReady = viewModel.CoreStatus == "Ready";
         bool archiveCategoryReady = archiveCategory.MatchesFileName("release.zip");
         bool downloadManagerReady = downloadManager is DesktopGoCompatibilityDownloadManager;
@@ -97,7 +101,7 @@ internal static class Program
             && sectionIconsReady
             && selectedSectionReady
             && dashboardSummaryReady
-            && coreReady
+            && startupStateIsSafe
             && coreStatusReady
             && archiveCategoryReady
             && downloadManagerReady;
@@ -130,9 +134,9 @@ internal static class Program
                 failedChecks.Add("dashboardSummary=false");
             }
 
-            if (!coreReady)
+            if (!startupStateIsSafe)
             {
-                failedChecks.Add("coreReady=false");
+                failedChecks.Add("coreReady=true-before-startup");
             }
 
             if (!coreStatusReady)
