@@ -28,6 +28,9 @@ public sealed class SingleInstanceCoordinator : IDisposable
     private readonly int _activationPort;
     private static readonly TimeSpan ActivationClientDeadline = TimeSpan.FromSeconds(2);
     private const int LockTokenBytes = 64;
+    // Do not lock byte 0: on Windows, a locked byte cannot be read by the
+    // second instance, even when file-sharing flags otherwise allow reading.
+    private const long LockByteOffset = LockTokenBytes;
     private const int ActivationLengthBytes = sizeof(int);
     public const int MaximumActivationPayloadBytes = 64 * 1024;
     private FileStream? _lockStream;
@@ -80,12 +83,15 @@ public sealed class SingleInstanceCoordinator : IDisposable
                 FileAccess.ReadWrite,
                 OperatingSystem.IsMacOS() ? FileShare.None : FileShare.ReadWrite | FileShare.Delete,
                 bufferSize: 1,
-                FileOptions.DeleteOnClose);
+                // Windows marks delete-on-close files as delete-pending, which
+                // prevents other instances from opening the token for validation.
+                // Keep Linux/macOS delete-on-close behavior unchanged.
+                OperatingSystem.IsWindows() ? FileOptions.None : FileOptions.DeleteOnClose);
             try
             {
                 if (!OperatingSystem.IsMacOS())
                 {
-                    _lockStream.Lock(0, 1);
+                    _lockStream.Lock(LockByteOffset, 1);
                 }
 
                 _lockHeld = true;
@@ -274,11 +280,25 @@ public sealed class SingleInstanceCoordinator : IDisposable
         _listenerCancellation?.Dispose();
         if (_lockHeld && _lockStream is not null)
         {
+            // On Windows there is no delete-on-close: invalidate the token
+            // before releasing ownership. A stale file cannot authorize IPC.
+            if (OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    _lockStream.SetLength(0);
+                    _lockStream.Flush(flushToDisk: true);
+                }
+                catch (IOException)
+                {
+                    // Shutdown still releases ownership; the listener is stopped.
+                }
+            }
             try
             {
                 if (!OperatingSystem.IsMacOS())
                 {
-                    _lockStream.Unlock(0, 1);
+                    _lockStream.Unlock(LockByteOffset, 1);
                 }
             }
             catch (IOException)
