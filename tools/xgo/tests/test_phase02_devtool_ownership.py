@@ -13,7 +13,8 @@ def test_phase02_all_targets_opt_in_with_inputs():
     data = tomllib.loads((ROOT / '.devtool.toml').read_text(encoding='utf-8'))
     assert len(data['targets']) >= 42
     for name, target in data['targets'].items():
-        assert target['metadata']['affected_ownership'] == 'explicit', name
+        assert target['affected_ownership'] == 'inputs-only', name
+        assert 'affected_ownership' not in target.get('metadata', {}), name
         assert target['inputs'], name
 
 

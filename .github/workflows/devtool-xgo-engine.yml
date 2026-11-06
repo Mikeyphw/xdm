@@ -3,12 +3,18 @@ on:
   push:
     paths:
       - 'engine/**'
+      - 'tools/xgo/**'
+      - 'go.work'
+      - 'scripts/devtool_phase02_source_contract.py'
       - 'scripts/devtool_actions_contract.py'
       - '.devtool.toml'
       - '.github/workflows/devtool-xgo-engine.yml'
   pull_request:
     paths:
       - 'engine/**'
+      - 'tools/xgo/**'
+      - 'go.work'
+      - 'scripts/devtool_phase02_source_contract.py'
       - 'scripts/devtool_actions_contract.py'
       - '.devtool.toml'
       - '.github/workflows/devtool-xgo-engine.yml'
@@ -24,7 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Source contract and DAG definitions
-        run: python3 scripts/devtool_actions_contract.py
+        run: |
+          python3 scripts/devtool_actions_contract.py
+          python3 scripts/devtool_phase02_source_contract.py
       - name: Commit identity
         run: git rev-parse HEAD
   engine:

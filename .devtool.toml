@@ -31,11 +31,11 @@ outputs = [
     "artifacts/rem18-final-seal/**",
 ]
 runner = "dotnet"
+affected_ownership = "inputs-only"
 platform = "desktop"
 
 [targets.xdm_modern.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [jobs.xdm-rem18-prepare-evidence]
 runner = "command"
@@ -179,12 +179,12 @@ outputs = [
     "app/src/main/assets/xdmcore/xdmcore-provenance.json",
 ]
 runner = "android"
+affected_ownership = "inputs-only"
 platform = "android"
 
 
 [targets.xdm_android.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xdm_android.android]
 variant = "debug"
@@ -434,6 +434,7 @@ xgo_gates = ["xgo_gate_spec", "xgo_gate_foundation", "xgo_gate_durable", "xgo_ga
 # target-local specification jobs therefore retain repository-relative paths.
 [targets.xgo_foundation]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -452,7 +453,6 @@ outputs = [
 
 [targets.xgo_foundation.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_foundation.go]
 packages = ["./..."]
@@ -718,6 +718,7 @@ validate = [
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_store]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -739,7 +740,6 @@ outputs = [
 
 [targets.xgo_store.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_store.go]
 packages = ["./engine/store/...", "./engine/domain/backend", "./engine/internal/archtest"]
@@ -999,6 +999,7 @@ validate = [
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_security]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -1028,7 +1029,6 @@ outputs = [
 
 [targets.xgo_security.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_security.go]
 packages = [
@@ -1223,6 +1223,7 @@ validate = [
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_transfer]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -1254,7 +1255,6 @@ outputs = [
 
 [targets.xgo_transfer.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_transfer.go]
 packages = [
@@ -1471,6 +1471,7 @@ validate = [
 # extend this same target-local validation DAG.
 [targets.xgo_backends]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -1523,7 +1524,6 @@ outputs = [
 
 [targets.xgo_backends.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_backends.go]
 packages = [
@@ -1736,6 +1736,7 @@ validate = [
 # XGO-44+45 activate scheduler ownership on the native Go runner.
 [targets.xgo_scheduler]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -1767,7 +1768,6 @@ outputs = [
 
 [targets.xgo_scheduler.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_scheduler.go]
 packages = [
@@ -1873,6 +1873,7 @@ validate = [
 # XGO-49..61 activate media capture, identity, graph, selection, HLS/DASH execution, and FFmpeg post-processing ownership on the native Go runner.
 [targets.xgo_media]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -1914,7 +1915,6 @@ outputs = [
 
 [targets.xgo_media.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_media.go]
 packages = [
@@ -2204,6 +2204,7 @@ validate = [
 # XGO-62..64 activate operational settings, secret redaction, diagnostics, retention, health, and support snapshot ownership on the native Go runner.
 [targets.xgo_ops]
 runner = "go"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -2230,7 +2231,6 @@ outputs = [
 
 [targets.xgo_ops.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_ops.go]
 packages = [
@@ -2325,6 +2325,7 @@ validate = [
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_android]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -2344,7 +2345,6 @@ outputs = [
 
 [targets.xgo_android.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_android.jobs.bootstrap_contract]
 runner = "command"
@@ -2624,6 +2624,7 @@ validate = [
 # Desktop validation target. XGO-80 adds one-time legacy import and proves normal desktop execution cannot instantiate the superseded C# transfer/media authorities.
 [targets.xgo_desktop]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -2648,7 +2649,6 @@ outputs = [
 
 [targets.xgo_desktop.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_desktop.jobs.bootstrap_contract]
 runner = "command"
@@ -2732,6 +2732,7 @@ validate = [
 # until the target's Go/Android/Desktop-native runner is activated by its first implementation overlay.
 [targets.xgo_seal]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -2748,7 +2749,6 @@ outputs = [
 
 [targets.xgo_seal.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_seal.jobs.bootstrap_contract]
 runner = "command"
@@ -3035,6 +3035,7 @@ validate = [
 
 [targets.xgo_gate_spec]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3050,7 +3051,6 @@ outputs = [
 
 [targets.xgo_gate_spec.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_spec.workflows]
 validate = [
@@ -3059,6 +3059,7 @@ validate = [
 
 [targets.xgo_gate_foundation]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3074,7 +3075,6 @@ outputs = [
 
 [targets.xgo_gate_foundation.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_foundation.workflows]
 validate = [
@@ -3083,6 +3083,7 @@ validate = [
 
 [targets.xgo_gate_durable]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3100,7 +3101,6 @@ outputs = [
 
 [targets.xgo_gate_durable.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_durable.workflows]
 validate = [
@@ -3110,6 +3110,7 @@ validate = [
 
 [targets.xgo_gate_security]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3125,7 +3126,6 @@ outputs = [
 
 [targets.xgo_gate_security.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_security.workflows]
 validate = [
@@ -3136,6 +3136,7 @@ validate = [
 
 [targets.xgo_gate_transfer]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3151,7 +3152,6 @@ outputs = [
 
 [targets.xgo_gate_transfer.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_transfer.workflows]
 validate = [
@@ -3163,6 +3163,7 @@ validate = [
 
 [targets.xgo_gate_backends]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3178,7 +3179,6 @@ outputs = [
 
 [targets.xgo_gate_backends.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_backends.workflows]
 validate = [
@@ -3191,6 +3191,7 @@ validate = [
 
 [targets.xgo_gate_scheduler]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3206,7 +3207,6 @@ outputs = [
 
 [targets.xgo_gate_scheduler.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_scheduler.workflows]
 validate = [
@@ -3220,6 +3220,7 @@ validate = [
 
 [targets.xgo_gate_media_identity]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3235,7 +3236,6 @@ outputs = [
 
 [targets.xgo_gate_media_identity.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_media_identity.workflows]
 validate = [
@@ -3250,6 +3250,7 @@ validate = [
 
 [targets.xgo_gate_media_exec]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3265,7 +3266,6 @@ outputs = [
 
 [targets.xgo_gate_media_exec.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_media_exec.workflows]
 validate = [
@@ -3280,6 +3280,7 @@ validate = [
 
 [targets.xgo_gate_ops]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3295,7 +3296,6 @@ outputs = [
 
 [targets.xgo_gate_ops.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_ops.workflows]
 validate = [
@@ -3311,6 +3311,7 @@ validate = [
 
 [targets.xgo_gate_android]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3327,7 +3328,6 @@ outputs = [
 
 [targets.xgo_gate_android.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_android.jobs.gofmt_check]
 runner = "command"
@@ -3481,6 +3481,7 @@ validate = [
 
 [targets.xgo_gate_cross_host]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3496,7 +3497,6 @@ outputs = [
 
 [targets.xgo_gate_cross_host.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_cross_host.workflows]
 validate = [
@@ -3507,6 +3507,7 @@ validate = [
 
 [targets.xgo_devtool_policy]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3522,7 +3523,6 @@ outputs = [
 
 [targets.xgo_devtool_policy.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_devtool_policy.jobs.no_raw_gradle]
 runner = "command"
@@ -3549,6 +3549,7 @@ validate = [
 
 [targets.xgo_final_wave12]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3567,7 +3568,6 @@ outputs = [
 
 [targets.xgo_final_wave12.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_final_wave12.jobs.wave12_final_gate]
 runner = "command"
@@ -3596,6 +3596,7 @@ validate = [
 
 [targets.xgo_gate_final]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3614,7 +3615,6 @@ outputs = [
 
 [targets.xgo_gate_final.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_final.workflows]
 validate = [
@@ -3627,6 +3627,7 @@ validate = [
 
 [targets.xgo_wrapper]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3640,7 +3641,6 @@ inputs = [
 
 [targets.xgo_wrapper.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_wrapper.jobs.contract]
 runner = "command"
@@ -3664,6 +3664,7 @@ validate = [
 # build context aligned without re-entering the broken package artifact-registry edge.
 [targets.xgo_rm05_focus_test_refresh]
 runner = "android"
+affected_ownership = "inputs-only"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -3679,7 +3680,6 @@ outputs = [
 
 [targets.xgo_rm05_focus_test_refresh.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm05_focus_test_refresh.android]
 variant = "debug"
@@ -3738,6 +3738,7 @@ validate = [
 
 [targets.xgo_gate_final_continue]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3755,7 +3756,6 @@ outputs = [
 
 [targets.xgo_gate_final_continue.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate_final_continue.jobs.xgo-gate12-continue-android-topology]
 runner = "command"
@@ -3917,6 +3917,7 @@ registry_bypass = [
 # without executing the workaround itself during apply.
 [targets.xgo_gate12_registry_bypass_contract]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -3937,7 +3938,6 @@ inputs = [
 
 [targets.xgo_gate12_registry_bypass_contract.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_gate12_registry_bypass_contract.jobs.contract]
 runner = "command"
@@ -4167,6 +4167,7 @@ aliases = ["wrapper-contract"]
 # ---------------------------------------------------------------------------
 [targets.xgo_rm06_aria2]
 runner = "android"
+affected_ownership = "inputs-only"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -4185,7 +4186,6 @@ outputs = [
 
 [targets.xgo_rm06_aria2.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm06_aria2.android]
 variant = "debug"
@@ -4226,6 +4226,7 @@ validate = [
 # ---------------------------------------------------------------------------
 [targets.xgo_rm07_aria2]
 runner = "android"
+affected_ownership = "inputs-only"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -4252,7 +4253,6 @@ outputs = [
 
 [targets.xgo_rm07_aria2.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm07_aria2.android]
 variant = "debug"
@@ -4302,6 +4302,7 @@ target = "xgo_rm07_aria2"
 # Bounded apply-time contract target. This is the target RM08's overlay selects.
 [targets.xgo_rm08_aria2_contract]
 runner = "command"
+affected_ownership = "inputs-only"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -4324,7 +4325,6 @@ inputs = [
 
 [targets.xgo_rm08_aria2_contract.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_contract.jobs.rm08_contract]
 runner = "command"
@@ -4342,6 +4342,7 @@ validate = [
 # is unavailable, avoiding a disposable Gradle daemon for a Python-only check.
 [targets.xgo_rm08_aria2_source]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "android"
 root = "app/XDM.Android"
 execution_environment = "native-termux"
@@ -4362,7 +4363,6 @@ outputs = [
 
 [targets.xgo_rm08_aria2_source.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_source.jobs.build_pinned]
 runner = "command"
@@ -4390,6 +4390,7 @@ validate = [
 # package/host target and the source-build lock emitted by xgo_rm08_aria2_source.
 [targets.xgo_rm08_aria2_attest]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -4409,7 +4410,6 @@ outputs = [
 
 [targets.xgo_rm08_aria2_attest.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_attest.jobs.package_attestation]
 runner = "command"
@@ -4441,6 +4441,7 @@ validate = [
 # workflow is the package action, keeping XGO cross-target refs on `#validate`.
 [targets.xgo_rm08_aria2_android_package]
 runner = "android"
+affected_ownership = "inputs-only"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -4456,7 +4457,6 @@ outputs = [
 
 [targets.xgo_rm08_aria2_android_package.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_android_package.android]
 variant = "debug"
@@ -4506,6 +4506,7 @@ validate = [
 # Gate-12 package boundary: source build -> Devtool Android package -> exact byte receipt.
 [targets.xgo_rm08_aria2_package]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -4521,7 +4522,6 @@ outputs = [
 
 [targets.xgo_rm08_aria2_package.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_package.workflows]
 validate = [
@@ -4537,6 +4537,7 @@ validate = [
 # lint action without replaying the rest of xdm_android.
 [targets.xgo_rm08_aria2_lint]
 runner = "android"
+affected_ownership = "inputs-only"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -4552,7 +4553,6 @@ outputs = [
 
 [targets.xgo_rm08_aria2_lint.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_lint.android]
 variant = "debug"
@@ -4587,6 +4587,7 @@ validate = [
 
 [targets.xgo_rm08_aria2_device]
 runner = "android"
+affected_ownership = "inputs-only"
 execution_environment = "native-termux"
 platform = "android"
 root = "app/XDM.Android"
@@ -4603,7 +4604,6 @@ outputs = [
 
 [targets.xgo_rm08_aria2_device.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2_device.android]
 variant = "debug"
@@ -4644,6 +4644,7 @@ validate = [
 # children separately so already-completed Android work is not replayed.
 [targets.xgo_rm08_aria2]
 runner = "command"
+affected_ownership = "inputs-only"
 platform = "shared"
 root = "."
 execution_environment = "native-termux"
@@ -4660,7 +4661,6 @@ outputs = [
 
 [targets.xgo_rm08_aria2.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_rm08_aria2.workflows]
 validate = [
@@ -4677,6 +4677,7 @@ target = "xgo_rm08_aria2_contract"
 
 [targets.xgo_ci]
 runner = "command"
+affected_ownership = "inputs-only"
 root = "."
 execution_environment = "host"
 inputs = [".devtool.toml", "engine/**", "scripts/devtool_actions_contract.py"]
@@ -4685,7 +4686,6 @@ outputs = []
 
 [targets.xgo_ci.metadata]
 # Phase 2: execution root is not an affected-file ownership wildcard.
-affected_ownership = "explicit"
 
 [targets.xgo_ci.jobs.ci-source]
 runner = "command"

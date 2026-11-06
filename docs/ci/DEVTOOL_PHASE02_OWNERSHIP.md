@@ -2,8 +2,8 @@
 
 ## Changes
 
-- Adds opt-in `targets.*.metadata.affected_ownership = "explicit"` to XDM targets.
-- Implements the opt-in in Devtool `devtool/affected.py`; default remains unchanged.
+- Corrects every target to use **native** `affected_ownership = "inputs-only"` under `[targets.NAME]`.
+- Removes ignored legacy `targets.*.metadata.affected_ownership = "explicit"`. Devtool preserves its default `root-and-inputs` for other consumers.
 - In opt-in mode the target's execution `root` is **not** an implicit ownership
   wildcard. Only target `inputs` and direct workflow-job `inputs` classify files.
 - Any path with no owner still selects **all candidate targets** through the
@@ -18,7 +18,7 @@ required CI until the matrix has been evaluated and coverage reviewed.
 ## Local acceptance (Termux)
 
     cd ~/Code/devtool
-    python3 -m pytest -q tests/test_phase02_explicit_affected.py
+    python3 -m pytest -q tests/test_sfdt02_affected_ownership.py
 
     cd ~/Code/xgo-unified-go-engine
     python3 -m pytest -q tools/xgo/tests
@@ -34,7 +34,7 @@ required CI until the matrix has been evaluated and coverage reviewed.
 - Desktop-only changes must not directly mark Go storage.
 - Unknown paths must select every candidate, not be silently skipped.
 - `.devtool.toml` changes must select every target.
-- An invalid or input-free explicit-ownership target must be refused.
+- An invalid or input-free native inputs-only target must be refused.
 - Reverse dependencies must remain intact.
 
 ## Follow-up / controlled rollout
@@ -42,4 +42,4 @@ required CI until the matrix has been evaluated and coverage reviewed.
 Phase 2 scope is the affected-selection contract and its real-config audits.
 Scheduling write-set normalization and source-owner granularity refinement
 remain separate qualification work, not an untested automatic parallel enable.
-Keep GitHub signing, Android builds and release gates untouched.
+X01 separately fixes hosted SDK provisioning and prevents routine manual validation from triggering signing. Signed-release authority remains separate.
