@@ -85,7 +85,8 @@ def main() -> None:
     must(app_gradle,'environment("PYTHONDONTWRITEBYTECODE", "1")','app validator bytecode-cache suppression')
     must(read('tools/verify-ffmpeg-runtime.py'),'{"schemaVersion": 2}','FFmpeg runtime v2 schema verifier')
     must(read('tools/verify-ffmpeg-runtime.py'),'stale for source-only validation','FFmpeg source-only stale runtime tolerance')
-    must(read('tools/verify-aria2-runtime.py'),'"schemaVersion": MANIFEST["schemaVersion"]','aria2 runtime schemaVersion verifier')
+    must(read('tools/verify-aria2-runtime.py'),'if MANIFEST.get("schemaVersion") != 3:','aria2 manifest schema-v3 guard')
+    must(read('tools/verify-aria2-runtime.py'),'if lock.get("schemaVersion") != MANIFEST["schemaVersion"]:','aria2 runtime lock-to-manifest schema verifier')
     must(read('tools/verify-aria2-runtime.py'),'stale for source-only validation','aria2 source-only stale runtime tolerance')
     planner=read('core-model/src/main/kotlin/com/mikeyphw/xdm/android/model/EngineEscalationPlanner.kt')
     if planner.count('aria2Eligible = aria2Eligible') < 3:

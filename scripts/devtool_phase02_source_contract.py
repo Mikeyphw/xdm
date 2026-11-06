@@ -19,7 +19,7 @@ def validate(root: Path) -> None:
     assert 'analyze_affected_targets' in script
     assert "'unknown_file': 'workspace-wide'" in script
     workflow = (root / '.github/workflows/android.yml').read_text(encoding='utf-8')
-    assert workflow.count('android-actions/setup-android@v4') == 2
+    assert workflow.count('android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd') == 2, 'pinned Android setup v4.0.4 action drift'
     assert workflow.count("packages: 'platform-tools'") >= 2
     assert "startsWith(github.ref, 'refs/tags/android-v')" in workflow
     assert "inputs.signed_release" in workflow
