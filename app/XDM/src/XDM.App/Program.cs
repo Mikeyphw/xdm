@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Headless;
 using Microsoft.Extensions.DependencyInjection;
 using XDM.App.Converters;
 using XDM.App.ViewModels;
@@ -53,6 +54,12 @@ internal static class Program
 
     private static int ValidateBootstrap()
     {
+        // The bootstrap verifies actual DI services and icon geometry, not a
+        // mocked dashboard. Supply Avalonia's headless rendering backend before
+        // resolving navigation geometry; do not start a desktop lifetime or X11.
+        AppBuilder.Configure<BootstrapValidationApplication>()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions())
+            .SetupWithoutStarting();
         using ServiceProvider services = App.ConfigureServices();
         MainWindowViewModel viewModel = services.GetRequiredService<MainWindowViewModel>();
         IApplicationState state = services.GetRequiredService<IApplicationState>();
@@ -152,4 +159,11 @@ internal static class Program
             $"XDM downloader validated: {viewModel.Sections.Count} sections, {viewModel.CoreStatus}, {viewModel.RuntimeDescription}.");
         return 0;
     }
+}
+
+// Dedicated side-effect-free Application: never run App.OnFrameworkInitializationCompleted
+// (which boots the engine, browser loopback and desktop services).
+internal sealed class BootstrapValidationApplication : Application
+{
+    public BootstrapValidationApplication() { }
 }

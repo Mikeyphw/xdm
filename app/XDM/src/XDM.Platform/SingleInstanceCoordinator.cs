@@ -250,9 +250,15 @@ public sealed class SingleInstanceCoordinator : IDisposable
             // cannot coexist with a write handle and breaks activation on Windows.
             using FileStream stream = new(
                 _lockFilePath, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
-            using StreamReader reader = new(stream);
-            return reader.ReadToEnd().Trim();
+                FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 1, FileOptions.None);
+            // A Windows ReadToEnd may request a 4 KiB buffer, crossing the
+            // locked byte at offset 64 even though the token ends at byte 63.
+            // Read precisely the authenticated 64 bytes without touching the lock.
+            byte[] tokenBytes = new byte[LockTokenBytes];
+            stream.ReadExactly(tokenBytes);
+            string token = System.Text.Encoding.ASCII.GetString(tokenBytes);
+            return token.All(Uri.IsHexDigit) ? token : null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
