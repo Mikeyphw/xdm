@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Headless;
 using Microsoft.Extensions.DependencyInjection;
 using XDM.App.Converters;
 using XDM.App.ViewModels;
@@ -20,7 +21,7 @@ internal static class Program
     {
         if (args.Contains("--validate-bootstrap", StringComparer.Ordinal))
         {
-            return ValidateBootstrap();
+            return ValidateBootstrapAsync().GetAwaiter().GetResult();
         }
 
         App.LaunchOptions = StartupOptions.Parse(args);
@@ -51,9 +52,16 @@ internal static class Program
             .WithInterFont()
             .LogToTrace();
 
-    private static int ValidateBootstrap()
+    private static async Task<int> ValidateBootstrapAsync()
     {
-        using ServiceProvider services = App.ConfigureServices();
+        // The bootstrap verifies actual DI services and icon geometry, not a
+        // mocked dashboard. Supply Avalonia's headless rendering backend before
+        // resolving navigation geometry; do not start a desktop lifetime or X11.
+        AppBuilder.Configure<BootstrapValidationApplication>()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions())
+            .SetupWithoutStarting();
+        // DesktopGoEngineHost is async-disposable; DI must use DisposeAsync.
+        await using ServiceProvider services = App.ConfigureServices();
         MainWindowViewModel viewModel = services.GetRequiredService<MainWindowViewModel>();
         IApplicationState state = services.GetRequiredService<IApplicationState>();
         IDownloadManager downloadManager = services.GetRequiredService<IDownloadManager>();
@@ -80,7 +88,11 @@ internal static class Program
             && section.IconData.Bounds.Height > 0);
         bool selectedSectionReady = viewModel.SelectedSection is not null;
         bool dashboardSummaryReady = viewModel.IsDashboardSummaryVisible;
-        bool coreReady = state.Current.CoreReady;
+        // This bootstrap deliberately does not start the Go engine or perform the
+        // desktop startup sequence. The application state must therefore remain
+        // NOT ready until real startup has initialized all required services.
+        // Checking for an already-ready flag here would conceal premature startup.
+        bool startupStateIsSafe = !state.Current.CoreReady;
         bool coreStatusReady = viewModel.CoreStatus == "Ready";
         bool archiveCategoryReady = archiveCategory.MatchesFileName("release.zip");
         bool downloadManagerReady = downloadManager is DesktopGoCompatibilityDownloadManager;
@@ -89,7 +101,7 @@ internal static class Program
             && sectionIconsReady
             && selectedSectionReady
             && dashboardSummaryReady
-            && coreReady
+            && startupStateIsSafe
             && coreStatusReady
             && archiveCategoryReady
             && downloadManagerReady;
@@ -122,9 +134,9 @@ internal static class Program
                 failedChecks.Add("dashboardSummary=false");
             }
 
-            if (!coreReady)
+            if (!startupStateIsSafe)
             {
-                failedChecks.Add("coreReady=false");
+                failedChecks.Add("coreReady=true-before-startup");
             }
 
             if (!coreStatusReady)
@@ -152,4 +164,11 @@ internal static class Program
             $"XDM downloader validated: {viewModel.Sections.Count} sections, {viewModel.CoreStatus}, {viewModel.RuntimeDescription}.");
         return 0;
     }
+}
+
+// Dedicated side-effect-free Application: never run App.OnFrameworkInitializationCompleted
+// (which boots the engine, browser loopback and desktop services).
+internal sealed class BootstrapValidationApplication : Application
+{
+    public BootstrapValidationApplication() { }
 }

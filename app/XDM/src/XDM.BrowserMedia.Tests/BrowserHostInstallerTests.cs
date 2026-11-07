@@ -37,7 +37,10 @@ public sealed class BrowserHostInstallerTests
             Assert.Contains($"X-XDM-FirefoxExtensionId={FirefoxExtensionHandoffParser.CanonicalExtensionId}", desktop, StringComparison.Ordinal);
             Assert.Contains("x-scheme-handler/xdmdownload", desktop, StringComparison.Ordinal);
             Assert.Contains("x-scheme-handler/xdmdownload-debug", desktop, StringComparison.Ordinal);
-            Assert.Contains(app, desktop, StringComparison.Ordinal);
+            // Desktop Entry Exec quotes backslashes. A Windows-hosted test
+            // simulating Linux must compare against the escaped on-disk form.
+            string escapedApplicationPath = app.Replace("\\", "\\\\", StringComparison.Ordinal);
+            Assert.Contains($"Exec=\"{escapedApplicationPath}\" %u", desktop, StringComparison.Ordinal);
 
             string mimeApps = await File.ReadAllTextAsync(Path.Combine(root, ".config", "mimeapps.list"));
             Assert.Contains("x-scheme-handler/xdmdownload=xdm-modern.desktop", mimeApps, StringComparison.Ordinal);
@@ -107,7 +110,7 @@ public sealed class BrowserHostInstallerTests
             await installer.RepairAsync(null);
             string desktopPath = Path.Combine(root, ".local", "share", "applications", BrowserHostInstaller.FirefoxDesktopFileName);
             string source = await File.ReadAllTextAsync(desktopPath);
-            await File.WriteAllTextAsync(desktopPath, source.Replace(app, "/tmp/rogue-xdm", StringComparison.Ordinal));
+            await File.WriteAllTextAsync(desktopPath, source.Replace(app.Replace("\\", "\\\\", StringComparison.Ordinal), "/tmp/rogue-xdm", StringComparison.Ordinal));
 
             BrowserHostInstallationStatus status = installer.GetStatus();
 

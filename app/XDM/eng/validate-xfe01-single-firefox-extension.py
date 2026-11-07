@@ -41,9 +41,21 @@ def text(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def canonical_source_sha256(path: Path) -> str:
+    # Git for Windows may check out text files using CRLF by default. The
+    # attested payload is the canonical LF content; normalize *only* CRLF in
+    # text resources. PNGs and other binary files are always byte-exact.
+    payload = path.read_bytes()
+    if path.suffix.lower() in {".js", ".css", ".html", ".json"}:
+        if b"\r" in payload.replace(b"\r\n", b""):
+            raise SystemExit("XFE01 validation failed: bare CR in canonical source: " + path.name)
+        payload = payload.replace(b"\r\n", b"\n")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def verify_canonical_bytes() -> None:
     actual = {
-        path.relative_to(CANONICAL).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        path.relative_to(CANONICAL).as_posix(): canonical_source_sha256(path)
         for path in sorted(CANONICAL.rglob("*"))
         if path.is_file()
     }

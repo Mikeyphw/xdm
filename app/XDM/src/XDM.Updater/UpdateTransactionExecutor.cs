@@ -211,33 +211,43 @@ public sealed class UpdateTransactionExecutor
         {
             return;
         }
-        if (transaction.HealthyAfterUtc is DateTimeOffset readyAt)
+        // Timer wake-ups can occur slightly before their requested UTC deadline.
+        // Observe the same timestamp used in the Healthy commit, and re-read the
+        // transaction on every wake-up so a later health deadline is respected.
+        while (true)
         {
-            TimeSpan remaining = readyAt - DateTimeOffset.UtcNow;
-            if (remaining > TimeSpan.Zero)
+            UpdateTransactionDocument latest = await ReadAsync(transactionPath, cancellationToken)
+                .ConfigureAwait(false);
+            if (latest.State != UpdateTransactionState.AppliedPendingHealth
+                || !string.Equals(latest.TransactionId, transaction.TransactionId, StringComparison.Ordinal))
             {
-                await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+                return;
             }
-        }
-        UpdateTransactionDocument latest = await ReadAsync(transactionPath, cancellationToken)
-            .ConfigureAwait(false);
-        if (latest.State != UpdateTransactionState.AppliedPendingHealth
-            || !string.Equals(latest.TransactionId, transaction.TransactionId, StringComparison.Ordinal))
-        {
+
+            DateTimeOffset observedAt = DateTimeOffset.UtcNow;
+            if (latest.HealthyAfterUtc is DateTimeOffset readyAt && observedAt < readyAt)
+            {
+                TimeSpan remaining = readyAt - observedAt;
+                await Task.Delay(remaining < TimeSpan.FromMilliseconds(1)
+                    ? TimeSpan.FromMilliseconds(1) : remaining, cancellationToken)
+                    .ConfigureAwait(false);
+                continue;
+            }
+
+            latest = latest with
+            {
+                State = UpdateTransactionState.Healthy,
+                UpdatedAtUtc = observedAt,
+                FailureMessage = null
+            };
+            await WriteAsync(transactionPath, latest, cancellationToken).ConfigureAwait(false);
+            DeleteDirectoryIfPresent(latest.BackupPath);
+            DeleteDirectoryIfPresent(latest.CandidatePath);
+            if (!string.IsNullOrWhiteSpace(latest.RecoveryMarkerPath))
+            {
+                DeleteFileIfPresent(latest.RecoveryMarkerPath);
+            }
             return;
-        }
-        latest = latest with
-        {
-            State = UpdateTransactionState.Healthy,
-            UpdatedAtUtc = DateTimeOffset.UtcNow,
-            FailureMessage = null
-        };
-        await WriteAsync(transactionPath, latest, cancellationToken).ConfigureAwait(false);
-        DeleteDirectoryIfPresent(latest.BackupPath);
-        DeleteDirectoryIfPresent(latest.CandidatePath);
-        if (!string.IsNullOrWhiteSpace(latest.RecoveryMarkerPath))
-        {
-            DeleteFileIfPresent(latest.RecoveryMarkerPath);
         }
     }
 

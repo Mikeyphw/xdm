@@ -84,8 +84,10 @@ def require_sha(value: object, name: str) -> str:
 
 
 def verify_source_lock(lock: dict, metadata: dict) -> None:
-    if lock.get("schemaVersion") != 3:
-        raise SystemExit("release-qualified aria2 lock must use schemaVersion 3")
+    if MANIFEST.get("schemaVersion") != 3:
+        raise SystemExit("release-qualified aria2 manifest must use schemaVersion 3")
+    if lock.get("schemaVersion") != MANIFEST["schemaVersion"]:
+        raise SystemExit("release-qualified aria2 lock must match manifest schemaVersion 3")
     expected = {
         "component": MANIFEST["component"], "version": MANIFEST["version"], "releaseTag": MANIFEST["releaseTag"],
         "abi": MANIFEST["abi"], "androidApi": MANIFEST["androidApi"], "ndkVersion": MANIFEST["ndkVersion"],

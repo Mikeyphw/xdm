@@ -496,8 +496,13 @@ public sealed class LoopbackBrowserIntegrationService : IBrowserIntegrationServi
     {
         response.StatusCode = (int)statusCode;
         response.ContentType = "application/json; charset=utf-8";
-        await JsonSerializer.SerializeAsync(response.OutputStream, value, SerializerOptions, cancellationToken)
-            .ConfigureAwait(false);
+        // Explicitly frame the entire JSON response before a concurrent
+        // StopAsync closes HttpListener. Windows HTTP.sys may otherwise reset
+        // a chunked response while the client is still consuming its body.
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(value, SerializerOptions);
+        response.ContentLength64 = payload.Length;
+        await response.OutputStream.WriteAsync(payload, cancellationToken).ConfigureAwait(false);
+        await response.OutputStream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private void UpdateStatus(Func<BrowserIntegrationStatus, BrowserIntegrationStatus> update)

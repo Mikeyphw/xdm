@@ -79,6 +79,19 @@ tasks.matching {
     dependsOn(buildXgoNativeCore)
 }
 
+// Generated xdmcore-provenance.json is a declared output of buildXgoNativeCore
+// inside the app's main assets. Android Gradle Plugin lint tasks read those
+// sources directly (including lintAnalyzeDebug / generateDebugLintReportModel),
+// not just through mergeAssets. Bind their producer at the task graph level.
+// This preserves all lint analysis; mustRunAfter alone is not sufficient for
+// Gradle's implicit-dependency validation of generated source-set assets.
+tasks.matching {
+    val taskName = it.name
+    taskName.startsWith("lint") || taskName.contains("Lint")
+}.configureEach {
+    dependsOn(buildXgoNativeCore)
+}
+
 fun validationEvidence(propertyName: String): Boolean = providers.gradleProperty(propertyName)
     .map(String::toBoolean)
     .orElse(false)
@@ -363,7 +376,9 @@ fun Exec.trackStaticValidation(stampName: String) {
     val stampFile = project.layout.buildDirectory.file("validation/$stampName.stamp")
     outputs.file(stampFile)
     doLast {
-        val stamp = stampFile.get().asFile
+        // Read the task's own declared output at execution time. Capturing a
+        // provider from the Gradle Kotlin script breaks configuration cache.
+        val stamp = outputs.files.singleFile
         stamp.parentFile.mkdirs()
         stamp.writeText("ok\n")
     }

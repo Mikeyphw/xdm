@@ -19,10 +19,11 @@ def audit(xdm_root: Path, devtool_root: Path) -> dict:
     data = tomllib.loads(config_file.read_text(encoding='utf-8'))
     targets = data['targets']
     invalid = [name for name, target in targets.items()
-               if target.get('metadata', {}).get('affected_ownership') != 'explicit'
+               if target.get('affected_ownership') != 'inputs-only'
+               or 'affected_ownership' in target.get('metadata', {})
                or not target.get('inputs')]
     if invalid:
-        raise RuntimeError(f'missing explicit ownership/inputs: {invalid}')
+        raise RuntimeError(f'invalid native inputs-only ownership or stale metadata: {invalid}')
     if not (devtool_root / 'devtool/affected.py').is_file():
         raise RuntimeError(f'Devtool source unavailable at {devtool_root}')
     # Load the installed checkout, never a remote runtime or ambient pip
@@ -34,6 +35,10 @@ def audit(xdm_root: Path, devtool_root: Path) -> dict:
     cfg = load_wrapper_project_config(str(xdm_root), str(config_file))
     if len(cfg.targets) != len(targets):
         raise RuntimeError('Devtool loader target count differs from TOML')
+    inactive = [n for n, target in cfg.targets.items()
+                if target.affected_ownership != 'inputs-only']
+    if inactive:
+        raise RuntimeError(f'Canonical Devtool ownership does not match TOML: {inactive}')
 
     probes = {
         'go-store': ('engine/store/sqlite/phase02_source_probe.go', 'xgo_store', 'xgo_rm08_aria2_device'),

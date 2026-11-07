@@ -52,8 +52,8 @@ def main() -> int:
     aria_manifest = json.loads(text("transfer-aria2/runtime/aria2-runtime.json"))
     if ff_manifest.get("dynamicDependencyPolicy") != "android-unversioned-sonames-v1":
         raise AssertionError("FFmpeg manifest must require Android unversioned SONAME policy")
-    if aria_manifest.get("schemaVersion") != 2:
-        raise AssertionError("aria2 runtime manifest must use schemaVersion 2")
+    if aria_manifest.get("schemaVersion") != 3:
+        raise AssertionError("aria2 runtime manifest must use schemaVersion 3")
     if aria_manifest.get("dynamicDependencyPolicy") != "android-unversioned-sonames-v1":
         raise AssertionError("aria2 manifest must require Android unversioned SONAME policy")
 
@@ -80,6 +80,11 @@ def main() -> int:
 
     aria_install = text("tools/install-aria2-runtime.py")
     aria_verify = text("tools/verify-aria2-runtime.py")
+    # Schema-v3 release provenance must be enforced by the actual verifier,
+    # not just claimed by the manifest or a stale RM03 snapshot.
+    need(aria_verify, 'MANIFEST.get("schemaVersion") != 3', "strict aria2 manifest schema-v3 gate")
+    need(aria_verify, 'lock.get("schemaVersion") != MANIFEST["schemaVersion"]',
+         "aria2 source-build lock bound to manifest schema")
     for needle in ("validate_android_runtime_file", '"neededLibraries"', '"elfInterpreter"', '"dynamicDependencyPolicy"'):
         need(aria_install, needle, "aria2 install attestation")
     for needle in ("validate_android_runtime_elf", '"neededLibraries"', '"elfInterpreter"', '"dynamicDependencyPolicy"'):

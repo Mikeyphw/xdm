@@ -109,7 +109,7 @@ jobs:
           - os: ubuntu-latest
             rid: linux-x64
             shell: bash
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             rid: linux-arm64
             shell: bash
           - os: windows-latest
@@ -127,6 +127,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      - uses: actions/setup-go@v5
+        if: runner.os == 'Linux'
+        with:
+          go-version-file: engine/go.mod
       - name: Publish and package Linux
         if: runner.os == 'Linux'
         run: app/XDM/eng/publish-one.sh ${{ matrix.rid }} ${{ needs.resolve.outputs.version }}

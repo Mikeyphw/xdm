@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -108,19 +107,21 @@ public sealed class UpdateTransactionExecutorTests
             InstallModel: "portable-self-update",
             RecoveryMarkerPath: Path.Combine(root, ".xdm-update-health-window.json"));
         await File.WriteAllTextAsync(transactionPath, JsonSerializer.Serialize(transaction, SerializerOptions));
-        Stopwatch stopwatch = Stopwatch.StartNew();
 
         try
         {
             await UpdateTransactionExecutor.MarkHealthyAsync(transactionPath);
 
-            stopwatch.Stop();
             UpdateTransactionDocument? healthy = JsonSerializer.Deserialize<UpdateTransactionDocument>(
                 await File.ReadAllTextAsync(transactionPath),
                 SerializerOptions);
             Assert.NotNull(healthy);
             Assert.Equal(UpdateTransactionState.Healthy, healthy.State);
-            Assert.True(stopwatch.ElapsedMilliseconds >= 40);
+            // Preparing and persisting the fixture may already consume the
+            // 80ms window on a busy hosted runner. Check the committed timestamp,
+            // not how long a subsequently started stopwatch happened to run.
+            Assert.True(healthy.UpdatedAtUtc >= readyAt,
+                "Transaction marked healthy before its observation deadline.");
             Assert.False(Directory.Exists(backup));
             Assert.False(Directory.Exists(candidate));
         }

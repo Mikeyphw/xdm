@@ -28,6 +28,9 @@ public sealed class SingleInstanceCoordinator : IDisposable
     private readonly int _activationPort;
     private static readonly TimeSpan ActivationClientDeadline = TimeSpan.FromSeconds(2);
     private const int LockTokenBytes = 64;
+    // Do not lock byte 0: on Windows, a locked byte cannot be read by the
+    // second instance, even when file-sharing flags otherwise allow reading.
+    private const long LockByteOffset = LockTokenBytes;
     private const int ActivationLengthBytes = sizeof(int);
     public const int MaximumActivationPayloadBytes = 64 * 1024;
     private FileStream? _lockStream;
@@ -78,14 +81,17 @@ public sealed class SingleInstanceCoordinator : IDisposable
                 _lockFilePath,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
-                OperatingSystem.IsMacOS() ? FileShare.None : FileShare.ReadWrite,
+                OperatingSystem.IsMacOS() ? FileShare.None : FileShare.ReadWrite | FileShare.Delete,
                 bufferSize: 1,
-                FileOptions.DeleteOnClose);
+                // Windows marks delete-on-close files as delete-pending, which
+                // prevents other instances from opening the token for validation.
+                // Keep Linux/macOS delete-on-close behavior unchanged.
+                OperatingSystem.IsWindows() ? FileOptions.None : FileOptions.DeleteOnClose);
             try
             {
                 if (!OperatingSystem.IsMacOS())
                 {
-                    _lockStream.Lock(0, 1);
+                    _lockStream.Lock(LockByteOffset, 1);
                 }
 
                 _lockHeld = true;
@@ -239,7 +245,20 @@ public sealed class SingleInstanceCoordinator : IDisposable
     {
         try
         {
-            return File.ReadAllText(_lockFilePath).Trim();
+            // Windows requires sharing both writes and delete disposition while the
+            // primary owns the file. File.ReadAllText uses FileShare.Read, which
+            // cannot coexist with a write handle and breaks activation on Windows.
+            using FileStream stream = new(
+                _lockFilePath, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 1, FileOptions.None);
+            // A Windows ReadToEnd may request a 4 KiB buffer, crossing the
+            // locked byte at offset 64 even though the token ends at byte 63.
+            // Read precisely the authenticated 64 bytes without touching the lock.
+            byte[] tokenBytes = new byte[LockTokenBytes];
+            stream.ReadExactly(tokenBytes);
+            string token = System.Text.Encoding.ASCII.GetString(tokenBytes);
+            return token.All(Uri.IsHexDigit) ? token : null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -267,11 +286,25 @@ public sealed class SingleInstanceCoordinator : IDisposable
         _listenerCancellation?.Dispose();
         if (_lockHeld && _lockStream is not null)
         {
+            // On Windows there is no delete-on-close: invalidate the token
+            // before releasing ownership. A stale file cannot authorize IPC.
+            if (OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    _lockStream.SetLength(0);
+                    _lockStream.Flush(flushToDisk: true);
+                }
+                catch (IOException)
+                {
+                    // Shutdown still releases ownership; the listener is stopped.
+                }
+            }
             try
             {
                 if (!OperatingSystem.IsMacOS())
                 {
-                    _lockStream.Unlock(0, 1);
+                    _lockStream.Unlock(LockByteOffset, 1);
                 }
             }
             catch (IOException)
