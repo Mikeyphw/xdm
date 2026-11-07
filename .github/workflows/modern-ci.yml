@@ -36,11 +36,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./app/XDM/eng/rem18-final-release-seal.ps1 -StaticOnly
-      - name: Linux final-gate package smoke matrix
+      - name: Linux x64 final-gate package smoke
         if: runner.os == 'Linux'
-        run: |
-          bash app/XDM/eng/smoke-package.sh linux-x64
-          bash app/XDM/eng/smoke-package.sh linux-arm64 --publish-only
+        run: bash app/XDM/eng/smoke-package.sh linux-x64
       - name: Windows final-gate package smoke matrix
         if: runner.os == 'Windows'
         shell: pwsh
@@ -54,4 +52,35 @@ jobs:
           path: |
             artifacts/test-results
             artifacts/smoke
+          if-no-files-found: ignore
+
+  native-linux-arm64:
+    # Build Go c-shared and run the published .NET app on its real CPU ABI.
+    # Never silently substitute an AMD64-only structural publish for ARM64.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+      - name: Linux ARM64 native package and bootstrap smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          test "$(go env GOARCH)" = arm64
+          bash app/XDM/eng/smoke-package.sh linux-arm64
+          go run ./engine/cmd/xgo-provenance \
+            --validate artifacts/smoke/linux-arm64/xdmcore-provenance.json \
+            --goos linux --goarch arm64 --build-mode c-shared
+          readelf -h artifacts/smoke/linux-arm64/libxdmcore.so | grep -Eq 'Machine:.*AArch64'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: final-gate-Linux-arm64
+          path: artifacts/smoke/linux-arm64
           if-no-files-found: ignore
